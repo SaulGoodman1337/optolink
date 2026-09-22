@@ -3,7 +3,7 @@ set -euo pipefail
 
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
-HELPER_REV="2026-09-22-r3"
+HELPER_REV="2026-09-22-r4"
 APP_DIR="/opt/optolink"
 
 echo "VDensHO1 profile helper: $HELPER_REV"
@@ -273,6 +273,7 @@ if [[ "$mqtt_enabled" == "1" && -c /dev/ttyUSB0 ]]; then
       timeout 20s runuser -u optolink -- ./venv/bin/python - <<'PY'
 import time
 from c_settings_adapter import settings
+from homeassistant_adapter import ha_device
 from homeassistant_publish import connect_mqtt
 
 client = connect_mqtt(retries=2, delay=2)
@@ -282,6 +283,18 @@ if client is None:
 try:
     if not settings.mqtt_listen:
         raise RuntimeError("mqtt_listen is disabled")
+
+    # Remove retained discovery for entities that were disproved by hardware
+    # captures and deliberately removed from the active profile.
+    ha_prefix = ha_device.get("discovery_prefix") or "homeassistant"
+    node_id = ha_device["node_id"]
+    obsolete_discovery = [
+        ("sensor", "geblaesedrehzahl"),
+    ]
+    for domain, name_id in obsolete_discovery:
+        topic = f"{ha_prefix}/{domain}/{node_id}/{name_id}/config"
+        client.publish(topic, "", retain=True).wait_for_publish()
+
     client.publish(settings.mqtt_listen, "reset").wait_for_publish()
     time.sleep(0.5)
     client.publish(settings.mqtt_listen, "forcepoll").wait_for_publish()
