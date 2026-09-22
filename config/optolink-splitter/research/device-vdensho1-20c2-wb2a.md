@@ -242,6 +242,47 @@ In captured starts, the lower pump condition correlated with a burner stop befor
 
 This is a strong correlation, not proof of causality.
 
+### Open question: DHW forces 100 %, heating mode does not
+
+An additional operational difference needs to be revisited:
+
+- in **DHW preparation**, the internal pump is observed to go automatically to
+  100 % while the burner is running;
+- in normal **space-heating mode**, the pump does not show the same automatic
+  100 % behavior.
+
+This may be highly relevant to the startup/flame-stabilization problem because
+the 100 % pump condition improves heat transport exactly during the period in
+which burner modulation is initially held near 65-66 %.
+
+The newly verified generic VS2/P300 request path and KMBUS/KBUS read functions
+create a new way to investigate this. The next comparison should search for a
+mode-dependent internal pump request rather than only watching the final pump
+speed.
+
+Candidate classes of state to look for:
+
+~~~text
+DHW active / heating active
+burner-start state
+internal-pump target
+internal-pump actual state
+pump override / forced speed
+minimum/maximum pump limit
+boiler-pump demand
+hydraulic operating mode
+KBus/KM-BUS pump command or data element
+~~~
+
+The key experiment is a synchronized comparison of one heating start and one
+DHW start, aligned at burner ignition/flame establishment. Any field that
+changes only in DHW shortly before the pump reaches 100 % becomes a strong
+candidate for the automatic override mechanism.
+
+Do not assume that the already observed 50/100 raw pump value is itself the
+controlling request; it may be only the downstream result of another internal
+command.
+
 ## Open device/GFA questions
 
 1. Decode the fields in `0x7650 = 2002061501ff`.
