@@ -238,6 +238,63 @@ TYPE 0x33. That does **not** make VS2 function code 0x33 a KMBUS RAM read.
 For the current VDensHO1/20C2 VS2 path, use the Vitosoft VS2 function-code table
 and hardware-verified behavior separately.
 
+### Block-read validation
+
+Two contiguous 8-byte reads were then performed from 0x00F8.
+
+KMBUS_RAM_READ:
+
+~~~text
+request;0x41;0x00F8;8;;0x00
+-> 1;0xf8;20c2000300000103
+~~~
+
+This exactly matches both the earlier one-byte 0x41 reads and the ordinary
+Virtual_READ controller identity. Therefore the 0x41 path supports a coherent
+contiguous 8-byte read at F8..FF on this controller.
+
+KMBUS_EEPROM_READ:
+
+~~~text
+request;0x43;0x00F8;8;;0x00
+-> 1;0xf8;5497549754975497
+~~~
+
+This result is important because it does **not** match the prior sequence of
+individual one-byte reads:
+
+~~~text
+individual reads:
+F8 54
+F9 97
+FA 54
+FB 98
+FC 54
+FD 98
+FE 54
+FF 98
+
+single block read:
+F8..FF 54 97 54 97 54 97 54 97
+~~~
+
+Consequences:
+
+- 0x43 is definitely active and readable (retcode 1);
+- the returned data must **not yet be treated as ordinary linear EEPROM
+  contents**;
+- at least the odd-position value appears capable of changing between separate
+  transactions, or the function has access semantics different from a simple
+  byte-addressed memory read;
+- the block result is internally regular and looks like four repetitions of
+  the two-byte word 0x5497;
+- no semantic meaning is assigned to 0x5497 yet.
+
+A useful next diagnostic is to repeat the exact same 0x43 F8/8 block read a few
+times at controlled intervals and compare whole snapshots. If the second byte
+changes while the repeated-word structure remains, this would strongly indicate
+a dynamic register/mailbox-style source rather than static EEPROM bytes.
+
 ## Strong evidence 2: Vitosoft data contains KBUS_VIRTUAL events
 
 The current esphome_vitohome project analyses a large Vitosoft XML export.
