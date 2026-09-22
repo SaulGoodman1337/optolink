@@ -34,7 +34,46 @@ Goals:
 Main file:
 `config/optolink-splitter/homeassistant-dashboard.yaml`
 
-### 2. Find the real blower-speed datapoint
+### 2. Move time programs to a dedicated Home Assistant tab
+
+Status: **planned**
+
+The weekly time programs currently live at the bottom of the diagnostics page
+and should be moved out of diagnostics into a dedicated, visually polished
+Home Assistant tab.
+
+Existing schedule groups already present in the dashboard:
+
+- heating circuit M1: Monday through Sunday;
+- domestic hot water: Monday through Sunday;
+- DHW circulation: Monday through Sunday.
+
+Current entities use the corresponding
+`*_zeitprogramm_<weekday>_anzeige` sensors.
+
+Design goals for the new tab:
+
+- one clear tab/view dedicated to schedules rather than diagnostics;
+- visually separate **Heating**, **Domestic hot water** and **Circulation**;
+- make the complete week readable at a glance;
+- avoid a long plain 21-row entity list if a clearer weekly layout is
+  achievable with the installed Home Assistant cards;
+- use consistent weekday ordering and compact labels;
+- show multiple switching periods per day cleanly where the underlying entity
+  provides them;
+- preserve the existing entities first; improve presentation before changing
+  data acquisition;
+- investigate whether the schedules can later be made safely editable from
+  Home Assistant, but keep display-only behavior unless write semantics have
+  been verified on this controller.
+
+Main file:
+`config/optolink-splitter/homeassistant-dashboard.yaml`
+
+The old schedule cards should be removed from the diagnostics page once the
+dedicated tab is in place.
+
+### 3. Find the real blower-speed datapoint
 
 Status: **open / high interest**
 
@@ -58,7 +97,7 @@ Next work:
 
 Do not restore the old `0x55D3[6:7] = rpm` interpretation.
 
-### 3. Improve A5/A6 dashboard explanation
+### 4. Improve A5/A6 dashboard explanation
 
 Status: **planned**
 
@@ -75,7 +114,7 @@ demand, and how the two functions interact.
 Goal: rewrite the explanatory cards around actual controller behavior and
 avoid historical/editorial comments that do not help operation.
 
-### 4. Continue Vitotrol emulation hardware path
+### 5. Continue Vitotrol emulation hardware path
 
 Status: **open**
 
