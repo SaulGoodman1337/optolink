@@ -85,12 +85,9 @@ previous uncertainty about whether `0x55DC` and `0xA305` represented
 different control layers: for this controller they expose the same live
 modulation quantity in different encodings.
 
-The single-session logger reads `0x55D3` and `0xA305` sequentially inside
-the same TCP connection:
-
-```text
-config/optolink-splitter/wb2a-single-session-logger.py
-```
+The `0x55DC <-> 0xA305` equivalence was established with the
+single-session logger. The logger has since moved on to the next experiment
+and now samples `0x55D3` together with `0x0810` boiler temperature.
 
 ## Measured burner-start behavior
 
@@ -139,16 +136,26 @@ This is a strong correlation, not proof of causality.
 ## Open device/GFA questions
 
 1. Decode the fields in `0x7650 = 2002061501ff`.
-2. Identify the exact meaning of the `0x55D3` bytes 6..7 runtime word; the
-   earlier blower-rpm interpretation is no longer supported.
-3. Identify the source of the approximately 12 s post-flame regulation delay.
-4. Identify the source of the approximately 1 percentage-point/s downward ramp.
-5. Decode all relevant `0x55DD` status bits.
-6. Find an independently documented/verified blower-speed datapoint for this
+2. Decode the exact semantics of the separate `0x55D3` bytes 6 and 7
+   state/bitfield bytes; the earlier 16-bit blower-rpm interpretation is rejected.
+3. Determine whether byte 7 bit `0x02`, which appears about 10 s after flame
+   detection, represents a regulation/run sub-state.
+4. Identify the source of the approximately 12 s post-flame regulation delay.
+5. Identify the internal parameter that generates the approximately
+   1 percentage-point/s downward modulation-command ramp.
+6. Correlate unresolved GFA bytes 1 and 2 with direct boiler temperature
+   `0x0810`.
+7. Decode all relevant `0x55DD` status bits.
+8. Find an independently documented/verified blower-speed datapoint for this
    exact VDensHO1/20C2 generation.
 
 
-## Candidate origin of the 12 s delay and 1 %/s ramp
+## Historical hypothesis: candidate origin of the 12 s delay and 1 %/s ramp
+
+> **Superseded:** this section records the earlier search path. Later measurements
+> rejected the 100 s actuator explanation, decoded GWG73 as 240 s, and rejected
+> the LGM29 `0x0083` map for this WB2A/GG1. See the later sections for the
+> current conclusions.
 
 ### Regulation delay after burner start
 
