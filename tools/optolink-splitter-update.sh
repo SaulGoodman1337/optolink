@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP_DIR="/opt/optolink"
-CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/community-scripts}"
+CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
 ROOT="${COMMUNITY_SCRIPTS_ROOT:-}"
 
@@ -45,7 +45,7 @@ info "Updating Python dependencies"
 runuser -u optolink -- "$APP_DIR/venv/bin/pip" install --upgrade   pip setuptools wheel pyserial paho-mqtt
 ok "Python dependencies updated"
 
-info "Refreshing community-scripts Optolink helpers"
+info "Refreshing Optolink repository helpers"
 install_repo_file tools/optolink-apply-vdensho1-ha-profile.sh   /usr/local/bin/optolink-apply-vdensho1-ha-profile 0755
 install_repo_file tools/optolink-apply-vscotho1-profile.sh   /usr/local/bin/optolink-apply-vscotho1-profile 0755
 install_repo_file tools/optolink-party-test.sh   /usr/local/bin/optolink-party-test 0755

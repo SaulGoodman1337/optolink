@@ -4,7 +4,7 @@
 # License: MIT
 # Source: https://github.com/philippoo66/optolink-splitter
 
-CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/community-scripts}"
+CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
 
 cs_repo_fetch() {

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-_CS_DEFAULT_URL="https://raw.githubusercontent.com/SaulGoodman1337/community-scripts/main"
+_CS_DEFAULT_URL="https://raw.githubusercontent.com/SaulGoodman1337/optolink/main"
 _cs_boot="${COMMUNITY_SCRIPTS_CORE_DIR:-$(dirname "${BASH_SOURCE[0]}")/../../core}/core/build.func"
 source "$_cs_boot" 2>/dev/null || source <(curl -fsSL "${COMMUNITY_SCRIPTS_CORE_URL:-https://raw.githubusercontent.com/community-scripts/core/main}/core/build.func")
 
-CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/community-scripts}"
+CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
 
 cs_repo_fetch() {
@@ -84,10 +84,10 @@ function update_script() {
   check_container_storage
   check_container_resources
 
-  msg_info "Using community-scripts source"
+  msg_info "Using Optolink repository source"
   echo "Repository: $CS_REPO"
   echo "Ref:        $CS_REF"
-  msg_ok "Using community-scripts source"
+  msg_ok "Using Optolink repository source"
 
   if [[ ! -d /opt/optolink/.git || ! -f /opt/optolink/settings_ini.py ]]; then
     msg_error "No ${APP} installation found!"

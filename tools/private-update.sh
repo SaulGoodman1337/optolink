@@ -13,7 +13,7 @@ fi
 source "$CONF"
 
 : "${COMMUNITY_SCRIPTS_TARGET:?COMMUNITY_SCRIPTS_TARGET is missing in $CONF}"
-REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/community-scripts}"
+REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 REF="${COMMUNITY_SCRIPTS_REF:-main}"
 
 save_token() {

@@ -1,8 +1,8 @@
 # Private repository access
 
-This repository is intended to be private. Installation and update helpers authenticate with a GitHub fine-grained personal access token (PAT).
+This repository can be used publicly without a token. If it is made private, installation and update helpers can authenticate with a GitHub fine-grained personal access token (PAT).
 
-Create a fine-grained PAT with access to **SaulGoodman1337/community-scripts** and repository permission **Contents: Read-only**. No write or administration permission is required for installs.
+Create a fine-grained PAT with access to **SaulGoodman1337/optolink** and repository permission **Contents: Read-only**. No write or administration permission is required for installs.
 
 Define this helper once in the shell where you want to run an installer:
 
@@ -21,7 +21,7 @@ csrun() {
       -H "Authorization: Bearer $token" \
       -H "Accept: application/vnd.github.raw+json" \
       -H "X-GitHub-Api-Version: 2022-11-28" \
-      "https://api.github.com/repos/SaulGoodman1337/community-scripts/contents/tools/private-run.sh?ref=main"
+      "https://api.github.com/repos/SaulGoodman1337/optolink/contents/tools/private-run.sh?ref=main"
   )"
 
   COMMUNITY_SCRIPTS_GITHUB_TOKEN="$token" \
@@ -55,4 +55,16 @@ update --forget-token
 
 The token file is local to the LXC and is never committed to the repository.
 
-For existing containers created before the repository became private, run their normal `update` command once while the repository is still public. That migrates `/usr/bin/update` to the private-aware wrapper before changing repository visibility.
+## Existing Optolink containers migrated from community-scripts
+
+Existing containers can keep the compatibility file and environment-variable names. Only the repository setting needs to point at the standalone repository:
+
+```bash
+sed -i \
+  's|^COMMUNITY_SCRIPTS_REPO=.*|COMMUNITY_SCRIPTS_REPO=SaulGoodman1337/optolink|' \
+  /etc/community-scripts-private.conf
+
+update
+```
+
+If the repository is private, make sure the token used by the LXC has **Contents: Read-only** access to `SaulGoodman1337/optolink` before running `update`.

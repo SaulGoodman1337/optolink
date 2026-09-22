@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/community-scripts}"
+REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 REF="${COMMUNITY_SCRIPTS_REF:-main}"
 TOKEN="${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
 TARGET="${1:-}"
