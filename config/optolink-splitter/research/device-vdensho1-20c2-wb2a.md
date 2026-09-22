@@ -797,3 +797,75 @@ The next useful read-only correlation is `0x0810` (boiler temperature)
 against GFA bytes 1 and 2. Their raw trajectories could be thermal, but no
 temperature scaling should be assigned until a simultaneous direct
 temperature measurement proves it.
+
+
+## 2026-09-22: 0x55E0 byte 14 changes at the 240 s post-flame boundary
+
+A deliberately induced heating cycle (D4/heating-curve level changed only to
+produce a reproducible demand change) captured a long burner-off interval.
+
+Relevant events:
+
+```text
+20:58:11.412  FLAME_STOP detected
+20:59:09.777  A395 byte 2: 0x50 -> 0x00   (+58.4 s from detected stop)
+21:02:09.536  0x55E0 byte 14: 0x00 -> 0x01
+21:11:59.343  next FLAME_START            (off=827.9 s)
+```
+
+The previous flame-positive sample was approximately 20:58:09.523. Therefore
+the real flame-loss instant lies between the last positive sample and the
+20:58:11.412 detection. The first observed byte-14 transition at 21:02:09.536
+is consequently compatible with a timer expiring essentially exactly 240 s
+after the actual flame loss:
+
+```text
+21:02:09.536 - 20:58:09.523 ~= 240.013 s
+```
+
+The sampling cadence is about 1-2 s, so the transition cannot be assigned
+millisecond precision. Nevertheless, the correlation with the 240 s boundary
+is very strong.
+
+During this transition the burner remains off and no restart sequence begins:
+
+```text
+0x55E0 before: 01 72 01 00 00 00 00 00 05 51 72 01 00 00 00 04 00
+0x55E0 after:  01 72 01 00 00 00 00 00 05 51 72 01 00 00 01 04 00
+                                                        ^^
+                                                   byte 14
+A395.b2 = 0x00
+flame   = 0
+55DC    = 0
+55DD    = 0x01
+boiler actual ~= 34.6 C
+boiler target ~= 37.0 C
+```
+
+The next burner start occurs much later because the boiler cools only slowly
+to the thermal restart threshold. Therefore the approximately 828 s total
+off-time is not itself a burner lockout duration.
+
+Current interpretation:
+
+- `A395.b2 = 0x50` is **not** the 240 s boiler-pause state; it clears after
+  only about 58 s in this run.
+- `0x55E0 byte 14` is the strongest current candidate for a
+  **240 s post-burner-stop timer/release state**.
+- It should not yet be assigned a final Viessmann semantic name until the
+  same 0->1 transition is reproduced in another independent burner cycle.
+- A stronger functional proof would be a cycle where the thermal restart
+  condition is already satisfied before 240 s and ignition waits until this
+  byte changes.
+
+The RKR cycle logger now records this byte separately as `55e0_b14` and emits
+events such as:
+
+```text
+55E0_B14_00->01
+```
+
+The 16-bit field at `0x55E0[10:12]` is no longer labelled as a temperature
+in the logger. Its dynamic behavior during startup shows that the earlier
+`GWG=... C` presentation was not justified; it is retained only as an
+unresolved raw little-endian word.
