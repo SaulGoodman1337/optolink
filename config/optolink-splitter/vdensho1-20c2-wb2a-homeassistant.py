@@ -183,27 +183,16 @@ poll_list = {
         },
 
         # -----------------------------------------------------------------
-        # Fire-control diagnostic block (single shared 0x55D3 read)
+        # Fire-control diagnostic block (shared 0x55D3 read)
         #
         # Hardware-verified on this WB2A / VDensHO1:
         #   byte 5 bit 0x20  = flame
         #   byte 5 bit 0x40  = fire-control lockout
-        #   bytes 6..7       = blower speed, big-endian, rpm
+        #   bytes 6..7       = runtime-state bytes; the earlier blower-rpm
+        #                      interpretation was rejected by live captures.
         #
-        # Keep these three FAST entries consecutive. optolink-splitter reuses
-        # the first 9-byte response for the following byte/bit filters, so
-        # blower speed, flame and lockout need only one Optolink read.
+        # Keep flame and lockout consecutive so the same response can be reused.
         # -----------------------------------------------------------------
-        {
-            "domain": "sensor",
-            "unit_of_measurement": "rpm",
-            "state_class": "measurement",
-            "suggested_display_precision": 0,
-            "icon": "mdi:fan",
-            "poll": [
-                ("FAST", "geblaesedrehzahl", 0x55D3, 9, "b:6:7::big", 1, False),
-            ],
-        },
         {
             "domain": "binary_sensor",
             "payload_on": "True",
@@ -1014,9 +1003,16 @@ poll_list = {
 
         # -----------------------------------------------------------------
         # Internal burner/control-chain diagnostics.
-        # Hardware-verified in a live burner cycle:
-        #   A307 = A391 = 63.0 C while firing, 38.0 C after demand drop
-        #   55E0 bytes10..11 = same RKR setpoint (63.0 -> 38.0 C)
+        # Hardware-verified in live burner cycles:
+        #   A307 = A391 = effective boiler target on the local heating path
+        #   55E0 bytes 1..2  = normal RKR boiler target, little-endian / 10 C
+        #   55E0 bytes10..11 = startup-optimized internal RKR target / 10 C.
+        #        At restart release it drops exactly 20 K below the normal
+        #        target and then ramps back during the startup optimization.
+        #   55E0 byte14 bit0 = restart/start release:
+        #        0 during the nominal ~240 s post-flame restart inhibition,
+        #        1 when restart is released. Observed byte states:
+        #        0x00 inhibited, 0x01 released/start phase, 0x43 regulation.
         #   A38F byte0 = 31.5..65.0 %, byte1 = 1 while firing / 0 when off
         #   A393 tracks 0x0810 boiler temperature within normal sequential-read
         #        jitter (mean delta +0.04 K over the captured cycle)
@@ -1042,9 +1038,114 @@ poll_list = {
                 # an inactive/external input on this WB2A's local heating path:
                 # it stayed 0.00 C both idle and during a live 50 C burner run.
                 ("NORMAL", "cfdm_consumer_demand_temperatur",     0xA385, 2, 0.01, False),
-                ("NORMAL", "rkr_kesselsolltemperatur",            0x55E0, 17, "b:10:11", 0.1, False),
             ],
         },
+        # -----------------------------------------------------------------
+        # RKR restart inhibition and startup optimization.
+        #
+        # One FAST raw 0x55E0/17 read feeds all Home Assistant entities below.
+        # The derived entities subscribe to that MQTT state topic, so this
+        # adds only one Optolink read per FAST cycle.
+        #
+        # Hardware evidence (two independent controlled cycles):
+        #   * byte14 bit0 stayed 0 despite strong thermal demand;
+        #   * first new 55DC startup command appeared at ~239.9 / ~241 s;
+        #   * byte14 bit0 changed to 1 immediately before startup;
+        #   * bytes10..11 changed from normal target to target-20 K at release;
+        #   * byte14 changed 0x01 -> 0x43 about 12 s after FLAME_START.
+        # -----------------------------------------------------------------
+        {
+            "domain": "sensor",
+            "entity_category": "diagnostic",
+            "enabled_by_default": False,
+            "icon": "mdi:code-braces",
+            "poll": [
+                ("FAST", "rkr_statusblock_55e0_raw", 0x55E0, 17, "raw", False),
+            ],
+        },
+        {
+            "domain": "sensor",
+            "unit_of_measurement": "°C",
+            "device_class": "temperature",
+            "state_class": "measurement",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "suggested_display_precision": 1,
+            "nopoll": [
+                {
+                    "name": "rkr_kesselsolltemperatur_normal",
+                    "state_topic": "{mqtt_base}/rkr_statusblock_55e0_raw",
+                    "value_template": "{% set s = value | trim %}{% set lo = s[2:4] | int(0, 16) %}{% set hi = s[4:6] | int(0, 16) %}{{ ((lo + 256 * hi) / 10) | round(1) }}",
+                },
+                {
+                    # Preserve the existing entity id/unique_id. This value is
+                    # now correctly described as the startup-optimized internal
+                    # RKR target rather than a simple mirror of the normal target.
+                    "name": "rkr_kesselsolltemperatur",
+                    "state_topic": "{mqtt_base}/rkr_statusblock_55e0_raw",
+                    "value_template": "{% set s = value | trim %}{% set lo = s[20:22] | int(0, 16) %}{% set hi = s[22:24] | int(0, 16) %}{{ ((lo + 256 * hi) / 10) | round(1) }}",
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "icon": "mdi:state-machine",
+            "nopoll": [
+                {
+                    "name": "rkr_brennerzustand",
+                    "state_topic": "{mqtt_base}/rkr_statusblock_55e0_raw",
+                    "value_template": "{% set s = value | trim %}{% set n = (s[2:4] | int(0, 16)) + 256 * (s[4:6] | int(0, 16)) %}{% set o = (s[20:22] | int(0, 16)) + 256 * (s[22:24] | int(0, 16)) %}{% set b = s[28:30] | int(0, 16) %}{% if b == 0 %}Taktsperre aktiv{% elif b == 1 and o != n %}Brenner-Startphase{% elif b == 1 %}Wiederanlauf freigegeben{% elif b == 67 %}Regelbetrieb{% else %}RKR 0x{{ '%02X' | format(b) }}{% endif %}",
+                },
+                {
+                    "name": "rkr_statusbyte_55e0_b14",
+                    "state_topic": "{mqtt_base}/rkr_statusblock_55e0_raw",
+                    "icon": "mdi:code-tags",
+                    "value_template": "{% set b = (value | trim)[28:30] | int(0, 16) %}0x{{ '%02X' | format(b) }}",
+                },
+            ],
+        },
+        {
+            "domain": "binary_sensor",
+            "payload_on": "1",
+            "payload_off": "0",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "nopoll": [
+                {
+                    "name": "brenner_taktsperre_aktiv",
+                    "state_topic": "{mqtt_base}/rkr_statusblock_55e0_raw",
+                    "icon": "mdi:timer-lock",
+                    "value_template": "{% set b = (value | trim)[28:30] | int(0, 16) %}{{ 1 if (b % 2) == 0 else 0 }}",
+                },
+                {
+                    "name": "brenner_wiederanlauf_freigegeben",
+                    "state_topic": "{mqtt_base}/rkr_statusblock_55e0_raw",
+                    "icon": "mdi:lock-open-variant",
+                    "value_template": "{% set b = (value | trim)[28:30] | int(0, 16) %}{{ 1 if (b % 2) == 1 else 0 }}",
+                },
+                {
+                    "name": "brenner_startphase",
+                    "state_topic": "{mqtt_base}/rkr_statusblock_55e0_raw",
+                    "icon": "mdi:progress-clock",
+                    "value_template": "{% set s = value | trim %}{% set n = (s[2:4] | int(0, 16)) + 256 * (s[4:6] | int(0, 16)) %}{% set o = (s[20:22] | int(0, 16)) + 256 * (s[22:24] | int(0, 16)) %}{% set b = s[28:30] | int(0, 16) %}{{ 1 if b == 1 and o != n else 0 }}",
+                },
+                {
+                    "name": "brenner_anfahroptimierung_aktiv",
+                    "state_topic": "{mqtt_base}/rkr_statusblock_55e0_raw",
+                    "icon": "mdi:tune-vertical",
+                    "value_template": "{% set s = value | trim %}{% set n = (s[2:4] | int(0, 16)) + 256 * (s[4:6] | int(0, 16)) %}{% set o = (s[20:22] | int(0, 16)) + 256 * (s[22:24] | int(0, 16)) %}{{ 1 if o != n else 0 }}",
+                },
+                {
+                    "name": "brenner_regelbetrieb",
+                    "state_topic": "{mqtt_base}/rkr_statusblock_55e0_raw",
+                    "icon": "mdi:fire",
+                    "value_template": "{% set b = (value | trim)[28:30] | int(0, 16) %}{{ 1 if b == 67 else 0 }}",
+                },
+            ],
+        },
+
         {
             "domain": "sensor",
             "unit_of_measurement": "%",
