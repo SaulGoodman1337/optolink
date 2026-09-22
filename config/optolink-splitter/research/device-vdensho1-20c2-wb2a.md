@@ -120,6 +120,115 @@ Observed phases:
 The roughly 12 s regulation delay and approximately 1 %/s ramp-rate limit are
 not yet mapped to a specific controller/GFA parameter.
 
+## Flame-stabilization / high-start-power problem
+
+This is a distinct project problem and should not be conflated with the
+240-second RKR startup optimization.
+
+Measured locally:
+
+~~~text
+flame establishment:
+  modulation command about 65-66 %
+
+hold:
+  about 12 s at about 65-66 %
+
+down-ramp:
+  about 1 modulation percentage point/s
+
+steady heating floor:
+  about 33 %
+~~~
+
+External Viessmann statements for comparable Vitodens generations describe a
+roughly 60-70 % burner start level as being fixed by the Kesselcodierstecker
+for **Startsicherheit / Flammenstabilisierung**, and state that limiting maximum
+heating power does not lower this startup level.
+
+This matches the local WB2A behavior closely enough to make the coding-plug/GFA
+parameter layer a primary research target, but it does not prove the exact
+storage field on 20C2.
+
+Current model of the problem:
+
+~~~text
+burner start
+    |
+    v
+high fixed startup modulation (~65-66 %)
+    |
+    | about 12 s hold
+    v
+controlled downward ramp (~1 %/s)
+    |
+    v
+normal minimum/required modulation (~33 %)
+~~~
+
+If the hydraulic system cannot absorb the startup heat before the controller
+reaches the lower modulation range, boiler temperature rises rapidly and the
+burner can stop/takt during the startup phase.
+
+### What we want to identify
+
+Read-only research should distinguish at least three separate quantities:
+
+1. **startup modulation/start power** -- likely associated with flame
+   stabilization;
+2. **regulation delay after flame establishment** -- locally about 12 s;
+3. **downward modulation slew/ramp limit** -- locally about 1 percentage
+   point/s.
+
+They may be three separate parameters or partly fixed GFA firmware behavior.
+
+Known coding-plug values do not yet resolve them:
+
+- GWG73 = 24 * 10 s = 240 s is the RKR/startup-optimization duration and is
+  **not** the 12 s flame-stabilization hold;
+- GWG32/GWG71 explain the 29 % heating-power ceiling/minimum-power convergence,
+  not the 65-66 % startup level;
+- GWG91..GWG9A explain the burner characteristic and the 33 % modulation floor,
+  not the startup hold duration.
+
+### Could the new KMBUS access help?
+
+Potentially, yes, for **finding and observing** the responsible parameter/state.
+
+The newly verified 0x41/0x43 read paths prove that dedicated KMBUS address
+spaces are reachable through Optolink. Together with the still-unexplored
+KBUS_* read functions and Vitosoft event metadata, this may expose:
+
+- a GFA/KM-BUS parameter corresponding to startup power;
+- a regulation-delay value;
+- a startup-state register;
+- a mirrored coding-plug field not present in the ordinary 0x10x0 objects.
+
+However, KMBUS_EEPROM_READ has not been shown to address the physical
+Kesselcodierstecker, and no write path for these safety-relevant values is
+currently established.
+
+### Project boundary: understand, do not bypass combustion safety
+
+The high start level is documented by Viessmann as serving flame stability /
+start safety on comparable Vitodens units. Therefore the project goal is to
+**identify and understand** the responsible field and to find safe ways to
+prevent startup heat from causing cycling.
+
+Do not experimentally reduce, disable or bypass flame-stabilization/start-safety
+parameters on a live gas burner.
+
+The practical low-risk mitigation path remains hydraulic/controller-side:
+
+- maximize useful heat removal during the startup plateau;
+- verify internal-pump behavior during the first 15-45 s;
+- avoid valve/bypass states that immediately return hot supply water;
+- compare starts at different known flow conditions.
+
+This is directly supported by the local observation that a higher internal-pump
+condition allowed the burner to reach the 33 % modulation floor, whereas the
+lower-pump condition correlated with an early stop.
+
 ## Pump / hydraulic correlation
 
 Observed internal-pump raw values include:
