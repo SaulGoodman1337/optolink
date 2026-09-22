@@ -55,10 +55,12 @@ Do not remove the Optolink files from the old `community-scripts` repository unt
 
 ## Documentation
 
+- [Project roadmap](docs/project-roadmap.md)
+- [Repository cleanup plan](docs/repository-cleanup-plan.md)
 - [Optolink-Splitter](docs/optolink-splitter.md)
 - [Optolink-Web](docs/optolink-web.md)
 - [Private repository access](docs/private-access.md)
-- [Research notes](config/optolink-splitter/research/README.md)
+- [WB2A research notes](config/optolink-splitter/research/README.md)
 
 ## Repository layout
 
