@@ -36,11 +36,21 @@ views:
                 show_state: true
                 show_icon: true
               - type: entity
-                entity: sensor.vitodens_200_wb2a_geblaesedrehzahl
-                name: Gebläse
-                icon: mdi:fan
+                entity: sensor.vitodens_200_wb2a_rkr_brennerzustand
+                name: RKR
+                icon: mdi:state-machine
                 show_state: true
                 show_icon: true
+              - type: entity
+                entity: binary_sensor.vitodens_200_wb2a_brenner_taktsperre_aktiv
+                name: Taktsperre
+                icon: mdi:timer-lock
+                show_state: true
+                show_icon: true
+                visibility:
+                  - condition: state
+                    entity: binary_sensor.vitodens_200_wb2a_brenner_taktsperre_aktiv
+                    state: "on"
               - type: entity
                 entity: sensor.vitodens_200_wb2a_aussentemperatur
                 name: Außen
@@ -2376,13 +2386,28 @@ views:
               - sensor.vitodens_200_wb2a_sensorstatus_vlts_anzeige
               - sensor.vitodens_200_wb2a_sensorstatus_raum_m1_anzeige
               - sensor.vitodens_200_wb2a_heizkreis_m1_reglervariante_anzeige
-              - entity: sensor.vitodens_200_wb2a_geblaesedrehzahl
-                name: Gebläsedrehzahl
-                icon: mdi:fan
               - binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt
           - type: entities
             title: Brennerregler intern
             entities:
+              - entity: sensor.vitodens_200_wb2a_rkr_brennerzustand
+                name: RKR Brennerzustand
+              - entity: binary_sensor.vitodens_200_wb2a_brenner_taktsperre_aktiv
+                name: Taktsperre aktiv
+              - entity: binary_sensor.vitodens_200_wb2a_brenner_wiederanlauf_freigegeben
+                name: Wiederanlauf freigegeben
+              - entity: binary_sensor.vitodens_200_wb2a_brenner_startphase
+                name: Brenner-Startphase
+              - entity: binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv
+                name: Anfahroptimierung aktiv
+              - entity: binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb
+                name: Regelbetrieb
+              - entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur_normal
+                name: RKR Kesselsoll normal
+              - entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur
+                name: RKR internes Soll (OPT)
+              - entity: sensor.vitodens_200_wb2a_rkr_statusbyte_55e0_b14
+                name: RKR Statusbyte 55E0.b14
               - entity: sensor.vitodens_200_wb2a_brenner_modulationsgrad
                 name: Brenner Modulationsgrad
               - entity: sensor.vitodens_200_wb2a_cfdm_leistungswert
@@ -2401,8 +2426,14 @@ views:
                 name: CFDM effektiver Kesselsollwert
               - entity: sensor.vitodens_200_wb2a_cfdm_vorlauftemperatur
                 name: CFDM Vorlauftemperatur
-              - entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur
-                name: RKR Kesselsollwert
+          - type: markdown
+            content: >-
+              **RKR / Taktsperre:** 55E0.b14 Bit 0 blieb in zwei kontrollierten
+              Zyklen trotz eindeutiger Wärmeanforderung bis zum 240-s-Fenster
+              auf 0. Erst mit der Freigabe auf 1 begann die neue
+              Feuerungssequenz. OPT ist der interne, anfahroptimierte
+              Kesselsollwert aus 55E0[10:12]: beim Wiederanlauf zunächst
+              20 K unter dem normalen RKR-Soll und anschließend ansteigend.
       - type: grid
         column_span: 2
         cards:
