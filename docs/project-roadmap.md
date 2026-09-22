@@ -271,6 +271,55 @@ Next work:
 Detailed evidence:
 `config/optolink-splitter/research/device-vdensho1-20c2-wb2a.md`.
 
+### Internal pump: automatic 100 % at burner start in heating mode
+
+Status: **open / revisit with KMBUS/KBUS access**
+
+Observed behavior to explain:
+
+- during **domestic-hot-water preparation**, the internal boiler pump can
+  automatically run at 100 % when the burner is active;
+- during **space-heating operation**, the same automatic 100 % pump behavior
+  has not been observed;
+- local startup captures have shown pump states corresponding to roughly
+  50 % and 100 %, and the higher-flow condition correlated with the burner
+  surviving the high-start-power phase and reaching low modulation.
+
+Research goal:
+
+Determine whether VDensHO1/20C2 has an internal mode, request, limit, override
+or state-machine parameter that can cause the internal pump to go to 100 %
+automatically during a burner start in **heating mode**, analogous to the
+behavior already observed in DHW mode.
+
+Re-open this question using the newly verified generic VS2/P300 and KMBUS/KBUS
+read capability.
+
+Next work:
+
+- capture identical startup windows in **heating** and **DHW** mode and compare
+  all known pump, burner, RKR, GFA and mode-state datapoints;
+- search the complete VDensHO1/Vitosoft event set for pump command, pump target,
+  internal-pump override, boiler-pump demand, DHW pump logic and KBus/KM-BUS
+  fields;
+- specifically inspect special-access events whose FCRead uses KMBUS_ or KBUS_
+  and which may previously have been unreachable through normal Virtual_READ;
+- determine whether the observed 100 % value is a pump setpoint, a temporary
+  override, a mode-specific minimum, or a downstream actuator state;
+- identify the state transition that activates the 100 % command in DHW and
+  check whether the same state/command exists but is disabled or parameterized
+  differently in heating mode;
+- remain read-only until the responsible field and write semantics are known.
+
+Potential relevance:
+
+If a safe controller-side heating-mode pump override exists, it could improve
+heat removal during the 65-66 % flame-stabilization/startup plateau without
+altering burner start-safety parameters.
+
+Detailed evidence belongs in:
+`config/optolink-splitter/research/device-vdensho1-20c2-wb2a.md`.
+
 ### Coding-plug read/write and external dumping
 
 Status: **open / research only**
