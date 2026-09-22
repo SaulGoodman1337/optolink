@@ -177,6 +177,67 @@ The returned byte 0x54 is deliberately **not interpreted yet**. In particular:
 This substantially strengthens the case for continuing the Optolink-only
 KBus/KM-BUS investigation.
 
+### Extended local mapping — 2026-09-22
+
+The complete normal controller identity was recorded as:
+
+~~~text
+Virtual_READ 0x00F8 / 8
+-> 20 c2 00 03 00 00 01 03
+
+Virtual_READ 0x00F0 / 1
+-> error (retcode 3, data 01)
+~~~
+
+The same F8..FF addresses were then read one byte at a time with
+`0x41 / KMBUS_RAM_READ`:
+
+~~~text
+F8 20
+F9 c2
+FA 00
+FB 03
+FC 00
+FD 00
+FE 01
+FF 03
+~~~
+
+Thus, on this controller, the 0x41 address space exposes the same eight-byte
+identity sequence at F8..FF as normal Virtual_READ.
+
+This does **not yet prove** whether 0x41 is a mirror of controller identity,
+an internal KM-BUS RAM image, or an aliasing behavior. A block read should be
+used to confirm contiguous semantics before assigning a stronger meaning.
+
+The same addresses through `0x43 / KMBUS_EEPROM_READ` returned a clearly
+different pattern:
+
+~~~text
+F8 54
+F9 97
+FA 54
+FB 98
+FC 54
+FD 98
+FE 54
+FF 98
+~~~
+
+All eight requests returned retcode 1.
+
+This confirms that 0x43 is not simply returning the ordinary controller
+identity at those numeric addresses. The meaning of the bytes remains unknown;
+the numeric address must be treated as belonging to the KMBUS_EEPROM_READ
+address space.
+
+Important protocol-layer caution: do not confuse VS2/P300 function-code values
+with the older GWG telegram TYPE values. In current GWG reverse-engineering,
+TYPE 0x43 is likewise KMBUS_EEPROM_READ, but GWG KMBUS-RAM is described as
+TYPE 0x33. That does **not** make VS2 function code 0x33 a KMBUS RAM read.
+For the current VDensHO1/20C2 VS2 path, use the Vitosoft VS2 function-code table
+and hardware-verified behavior separately.
+
 ## Strong evidence 2: Vitosoft data contains KBUS_VIRTUAL events
 
 The current esphome_vitohome project analyses a large Vitosoft XML export.
