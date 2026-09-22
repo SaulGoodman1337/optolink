@@ -7,11 +7,11 @@ multiple read commands sequentially inside that session.
 
 Current fast set:
   - 0x55D3 len 11: burner/GFA runtime block including 0x55DC and 0x55DD
-  - 0xA38F len 2: raw CFDM active power-state object
+  - 0x0810 len 2: boiler actual temperature, little-endian / 10
 
-0xA380 was removed from the fast loop after a full start showed it fixed at
-00ff throughout this heating mode. The rejected cross-family LGM29/0x57xx
-candidate probes were also removed after repeated read-only tests.
+A38F was removed from the fast loop after its 0.5 %/LSB power-state
+correlation with 0x55DC had been established. The current focus is correlating
+the unresolved GFA bytes 1/2 with the directly measured boiler temperature.
 
 No writes are performed.
 """
@@ -144,7 +144,7 @@ def main():
     print("==============================")
     print(f"Splitter: {args.host}:{args.port}")
     print(f"CSV:      {logfile}")
-    print("Reads:    0x55D3/11 + 0xA38F/2")
+    print("Reads:    0x55D3/11 + 0x0810/2")
     print("Writes:   none")
     print("Ctrl-C beendet")
     print()
@@ -163,6 +163,8 @@ def main():
         ("coding_card_revision", "read;0x7656;4"),
         ("coding_plug_part_number", "read;0x1010;7"),
         ("coding_plug_runtime_block", "read;0x1070;16"),
+        ("boiler_setpoint_snapshot", "read;0x2544;2"),
+        ("CFDM_power_state_snapshot", "read;0xA38F;2"),
     ]
 
     probe_path = logfile.with_suffix(".probes.txt")
@@ -187,8 +189,8 @@ def main():
         "sample_dt_ms",
         "cycle_ms",
         "read_55d3_ms",
-        "read_a38f_ms",
-        "a38f_offset_ms",
+        "read_0810_ms",
+        "kts_offset_ms",
         "raw_55d3",
         "gfa_b0",
         "gfa_b1",
@@ -204,10 +206,8 @@ def main():
         "flame",
         "lockout",
         "seconds_since_flame",
-        "raw_a38f",
-        "a38f_b0",
-        "a38f_b1",
-        "a38f_value_half",
+        "raw_0810",
+        "boiler_actual_c",
     ]
 
     last_sample_mid = None
@@ -255,21 +255,22 @@ def main():
                 flame_age = None if flame_start is None else sample_mid - flame_start
 
                 q2_start = time.monotonic()
-                payload38f, _ = client.request("read;0xA38F;2")
+                payload810, _ = client.request("read;0x0810;2")
                 q2_end = time.monotonic()
 
                 try:
-                    raw38f = bytes.fromhex(payload38f)
+                    raw810 = bytes.fromhex(payload810)
                 except ValueError:
-                    raise RuntimeError(f"invalid 0xA38F hex payload: {payload38f!r}")
+                    raise RuntimeError(f"invalid 0x0810 hex payload: {payload810!r}")
 
-                if len(raw38f) < 2:
+                if len(raw810) < 2:
                     raise RuntimeError(
-                        f"0xA38F returned {len(raw38f)} bytes, expected at least 2: {payload38f}"
+                        f"0x0810 returned {len(raw810)} bytes, expected at least 2: {payload810}"
                     )
 
-                a38f_mid = (q2_start + q2_end) / 2.0
-                a38f_offset_ms = (a38f_mid - sample_mid) * 1000.0
+                boiler_actual_c = int.from_bytes(raw810[:2], "little") / 10.0
+                kts_mid = (q2_start + q2_end) / 2.0
+                kts_offset_ms = (kts_mid - sample_mid) * 1000.0
                 cycle_end = time.monotonic()
 
                 if last_sample_mid is None:
@@ -283,8 +284,8 @@ def main():
                     "sample_dt_ms": "" if sample_dt_ms is None else f"{sample_dt_ms:.0f}",
                     "cycle_ms": f"{(cycle_end - cycle_start) * 1000.0:.0f}",
                     "read_55d3_ms": f"{(q1_end - q1_start) * 1000.0:.0f}",
-                    "read_a38f_ms": f"{(q2_end - q2_start) * 1000.0:.0f}",
-                    "a38f_offset_ms": f"{a38f_offset_ms:.0f}",
+                    "read_0810_ms": f"{(q2_end - q2_start) * 1000.0:.0f}",
+                    "kts_offset_ms": f"{kts_offset_ms:.0f}",
                     "raw_55d3": raw55.hex(),
                     "gfa_b0": raw55[0],
                     "gfa_b1": raw55[1],
@@ -300,10 +301,8 @@ def main():
                     "flame": int(flame),
                     "lockout": int(lockout),
                     "seconds_since_flame": "" if flame_age is None else f"{flame_age:.3f}",
-                    "raw_a38f": raw38f.hex(),
-                    "a38f_b0": raw38f[0],
-                    "a38f_b1": raw38f[1],
-                    "a38f_value_half": f"{raw38f[0] * 0.5:.1f}",
+                    "raw_0810": raw810.hex(),
+                    "boiler_actual_c": f"{boiler_actual_c:.1f}",
                 }
                 writer.writerow(row)
 
@@ -313,14 +312,14 @@ def main():
                 print(
                     f"{datetime.now().strftime('%H:%M:%S.%f')[:-3]}  "
                     f"MOD={modulation_55dc:3d}%  "
-                    f"A38F={raw38f.hex()} "
-                    f"(b0/2={raw38f[0] * 0.5:5.1f})  "
-                    f"GFA0-8={raw55[:9].hex()}  "
+                    f"KTS={boiler_actual_c:5.1f}C  "
+                    f"B0={raw55[0]:3d} B1={raw55[1]:3d} B2={raw55[2]:3d}  "
+                    f"GFA5-7={raw55[5]:02x}/{raw55[6]:02x}/{raw55[7]:02x}  "
                     f"FL={int(flame)}  "
                     f"55DD=0x{status55dd:02X}  "
                     f"T={age_txt}s  "
                     f"dt={dt_txt}ms  "
-                    f"off38F={a38f_offset_ms:+.0f}ms"
+                    f"offKTS={kts_offset_ms:+.0f}ms"
                     f"{event}"
                 )
 
