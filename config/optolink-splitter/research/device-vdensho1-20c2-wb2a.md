@@ -968,3 +968,57 @@ Important distinction: the approximately 240 s startup-optimization ramp and
 the approximately 240 s post-stop restart inhibition are two separate observed
 behaviors. They must not be treated as one timer merely because their nominal
 durations are similar.
+
+
+## 2026-09-22: second independent restart-inhibition reproduction
+
+A further controlled cycle reproduced the restart inhibition with a cleaner
+time base and with the thermal demand becoming true very early in the off
+period.
+
+Relevant sequence:
+
+```text
+21:48:27.999  FLAME_START
+21:48:38.006  0x55E0 byte14: 0x01 -> 0x43
+21:49:03.690  FLAME_STOP + byte14 0x43 -> 0x00
+21:49:39.817  boiler actual 67.0 C < target 67.1 C
+21:49:41.633  boiler actual 66.0 C, target still 67.1 C
+21:50:02.868  A395.b2 0x50 -> 0x00
+...
+21:53:01.950  byte14 0x00 -> 0x01 and OPT 67.1 -> 47.1 C
+21:53:03.554  55DC startup command becomes nonzero (30 %)
+21:53:12.579  FLAME_START, logged off interval 248.9 s
+21:53:24.481  byte14 0x01 -> 0x43
+```
+
+The important functional observation is that the boiler is already below the
+67.1 C target by about 36-38 s after flame stop and later falls far below the
+target, yet no burner-start activity appears while byte14 bit0 remains zero.
+The first nonzero 55DC command appears at 21:53:03.554, 239.864 s after the
+logged FLAME_STOP at 21:49:03.690. This is an especially strong reproduction
+of a nominal 240 s restart inhibition.
+
+Because the logger reads values sequentially, the byte14 transition itself is
+observed slightly earlier (OFF=238 s), while the start command lands almost
+exactly at 240 s. The previous flame-positive sample was at 21:49:02.444, so
+the byte14 0->1 observation at 21:53:01.950 is also 239.506 s after the last
+known flame-positive sample.
+
+This second cycle therefore strongly supports:
+
+- `0x55E0 byte14 bit0 = 0`: restart/start release not yet granted.
+- `0x55E0 byte14 bit0 = 1`: restart/start release granted.
+- the nominal post-stop inhibition interval is approximately 240 s.
+- `A395.b2` is a separate approximately 60 s post-fire state and is not the
+  restart-inhibition timer.
+
+The same cycle independently confirms the startup-optimization target:
+when byte14 bit0 becomes 1, `OPT` changes immediately from 67.1 C to
+47.1 C, exactly 20 K below the normal target. The burner startup command
+follows about 1.6 s later.
+
+Finally, byte14 transitions from `0x01` to `0x43` about 11.9 s after
+FLAME_START in this cycle, again suggesting that the additional `0x42` bits
+belong to the established firing/regulation phase rather than to the basic
+restart release.
