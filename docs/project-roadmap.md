@@ -114,13 +114,63 @@ demand, and how the two functions interact.
 Goal: rewrite the explanatory cards around actual controller behavior and
 avoid historical/editorial comments that do not help operation.
 
-### 5. Continue Vitotrol emulation hardware path
+### 5. Investigate Vitotrol emulation over Optolink / KBus
 
-Status: **open**
+Status: **open / high interest**
+
+A deeper protocol review found substantial evidence that the VS2/P300 Optolink
+protocol exposes real KBus/KM-BUS access methods. This re-opens the possibility
+of an Optolink-only Vitotrol emulation path and should be investigated before
+committing to extra KM-BUS hardware.
+
+Important current findings:
+
+- normal Virtual_WRITE to the suspected room-temperature datapoint was rejected;
+  this only rules out the simple datapoint-write path;
+- upstream function-code tables include KMBUS and KBUS families such as
+  KMBUS_EEPROM_READ, KBUS_MEMBERLIST_READ, KBUS_TRANSPARENT_READ,
+  KBUS_VIRTUAL_READ/WRITE and KBUS_GATEWAY_READ/WRITE;
+- old vcontrold configurations explicitly used function code 0x43 as
+  "KM-Bus EEPROM" access;
+- Vitosoft-derived data contains genuine KBUS_VIRTUAL_READ and
+  KBUS_VIRTUAL_WRITE events;
+- current Optolink-Splitter has a generic
+  `request;<function-code>;<address>;<length>;<data>;<protocol-id>` path, so
+  arbitrary VS2 function codes can already be transported without creating a
+  new debug transport.
+
+Tomorrow / next session:
+
+1. record the complete local controller identity using `0x00F8/8` and
+   `0x00F0/1`;
+2. obtain/query real Vitosoft XML events for the VDensHO1/GWG family and list
+   every event whose FCRead/FCWrite contains KMBUS_ or KBUS_;
+3. capture Address, BlockLength/ByteLength, PrefixRead/PrefixWrite and Parameter
+   for those events;
+4. build **read-only** generic requests only from known Vitosoft event
+   definitions;
+5. prioritize MEMBERLIST_READ, INITIALISATION_READ, GATEWAY_READ,
+   TRANSPARENT_READ, VIRTUAL_READ, KMBUS_RAM_READ and KMBUS_EEPROM_READ;
+6. map responses against accessory presence/discovery state;
+7. only after packet semantics and rollback behavior are understood, decide
+   whether any KBUS_*_WRITE experiment is justified.
+
+Do **not** blindly test MEMBERLIST_WRITE, INITIALISATION_WRITE, CONTROL_WRITE,
+VIRTUAL_WRITE or GATEWAY_WRITE.
+
+Detailed evidence and the proposed experiment plan are maintained in:
+`config/optolink-splitter/research/vitotrol-kbus-optolink-emulation.md`.
+
+### 6. Continue Vitotrol emulation hardware path
+
+Status: **open / fallback in parallel**
 
 The separate Vitotrol-emulation work identified the
 **MIKROE-4137 M-Bus Slave Click** as a promising no-solder hardware building
 block.
+
+Keep this as the fallback/parallel route while the Optolink KBus path is being
+investigated.
 
 Next work:
 
