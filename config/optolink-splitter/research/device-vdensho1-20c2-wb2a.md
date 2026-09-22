@@ -27,18 +27,30 @@ Hardware-verified on this appliance:
 - byte 5, mask `0x20`: flame present
 - byte 5, mask `0x40`: GFA lockout
 
-Observed but not yet semantically identified:
+Observed runtime-state bytes:
 
-- bytes 6..7 form a stable big-endian 16-bit runtime word. Values seen include
-  `0x0000`, `0x0820` (2080), `0x0F50` (3920), `0x0B60` (2912) and
-  `0x0B62` (2914).
-- An earlier hypothesis identified this word as blower rpm because the values
-  looked plausible. The 2026-09-22 high-resolution start log contradicts that:
-  the word remains approximately 2914 while the verified modulation falls from
-  66 % to 33 %. It must therefore remain **unresolved** until an independent
-  datapoint or physical measurement confirms its meaning.
+- bytes 6 and 7 must be treated as **separate state/bitfield bytes**, not as one
+  big-endian 16-bit numeric value. The earlier blower-rpm interpretation is
+  rejected.
 - byte 10 / address `0x55DD`: status patterns observed as `01`, `09`,
-  `29`, `21`; individual bits are not yet fully decoded.
+  `29`, `21`; individual bits are only partly decoded.
+
+A high-resolution 2026-09-22 start captured this byte-5/6/7 state sequence:
+
+```text
+b5 b6 b7   observed phase
+01 00 00   idle
+01 08 20   pre-purge / startup preparation
+09 0c 40   ignition sequence
+09 0f 50   ignition sequence, later sub-step
+29 0b 60   flame detected / establishment
+21 0b 60   stable flame
+21 0b 62   stable firing, later sub-state
+```
+
+This staged progression explains why interpreting `0x0B60` and `0x0B62`
+as 2912/2914 rpm was misleading: the two bytes encode state transitions and
+remain nearly unchanged while actual modulation falls from 66 % to 33 %.
 
 ### 0x55DC modulation
 
@@ -666,3 +678,122 @@ Current conclusion: the ~12 s plateau is strongly consistent with a burner
 control "Reglerverzögerung nach Brennerstart" function, but its storage
 location is not exposed by the known VDensHO1 P300 map and may be an internal
 GG1/GFA firmware parameter.
+
+
+## 2026-09-22 20:50 GG1 runtime-byte analysis
+
+A focused start log sampled `0x55D3;11` and `0xA38F;2` with roughly
+0.24-0.60 s resolution.
+
+### Confirmed identity snapshot
+
+The run reconfirmed:
+
+```text
+GFA chip ID            2002061501ff
+coding-card revision   20150201
+coding-plug part no.   7833971
+0x1070 block           051d141841323c000000000000000000
+```
+
+### Byte 5 / 6 / 7 state machine
+
+The burner-start sequence is now visible directly in the `0x55D3` block:
+
+```text
+idle                    b5/b6/b7 = 01/00/00
+pre-purge               b5/b6/b7 = 01/08/20
+ignition step 1         b5/b6/b7 = 09/0c/40
+ignition step 2         b5/b6/b7 = 09/0f/50
+flame establishment     b5/b6/b7 = 29/0b/60
+stable flame            b5/b6/b7 = 21/0b/60
+later stable sub-state  b5/b6/b7 = 21/0b/62
+```
+
+Known bits in byte 5 remain consistent:
+
+- `0x20` = flame present
+- `0x40` = lockout
+- `0x08` is present during the ignition phase (`09`, `29`) and clears
+  once the stable `21` state is reached. Its exact Viessmann name is not yet
+  proven.
+
+Byte 7 bit `0x02` is especially interesting:
+
+```text
+flame start              T = 0.00 s, b7 = 0x60
+stable 0x21 state        T = 0.99 s, b7 = 0x60
+b7 changes 0x60 -> 0x62 T = 9.99 s
+first sustained MOD drop T = 12.35 s
+```
+
+The `0x02` transition therefore occurs about 10 s after flame detection and
+roughly 2.4 s before the modulation command starts its sustained downward
+ramp. It is a strong **candidate for a GG1 run/regulation sub-state**, but the
+exact bit meaning remains unverified.
+
+### Byte 0 follows the modulation path but is not MOD itself
+
+During the controlled downward ramp, GFA byte 0 changes monotonically with
+`0x55DC`:
+
+```text
+MOD 66 % -> b0 0x45 = 69
+MOD 64 % -> b0 0x43 = 67
+MOD 60 % -> b0 0x3f = 63
+MOD 50 % -> b0 0x37 = 55
+MOD 40 % -> b0 0x2f = 47
+MOD 33 % -> b0 0x26 = 38
+```
+
+Across the falling-ramp interval the correlation is approximately
+`r = 0.995`. Byte 0 itself falls at roughly one raw unit per second.
+
+It is therefore clearly burner-control-related, but it is **not the same
+quantity or scale as the verified 0x55DC modulation percentage**. A
+fan/air/gas actuator-related quantity remains plausible, but no semantic label
+is assigned without independent evidence.
+
+### Bytes 1 and 2 are continuous internal variables
+
+Byte 1 does not behave like a state flag:
+
+```text
+near flame start  ~0xA5 = 165
+minimum           ~0x87 = 135 at about T=23.5 s
+later steady      ~0x97 = 151 by about T=62 s
+```
+
+Byte 2 changes much more slowly and stepwise:
+
+```text
+0xA4 -> 0xA5 -> 0xA6 -> 0xA7
+```
+
+Neither byte shows a discrete transition exactly at the approximately
+12-second modulation-release point. They therefore look more like internal
+continuous process/control quantities than a simple regulation-enable flag.
+
+Bytes 3, 4 and 8 remained zero throughout this captured start.
+
+### A38F activation timing
+
+`A38F` remains `0000` through pre-purge, ignition and initial flame
+establishment. In this run:
+
+```text
+T=0.00 s  flame detected, 55DD=29, A38F=0000
+T=0.99 s  stable 55DD=21,      A38F=7f01 (63.5 % candidate value)
+T=1.90 s  stable firing,       A38F=8201 (65.0 %)
+```
+
+This further supports the interpretation that `A38F` is an active
+combustion/power-state value that becomes valid only after the GFA reaches its
+stable firing state.
+
+### Next targeted correlation
+
+The next useful read-only correlation is `0x0810` (boiler temperature)
+against GFA bytes 1 and 2. Their raw trajectories could be thermal, but no
+temperature scaling should be assigned until a simultaneous direct
+temperature measurement proves it.
