@@ -298,6 +298,21 @@ Investigate two independent paths:
 
 **B. Directly from the physical coding plug**
 
+Available hardware for the next session:
+
+- two additional/spare coding plugs are available for non-destructive bench
+  investigation;
+- an EPROM/EEPROM reader/programmer is probably also available and should be
+  identified before use.
+
+Next task:
+
+- photograph/document both spare coding plugs, including labels, PCB and all
+  semiconductor markings;
+- record part numbers/revisions and determine whether either spare matches
+  **7833971 / revision 2015:0201** exactly;
+- identify the available EPROM/EEPROM reader/programmer model and supported
+  devices/voltages;
 - identify the memory/device technology and pinout used by coding plug
   **7833971 / revision 2015:0201**;
 - determine whether it contains a standard EEPROM/EPROM/serial memory device
@@ -305,6 +320,11 @@ Investigate two independent paths:
 - document voltage levels, package, bus/protocol and any in-circuit loading
   considerations before attaching a programmer;
 - make at least two independent read-only dumps first and compare hashes;
+- perform the first bench work strictly **read-only**; do not erase, program,
+  modify protection bits or write configuration/fuse data until the memory
+  technology, voltage, pinout and recovery path are known;
+- store the resulting raw dumps, hashes, programmer settings and photos in the
+  repository so they can be compared with Optolink data later;
 - decode whether the observed `0x10x0` Optolink objects can be mapped to
   offsets in the physical dump;
 - identify checksums, duplicated blocks, version fields and plausibility data;
