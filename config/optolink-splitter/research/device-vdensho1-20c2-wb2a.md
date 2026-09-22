@@ -1029,3 +1029,43 @@ Finally, byte14 transitions from `0x01` to `0x43` about 11.9 s after
 FLAME_START in this cycle, again suggesting that the additional `0x42` bits
 belong to the established firing/regulation phase rather than to the basic
 restart release.
+
+
+## Next session: restructure Home Assistant diagnostics page
+
+The Home Assistant diagnostics page should be reviewed and reorganized in the
+next working session. The current page has accumulated many experimentally
+discovered and service-level entities and is technically useful, but no longer
+optimally structured for day-to-day diagnosis.
+
+Planned goals:
+
+- separate **operational burner state** from low-level/raw diagnostics;
+- group the newly verified RKR states together:
+  - restart inhibition / `brenner_taktsperre_aktiv`;
+  - restart released / `brenner_wiederanlauf_freigegeben`;
+  - burner start phase;
+  - startup optimization active;
+  - established regulation state;
+  - normal RKR boiler target vs internal optimized target (OPT);
+  - raw `0x55E0 byte14` only as a secondary diagnostic value;
+- group burner/flame/modulation values separately from CFDM and other internal
+  controller-chain values;
+- move coding-plug parameters into a clearly separated configuration/reference
+  section;
+- keep unresolved/raw research fields clearly marked as such instead of mixing
+  them with hardware-verified operational states;
+- remove obsolete or disproved interpretations from the UI;
+- improve explanatory text so the page communicates **what a value means in
+  operation**, not only its internal address/name;
+- reduce visual clutter and make the most useful live states visible first,
+  with deep diagnostics lower on the page;
+- review whether 24 h history charts for burner, modulation, restart inhibition,
+  OPT and boiler temperature would improve diagnosis.
+
+The existing dashboard file to restructure is:
+
+`config/optolink-splitter/homeassistant-dashboard.yaml`
+
+Do not discard the current diagnostic entities during the redesign; reorganize
+them and preserve useful low-level access where appropriate.
