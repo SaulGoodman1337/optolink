@@ -869,3 +869,102 @@ The 16-bit field at `0x55E0[10:12]` is no longer labelled as a temperature
 in the logger. Its dynamic behavior during startup shows that the earlier
 `GWG=... C` presentation was not justified; it is retained only as an
 unresolved raw little-endian word.
+
+
+## 2026-09-22: functional proof of the ~240 s restart inhibition and startup-optimization target
+
+A second deliberately induced cycle produced a much stronger test because a
+large heat demand was created while the burner was still off.
+
+### Restart inhibition under unambiguous demand
+
+Relevant sequence:
+
+```text
+21:39:16.126  0x55E0 byte14: 0x43 -> 0x00, A305 already 0, flame still sampled as 1
+21:39:18.106  FLAME_STOP detected
+21:39:38.931  flow/BLR target raised to 65.0 C
+21:39:57.271  flow/BLR target raised further to 67.1 C
+21:40:16.257  A395.b2: 0x50 -> 0x00
+...
+21:43:13.282  0x55E0 byte14: 0x00 -> 0x01
+21:43:17.104  55DC begins startup sequence (33 %)
+21:43:25.196  FLAME_START, logged off interval 247.1 s
+```
+
+For more than three minutes the boiler therefore had an unambiguous demand
+(`67.1 C` target while actual temperature was roughly `56 -> 51 C`), yet
+`55DC` remained zero and no burner start occurred while byte14 remained
+`0x00`.
+
+The first startup activity appears only after byte14 changes to `0x01`.
+Measured from the controller's burner-off transition around
+21:39:16 to the first nonzero 55DC at 21:43:17, the interval is about
+241 s. Because the reads are sequential and the cycle time is roughly
+1-2 s, this is consistent with a nominal 240 s restart inhibition.
+
+This is functional evidence, not merely a time correlation:
+
+```text
+strong thermal demand + byte14=0 -> no start
+byte14 0->1                  -> startup becomes possible
+~4 s later                  -> 55DC startup sequence
+~12 s later                 -> flame present
+```
+
+The full byte is clearly a bitfield, not a Boolean:
+
+```text
+off / restart inhibited         0x00
+released / pre-start            0x01
+stable firing/regulation state  0x43
+```
+
+Bit 0 is therefore the strongest current candidate for a restart/start-release
+state. Bits represented by `0x42` are associated with the firing/regulation
+phase but remain semantically unresolved.
+
+### 0x55E0[10:12] is a temperature-like startup-optimization target
+
+The same run also resolves the earlier uncertainty around the word at
+`0x55E0[10:12]`. It behaves consistently as a little-endian value in
+0.1 C units, but it is not a simple duplicate of the external boiler target.
+
+With the main target at 50.0 C:
+
+```text
+main RKR / BLR target       50.0 C
+0x55E0[10:12] initially    0x012c = 300 -> 30.0 C
+difference                         = -20.0 K
+```
+
+During the firing period this internal target then ramps upward and reaches:
+
+```text
+0x01f4 = 500 -> 50.0 C
+```
+
+roughly four minutes after burner start.
+
+Later, while the burner is off and the main target is raised to 67.1 C,
+the internal word follows it directly as `0x029f = 671 -> 67.1 C`.
+At the restart-release transition it changes simultaneously to:
+
+```text
+0x01d7 = 471 -> 47.1 C
+```
+
+which is again exactly 20.0 K below the 67.1 C main target.
+
+This strongly supports the interpretation that `0x55E0[10:12]` is an
+**internal startup-optimized boiler target**. It is reduced by 20 K at burner
+startup and subsequently ramps back toward the normal target over roughly the
+known 240 s startup-optimization interval.
+
+This behavior is an excellent match for the coding-plug parameter
+`GWG73 / Anfahroptimierung modulierender Brenner = 24 * 10 s = 240 s`.
+
+Important distinction: the approximately 240 s startup-optimization ramp and
+the approximately 240 s post-stop restart inhibition are two separate observed
+behaviors. They must not be treated as one timer merely because their nominal
+durations are similar.
