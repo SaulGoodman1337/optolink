@@ -37,8 +37,19 @@ def _command_addr(command):
     parts = command.split(";")
     if len(parts) < 2:
         return None
+
+    # Normal read/write commands carry the datapoint address in field 2:
+    #   r;<addr>;...
+    #   w;<addr>;...
+    # Generic VS2 requests carry the function code first and the address in
+    # field 3:
+    #   request;<function-code>;<addr>;...
+    addr_index = 2 if parts[0].lower() in ("request", "req") else 1
+    if len(parts) <= addr_index:
+        return None
+
     try:
-        return int(parts[1], 0)
+        return int(parts[addr_index], 0)
     except ValueError:
         return None
 
