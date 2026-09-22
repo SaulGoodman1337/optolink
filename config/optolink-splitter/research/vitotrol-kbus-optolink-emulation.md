@@ -231,6 +231,12 @@ identity at those numeric addresses. The meaning of the bytes remains unknown;
 the numeric address must be treated as belonging to the KMBUS_EEPROM_READ
 address space.
 
+Do not currently interpret this as a dump of the Kesselcodierstecker. The
+coding plug is exposed elsewhere through structured objects (0x1010 and
+0x1030..0x1090), and no evidence yet links those physical plug bytes to the
+0x43 address space. The coding-plug-specific investigation is documented in
+[coding-plug-7833971-2015-0201.md](coding-plug-7833971-2015-0201.md).
+
 Important protocol-layer caution: do not confuse VS2/P300 function-code values
 with the older GWG telegram TYPE values. In current GWG reverse-engineering,
 TYPE 0x43 is likewise KMBUS_EEPROM_READ, but GWG KMBUS-RAM is described as
