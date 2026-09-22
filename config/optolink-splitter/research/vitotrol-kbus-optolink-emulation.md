@@ -131,6 +131,52 @@ Sources:
 This is important because it demonstrates that Optolink-to-KM-BUS access is not
 only a theoretical interpretation of names found in Vitosoft.
 
+### Local WB2A validation — 2026-09-22
+
+The generic VS2 request path was first verified against an ordinary
+Virtual_READ:
+
+~~~text
+request;0x01;0x00F8;2;;0x00
+-> 1;0xf8;20c2
+~~~
+
+The same address through the normal read path returned the identical controller
+ID:
+
+~~~text
+r;0x00F8;2;raw;False
+-> 1;0xf8;20c2
+~~~
+
+This proves that the local Optolink-Splitter generic request transport is
+working correctly on this VDensHO1 / 20C2 controller.
+
+A read-only KMBUS_EEPROM_READ probe was then issued:
+
+~~~text
+request;0x43;0x00F8;1;;0x00
+-> 1;0xf8;54
+~~~
+
+This is a **hardware-verified successful response** from the local WB2A to
+function code 0x43. The important result is the return code 1: the controller
+accepted and executed this function path instead of returning an Optolink error,
+NACK or timeout.
+
+The returned byte 0x54 is deliberately **not interpreted yet**. In particular:
+
+- it is not the same address space as ordinary Virtual_READ merely because the
+  numeric address field is also 0x00F8;
+- it does not by itself prove that a physical KM-BUS accessory is present;
+- it does not prove that KBUS_MEMBERLIST, KBUS_VIRTUAL or gateway operations are
+  supported;
+- it does prove that at least one dedicated KMBUS function is live and readable
+  through Optolink on this exact controller.
+
+This substantially strengthens the case for continuing the Optolink-only
+KBus/KM-BUS investigation.
+
 ## Strong evidence 2: Vitosoft data contains KBUS_VIRTUAL events
 
 The current esphome_vitohome project analyses a large Vitosoft XML export.
@@ -611,8 +657,8 @@ Current confidence levels:
 | Statement | Confidence |
 | --- | --- |
 | normal Virtual_WRITE to 0x0896 is not the solution | high / measured locally |
-| KM-BUS-specific Optolink access exists | high |
-| 0x43 was historically used for KM-BUS EEPROM access | high |
+| KM-BUS-specific Optolink access exists | **hardware-verified on local 20C2 via 0x43** |
+| 0x43 KMBUS_EEPROM_READ returns data on local WB2A | **high / measured locally: 0x54 at probe address 0x00F8** |
 | Vitosoft contains KBUS_VIRTUAL_READ/WRITE events | high |
 | current Splitter can send arbitrary VS2 function requests | high |
 | KBUS_* can address useful KBus state on this exact 20C2 | open |
