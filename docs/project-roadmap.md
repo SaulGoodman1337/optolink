@@ -241,6 +241,36 @@ Relevant clues:
 Open: determine whether the ~12 s interval is a fixed GG1/GFA state-machine
 phase, a coding-plug parameter, or another internal control condition.
 
+### Flame stabilization / high startup modulation
+
+Status: **open / high interest**
+
+The WB2A starts combustion around 65-66 % modulation, holds that level for
+about 12 s, and then ramps down at about 1 percentage point/s toward the
+approximately 33 % modulation floor.
+
+Comparable Vitodens documentation/community statements from Viessmann describe
+the high startup level as a coding-plug-defined flame-stabilization/start-safety
+behavior. The local exact parameter on VDensHO1/20C2 is still unknown.
+
+Next work:
+
+- search the full VDensHO1/Vitosoft event set for startup-power,
+  regulator-delay, GFA timing and KBus/KM-BUS fields;
+- use the newly verified KMBUS read capability only for read-only parameter
+  correlation until semantics are known;
+- separate three effects: startup power, about-12-s regulation hold and
+  about-1-%/s down-ramp;
+- correlate internal pump/flow state with successful vs prematurely aborted
+  burner starts;
+- prefer hydraulic/startup heat-removal mitigation over changes to burner
+  start-safety behavior;
+- do not experimentally disable or reduce flame-stabilization/start-safety
+  parameters on the live gas burner.
+
+Detailed evidence:
+`config/optolink-splitter/research/device-vdensho1-20c2-wb2a.md`.
+
 ### Coding-plug read/write and external dumping
 
 Status: **open / research only**
@@ -259,6 +289,10 @@ Investigate two independent paths:
   or written back to the physical plug;
 - inspect Vitosoft/service-protocol behavior for any coding-plug programming or
   replacement workflow;
+- determine whether the hardware-verified `0x41 KMBUS_RAM_READ` and
+  `0x43 KMBUS_EEPROM_READ` address spaces have any deterministic mapping to
+  known coding-plug/GWG fields; do not assume `0x43` is the coding plug merely
+  because it contains "EEPROM" in its function name;
 - do not issue experimental writes to burner-safety/limit fields until the
   write semantics, validation and recovery path are understood.
 
