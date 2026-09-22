@@ -3,7 +3,8 @@
 WB2A / VDensHO1 RKR + boiler-pause cycle logger.
 
 Read-only logger for correlating the RKR demand/freigabe candidate with
-boiler temperature, burner/flame state and unknown A395 status bits.
+boiler temperature, burner/flame state, unknown A395 status bits and the
+0x55E0 byte-14 candidate that changed near the measured 240 s boundary.
 
 It keeps one persistent TCP connection to optolink-splitter and samples:
   0x5556 / 4   RKR structure candidate
@@ -177,9 +178,11 @@ def main():
         "rkr_leistung_raw",
         "raw_55e0",
         "mirror_5556_55e0",
-        "gwg_rkr_enable",
-        "gwg_rkr_kessel_soll_head_c",
-        "gwg_rkr_kessel_soll_c",
+        "55e0_head_enable",
+        "55e0_head_kessel_soll_c",
+        "55e0_word10_11_raw_le",
+        "55e0_b14",
+        "55e0_b14_hex",
         "raw_a395",
         "a395_b0",
         "a395_b1",
@@ -206,6 +209,7 @@ def main():
     previous_flame = None
     previous_rkr_enable = None
     previous_a395_b2 = None
+    previous_55e0_b14 = None
     flame_stop_monotonic = None
     last_off_interval = None
 
@@ -249,9 +253,10 @@ def main():
                 rkr_leistung_raw = raw5556[3]
 
                 mirror_match = raw55e0[:4] == raw5556
-                gwg_rkr_enable = raw55e0[0]
-                gwg_head_soll = u16le(raw55e0[1:3]) / 10.0
-                gwg_rkr_soll = u16le(raw55e0[10:12]) / 10.0
+                e55_head_enable = raw55e0[0]
+                e55_head_soll = u16le(raw55e0[1:3]) / 10.0
+                e55_word10_11 = u16le(raw55e0[10:12])
+                e55_b14 = raw55e0[14]
 
                 a395_b2 = rawa395[2]
                 a305_mod = rawa305[0] * 0.5
@@ -282,9 +287,13 @@ def main():
                 if previous_a395_b2 is not None and a395_b2 != previous_a395_b2:
                     events.append(f"A395_B2_{previous_a395_b2:02x}->{a395_b2:02x}")
 
+                if previous_55e0_b14 is not None and e55_b14 != previous_55e0_b14:
+                    events.append(f"55E0_B14_{previous_55e0_b14:02x}->{e55_b14:02x}")
+
                 previous_flame = flame
                 previous_rkr_enable = rkr_enable
                 previous_a395_b2 = a395_b2
+                previous_55e0_b14 = e55_b14
 
                 off_age = (
                     None
@@ -305,9 +314,11 @@ def main():
                     "rkr_leistung_raw": rkr_leistung_raw,
                     "raw_55e0": raw55e0.hex(),
                     "mirror_5556_55e0": int(mirror_match),
-                    "gwg_rkr_enable": gwg_rkr_enable,
-                    "gwg_rkr_kessel_soll_head_c": f"{gwg_head_soll:.1f}",
-                    "gwg_rkr_kessel_soll_c": f"{gwg_rkr_soll:.1f}",
+                    "55e0_head_enable": e55_head_enable,
+                    "55e0_head_kessel_soll_c": f"{e55_head_soll:.1f}",
+                    "55e0_word10_11_raw_le": e55_word10_11,
+                    "55e0_b14": e55_b14,
+                    "55e0_b14_hex": f"0x{e55_b14:02x}",
                     "raw_a395": rawa395.hex(),
                     "a395_b0": rawa395[0],
                     "a395_b1": rawa395[1],
@@ -337,7 +348,8 @@ def main():
                 print(
                     f"{datetime.now().strftime('%H:%M:%S.%f')[:-3]}  "
                     f"RKR={rkr_enable:02x} {rkr_kessel_soll:4.1f}C P={rkr_leistung_raw:02x}  "
-                    f"MIR={int(mirror_match)} GWG={gwg_rkr_soll:4.1f}C  "
+                    f"MIR={int(mirror_match)} 55E0.w10={e55_word10_11:04x} "
+                    f"55E0.b14={e55_b14:02x}  "
                     f"A395.b2={a395_b2:02x}  "
                     f"FL={int(flame)} 55DC={modulation_55dc:3d}% A305={a305_mod:4.1f}%  "
                     f"VS={vorlauf_soll:4.1f}C BLR={blr_soll:4.1f}C IST={kessel_ist:4.1f}C  "
