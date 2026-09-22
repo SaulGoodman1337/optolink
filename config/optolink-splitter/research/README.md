@@ -75,6 +75,9 @@ The notes are intentionally split into two layers:
   controller/device/GFA runtime behavior and live datapoints.
 - [coding-plug-7833971-2015-0201.md](coding-plug-7833971-2015-0201.md) —
   Kesselcodierstecker identity, GWG parameters and burner characteristic.
+- [vitotrol-kbus-optolink-emulation.md](vitotrol-kbus-optolink-emulation.md) —
+  evidence, protocol-function map, hypotheses and next read-only experiments for
+  Vitotrol emulation via Optolink/KBus/KM-BUS.
 
 Related implementation/reference files currently in the parent directory:
 
