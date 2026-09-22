@@ -152,6 +152,53 @@ Relevant clues:
 Open: determine whether the ~12 s interval is a fixed GG1/GFA state-machine
 phase, a coding-plug parameter, or another internal control condition.
 
+### Coding-plug read/write and external dumping
+
+Status: **open / research only**
+
+Determine whether the Kesselcodierstecker can be read or modified beyond the
+currently verified read-only structured Optolink objects.
+
+Investigate two independent paths:
+
+**A. Via Optolink / controller protocol**
+
+- identify whether the structured `0x10x0` coding-plug objects have supported
+  write operations, service commands, commit/apply commands or checksums;
+- distinguish normal coding-address writes from actual coding-plug/GWG writes;
+- determine whether values are stored in the controller, copied from the plug,
+  or written back to the physical plug;
+- inspect Vitosoft/service-protocol behavior for any coding-plug programming or
+  replacement workflow;
+- do not issue experimental writes to burner-safety/limit fields until the
+  write semantics, validation and recovery path are understood.
+
+**B. Directly from the physical coding plug**
+
+- identify the memory/device technology and pinout used by coding plug
+  **7833971 / revision 2015:0201**;
+- determine whether it contains a standard EEPROM/EPROM/serial memory device
+  that can be read with a common programmer;
+- document voltage levels, package, bus/protocol and any in-circuit loading
+  considerations before attaching a programmer;
+- make at least two independent read-only dumps first and compare hashes;
+- decode whether the observed `0x10x0` Optolink objects can be mapped to
+  offsets in the physical dump;
+- identify checksums, duplicated blocks, version fields and plausibility data;
+- only after a verified backup/recovery procedure exists, investigate whether a
+  modified image can be written and accepted by the controller.
+
+Desired outcome:
+
+- a reproducible **read-only dump procedure**;
+- a map from physical coding-plug bytes to known GWG fields where possible;
+- a clear answer whether modifications are possible by Optolink, external
+  programmer, both, or neither;
+- a rollback/recovery procedure before any write experiment.
+
+Detailed coding-plug evidence remains in
+`config/optolink-splitter/research/coding-plug-7833971-2015-0201.md`.
+
 ## Home Assistant follow-up
 
 Status: **implementation added; live validation pending**
