@@ -1635,3 +1635,69 @@ The Wilo path remains worth cataloguing globally, but it is no longer a leading
 candidate for the desired volatile 100 % heating-burner pump override unless
 the global event inventory reveals an exact pump-specific event that is also
 usable by this controller generation.
+
+
+## E7 persistence/status probe result — 2026-09-23
+
+A guarded minimal-write probe was executed while the burner flame was off and
+DHW was inactive.
+
+Sequence:
+
+```text
+baseline:
+  E7    = 100 %
+  0x778B = 0x00
+  0x778E = 0x03
+
+temporary write:
+  E7 100 -> 99 %
+  write completed at approximately +0.10 s
+  first 778B/778E sample at approximately +0.52 s
+  20 post-write samples through approximately +7.65 s:
+    0x778B remained 0x00
+    0x778E remained 0x03
+  E7 readback at approximately +7.75 s = 99 %
+
+restore:
+  E7 99 -> 100 %
+  20 post-restore samples through approximately +15.69 s:
+    0x778B remained 0x00
+    0x778E remained 0x03
+
+final:
+  E7    = 100 %
+  0x778B = 0x00
+  0x778E = 0x03
+```
+
+### What this proves
+
+- the normal `Virtual_WRITE` path changes E7 immediately enough that the new
+  value is readable back after the write;
+- the original value was restored successfully;
+- no persistent change of the observed diagnostic bytes `0x778B` or
+  `0x778E` was seen during either observation window.
+
+### What this does not prove
+
+This does **not** establish that E7 is RAM-only or that the write causes no
+nonvolatile-memory operation.
+
+The first diagnostic sample was only obtained roughly 0.4 s after the write
+completed. Any short EEPROM-busy/status pulse could therefore have occurred
+before the first sample. More importantly, the exact semantics of
+`K8B EEPROM Status` remain unknown, and `0x778E` is only an opaque I2C
+diagnostic byte with local baseline `0x03`.
+
+The test also did not include a controller reboot/power cycle while E7 held the
+temporary value, so persistence across restart was not tested.
+
+### Engineering consequence
+
+The result removes one possible warning sign: there is no long-lived 778B/778E
+status change associated with a single E7 Virtual_WRITE.
+
+It is still insufficient evidence to justify rewriting E7 on every burner
+cycle. Until persistence/endurance is resolved independently, E7 remains a
+configuration/coding path rather than a proven volatile runtime setpoint.
