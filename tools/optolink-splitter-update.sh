@@ -66,6 +66,7 @@ install_repo_file config/optolink-splitter/wb2a-pump-start-logger.py   /usr/loca
 ln -sf /usr/local/bin/wb2a-pump-start-logger /usr/bin/wb2a-pump-start-logger
 
 install_repo_file config/optolink-splitter/wb2a-e7-persistence-probe.py   /usr/local/bin/wb2a-e7-persistence-probe 0755
+install_repo_file config/optolink-splitter/wb2a-pump-divergence-watch.py   /usr/local/bin/wb2a-pump-divergence-watch 0755
 ln -sf /usr/local/bin/wb2a-e7-persistence-probe /usr/bin/wb2a-e7-persistence-probe
 
 install_repo_file config/optolink-splitter/optolink-party-emulator.service   /etc/systemd/system/optolink-party-emulator.service 0644
