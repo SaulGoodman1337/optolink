@@ -2952,3 +2952,98 @@ overall A1 heat/pump request rather than burner shutdown itself.
 For the practical project goal, this further demonstrates why static E7=100 is
 too broad: it holds the pump at 100 % through the entire flame-off takt-lock
 interval, not just during burner startup and combustion.
+
+
+## Deep-Vitosoft assessment of the pump-command source — 2026-09-23
+
+The normalized output from the completed deep Vitosoft extraction was reviewed
+specifically for a burner-dependent internal-pump override.
+
+### Exposed pump-control inputs
+
+The global/project-interest and exact VDensHO1 metadata expose the following
+relevant configuration inputs:
+
+```text
+0x5731  K31  Solldrehzahl Interne Pumpe
+0x676C  6C   Drehzahl Interne Pumpe bei WW-Bereitung
+0x37A8  A8   Einfluss auf Interne Pumpe (M2)
+0x27E6  E6   Maximale Drehzahl geregelte Pumpe A1/M1
+0x27E7  E7   Minimale Drehzahl geregelte Pumpe A1/M1
+0x27E8  E8   Solldrehzahl Pumpe im Nebenbetrieb A1/M1
+0x27E9  E9   Reduzierte Drehzahl geregelte Pumpe A1/M1
+GWG75        Mindestdrehzahl Interne Pumpe
+GWG76        Nachlaufzeit Interne Pumpe
+```
+
+Runtime/result objects include:
+
+```text
+0x7663  A1 heating-circuit pump output/speed
+0x7660  internal physical-pump output/speed
+0x0A3C  InternePumpeDrehzahl_res, global read-only set speed transferred
+        toward the internal pump
+0xA152  relay-state block
+```
+
+### No exposed burner-to-pump event
+
+The normalized global research-interest event set contains no event whose
+metadata combines burner/flame/GFA state with internal-pump control.
+
+In particular, no normal VDensHO1 datapoint was found for semantics such as:
+
+```text
+internal pump speed during burner operation
+internal pump boost during ignition
+internal pump speed during flame stabilization
+burner-dependent internal-pump override
+```
+
+This is a negative metadata result, not proof that the firmware lacks such
+logic.
+
+### Coding 51 result
+
+The exact VDensHO1 extraction includes `0x7752` (coding 52, hydraulic-
+separator sensor) but does not expose `0x7751` / coding 51.
+
+This agrees with the local failed read of `0x7751` and means the known
+burner-dependent hydraulic-separator pump behavior from other Viessmann
+generations cannot currently be enabled as a normal VDensHO1 coding object.
+
+### Current architectural inference
+
+The combined Vitosoft metadata and local runtime measurements support this
+working model:
+
+```text
+A1 demand / operating modes / coding values
+(E6/E7/E8/E9, K31, 6C, GWG75/76, etc.)
+                     |
+                     v
+       controller-internal selection logic
+                     |
+                     v
+               0x0A3C
+                     ~= 0x7660[1]
+                     |
+                     v
+            internal KM-BUS pump
+```
+
+The selection logic between the exposed configuration inputs and `0x0A3C`
+is not represented as a normal VDensHO1 datapoint in the normalized Vitosoft
+metadata. Recovering that selection logic therefore requires either:
+
+1. raw Vitosoft host-code evidence that knows an undocumented runtime/service
+   object; or
+2. the actual WB2A controller firmware.
+
+The large raw-derived deep-collector files
+(`pe-research-strings.csv`, `pe-all-strings.tsv`,
+`managed-members.csv`, `binary-research-strings.csv`, etc.) should be
+searched specifically for symbols around `0x0A3C`, internal-pump command
+selection, burner/GFA state and pump overrides. Those large files are not
+committed to the public repository, so this second-stage search requires the
+original deep-collector ZIP.
