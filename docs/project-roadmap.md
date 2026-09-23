@@ -326,7 +326,7 @@ Detailed evidence:
 
 ### Internal pump: automatic 100 % at burner start in heating mode
 
-Status: **open / revisit with KMBUS/KBUS access**
+Status: **active / read-only comparison logger added**
 
 Observed behavior to explain:
 
@@ -338,40 +338,42 @@ Observed behavior to explain:
   50 % and 100 %, and the higher-flow condition correlated with the burner
   surviving the high-start-power phase and reaching low modulation.
 
-Research goal:
+Source-supported pump paths are now identified in the exact VDensHO1 family:
 
-Determine whether VDensHO1/20C2 has an internal mode, request, limit, override
-or state-machine parameter that can cause the internal pump to go to 100 %
-automatically during a burner start in **heating mode**, analogous to the
-behavior already observed in DHW mode.
+- `0x7660`: internal-pump output / pump-speed runtime object;
+- `0x5731`: coding 31, internal-pump target;
+- `0x676C`: coding 6C, **internal-pump speed during DHW preparation**;
+- `0x27E6..0x27E9`: A1/M1 E6/E7/E8/E9 pump max/min/reduced-mode settings;
+- coding-plug GWG75: minimum internal-pump speed, locally measured raw **50**;
+- `0x650A`, `0x6513`, `0x0A10`: DHW preparation, storage charging pump
+  and diverter-valve runtime states.
 
-Re-open this question using the newly verified generic VS2/P300 and KMBUS/KBUS
-read capability.
+The complete 581-event production join for the exact local VDensHO1 profile
+contains **no KBUS/KMBUS FCRead or FCWrite events**. The earlier plan to search
+for special-access KBUS/KMBUS pump events is therefore obsolete for this
+controller profile.
 
 Next work:
 
-- capture identical startup windows in **heating** and **DHW** mode and compare
-  all known pump, burner, RKR, GFA and mode-state datapoints;
-- search the complete VDensHO1/Vitosoft event set for pump command, pump target,
-  internal-pump override, boiler-pump demand, DHW pump logic and KBus/KM-BUS
-  fields;
-- specifically inspect special-access events whose FCRead uses KMBUS_ or KBUS_
-  and which may previously have been unreachable through normal Virtual_READ;
-- determine whether the observed 100 % value is a pump setpoint, a temporary
-  override, a mode-specific minimum, or a downstream actuator state;
-- identify the state transition that activates the 100 % command in DHW and
-  check whether the same state/command exists but is disabled or parameterized
-  differently in heating mode;
+- use `wb2a-pump-start-logger --mode heating` for a complete heating start;
+- use `wb2a-pump-start-logger --mode dhw` for a complete DHW start;
+- compare the local static values of 31, 6C, E6/E7/E8/E9 and GWG75;
+- verify the exact `0x7660` byte layout against the known approximately
+  50 % and 100 % pump states;
+- identify whether the 100 % transition follows DHW mode / diverter-valve
+  selection or a later GG1/GFA burner-start transition;
+- only if `6C` does not explain the 100 % runtime value, search for a
+  separate transient override/state-machine command;
 - remain read-only until the responsible field and write semantics are known.
 
 Potential relevance:
 
-If a safe controller-side heating-mode pump override exists, it could improve
+If a safe controller-side heating-mode pump request exists, it could improve
 heat removal during the 65-66 % flame-stabilization/startup plateau without
 altering burner start-safety parameters.
 
-Detailed evidence belongs in:
-`config/optolink-splitter/research/device-vdensho1-20c2-wb2a.md`.
+Detailed evidence:
+`config/optolink-splitter/research/pump-start-heating-vs-dhw.md`.
 
 ### Coding-plug read/write and external dumping
 
