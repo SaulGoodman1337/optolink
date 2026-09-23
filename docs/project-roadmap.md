@@ -118,52 +118,53 @@ avoid historical/editorial comments that do not help operation.
 
 Status: **active / high interest**
 
-The immediate research goal is broader than Vitotrol emulation: map exactly what
-the local VDensHO1 / 20C2 exposes through the VS2/P300 KBus/KM-BUS function
-family, determine request semantics and separate controller-internal state from
-physical-bus access. Vitotrol emulation is one downstream use case.
+The complete production Vitosoft metadata for the exact local
+`VDensHO1 / 20C2 / developer 01.03` profile is now available.
 
-Important current findings:
+Major correction to the earlier direction:
 
-- normal Virtual_WRITE to the suspected room-temperature datapoint was rejected;
-  this only rules out the simple datapoint-write path;
-- upstream function-code tables include KMBUS and KBUS families such as
-  KMBUS_EEPROM_READ, KBUS_MEMBERLIST_READ, KBUS_TRANSPARENT_READ,
-  KBUS_VIRTUAL_READ/WRITE and KBUS_GATEWAY_READ/WRITE;
-- old vcontrold configurations explicitly used function code 0x43 as
-  "KM-Bus EEPROM" access;
-- Vitosoft-derived data contains genuine KBUS_VIRTUAL_READ and
-  KBUS_VIRTUAL_WRITE events;
-- current Optolink-Splitter has a generic
-  `request;<function-code>;<address>;<length>;<data>;<protocol-id>` path, so
-  arbitrary VS2 function codes can already be transported without creating a
-  new debug transport.
+- the full profile contains **581 events**;
+- none of those events use `KBUS_*` or `KMBUS_*` as FCRead/FCWrite;
+- remote/Vitotrol identification is exposed as ordinary virtual controller
+  state:
+  - `0x27A0` A1/M1 remote identification, read/write;
+  - `0x37A0` M2 remote identification, read/write;
+- actual room-temperature state remains read-only:
+  - `0x0896` A1/M1 room temperature;
+  - `0x0898` M2 room temperature;
+- remote software-index and room-sensor-status objects provide additional
+  discovery/presence evidence.
+
+The next local work is therefore **not** a blind KBUS function-code sweep.
+First establish the complete read-only baseline for those ordinary virtual
+objects and determine what controller state changes when a Vitotrol is
+configured/present.
 
 Current next steps:
 
-1. characterize the already verified `0x43 / KMBUS_EEPROM_READ` response by
-   repeating identical F8/8 reads and testing length dependence;
-2. use `0x41 / KMBUS_RAM_READ` F8/8 as the stable control series;
-3. obtain/query the underlying Vitosoft event data for VDensHO1 / 20C2 and list
-   every event whose FCRead/FCWrite contains KMBUS_ or KBUS_;
-4. preserve Address, BlockLength/ByteLength, PrefixRead/PrefixWrite, Parameter
-   and conversion metadata for those events;
-5. construct additional **read-only** requests from known event definitions;
-6. prioritize MEMBERLIST_READ, INITIALISATION_READ, GATEWAY_READ,
-   TRANSPARENT_READ and VIRTUAL_READ;
-7. map responses against accessory presence/discovery and controller operating
-   state;
-8. only after argument semantics and rollback behavior are understood, decide
-   whether any KBUS_*_WRITE experiment is justified.
+1. read and record `0x27A0`, `0x37A0`, `0x0A5C`, `0x0A60`,
+   `0x0896`, `0x0898`, `0x089C`, `0x089D`;
+2. record related room-influence configuration `0x27B0/0x27B2/0x27E2`
+   and M2 equivalents;
+3. establish whether absent-remotes produce deterministic software-index and
+   sensor-status signatures;
+4. only after a rollback baseline exists, consider a controlled
+   `0x27A0` remote-identification experiment;
+5. determine whether any internal writable path can populate the read-only
+   measured-room-temperature state;
+6. retain the global KBUS/KMBUS function family as a secondary reverse-
+   engineering path rather than assuming it is the VDensHO1 Vitotrol API;
+7. separately hardware-verify the Vitosoft `PrefixRead` mapping if a suitable
+   source-defined KBus event/path becomes available.
 
-Do **not** blindly test MEMBERLIST_WRITE, INITIALISATION_WRITE, CONTROL_WRITE,
-VIRTUAL_WRITE or GATEWAY_WRITE.
+The earlier prefix-less `0x43 / KMBUS_EEPROM_READ` experiments remain valid
+wire-level evidence, but production Vitosoft data shows that 90 of 91 real
+KMBUS_EEPROM_READ definitions use a six-byte `PrefixRead`, so those F8 tests
+must not be interpreted as normal Vitosoft EEPROM reads.
 
-Canonical protocol evidence and the experiment plan are maintained in:
-`config/optolink-splitter/research/kmbus-optolink-research.md`.
-
-Vitotrol-specific interpretation is maintained separately in:
-`config/optolink-splitter/research/vitotrol-kbus-optolink-emulation.md`.
+Detailed evidence:
+`config/optolink-splitter/research/kmbus-optolink-research.md` and
+`config/optolink-splitter/research/vitosoft/full-extraction-2026-09-23.md`.
 
 ### 6. Continue Vitotrol emulation hardware path
 
