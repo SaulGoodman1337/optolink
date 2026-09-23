@@ -334,3 +334,31 @@ See also:
 - `../kmbus-optolink-research.md`
 - `../vitotrol-kbus-optolink-emulation.md`
 - `source-manifest.json`
+
+
+## Virtual-WILO inventory result — 2026-09-23
+
+The global `--include-global-wilo` pass was run against the source-verified
+production XML set.
+
+Result:
+
+```text
+exact VDensHO1 Virtual_WILO events: 0
+global Virtual_WILO_READ events:   74
+global Virtual_WILO_WRITE events:   9
+linked Vitosoft device profiles:    WILO only
+common virtual base address:        0xA0C2
+```
+
+The Wilo events use two-byte `PrefixRead` selectors that correlate exactly
+with public Wilo PLR parameter IDs, for example `0007` for pump speed,
+`0011` for pump type, `0027` for diagnostic state, `0028` for pump
+command and `002A` for control mode.
+
+This identifies `Virtual_WILO_READ/WRITE` as a Wilo-PLR tunnelling mechanism
+for the separate Vitosoft `WILO` device profile. It is not used by the exact
+VDensHO1 event model.
+
+See `../pump-start-heating-vs-dhw.md` for the resulting WB2A interpretation
+and the exact read-only probe commands.
