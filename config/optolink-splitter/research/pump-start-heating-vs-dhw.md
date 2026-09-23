@@ -1117,3 +1117,22 @@ The remaining solution space is now:
    desired operating-mode semantics;
 4. accept E7=100 % permanently if the hydraulic/acoustic/electrical cost is
    acceptable.
+
+### Exact follow-up timing and E8 clarification
+
+In the 12:27 follow-up capture, E7 stayed at 100 % for the entire run. Once A1
+enabled its pump request at 12:27:49.326, both A1 demand and the internal pump
+remained at 100 % until the capture ended at 12:39:20.334 — about 691 s
+(11 min 31 s) — while the flame remained OFF throughout.
+
+The exact WB2A service documentation resolves the ambiguous Vitosoft term
+"Nebenbetrieb" for E8/E9:
+
+- E8=1: minimum pump speed during operation with **reduced room temperature**
+  according to E9;
+- E8=0: speed according to E7;
+- E9: pump speed during operation with **reduced room temperature**.
+
+Thus E8/E9 do not represent burner-off or pump-overrun states. They only change
+pump speed in reduced-heating mode. They cannot provide the desired
+flame-dependent 100 % / lower-speed split during one normal heating period.
