@@ -349,7 +349,7 @@ already-filtered generated catalog.
 | control VS2 address/length/payload/protid | **source-confirmed** | exact frame builder inspected |
 | read 0x41 KMBUS RAM space | **verified at F8..FF** | coherent 8-byte response |
 | read 0x43 function at F8 | **verified** | accepted repeatedly; payload is dynamic |
-| characterize 0x43 F8/8 shape | **verified** | one changing 2-byte word repeated four times |
+| characterize 0x43 F8 response shape | **LOCAL-VERIFIED** | dynamic 2-byte word is repeated/truncated to requested length; confirmed in raw VS2 frames |
 | prove 0x43 is static/linear EEPROM | **disproved for current F8/8 interpretation** | repeated test is transaction-dependent |
 | enumerate KBus members | **unknown** | 0x5D not yet tested |
 | inspect KBus initialisation | **unknown** | 0x57 not yet tested |
@@ -588,21 +588,52 @@ Fix commit:
 9778719071e57bf988201a45d9b805ceb9017802
 ~~~
 
-After deploying the updated helper, repeat only the length-8 raw capture:
-
-~~~bash
-/usr/local/bin/optolink-debug request "4105004300F80848"
-~~~
-
-Expected structural form, based on the parsed experiments but still to be
-captured directly:
+After deploying the updated helper, the length-8 raw capture was repeated:
 
 ~~~text
-06 41 0D 01 43 00 F8 08 <8 data bytes> <checksum>
+TX:
+41 05 00 43 00 F8 08 48
+
+RX:
+06 41 0D 01 43 00 F8 08 54 98 54 98 54 98 54 98 01
 ~~~
 
-Do not treat the expected form as an observation until the raw capture has been
-recorded.
+Decoded response:
+
+| Byte(s) | Meaning |
+| --- | --- |
+| `06` | VS2 ACK |
+| `41` | VS2 standard telegram start |
+| `0D` | payload length |
+| `01` | LDAP + ResponseMessage |
+| `43` | command echoed as KMBUS_EEPROM_READ |
+| `00 F8` | response address |
+| `08` | returned block length |
+| `54 98 54 98 54 98 54 98` | returned data |
+| `01` | modulo-256 VS2 checksum |
+
+The checksum is valid:
+
+~~~text
+(0D + 01 + 43 + 00 + F8 + 08 + 54 + 98 + 54 + 98 + 54 + 98 + 54 + 98) mod 256
+= 01
+~~~
+
+This closes the raw-frame verification. The controller itself returns a normal
+VS2 response with command 0x43, address 0x00F8, block length 8 and the repeated
+two-byte data pattern. The repetition is neither created by the MQTT helper nor
+by the normal VS2 response parser.
+
+For the current F8 experiment the structure is therefore **LOCAL-VERIFIED**:
+
+~~~text
+0x43 / address F8 / requested length N
+-> normal VS2 response
+-> response block length N
+-> one transaction-specific 2-byte word repeated/truncated to N bytes
+~~~
+
+The semantic meaning of that 2-byte word remains unknown.
 
 ### D. Establish a stable 0x41 control series
 
