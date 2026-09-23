@@ -191,3 +191,68 @@ software and device documentation. Public evidence also shows that some
 separate Viessmann communication devices (for example Vitogate/Vitocom-class
 products) use downloadable firmware/update packages. Those facts must not be
 generalised to the older WB2A controller without device-specific evidence.
+
+
+## Open task: read controller software version and firmware image
+
+Status: **open / high-value future research**
+
+Determine whether the installed Vitodens 200-W WB2A / VDensHO1 can expose its
+software revision and, separately, whether an executable controller firmware
+image can be read out non-destructively.
+
+Treat these as two different questions.
+
+### A. Software/version identification
+
+Find every read-only path that can identify the actual controller software
+running in the appliance, including:
+
+- exact controller/application software version;
+- firmware build/revision/date if available;
+- bootloader/boot-ROM version;
+- hardware/board revision;
+- burner-control/GFA software revision;
+- main-regulation software revision;
+- software indices of subordinate KM-BUS participants;
+- device identification blocks and service/system-information RPCs.
+
+Research sources:
+
+- exact/global Vitosoft events and hidden diagnostic groups;
+- P300 `Virtual_READ`, RPC and system-block functions;
+- KM-BUS/KBUS member-list and participant-information functions;
+- Vitosoft service/diagnostic code and .NET methods;
+- any known service-tool "device information" or "software index" workflow.
+
+First priority is read-only identification. Do not assume that the already
+known Vitosoft profile version equals the firmware revision actually running in
+the boiler.
+
+### B. Full firmware readout
+
+Determine whether the executable firmware of the relevant WB2A electronics can
+be extracted without modifying the appliance.
+
+Investigate, in order:
+
+1. an official/read-only Vitosoft or Optolink service command;
+2. P300/KBUS/KMBUS flash/ROM/system-block read functions, if metadata proves
+   such a function exists and its request semantics are understood;
+3. service/programming headers or debug interfaces on the controller board;
+4. direct readout of external flash/EPROM/EEPROM devices;
+5. MCU debug/readback interfaces only after the exact MCU and protection state
+   are identified.
+
+Keep the main regulation, burner-control electronics and coding plug separate:
+they may contain different firmware/configuration images.
+
+### Deliverables
+
+- reproducible command(s) for software/version readout;
+- map of which processor/module each reported version belongs to;
+- evidence whether a full firmware read is supported through Optolink/Vitosoft;
+- if not, board/MCU-specific dump method and readout-protection assessment;
+- SHA256 and private archival procedure for any acquired firmware image;
+- derived disassembly/decompilation notes in Git, but no raw proprietary
+  firmware image in the public repository.
