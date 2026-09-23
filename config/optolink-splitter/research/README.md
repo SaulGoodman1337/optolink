@@ -100,6 +100,9 @@ The notes are intentionally split into two layers:
   controller/device/GFA runtime behavior and live datapoints.
 - [coding-plug-7833971-2015-0201.md](coding-plug-7833971-2015-0201.md) —
   Kesselcodierstecker identity, GWG parameters and burner characteristic.
+- [pump-start-heating-vs-dhw.md](pump-start-heating-vs-dhw.md) —
+  read-only comparison of internal-pump setpoints and runtime state during
+  space-heating versus domestic-hot-water burner starts.
 - [kmbus-optolink-research.md](kmbus-optolink-research.md) —
   canonical protocol research for controller-side KBus/KM-BUS access through
   Optolink, including verified function codes, frame layout, safety rules and
