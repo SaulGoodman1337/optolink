@@ -362,3 +362,23 @@ Potential reasons to choose M2 anyway would be:
 - desire for independent mixed-circuit temperature control.
 
 Without those needs, first validate E7=100 % behavior on A1.
+## Update after direct A1 E7=100 % test
+
+The direct A1 topology has now demonstrated 100 % pump operation without M2:
+raising E7 to 100 % caused both the A1 runtime demand (0x7663) and internal pump
+output (0x7660) to become 100 %.
+
+The resulting heating burner run lasted about 364 s instead of roughly 30 s in
+the earlier 50 % pump test. The burner successfully reached its 33 % minimum
+modulation and stayed there for more than five minutes before the boiler slowly
+reached the normal target + ~8 K thermal shutdown threshold.
+
+This materially lowers the priority of an M2 retrofit for the local simple
+radiator-only hydraulic system. M2 remains a technically valid way to separate
+boiler-side and heating-circuit flow, but it is no longer necessary to prove or
+obtain high internal-pump speed.
+
+The open problem is now a control-policy question: how to obtain the desired
+high pump speed during the relevant heating operating phase without running the
+single direct radiator circuit unnecessarily at 100 % for every A1 pump-on
+period.
