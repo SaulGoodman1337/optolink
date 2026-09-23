@@ -148,10 +148,12 @@ Current next steps:
    and M2 equivalents;
 3. establish whether absent-remotes produce deterministic software-index and
    sensor-status signatures;
-4. only after a rollback baseline exists, consider a controlled
-   `0x27A0` remote-identification experiment;
-5. determine whether any internal writable path can populate the read-only
-   measured-room-temperature state;
+4. controlled `0x27A0: 0 -> 1 -> 0` experiment completed: the controller
+   accepted the value, then raised `BC = Fehler Fernbedienung HK1`; A0 alone
+   is therefore not sufficient for emulation;
+5. determine which actual KM-BUS runtime exchange is required to avoid BC and
+   populate software-index / room-sensor state, and whether any internal
+   writable path can reproduce that state;
 6. retain the global KBUS/KMBUS function family as a secondary reverse-
    engineering path rather than assuming it is the VDensHO1 Vitotrol API;
 7. separately hardware-verify the Vitosoft `PrefixRead` mapping if a suitable
