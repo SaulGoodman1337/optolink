@@ -1248,3 +1248,68 @@ The cross-profile coding-51 idea is therefore closed for the local direct A1
 system. The remaining practical paths are static E7=100, a safe dynamic E7
 strategy if persistence/endurance can be proven acceptable, or a topology
 change that turns the internal pump into a boiler-circuit pump.
+
+## WB2A service display unlock: coding 8A — 2026-09-23
+
+The user recalled a service setting that exposes datapoints/codings which are
+normally hidden. This is confirmed as coding **8A**.
+
+The exact generated VDensHO1 catalog contains:
+
+```text
+0x778A  K8A_KonfiAnzeigebedingungenAktiv
+0xAF    175 = display/configuration conditions active
+0xB0    176 = display/configuration conditions inactive
+```
+
+Viessmann documentation for this controller family describes:
+
+```text
+8A:175  show only codings applicable to the detected plant/accessories
+8A:176  show all/otherwise suppressed coding addresses
+```
+
+A WB2A-specific service case also documents the procedure
+`8A:175 -> 176` to expose suppressed addresses before a coding-plug reread,
+then restoring 8A to 175 afterwards.
+
+This distinction is important:
+
+- 8A changes which coding addresses are *shown/eligible in the service UI*;
+- it does not necessarily implement firmware functionality that the controller
+  does not have.
+
+A second WB2A-specific case demonstrates this limit: after setting 8A:176, a
+requested coding address 66 still did not appear on that controller.
+
+Therefore coding 51 must be tested under 8A:176 before being closed completely,
+but 8A:176 cannot be assumed to make 0x7751 valid.
+
+### Safe test plan for coding 51
+
+1. Read and record 0x778A.
+2. At the local WB2A service menu, change only coding 8A from 175 to 176.
+3. Do **not** alter coding 7C; 7C is used for coding-plug reread/master-reset
+   procedures and is unrelated to this test.
+4. Check whether coding address 51 appears in coding level 2.
+5. While 8A=176, read 0x7751 and 0x7752 via Optolink.
+6. Restore 8A to 175.
+7. Re-read 0x778A to confirm restoration.
+
+No write to 0x7751 is justified even if the address becomes visible/readable;
+first establish its exact WB2A semantics.
+
+### Additional read-only service probes
+
+The logger configuration snapshot now also includes:
+
+```text
+0x778A  display-condition/service-unlock state
+0x778B  K8B "EEPROM Status"
+0x778C  software-version MSB
+0x778D  software-version LSB
+```
+
+The 0x778B object may help characterize configuration persistence/status, but
+its exact runtime semantics are not yet established and it should not be used
+as a write target.
