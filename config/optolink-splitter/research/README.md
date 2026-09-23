@@ -1,6 +1,6 @@
 # WB2A / VDensHO1 research notes
 
-## Current checkpoint — 2026-09-22
+## Current checkpoint — 2026-09-23
 
 The current reverse-engineering state is:
 
@@ -82,6 +82,11 @@ The notes are intentionally split into two layers:
 - [vitotrol-kbus-optolink-emulation.md](vitotrol-kbus-optolink-emulation.md) —
   Vitotrol-specific application of the KM-BUS/Optolink research, including
   emulation hypotheses and physical-bus fallback considerations.
+- [vitosoft/README.md](vitosoft/README.md) —
+  project-owned structured extracts and provenance for Vitosoft-derived
+  metadata. The current VDensHO1 transform contains 385 device events, a
+  dedicated 18-row KM-BUS participant extract and a cross-project event index
+  for coding-plug, burner/flame/fan and pump research.
 
 Related implementation/reference files currently in the parent directory:
 
