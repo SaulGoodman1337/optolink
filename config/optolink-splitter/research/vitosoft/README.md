@@ -27,17 +27,40 @@ ecnEventType.xml
 ecnVersion.xml
 ~~~
 
-The same Config directory is also the expected data directory for the Vitosoft
-parsers used by this project and is the first place to look for:
+The actual Vitosoft 300 SID1 installation used for this project was checked on
+2026-09-23. The relevant production files are split across several directories.
+
+Verified paths:
 
 ~~~text
-DPDefinitions.xml
-ecnEventTypeGroup.xml
-Textresource_de.xml
-Textresource_en.xml
-sysDeviceIdent.xml
-sysDeviceIdentExt.xml
+C:\Program Files\Viessmann Vitosoft 300 SID1\ServiceTool\MobileClient\Config\
+    ecnDataPointType.xml
+    ecnEventType.xml
+    ecnVersion.xml
+    ecnEventTypeGroup.xml
+    sysDeviceIdent.xml
+    sysDeviceIdentExt.xml
+
+C:\Program Files\Viessmann Vitosoft 300 SID1\ServiceTool\Support\DP\
+    DPDefinitions.xml
+
+C:\Program Files\Viessmann Vitosoft 300 SID1\ServiceTool\Web\XmlDocuments\
+    Textresource_de.xml
+    Textresource_en.xml
+
+C:\Program Files\Viessmann Vitosoft 300 SID1\ServiceTool\Database\
+    ecnViessmann.mdf
+    ecnViessmann.ldf
 ~~~
+
+A `configbackup` directory is also present below:
+
+~~~text
+C:\Program Files\Viessmann Vitosoft 300 SID1\ServiceTool\MobileClient\Config\configbackup
+~~~
+
+It may contain older pre-regeneration metadata and should be preserved for
+version comparison when practical.
 
 Important: the installer contains older XML files. On first Vitosoft launch,
 at least `ecnDataPointType.xml`, `ecnEventType.xml` and `ecnVersion.xml`
