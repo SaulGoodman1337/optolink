@@ -110,6 +110,40 @@ that an Optolink-only solution must **not** be dismissed: Viessmann exposes a
 substantial KBus/KM-BUS command family in the VS2/P300 protocol, and there is
 historical and current evidence that at least part of it is real and used.
 
+## Hardware result — A0 only arms remote expectation
+
+A controlled local experiment wrote the Vitosoft-defined A1/M1 remote
+identification from `0` to `1` (Vitotrol 200) and monitored the related state.
+
+Result:
+
+~~~text
+0x27A0  00 -> 01
+0x0A5C  remained 00000000
+0x0896  remained c800 / 20.0 °C fallback
+0x089C  remained 03 / unknown
+0x5738  remained 00
+system alarm -> BC
+~~~
+
+`BC` is locally source-confirmed as `Fehler Fernbedienung HK1`.
+
+The script immediately restored `0x27A0 = 00`; the current alarm cleared while
+the BC event remained in the fault history.
+
+This disproves the simple hypothesis that setting A0 is sufficient to create a
+software-only Vitotrol. A0 is a controller-side expected-device
+configuration/detection state, not the remote's runtime data channel.
+
+The next emulation research should focus on:
+
+1. identifying what physical KM-BUS traffic clears the BC condition;
+2. determining which runtime values a real Vitotrol causes the controller to
+   populate (`0x0A5C`, `0x0896`, `0x089C`, and related state);
+3. finding whether those runtime values are reachable through another
+   controller-side interface;
+4. otherwise returning to physical KM-BUS slave emulation.
+
 ## Local controller context
 
 The current test system is documented elsewhere in this directory as:
