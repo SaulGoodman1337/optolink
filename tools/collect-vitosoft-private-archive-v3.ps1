@@ -145,11 +145,11 @@ function New-ToolEncodedCommand {
   $toolLiteral = Quote-PsLiteral ([string]$Task.FilePath)
   $argLiterals = @($Task.Arguments | ForEach-Object { Quote-PsLiteral ([string]$_) })
   $argExpr = if ($argLiterals.Count -gt 0) { "@(" + ($argLiterals -join ",") + ")" } else { "@()" }
-  $outExpr = if ($Task.StdOut) { Quote-PsLiteral ([string]$Task.StdOut) } else { "$null" }
-  $errExpr = if ($Task.StdErr) { Quote-PsLiteral ([string]$Task.StdErr) } else { "$null" }
+  $outExpr = if ($Task.StdOut) { Quote-PsLiteral ([string]$Task.StdOut) } else { '$null' }
+  $errExpr = if ($Task.StdErr) { Quote-PsLiteral ([string]$Task.StdErr) } else { '$null' }
 
   $lines = @(
-    '$ErrorActionPreference = \'Continue\'',
+    '$ErrorActionPreference = ''Continue''',
     ('$tool = ' + $toolLiteral),
     ('$toolArgs = ' + $argExpr),
     ('$stdoutPath = ' + $outExpr),
@@ -453,7 +453,7 @@ function Install-ResearchPrerequisites {
 
         $installPath = Join-Path ([Environment]::GetEnvironmentVariable("ProgramFiles(x86)")) "Microsoft Visual Studio\2022\BuildTools"
         $quotedInstallPath = '"' + $installPath + '"'
-        $args = @(
+        $installerArgs = @(
           "--quiet","--wait","--norestart","--nocache",
           "--installPath",$quotedInstallPath,
           "--add","Microsoft.Component.MSBuild",
@@ -461,7 +461,7 @@ function Install-ResearchPrerequisites {
           "--add","Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
         )
         $log.WriteLine("Installing/updating minimal VS Build Tools components for ildasm/dumpbin.")
-        $p = Start-Process -FilePath $bootstrap -ArgumentList $args -Wait -PassThru
+        $p = Start-Process -FilePath $bootstrap -ArgumentList $installerArgs -Wait -PassThru
         $log.WriteLine("VS Build Tools exit code: " + $p.ExitCode)
         if ($p.ExitCode -notin @(0,3010)) {
           Write-Warning "Visual Studio Build Tools installer returned exit code $($p.ExitCode). Collector will continue and record missing tools."
