@@ -5,6 +5,9 @@ param(
   [string]$DeviceIdHex = "20C2",
   [int]$ProgressSeconds = 5,
   [int]$MaxSqlRowsPerTable = 0,
+  [int]$Parallelism = 0,
+  [int]$CopyThreads = 0,
+  [switch]$Sequential,
   [switch]$SkipRawTree,
   [switch]$SkipSql,
   [switch]$SkipRegistry,
@@ -18,6 +21,22 @@ $ErrorActionPreference = "Stop"
 if ($PSVersionTable.PSVersion -lt [version]"5.1") {
   throw "PowerShell 5.1 or newer is required."
 }
+
+$processorCount = [Environment]::ProcessorCount
+if ($Parallelism -le 0) {
+  # Conservative default: enough parallelism to reduce wall-clock time without
+  # spawning one heavy disassembler per logical CPU.
+  $Parallelism = [Math]::Min(6,[Math]::Max(2,[int][Math]::Ceiling($processorCount / 2.0)))
+}
+if ($CopyThreads -le 0) {
+  $CopyThreads = [Math]::Min(16,[Math]::Max(4,$processorCount * 2))
+}
+if ($Sequential) {
+  $Parallelism = 1
+  $CopyThreads = 1
+}
+$wrapperStopwatch = [Diagnostics.Stopwatch]::StartNew()
+$phaseTimings = New-Object System.Collections.ArrayList
 
 function Find-VitosoftRoot {
   param([string]$Explicit)
@@ -91,14 +110,138 @@ function Get-HelperScript {
   }
 }
 
+function Quote-ProcessArg {
+  param([string]$Value)
+  if ($null -eq $Value) { return '""' }
+  if ($Value -notmatch '[\s"]') { return $Value }
+  # Windows command-line quoting sufficient for the tool paths/arguments used
+  # by this collector. Input paths cannot contain a literal double quote.
+  return '"' + ($Value -replace '"','\"') + '"'
+}
+
+function Join-ProcessArgs {
+  param([object[]]$Args)
+  return (($Args | ForEach-Object { Quote-ProcessArg ([string]$_) }) -join " ")
+}
+
+function Invoke-ThrottledProcessTasks {
+  param(
+    [string]$Name,
+    [object[]]$Tasks,
+    [int]$Throttle
+  )
+
+  if (-not $Tasks -or $Tasks.Count -eq 0) { return }
+
+  $Throttle = [Math]::Max(1,$Throttle)
+  Write-Host ("{0}: {1} tasks, up to {2} parallel..." -f $Name,$Tasks.Count,$Throttle) -ForegroundColor Cyan
+  $queue = New-Object System.Collections.Queue
+  foreach ($t in $Tasks) { $queue.Enqueue($t) }
+  $running = New-Object System.Collections.ArrayList
+  $done = 0
+  $failed = 0
+  $sw = [Diagnostics.Stopwatch]::StartNew()
+
+  while ($queue.Count -gt 0 -or $running.Count -gt 0) {
+    while ($queue.Count -gt 0 -and $running.Count -lt $Throttle) {
+      $task = $queue.Dequeue()
+      try {
+        $sp = @{
+          FilePath=$task.FilePath
+          ArgumentList=(Join-ProcessArgs $task.Arguments)
+          PassThru=$true
+          NoNewWindow=$true
+        }
+        if ($task.StdOut) {
+          New-Item -ItemType Directory -Path (Split-Path -Parent $task.StdOut) -Force | Out-Null
+          $sp.RedirectStandardOutput = $task.StdOut
+        }
+        if ($task.StdErr) {
+          New-Item -ItemType Directory -Path (Split-Path -Parent $task.StdErr) -Force | Out-Null
+          $sp.RedirectStandardError = $task.StdErr
+        }
+        $p = Start-Process @sp
+        [void]$running.Add([pscustomobject]@{ Process=$p; Task=$task })
+      } catch {
+        $failed++
+        if ($task.ErrorFile) {
+          $_.Exception.ToString() | Set-Content -LiteralPath $task.ErrorFile -Encoding UTF8
+        }
+      }
+    }
+
+    foreach ($entry in @($running)) {
+      if (-not $entry.Process.HasExited) { continue }
+      $exit = $entry.Process.ExitCode
+      try { $entry.Process.Dispose() } catch {}
+      [void]$running.Remove($entry)
+      $done++
+      if ($exit -ne 0) {
+        $failed++
+        if ($entry.Task.ErrorFile) {
+          ("ExitCode=" + $exit) | Set-Content -LiteralPath $entry.Task.ErrorFile -Encoding UTF8
+        }
+      }
+      if (($done % 25) -eq 0 -or $done -eq $Tasks.Count) {
+        Write-Host ("  {0}: {1}/{2} complete, failed={3}" -f $Name,$done,$Tasks.Count,$failed)
+      }
+    }
+    if ($running.Count -gt 0) { Start-Sleep -Milliseconds 100 }
+  }
+
+  $sw.Stop()
+  [void]$phaseTimings.Add([pscustomobject]@{
+    Phase=$Name
+    Seconds=[math]::Round($sw.Elapsed.TotalSeconds,3)
+    Tasks=$Tasks.Count
+    Parallelism=$Throttle
+    Failed=$failed
+  })
+}
+
+function Start-CollectorChild {
+  param([string]$Name,[object[]]$Arguments,[string]$ErrorMarker)
+
+  $argsLine = Join-ProcessArgs $Arguments
+  $started = Get-Date
+  Write-Host ("Starting {0} in parallel..." -f $Name) -ForegroundColor Cyan
+  $p = Start-Process -FilePath "powershell.exe" -ArgumentList $argsLine -NoNewWindow -PassThru
+  return [pscustomobject]@{
+    Name=$Name
+    Process=$p
+    Started=$started
+    ErrorMarker=$ErrorMarker
+  }
+}
+
+function Wait-CollectorChild {
+  param([object]$Child)
+
+  $Child.Process.WaitForExit()
+  $exit = $Child.Process.ExitCode
+  try { $Child.Process.Dispose() } catch {}
+  $seconds=((Get-Date)-$Child.Started).TotalSeconds
+  [void]$phaseTimings.Add([pscustomobject]@{
+    Phase=$Child.Name
+    Seconds=[math]::Round($seconds,3)
+    Tasks=1
+    Parallelism=1
+    Failed=if($exit -eq 0){0}else{1}
+  })
+  if ($exit -ne 0 -and $Child.ErrorMarker) {
+    ("Collector exit code: " + $exit) | Set-Content -LiteralPath $Child.ErrorMarker -Encoding UTF8
+  }
+  return $exit
+}
+
 function Copy-Tree {
-  param([string]$Source,[string]$Destination,[System.IO.StreamWriter]$Log)
+  param([string]$Source,[string]$Destination,[System.IO.StreamWriter]$Log,[int]$Threads=8)
 
   if (-not (Test-Path -LiteralPath $Source -PathType Container)) { return }
   New-Item -ItemType Directory -Path $Destination -Force | Out-Null
 
   if (Get-Command robocopy.exe -ErrorAction SilentlyContinue) {
-    $args = @($Source,$Destination,"/E","/COPY:DAT","/DCOPY:DAT","/R:1","/W:1","/XJ","/NP","/NFL","/NDL")
+    $args = @($Source,$Destination,"/E","/COPY:DAT","/DCOPY:DAT","/R:1","/W:1","/XJ","/NP","/NFL","/NDL",("/MT:" + [Math]::Max(1,$Threads)))
     & robocopy.exe @args | Out-Null
     $code = $LASTEXITCODE
     $Log.WriteLine(('"{0}","{1}","robocopy","{2}"' -f ($Source -replace '"','""'),($Destination -replace '"','""'),$code))
@@ -346,6 +489,7 @@ foreach ($d in @($derivedDir,$rawDir,$sqlDir,$systemDir,$registryDir,$toolsDir,$
 Write-Host "Vitosoft PRIVATE archive collector" -ForegroundColor Cyan
 Write-Host "Root:   $Root"
 Write-Host "Output: $OutputDir"
+Write-Host ("Parallel workers: {0}  |  Robocopy threads: {1}  |  Sequential: {2}" -f $Parallelism,$CopyThreads,[bool]$Sequential)
 Write-Host ""
 Write-Host "WARNING: This bundle is intentionally comprehensive." -ForegroundColor Yellow
 Write-Host "It may contain proprietary binaries, database contents, machine paths," -ForegroundColor Yellow
@@ -565,14 +709,13 @@ if (-not $SkipRawTree) {
       $key = $r.Source.ToLowerInvariant()
       if ($seen.ContainsKey($key)) { continue }
       $seen[$key] = $true
-      Copy-Tree -Source $r.Source -Destination (Join-Path $rawDir $r.Label) -Log $copyLog
+      Copy-Tree -Source $r.Source -Destination (Join-Path $rawDir $r.Label) -Log $copyLog -Threads $CopyThreads
     }
   } finally {
     $copyLog.Dispose()
   }
 }
 
-Write-Host "Running deep derived collector..." -ForegroundColor Cyan
 $deepArgs = @(
   "-NoProfile","-ExecutionPolicy","Bypass","-File",$deepScript,
   "-Root",$Root,
@@ -581,24 +724,40 @@ $deepArgs = @(
   "-DeviceIdHex",$DeviceIdHex,
   "-ProgressSeconds",[string]$ProgressSeconds
 )
-& powershell.exe @deepArgs
-$deepExit = $LASTEXITCODE
-if ($deepExit -ne 0) {
-  "Deep collector exit code: $deepExit" | Set-Content -LiteralPath (Join-Path $derivedDir "private-wrapper-deep-error.txt") -Encoding UTF8
-}
+$sqlArgs = @(
+  "-NoProfile","-ExecutionPolicy","Bypass","-File",$sqlScript,
+  "-Root",$Root,
+  "-OutputDir",$sqlDir,
+  "-MaxRowsPerTable",[string]$MaxSqlRowsPerTable
+)
 
-if (-not $SkipSql) {
-  Write-Host "Running SQL read-only collection..." -ForegroundColor Cyan
-  $sqlArgs = @(
-    "-NoProfile","-ExecutionPolicy","Bypass","-File",$sqlScript,
-    "-Root",$Root,
-    "-OutputDir",$sqlDir,
-    "-MaxRowsPerTable",[string]$MaxSqlRowsPerTable
-  )
-  & powershell.exe @sqlArgs
-  $sqlExit = $LASTEXITCODE
-  if ($sqlExit -ne 0) {
-    "SQL collector exit code: $sqlExit" | Set-Content -LiteralPath (Join-Path $sqlDir "private-wrapper-sql-error.txt") -Encoding UTF8
+$collectorChildren = New-Object System.Collections.ArrayList
+if (-not $Sequential -and $Parallelism -gt 1) {
+  [void]$collectorChildren.Add((Start-CollectorChild -Name "deep-derived-collector" -Arguments $deepArgs -ErrorMarker (Join-Path $derivedDir "private-wrapper-deep-error.txt")))
+  if (-not $SkipSql) {
+    [void]$collectorChildren.Add((Start-CollectorChild -Name "sql-readonly-collector" -Arguments $sqlArgs -ErrorMarker (Join-Path $sqlDir "private-wrapper-sql-error.txt")))
+  }
+} else {
+  Write-Host "Running deep derived collector..." -ForegroundColor Cyan
+  $phase = [Diagnostics.Stopwatch]::StartNew()
+  & powershell.exe @deepArgs
+  $deepExit = $LASTEXITCODE
+  $phase.Stop()
+  [void]$phaseTimings.Add([pscustomobject]@{Phase="deep-derived-collector";Seconds=[math]::Round($phase.Elapsed.TotalSeconds,3);Tasks=1;Parallelism=1;Failed=if($deepExit -eq 0){0}else{1}})
+  if ($deepExit -ne 0) {
+    "Deep collector exit code: $deepExit" | Set-Content -LiteralPath (Join-Path $derivedDir "private-wrapper-deep-error.txt") -Encoding UTF8
+  }
+
+  if (-not $SkipSql) {
+    Write-Host "Running SQL read-only collection..." -ForegroundColor Cyan
+    $phase = [Diagnostics.Stopwatch]::StartNew()
+    & powershell.exe @sqlArgs
+    $sqlExit = $LASTEXITCODE
+    $phase.Stop()
+    [void]$phaseTimings.Add([pscustomobject]@{Phase="sql-readonly-collector";Seconds=[math]::Round($phase.Elapsed.TotalSeconds,3);Tasks=1;Parallelism=1;Failed=if($sqlExit -eq 0){0}else{1}})
+    if ($sqlExit -ne 0) {
+      "SQL collector exit code: $sqlExit" | Set-Content -LiteralPath (Join-Path $sqlDir "private-wrapper-sql-error.txt") -Encoding UTF8
+    }
   }
 }
 
@@ -728,50 +887,84 @@ if (-not $SkipToolDumps) {
   if ($ildasmPath) {
     $ilDir = Join-Path $toolsDir "ildasm"
     New-Item -ItemType Directory -Path $ilDir -Force | Out-Null
-    foreach ($f in $managedFiles) {
-      $out = Join-Path $ilDir ((Safe-Name (RelPath $Root $f.FullName)) + ".il")
-      try {
-        & $ildasmPath /text /nobar /linenum /tokens /bytes ("/out=" + $out) $f.FullName 1>$null 2>$null
-      } catch {
-        $_.Exception.ToString() | Set-Content -LiteralPath ($out + ".error.txt") -Encoding UTF8
+    $tasks = @(
+      foreach ($f in $managedFiles) {
+        $out = Join-Path $ilDir ((Safe-Name (RelPath $Root $f.FullName)) + ".il")
+        [pscustomobject]@{
+          FilePath=$ildasmPath
+          Arguments=@("/text","/nobar","/linenum","/tokens","/bytes",("/out=" + $out),$f.FullName)
+          StdOut=$null
+          StdErr=($out + ".stderr.txt")
+          ErrorFile=($out + ".error.txt")
+        }
       }
-    }
+    )
+    Invoke-ThrottledProcessTasks -Name "ildasm" -Tasks $tasks -Throttle $Parallelism
   }
 
   if ($dumpbinPath) {
     $dumpDir = Join-Path $toolsDir "dumpbin"
     New-Item -ItemType Directory -Path $dumpDir -Force | Out-Null
-    foreach ($f in $peFiles | Where-Object { $_.Extension.ToLowerInvariant() -in @(".exe",".dll",".sys") }) {
-      $out = Join-Path $dumpDir ((Safe-Name (RelPath $Root $f.FullName)) + ".txt")
-      try {
-        & $dumpbinPath /headers /imports /exports /dependents /loadconfig $f.FullName 2>&1 |
-          Out-File -LiteralPath $out -Encoding utf8
-      } catch {
-        $_.Exception.ToString() | Set-Content -LiteralPath ($out + ".error.txt") -Encoding UTF8
+    $tasks = @(
+      foreach ($f in $peFiles | Where-Object { $_.Extension.ToLowerInvariant() -in @(".exe",".dll",".sys") }) {
+        $out = Join-Path $dumpDir ((Safe-Name (RelPath $Root $f.FullName)) + ".txt")
+        [pscustomobject]@{
+          FilePath=$dumpbinPath
+          Arguments=@("/headers","/imports","/exports","/dependents","/loadconfig",$f.FullName)
+          StdOut=$out
+          StdErr=($out + ".stderr.txt")
+          ErrorFile=($out + ".error.txt")
+        }
       }
-    }
+    )
+    Invoke-ThrottledProcessTasks -Name "dumpbin" -Tasks $tasks -Throttle $Parallelism
   }
 
   if ($corflagsPath) {
     $corDir = Join-Path $toolsDir "corflags"
     New-Item -ItemType Directory -Path $corDir -Force | Out-Null
-    foreach ($f in $managedFiles) {
-      $out = Join-Path $corDir ((Safe-Name (RelPath $Root $f.FullName)) + ".txt")
-      try { & $corflagsPath $f.FullName 2>&1 | Out-File -LiteralPath $out -Encoding utf8 } catch {}
-    }
+    $tasks = @(
+      foreach ($f in $managedFiles) {
+        $out = Join-Path $corDir ((Safe-Name (RelPath $Root $f.FullName)) + ".txt")
+        [pscustomobject]@{
+          FilePath=$corflagsPath
+          Arguments=@($f.FullName)
+          StdOut=$out
+          StdErr=($out + ".stderr.txt")
+          ErrorFile=($out + ".error.txt")
+        }
+      }
+    )
+    Invoke-ThrottledProcessTasks -Name "corflags" -Tasks $tasks -Throttle $Parallelism
   }
 
   if ($snPath) {
     $snDir = Join-Path $toolsDir "strong-name"
     New-Item -ItemType Directory -Path $snDir -Force | Out-Null
-    foreach ($f in $managedFiles) {
-      $out = Join-Path $snDir ((Safe-Name (RelPath $Root $f.FullName)) + ".txt")
-      try { & $snPath -T $f.FullName 2>&1 | Out-File -LiteralPath $out -Encoding utf8 } catch {}
-    }
+    $tasks = @(
+      foreach ($f in $managedFiles) {
+        $out = Join-Path $snDir ((Safe-Name (RelPath $Root $f.FullName)) + ".txt")
+        [pscustomobject]@{
+          FilePath=$snPath
+          Arguments=@("-T",$f.FullName)
+          StdOut=$out
+          StdErr=($out + ".stderr.txt")
+          ErrorFile=($out + ".error.txt")
+        }
+      }
+    )
+    Invoke-ThrottledProcessTasks -Name "strong-name" -Tasks $tasks -Throttle $Parallelism
   }
 
   if ($gacutilPath) {
     Invoke-TextCapture -Path (Join-Path $toolsDir "gac-list.txt") -Script { & $gacutilPath /l }
+  }
+}
+
+if ($collectorChildren.Count -gt 0) {
+  Write-Host "Waiting for parallel deep/SQL collectors..." -ForegroundColor Cyan
+  foreach ($child in @($collectorChildren)) {
+    [void](Wait-CollectorChild -Child $child)
   }
 }
 
@@ -821,6 +1014,16 @@ reproducible collector scripts, hashes and conclusions.
 *.img filter=lfs diff=lfs merge=lfs -text
 "@ | Set-Content -LiteralPath (Join-Path $OutputDir ".gitattributes") -Encoding ASCII
 
+$wrapperStopwatch.Stop()
+[void]$phaseTimings.Add([pscustomobject]@{
+  Phase="wrapper-total-before-archive"
+  Seconds=[math]::Round($wrapperStopwatch.Elapsed.TotalSeconds,3)
+  Tasks=1
+  Parallelism=$Parallelism
+  Failed=0
+})
+$phaseTimings | Export-Csv -LiteralPath (Join-Path $systemDir "phase-timings.csv") -NoTypeInformation -Encoding UTF8
+
 try {
   $allOutputFiles = @(Get-ChildItem -LiteralPath $OutputDir -File -Recurse -ErrorAction SilentlyContinue)
   $totalBytes = ($allOutputFiles | Measure-Object -Property Length -Sum).Sum
@@ -857,6 +1060,10 @@ $summary = [ordered]@{
   registry_collected=(-not $SkipRegistry)
   tool_dumps_collected=(-not $SkipToolDumps)
   prerequisite_install_attempted=(-not $SkipPrerequisiteInstall)
+  processor_count=$processorCount
+  parallelism=$Parallelism
+  copy_threads=$CopyThreads
+  sequential=[bool]$Sequential
   ildasm=(Find-ToolPath "ildasm.exe")
   dumpbin=(Find-ToolPath "dumpbin.exe")
   sevenzip=(Find-ToolPath "7z.exe")
@@ -887,7 +1094,7 @@ if ($CreateArchive) {
   if ($sevenPath) {
     $archive = $OutputDir + ".7z"
     if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force }
-    & $sevenPath a -t7z -mx=5 $archive (Join-Path $OutputDir "*")
+    & $sevenPath a -t7z -mx=5 -mmt=on $archive (Join-Path $OutputDir "*")
     if ($LASTEXITCODE -ne 0) {
       throw "7-Zip archive creation failed with exit code $LASTEXITCODE"
     }
