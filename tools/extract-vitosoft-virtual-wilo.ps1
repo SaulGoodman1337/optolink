@@ -185,7 +185,7 @@ if (Test-Path -LiteralPath $wiloCsv) {
     }
 }
 
-$zipPath = $OutputDir.TrimEnd("\") + ".zip"
+$zipPath = (Resolve-Path -LiteralPath $OutputDir).Path + ".zip"
 if (Test-Path -LiteralPath $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force
 }
