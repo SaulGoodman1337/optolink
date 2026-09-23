@@ -11,6 +11,83 @@ The canonical protocol-level research, verified function behavior, frame layout,
 safety rules and general KBus/KM-BUS experiment plan are maintained in
 [kmbus-optolink-research.md](kmbus-optolink-research.md).
 
+## Production Vitosoft result — remote identity is a normal virtual object
+
+The complete production Vitosoft join for the exact local `VDensHO1 / 20C2`
+profile changes the Vitotrol-emulation hypothesis substantially.
+
+For A1/M1:
+
+~~~text
+0x27A0
+Virtual_READ
+Virtual_WRITE
+1 byte
+
+0 = not present
+1 = Vitotrol 200
+2 = Vitotrol 300
+~~~
+
+For M2:
+
+~~~text
+0x37A0
+Virtual_READ
+Virtual_WRITE
+1 byte
+
+0 = not present
+1 = Vitotrol 200
+2 = Vitotrol 300
+~~~
+
+Therefore Vitosoft does **not** use a `KBUS_MEMBERLIST_WRITE` or
+`KBUS_VIRTUAL_WRITE` event to configure the expected remote type on this
+controller. It uses ordinary controller virtual objects.
+
+Related discovery/state objects:
+
+~~~text
+A1 remote software-index block  0x0A5C / 4 bytes / read-only
+M2 remote software-index block  0x0A60 / 4 bytes / read-only
+
+A1 measured room temperature    0x0896 / 2 bytes / Div10 °C / read-only
+M2 measured room temperature    0x0898 / 2 bytes / Div10 °C / read-only
+
+A1 room-sensor status           0x089C / 1 byte / read-only
+M2 room-sensor status           0x089D / 1 byte / read-only
+~~~
+
+The room-sensor status enum is:
+
+~~~text
+0 = OK
+1 = short circuit
+2 = interruption
+3..5 = unknown
+6 = not present
+~~~
+
+This creates a much more precise emulation problem:
+
+1. remote **configuration/presence type** can be manipulated through a
+   documented Virtual_WRITE object;
+2. the actual measured room-temperature object is documented as read-only;
+3. a physical Vitotrol likely causes lower-level bus logic to populate
+   0x0896/0x0898 and associated status/software-index state;
+4. an Optolink-only solution therefore needs either another internal injection
+   path for that state or a way to make the controller consume a substitute
+   writable input.
+
+Do not write 0x27A0/0x37A0 yet. First record a complete read-only baseline.
+
+Detailed source extraction:
+
+- [vitosoft/full-extraction-2026-09-23.md](vitosoft/full-extraction-2026-09-23.md)
+- [vitosoft/vdensho1-vitotrol-events.csv](vitosoft/vdensho1-vitotrol-events.csv)
+
+
 The central question is:
 
 > Can the controller be made to believe that a Vitotrol is present, and can
