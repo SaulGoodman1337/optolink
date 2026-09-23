@@ -1,0 +1,49 @@
+{
+  "source_repository": "MorrisonHB/Optolink_02",
+  "source_ref": "master",
+  "source_commit": "ec77c6917909ae229b17a6104db4f81f9a31e263",
+  "derived_device_file": {
+    "path": "Optolink_02/Documentation/DP_Listen/DP_VDensHO1.txt",
+    "git_blob_sha": "d0d2a6941c7d68fa5cc7b5ea431c20e0b827746f",
+    "device_token": "VDensHO1",
+    "device_identification": "0x20C2",
+    "software_index_range": "0x0100..0x0103"
+  },
+  "vitosoft_lfs_sources": [
+    {
+      "path": "Optolink_02/XML/DPDefinitions.xml",
+      "sha256": "efec27568d398021c767771af016143bd51fc196d2d408dbb80faff84d0b19e3",
+      "size": 186559004
+    },
+    {
+      "path": "Optolink_02/XML/ecnEventType.xml",
+      "sha256": "2338beb0e8544b6149bc4b2433ecabd9509edcdafc2e8e91f00182eba1aff7ba",
+      "size": 9935374
+    },
+    {
+      "path": "Optolink_02/XML/ecnDataPointType.xml",
+      "sha256": "c66a57be8004a64cf3bf686bf2aa51d77f7ee96e794e95b3d09318a78fe8f0a3",
+      "size": 163323
+    },
+    {
+      "path": "Optolink_02/XML/Textresource_de.xml",
+      "sha256": "402ffce932f3b4bf5820eeb7a881100cdd3dbd4588bb446b7c4d828fc5466185",
+      "size": 29764414
+    },
+    {
+      "path": "Optolink_02/XML/ecnEventTypeGroup.xml",
+      "sha256": "f72caeed1a39c7fa769dbe88e05ddf3f448ba2d18cf064e43e65d24a5456b8b4",
+      "size": 10504832
+    },
+    {
+      "path": "Optolink_02/XML/sysDeviceIdentExt.xml",
+      "sha256": "aa0cbe9c01c08bc93d67c4b509d2fb5f9beced278fcc770864bf1688e45763dc",
+      "size": 569
+    },
+    {
+      "path": "Optolink_02/XML/ecnVersion.xml",
+      "sha256": "96db1023b3040e5ac86ffa8daa75e5d0e4a462cf30ad888ebca1b6a4fcf3881f",
+      "size": 207
+    }
+  ]
+}
