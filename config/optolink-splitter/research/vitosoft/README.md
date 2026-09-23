@@ -403,3 +403,38 @@ If automatic installation discovery fails:
 
 The ZIP contains only inventories, search hits, hashes and short binary-string
 contexts; it does not include Vitosoft EXE/DLL binaries.
+
+
+### KM-BUS collector production result
+
+The 2026-09-23 local run inventoried 7105 Vitosoft files and produced 8837
+stored text-hit rows plus 12 binary-string hits.
+
+The most important new event discovered outside the exact VDensHO1 UI
+membership is:
+
+```text
+InternePumpeDrehzahl_res~0x0A3C
+```
+
+Installed Vitosoft language resources describe it as the **set speed of the
+internal pump transferred to the pump**. This makes `0x0A3C` a priority
+read-only runtime probe for the WB2A.
+
+The collector now also retains the following terms even after the generic
+per-file storage limit has been reached:
+
+```text
+InternePumpeDrehzahl_res
+0x0A3C
+sysblock_KMBus_LonMemberList
+KMBusEquipment
+KBUS_MEMBERLIST_READ / WRITE
+KMBUS_RAM_READ / EEPROM_READ
+BusHandlerType
+OptolinkHandler
+```
+
+It continues scanning to EOF after the generic hit limit and writes a
+`hit-summary.csv` report, so a large translation/XML file can no longer hide
+later priority matches.
