@@ -12,7 +12,7 @@ research documents; this file contains tasks and next actions.
 
 ### 1. Restructure the Home Assistant diagnostics page
 
-Status: **planned**
+Status: **implemented in YAML / Home Assistant visual verification pending**
 
 The diagnostics page has grown organically and should be reorganized for
 day-to-day troubleshooting.
@@ -36,7 +36,7 @@ Main file:
 
 ### 2. Move time programs to a dedicated Home Assistant tab
 
-Status: **planned**
+Status: **implemented in YAML / Home Assistant visual verification pending**
 
 The weekly time programs currently live at the bottom of the diagnostics page
 and should be moved out of diagnostics into a dedicated, visually polished
@@ -82,6 +82,16 @@ live captures and has been removed from the production Home Assistant profile.
 
 The actual blower speed is still wanted.
 
+Current blocker/update (2026-09-23):
+
+- exact VDensHO1 metadata identifies the desired GFA objects
+  (`0x4006` actual fan speed, `0x4009` set speed, etc.);
+- direct local `GFA_READ` through the normal active P300 request path is
+  reproducibly rejected with a VS2 Error Message;
+- do not continue guessing wire variants;
+- next step is to recover Vitosoft's actual GFA access implementation from the
+  private collector's raw assemblies/IL/SQL output.
+
 Next work:
 
 - search VDensHO1 / GG1 / GFA datapoints for a plausible live speed value;
@@ -99,7 +109,7 @@ Do not restore the old `0x55D3[6:7] = rpm` interpretation.
 
 ### 4. Improve A5/A6 dashboard explanation
 
-Status: **planned**
+Status: **updated in YAML / wording verification pending**
 
 The "Heizkurve & Vorlauf" page needs a clearer explanation of the relationship
 between:
