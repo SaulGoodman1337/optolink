@@ -382,3 +382,31 @@ The open problem is now a control-policy question: how to obtain the desired
 high pump speed during the relevant heating operating phase without running the
 single direct radiator circuit unnecessarily at 100 % for every A1 pump-on
 period.
+
+## Coding 51 comparison: later boiler-circuit-pump logic
+
+Other/later Viessmann HO1-family controllers expose coding 51 at virtual
+address 0x7751. Their service documentation defines a boiler-circuit-pump mode
+for hydraulic-separator/buffer topologies in which the internal pump runs only
+while the burner is operating and then observes a pump overrun.
+
+That behavior is an almost exact semantic match for the research goal when the
+internal pump is a **boiler-circuit pump**.
+
+The local WB2A is different:
+
+- its exact service coding table goes from coding 34 directly to coding 52;
+- its exact base VDensHO1 Vitosoft profile contains coding 52 at 0x7752 but no
+  coding 51 event;
+- the local hydraulic topology has no separator/buffer and uses the internal
+  pump directly as A1 heating-circuit pump.
+
+Therefore coding 51 cannot be treated as an undocumented WB2A solution. A
+read-only 0x7751 probe is useful to map the firmware address space, but no write
+should be attempted based solely on semantics from later controllers.
+
+The existence of coding 51 elsewhere is nevertheless architecturally useful:
+it confirms Viessmann explicitly implemented the desired burner-dependent pump
+policy for the **boiler-circuit-pump** role. This further explains why a true
+M2/separator topology can have different pump operating semantics from the
+local direct A1 topology.
