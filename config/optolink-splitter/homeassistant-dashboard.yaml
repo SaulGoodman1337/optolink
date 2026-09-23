@@ -2634,58 +2634,13 @@ views:
                 entities:
                   - entity: sensor.vitodens_200_wb2a_i2c_eeprom_gwg_flag
                     name: I²C GWG
-    cards: []
-
-  - title: Technik
-    path: technik
-    icon: mdi:chip
-    type: sections
-    max_columns: 2
-    sections:
       - type: grid
-        column_span: 1
+        column_span: 2
         cards:
           - type: heading
-            heading: Gerät & Software
-            heading_style: subtitle
-            icon: mdi:information-outline
-          - type: entities
-            show_header_toggle: false
-            entities:
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_geraete_id_anzeige
-                name: Identifikation
-                state_header: Gerät
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_sachnummer_anzeige
-                    name: Codierstecker
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_kennung_anzeige
-                    name: Kennung
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_regelungssoftware_version
-                name: Software
-                state_header: Regelung
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_bedienteil_sw_index_anzeige
-                    name: Bedienteil
-                  - entity: sensor.vitodens_200_wb2a_gfa_kennung_anzeige
-                    name: GFA
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_anlagenschema_anzeige
-                name: Anlage
-                state_header: Schema
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_anlagentyp_anzeige
-                    name: Typ
-                  - entity: sensor.vitodens_200_wb2a_bauart_warmwasser_anzeige
-                    name: WW
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_eeprom_status
-                name: EEPROM
-                state_header: Status
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_i2c_eeprom_gwg_flag
-                    name: I²C GWG
+            heading: Technik / Codierstecker
+            heading_style: title
+            icon: mdi:chip
 
       - type: grid
         column_span: 1
