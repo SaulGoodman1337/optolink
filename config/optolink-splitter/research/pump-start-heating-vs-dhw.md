@@ -890,3 +890,49 @@ now determine whether:
 1. selecting "Int. Pumpe Ein" really produces 0x7500=04;
 2. the internal-pump relay bit is asserted;
 3. 0x7660 stays at the prior/A1-derived speed or changes to another target.
+
+## Definitive actuator-test repeat — 2026-09-23 11:56
+
+The actuator test was repeated with runtime logging of 0x7500 and 0xA152.
+
+Observed sequence:
+
+```text
+11:56:44  0x7500 00 -> 01   ALLE PASSIV
+11:56:46  0x7500 01 -> 02   BRENNER MIN LEISTUNG
+           GFA immediately enters 01/08/20
+11:56:49  0x7500 02 -> 07
+11:56:50  0x7500 07 -> 05
+11:56:53  0x7500 05 -> 04   INTERNE PUMPE
+11:57:32  0x7500 04 -> 00   test exited
+```
+
+Thus the service menu selection is definitely reflected live at 0x7500 and
+does not require a second confirmation. The fact that 0x7500=02 immediately
+affected the burner state also confirms that the actuator-test framework was
+active.
+
+During the full approximately 39 s interval with `0x7500=04`:
+
+```text
+0x7660 = 0000   internal-pump runtime output/speed = 0 %
+0x7663 = 0000   A1 pump demand = 0 %
+0xA152 = 0440   internal-pump relay bit (byte0 bit 0x20) = 0
+```
+
+No software-visible internal-pump activation or 100 % speed command occurred.
+
+The WB2A service manual labels this function **"Int. Pumpe Ein"**, but explains
+it electrically/logically as **"Int. Ausgang 20"**. The most plausible
+interpretation for the local speed-controlled pump is therefore that this
+service item acts on the legacy/internal output-20 path and does not establish
+the variable-speed command represented by 0x7660.
+
+Strictly, software telemetry cannot prove physical rotor standstill if the
+service path bypasses both 0x7660 and the A152 status object. However, for the
+automation objective the path is unsuitable either way: it provides no
+observable controlled 100 % speed setpoint.
+
+Conclusion: deprioritize 0x7500 as a solution. The normal M2/boiler-circuit
+architecture remains more relevant because it has a dedicated documented
+speed target, coding 31.
