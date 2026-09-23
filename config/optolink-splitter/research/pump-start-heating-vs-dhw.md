@@ -1045,3 +1045,75 @@ heating operating modes, not to a dedicated burner-on/burner-off pump state.
 Therefore E8 is not currently considered a solution for lowering pump speed
 specifically when the flame goes out during an otherwise normal daytime A1
 heating period.
+
+## E7=100 % burner-off behavior — 2026-09-23 12:27
+
+A follow-up run kept E7 at 100 % for the entire capture and logged E7
+continuously.
+
+The capture starts with:
+
+```text
+E7 = 100 %
+flame = OFF
+internal pump = 0 %
+A1 demand = 0 %
+boiler actual ~47.5 C
+heating flow target = 38.0 C
+```
+
+When the A1 pump demand becomes active:
+
+```text
+12:27:46.588  pump relay 0 -> 1, flame still OFF
+12:27:49.326  A1 demand 0 -> 100 %
+                 internal pump 0 -> 100 %
+                 E7 remains 100 %
+                 flame remains OFF
+```
+
+The burner does not ignite during the remainder of the approximately 11 min
+capture. Nevertheless both A1 demand and the internal pump stay continuously at
+100 % while E7 remains 100 %. Boiler temperature falls from the post-cycle heat
+level through the 38 C target and down to roughly 36 C, but pump speed does not
+reduce.
+
+The final configuration snapshot still confirms:
+
+```text
+E7 = 100 %
+E8 = 0  -> Nebenbetrieb uses minimum according to E7
+E9 = 50 %
+```
+
+This definitively answers the earlier open question:
+
+> In the direct A1 topology, E7=100 % is not burner/flame selective. It forces
+> the A1 pump request to 100 % whenever the A1 pump is enabled, including long
+> burner-off intervals.
+
+Therefore leaving E7 permanently at 100 % does achieve the required 100 % pump
+speed during burner operation, but also runs the direct radiator circuit at
+100 % during normal pump-only periods. This is not the desired selective
+control behavior.
+
+E8=0 reinforces this result: in Nebenbetrieb the controller explicitly uses the
+minimum according to E7, so with E7=100 % there is no reduced pump speed there
+either.
+
+### Consequence
+
+E7 remains an excellent diagnostic proof and an emergency/simple configuration
+option, but not the preferred final policy if unnecessary 100 % pump operation
+outside burner operation is to be avoided.
+
+The remaining solution space is now:
+
+1. identify a native operating-state parameter that selects different pump
+   speed while the burner is off;
+2. determine whether E7 can safely be changed dynamically without excessive
+   nonvolatile-memory writes;
+3. use another native topology/request path (for example M2) if it provides the
+   desired operating-mode semantics;
+4. accept E7=100 % permanently if the hydraulic/acoustic/electrical cost is
+   acceptable.
