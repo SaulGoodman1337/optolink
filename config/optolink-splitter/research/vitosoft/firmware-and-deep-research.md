@@ -348,3 +348,94 @@ they may contain different firmware/configuration images.
 - SHA256 and private archival procedure for any acquired firmware image;
 - derived disassembly/decompilation notes in Git, but no raw proprietary
   firmware image in the public repository.
+
+
+## Local WB2A software / GFA identity readout — 2026-09-23
+
+Direct read-only Virtual_READ probes returned:
+
+```text
+0x7650 = 20
+0x7656 = 20 15 02 01
+0x778C = 01
+0x778D = 03
+```
+
+The exact VDensHO1 metadata resolves these values as follows.
+
+### 0x7650 — burner-control chip identifier
+
+`GFA_Kennung~0x7650` is labelled:
+
+```text
+Kennung Feuerungsautomat-Chip
+ID burner control unit chip
+description: identifier of the burner-control chip (hex)
+```
+
+Therefore the local burner-control chip identifier is:
+
+```text
+GFA chip ID = 0x20
+```
+
+No vendor meaning for `0x20` has yet been recovered.
+
+### 0x7656 — four-byte coding-card identity block
+
+Vitosoft defines four one-byte fields in the same four-byte block:
+
+```text
+byte 0 = Codierkarte Typ
+byte 1 = Codierkarte Gerätekennung
+byte 2 = Codierkarte Revision GWG
+byte 3 = Codierkarte Revision GFA
+```
+
+The local value therefore decodes structurally as:
+
+```text
+0x7656 = 20 15 02 01
+
+type               = 0x20
+device ID          = 0x15
+GWG revision       = 0x02
+GFA revision       = 0x01
+```
+
+This is especially notable because the installed coding-plug / coding-card
+revision has already been recorded as `2015:0201`. The raw byte sequence
+`20 15 02 01` matches that printed/service revision notation exactly when
+written as hexadecimal byte pairs:
+
+```text
+20 15 : 02 01
+=> 2015:0201
+```
+
+This is strong local evidence that the printed/service revision string is the
+direct hexadecimal rendering of the four-byte coding-card identity block,
+rather than a calendar date.
+
+### 0x778C / 0x778D — control-unit software version bytes
+
+The exact metadata labels:
+
+```text
+0x778C  Version der Regelungssoftware - oberes Byte
+0x778D  Version der Regelungssoftware - unteres Byte
+```
+
+The local values are:
+
+```text
+high byte = 0x01
+low byte  = 0x03
+raw pair  = 0x0103
+```
+
+At this stage, `0x0103` is the confirmed raw control-unit software-version
+pair. Do not silently format it as `1.03`, `1.3` or decimal 259 until the
+Vitosoft presentation/formatting rule is recovered.
+
+These values are distinct from the Vitosoft data-definition/profile version.
