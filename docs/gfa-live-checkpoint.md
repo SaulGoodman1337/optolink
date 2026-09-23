@@ -1,18 +1,19 @@
 # GFA live checkpoint - 2026-09-23
 
-**Current status: P80, individual P06/P09/P10/P84 reads and a ten-round same-session series have succeeded on the local WB2A. The short same-session burst delivered 40 runtime samples in 6.359 seconds with all P80 guards passing.**
+**Current status: short P80/snapshot/same-session tests succeeded, but the first requested 300-second observation failed at a P80=FF mismatch. P300 and both previously running services were restored. Two earlier isolated FF runtime samples expose a measurement-quality gap.**
 
-A firing snapshot previously decoded P06 as 4110 rpm. The new repeated series returned all-zero runtime values, consistent with an idle-like state; it did not independently poll flame or capture a burner-start transition. Minutes-long stability, a complete startup trace and permanent Home Assistant integration are still unverified.
+Read the [long-run FF investigation](gfa-cycle-ff-investigation.md) before executing another logger. The next step is to inspect the existing raw TX/RX log, not repeat the long experiment unchanged. Its complete pasted JSONL has already been analyzed; do not ask for it again.
 
-Next executable step: [bounded GFA observation logger](gfa-cycle-logger.md), implemented and offline-tested for a first explicit 300-second observation. It reuses the verified transport and does not introduce new addresses or parameter writes.
+A firing snapshot previously decoded P06 as 4110 rpm. That result is not revoked, but the later isolated P06=FF conversion to 7650 rpm is not a validated physical event. Continuous acquisition, a complete startup trace and permanent Home Assistant integration remain unverified.
 
 Evidence:
 
+- [First long-run failure and FF samples](../config/optolink-splitter/research/vitosoft/gfa-cycle-ff-2026-09-23-evidence.json).
 - [Snapshot comparison](../config/optolink-splitter/research/vitosoft/gfa-snapshots-2026-09-23-evidence.json).
 - [Same-session measurements and timing](../config/optolink-splitter/research/vitosoft/gfa-session-2026-09-23-evidence.json).
 - [Static variant/scaling definitions](../config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-evidence.json).
 
-This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Do not interpret those historical limitations as revoking the successful runs below.
+This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
 
 ## 1. First P80 hardware result
 
@@ -72,7 +73,7 @@ P84=00 and P84=06 are observed raw states, not a recovered manufacturer enum. Do
 
 The independent-synchronization snapshot spans about 13 seconds across its four channels. It cannot resolve the approximately 12-second post-flame interval or prove a relationship at one common instant.
 
-## 3. Same-session access is now locally demonstrated
+## 3. Same-session access is locally demonstrated for the short test
 
 Helper: `wb2a-gfa-session-probe.py` 1.0.0, commit `3b9bb24e035034745b3b3949ad0a86817985597a`, SHA256 `32351e07cb0d661c00f7bcb7851d8103aca0b9cbc2f339041202e48b760d6da2`. The original tested helper is unchanged.
 
@@ -103,32 +104,50 @@ There were 11 successful same-session P80 guards (initial guard plus ten rounds)
 
 Approximately 1.60 complete channel sets per second follows from the P06 intervals. Do not divide 40 by 6.359 and call that the sampling rate of each sensor. All channels are sequential, and the device's internal acquisition time is not known from host receive timestamps.
 
-The four-channel spread is substantially shorter than the previous approximately 13-second snapshots. This supports moving to a bounded observation window, but a six-second series is not proof of minutes-long stability or a complete burner cycle. No new Home Assistant freshness report was supplied for this specific run.
+The four-channel spread is substantially shorter than the previous approximately 13-second snapshots. This supported moving to a bounded observation window, but was not proof of minutes-long data validity or a complete burner cycle. No new Home Assistant freshness report was supplied for this specific run.
 
 ### Source model and retained constraints
 
-Vitosoft IL methods `VS1Message::toByteArray` (285-322), `VS1::_timer_processor_Elapsed` (985-1099) and `VS1::sendVS1Message` (1283-1510) separate setup/STX from subsequent four-byte reads. The observed session now supports that model locally. `sendKeepVS1Message` exists separately, but no additional keepalive command is introduced.
+Vitosoft IL methods `VS1Message::toByteArray` (285-322), `VS1::_timer_processor_Elapsed` (985-1099) and `VS1::sendVS1Message` (1283-1510) separate setup/STX from subsequent four-byte reads. The observed short session supports that model locally. `sendKeepVS1Message` exists separately, but no additional keepalive command is introduced.
 
-The pinned session helper enforces the fixed read allowlist, 300-ms host idle-gap guard, no continuation through unexpected queued/trailing data, no automatic retransmission and a 20-second burst budget. Its 56 tests cover framing, identities, per-round guards, timestamps, timeouts, logging stalls and recovery paths. The initial pending `SAMPLE` records become valid only after their round guard passes; a P80 guard is not a checksum on each VS1 data byte.
+The pinned session helper enforces the fixed read allowlist, 300-ms host idle-gap guard, no continuation through unexpected queued/trailing data, no automatic retransmission and a 20-second burst budget. Its 56 tests cover framing, identities, per-round guards, timestamps, timeouts, logging stalls and recovery paths. Passing the following P80 guard confirms identity/alignment at that point, NOT per-value integrity or physical plausibility; see the counterexamples in the long run below.
 
-## 4. Next: bounded observation, not another identical short test
+## 4. First long observation failed; recovery worked
 
-The new [GFA observation logger and execution runbook](gfa-cycle-logger.md) provide a deliberate **300-second first observation** using the same addresses and response-paced transport. No new function code, block length, burner command, GFA write, EEPROM write or process write is enabled.
+The [GFA observation logger](gfa-cycle-logger.md) was executed for a requested 300 seconds. Logger commit: `008e802ea8d5d0dc5a7a8658896722d37ed922da`; SHA256 `d5d98242e6f9526522a53f3c801d856ba8c1a7fde6349c05b56059fa732a54e3`. It requires the unchanged P80 and session helpers. All 89 offline tests passed before the run, but those simulated tests did not establish live response validity.
 
-Logger commit: `008e802ea8d5d0dc5a7a8658896722d37ed922da`; tested SHA256 `d5d98242e6f9526522a53f3c801d856ba8c1a7fde6349c05b56059fa732a54e3`. The remote blob matches the locally tested file. It requires the unchanged P80 and session helpers beside it, with hash verification before loading.
+Source: `Eingefügter Text(20260923-211214).txt`, SHA256 `c2f84dfd3e70d2204fa03011568b9b58895d0ff094e95948901fab3d830b6642`. It includes the complete generated JSONL (466 objects, 463 rounds) as well as the console transcript. Only the separate TX/RX `.log` is still missing.
 
-Compilation, plan-only execution and **89 offline tests** passed, including simulated 300/600-second windows and output/recovery failures. Actual minutes-long appliance behavior remains pending.
+| Event | Result |
+| --- | --- |
+| Observation start | 23:06:39.617 +02:00 |
+| Retained rounds | 463, all with P80=20; 1852 runtime values |
+| All-zero rounds | 461 |
+| Round 142, P06 at 23:08:06.612 | Isolated FF, mechanically decoded as 7650 rpm; P09/P10/P84 zero, P80=20 |
+| Round 222, P84 at 23:08:56.490 | Isolated FF, surrounding phases zero; P06/P09/P10 zero, P80=20 |
+| Next attempted round 464 | P80=FF, guard mismatch; not published as a valid complete JSON round |
+| Failure message | 23:11:26.069, RESULT=FAIL |
+| P300 restoration | 23:11:28.130, actual 20C2 identity verified on attempt 1 |
+| Splitter / party running | 23:11:30.205 / 23:11:32.261 |
 
-The logger records raw `.log` data plus guarded `.jsonl` rounds, with per-channel host timestamps, values, timing and raw phase changes. Only complete P80-validated rounds become measurement records. It preserves the earlier frames/recovery logic, catches ordinary interruptions, and restores previously running services. There is no independent watchdog against SIGKILL, power loss, USB failure or systemd failure.
+P06 and P84 each returned zero immediately before and after their isolated FF values. The two nonzero rounds are not evidence of a burner start. No separate flame state was captured. The earlier firing snapshot does not establish firing during this later observation.
 
-Normal MQTT/TCP polling and a running party emulator are paused throughout. Do not treat old Home Assistant states as contemporaneous measurements. Pausing an emulator can affect externally maintained heating requests; use normal autonomous operation for the first observation. Do not force ignition or alter codings to obtain a trace.
+The reported summary duration, 285.814239 seconds, stops at the last completed round in version 1.0.0. The console start-to-failure interval is 286.452 seconds. Do not infer a fixed five-minute session expiry: anomalies already occurred around 87 and 137 seconds, and the failed guard's exact raw context remains unavailable.
 
-The logger does not read flame, pump or temperature values, so it cannot yet precisely timestamp flame establishment or causally explain every start-phase interval. A full start might not occur in the selected window. All-zero stable data can still validate communication; it is not a successful startup capture.
+Retained-round timings: P06 interval 564.993-746.024 ms, mean 616.970 ms; P06-to-P84 span 318.604-511.339 ms, mean 369.652 ms. These approximately 1.62 rounds/second measurements do not compensate for missing per-value validity. See the linked evidence and [detailed investigation](gfa-cycle-ff-investigation.md) for counts, exact timestamps and code references.
 
-## 5. Following work and interpretation boundaries
+The inspected helper raises a distinct exception on a timeout; it does not synthesize FF. The terminal message means the identity check processed FF instead of 20, not a decoded boiler fault or a successful changed device identity. Its physical origin is not established. Internal GFA response availability, transient/serial behavior and other causes remain hypotheses.
 
-After a real longer capture, correlate P06/P09/P10/P84 through any observed natural changes and check session stability. Keep phase names raw unless evidence supports their meaning. Obtain independent flame/55DC/55E0 observations separately using a source-justified approach before claiming exact post-flame delays. A stopped P300 splitter cannot provide concurrent live MQTT samples.
+The current logger scales runtime FF without a quality flag when the next P80 passes. Its 7650-rpm output and phase-change counters therefore must not be treated as validated physical events. This is an acquisition-quality limitation, not a reason to discard raw evidence, silently replace FF with zero or disable the guard.
 
-Permanent Home Assistant acquisition still requires deliberate ownership/scheduling of protocol modes or another demonstrated architecture. A second serial process competing with the splitter is not a permanent integration design.
+## 5. Immediate next step and production boundary
 
-GFA software identity/coding-plug diagnostics, E7 persistence, internal-pump request selection, full firmware acquisition and M2 remain separate research tasks. These successful fan/status reads do not solve them by implication. No production dashboard, poll list, updater behavior, heating coding or safety parameter has been changed by this work.
+**Read the existing log before any repeat.** The offline extraction command and precise file path are in [the FF investigation](gfa-cycle-ff-investigation.md). The full JSONL is already available and analyzed; do not request it again. Do not repeat the unchanged 300-second test, extend it to 600 seconds, guess new commands or remove identity validation.
+
+Documented logger follow-up: retain raw/converted/quality fields separately; report suspect FF values without claiming a universal sentinel definition; distinguish identity-guard success from measurement validity; preserve failed-round context and actual failure elapsed time; review any bounded reread/resynchronization policy explicitly after inspecting the raw evidence. No revised live logger was deployed in this analysis.
+
+Normal MQTT/TCP polling and a running party emulator were paused throughout. Service restoration succeeded, but current Home Assistant freshness still requires a separate observation. Old HA states are not contemporaneous samples during a pause. Pausing an emulator can affect externally maintained heating requests; the absence of activity here does not by itself identify why the burner remained idle-like.
+
+Only after response quality is resolved should another natural operating trace be collected and phase/55DC/flame correlation expanded. Permanent Home Assistant acquisition requires deliberate serial ownership and protocol scheduling, not another competing serial process. Do not use the suspect values for fan, burner or pump control.
+
+GFA software identity/coding-plug diagnostics, E7 persistence, internal-pump request selection, full firmware acquisition and M2 remain separate research tasks. No production dashboard, poll list, updater behavior, heating coding or safety parameter was changed by this analysis.
