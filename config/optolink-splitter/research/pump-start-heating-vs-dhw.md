@@ -1868,3 +1868,63 @@ Interpretation boundary:
   would then be required to establish identity.
 
 No `0x25 Virtual_WILO_WRITE` test is justified before that identity is proven.
+
+
+## Local Virtual-WILO read probe — successful empty responses
+
+Three exact Vitosoft-derived `Virtual_WILO_READ` requests were executed
+read-only on the local WB2A:
+
+```text
+request;0x24;0xA0C2;5;0011;0x00  # pump type
+-> 1;0xa0c2;none
+
+request;0x24;0xA0C2;6;0007;0x00  # speed
+-> 1;0xa0c2;none
+
+request;0x24;0xA0C2;6;0027;0x00  # diagnostic state
+-> 1;0xa0c2;none
+```
+
+The splitter implementation resolves the meaning of `none` precisely.
+
+For generic `request` commands it calls `do_request()`, then formats the
+result as:
+
+```python
+val = utils.arr2hexstr(data) if data else "none"
+```
+
+and `receive_telegr()` returns retcode `0x01` only after a complete
+CRC-valid non-error VS2 response telegram has been received.
+
+Therefore:
+
+```text
+1;0xa0c2;none
+```
+
+means:
+
+- VS2 ACK/response handling succeeded;
+- the response address was `0xA0C2`;
+- the response was not an Error Message;
+- CRC validation succeeded;
+- the decoded response contained zero payload bytes.
+
+It does **not** mean timeout, NACK, protocol error or a failed MQTT parse.
+
+The same successful-empty result for three independent, valid Wilo-PLR
+selectors strongly suggests that the WB2A firmware recognizes/accepts the
+`Virtual_WILO_READ` service at the P300 layer, but has no Wilo-PLR payload to
+return for the local system. This is compatible with the production metadata,
+where all real `Virtual_WILO_*` events belong only to the separate `WILO`
+device profile and none belong to `VDensHO1`.
+
+This is not yet a byte-level proof because the ordinary debug response omits
+the complete response telegram. The final read-only confirmation is to repeat
+one or more of the same requests through the splitter's full-raw path and
+capture the complete returned VS2 frame. A successful empty response is expected
+to carry a response BlockLength of zero.
+
+No `Virtual_WILO_WRITE / 0x25` operation is justified.
