@@ -1,5 +1,6 @@
 #!/opt/optolink/venv/bin/python
 import argparse
+import re
 import sys
 import time
 
@@ -64,10 +65,31 @@ def _response_addr(response):
         return None
 
 
+def _is_fullraw_command(command):
+    value = command.strip().replace(" ", "")
+    return (
+        ";" not in value
+        and len(value) >= 2
+        and len(value) % 2 == 0
+        and re.fullmatch(r"[0-9A-Fa-f]+", value) is not None
+    )
+
+
+def _is_fullraw_response(response):
+    value = response.strip().replace(" ", "")
+    return (
+        ";" not in value
+        and len(value) >= 2
+        and len(value) % 2 == 0
+        and re.fullmatch(r"[0-9A-Fa-f]+", value) is not None
+    )
+
+
 def request(client, responses, command, label=None, timeout=4.0):
     responses.clear()
     prefix = label or command
     expected_addr = _command_addr(command)
+    expect_fullraw = _is_fullraw_command(command)
     print(f"{prefix:<14} -> {settings.mqtt_listen}: {command}")
     client.publish(settings.mqtt_listen, command).wait_for_publish()
 
@@ -76,6 +98,11 @@ def request(client, responses, command, label=None, timeout=4.0):
     while time.time() < deadline and response is None:
         while responses:
             candidate = responses.pop(0)
+            if expect_fullraw:
+                if _is_fullraw_response(candidate):
+                    response = candidate
+                    break
+                continue
             if expected_addr is None or _response_addr(candidate) == expected_addr:
                 response = candidate
                 break
