@@ -170,7 +170,22 @@ Detailed evidence:
 
 ### 6. Continue Vitotrol emulation hardware path
 
-Status: **open / fallback in parallel**
+Status: **open / now source-supported reference path**
+
+The controlled A0 experiment proved that controller-side configuration alone
+is insufficient: `0x27A0=1` is accepted but quickly raises
+`BC = Fehler Fernbedienung HK1` when no KM-BUS slave responds.
+
+Source review of `dumpfheimer/WiFiVitotrol` now provides a concrete working
+reference implementation:
+
+- Vitotrol class `0x11`;
+- default Vitotrol-200 ID `0x34`, slot `0x01`;
+- identity registers `F8..FB`;
+- master commands `0x00/0x31/0x33`;
+- slave responses `0x80/0xB1/0xB3/0xBF`;
+- room temperature sent as KM-BUS command `0x20` in a `0xBF` response,
+  periodically every 30 s when valid data is available.
 
 The separate Vitotrol-emulation work identified the
 **MIKROE-4137 M-Bus Slave Click** as a promising no-solder hardware building
