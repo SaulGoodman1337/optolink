@@ -15,6 +15,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+if ($PSVersionTable.PSVersion -lt [version]"5.1") {
+  throw "PowerShell 5.1 or newer is required."
+}
+
 function Find-VitosoftRoot {
   param([string]$Explicit)
   if ($Explicit) {
@@ -56,6 +60,12 @@ function Safe-Name {
   return $out
 }
 
+function Format-PublicKeyToken {
+  param([byte[]]$Token)
+  if ($null -eq $Token -or $Token.Length -eq 0) { return "" }
+  return (([BitConverter]::ToString($Token) -replace '-','').ToLowerInvariant())
+}
+
 function RelPath {
   param([string]$Base,[string]$Path)
   try { return [IO.Path]::GetRelativePath($Base,$Path) }
@@ -65,16 +75,20 @@ function RelPath {
 function Get-HelperScript {
   param([string]$Name,[string]$DestinationDir)
 
-  $local = Join-Path $PSScriptRoot $Name
-  if (Test-Path -LiteralPath $local -PathType Leaf) {
-    return (Resolve-Path -LiteralPath $local).Path
-  }
-
   New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
   $dest = Join-Path $DestinationDir $Name
   $uri = "https://raw.githubusercontent.com/SaulGoodman1337/optolink/main/tools/" + $Name
-  Invoke-WebRequest -Uri $uri -OutFile $dest
-  return $dest
+  try {
+    Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $dest
+    return $dest
+  } catch {
+    $local = Join-Path $PSScriptRoot $Name
+    if (Test-Path -LiteralPath $local -PathType Leaf) {
+      Copy-Item -LiteralPath $local -Destination $dest -Force
+      return $dest
+    }
+    throw
+  }
 }
 
 function Copy-Tree {
@@ -198,6 +212,29 @@ function Get-PrerequisiteState {
   }
 }
 
+function Write-PrerequisiteReport {
+  param([string]$Path,[object]$State)
+
+  @(
+    [pscustomobject]@{Name="PowerShell 5.1+";Required=$true;Available=([version]$State.powershell -ge [version]"5.1");Path=$State.powershell;AutoInstall=$false;Purpose="Collector runtime"}
+    [pscustomobject]@{Name="Administrator";Required=$false;Available=[bool]$State.administrator;Path="";AutoInstall=$false;Purpose="Required only for automatic tool installation"}
+    [pscustomobject]@{Name="robocopy";Required=$true;Available=[bool]$State.robocopy;Path=$State.robocopy;AutoInstall=$false;Purpose="Reliable raw tree copy"}
+    [pscustomobject]@{Name="reg.exe";Required=$true;Available=[bool]$State.reg;Path=$State.reg;AutoInstall=$false;Purpose="Registry exports"}
+    [pscustomobject]@{Name="ildasm";Required=$false;Available=[bool]$State.ildasm;Path=$State.ildasm;AutoInstall=$true;Purpose="Managed IL disassembly"}
+    [pscustomobject]@{Name="dumpbin";Required=$false;Available=[bool]$State.dumpbin;Path=$State.dumpbin;AutoInstall=$true;Purpose="PE headers/imports/exports/dependencies"}
+    [pscustomobject]@{Name="corflags";Required=$false;Available=[bool]$State.corflags;Path=$State.corflags;AutoInstall=$true;Purpose=".NET PE/CLR flags"}
+    [pscustomobject]@{Name="sn";Required=$false;Available=[bool]$State.sn;Path=$State.sn;AutoInstall=$true;Purpose="Strong-name token inspection"}
+    [pscustomobject]@{Name="gacutil";Required=$false;Available=[bool]$State.gacutil;Path=$State.gacutil;AutoInstall=$true;Purpose="GAC inventory"}
+    [pscustomobject]@{Name="msbuild";Required=$false;Available=[bool]$State.msbuild;Path=$State.msbuild;AutoInstall=$true;Purpose="Build-tool/environment inventory"}
+    [pscustomobject]@{Name="7-Zip";Required=$false;Available=[bool]$State.sevenzip;Path=$State.sevenzip;AutoInstall=$true;Purpose="Large archive creation"}
+    [pscustomobject]@{Name="dotnet";Required=$false;Available=[bool]$State.dotnet;Path=$State.dotnet;AutoInstall=$false;Purpose=".NET runtime/SDK inventory"}
+    [pscustomobject]@{Name="sqlcmd";Required=$false;Available=[bool]$State.sqlcmd;Path=$State.sqlcmd;AutoInstall=$false;Purpose="Optional SQL diagnostics; collector uses .NET SqlClient"}
+    [pscustomobject]@{Name="sqllocaldb";Required=$false;Available=[bool]$State.sqllocaldb;Path=$State.sqllocaldb;AutoInstall=$false;Purpose="Optional LocalDB inventory"}
+    [pscustomobject]@{Name="git";Required=$false;Available=[bool]$State.git;Path=$State.git;AutoInstall=$false;Purpose="Optional private repository workflow"}
+    [pscustomobject]@{Name="git-lfs";Required=$false;Available=[bool]$State.git_lfs;Path=$State.git_lfs;AutoInstall=$false;Purpose="Optional private repository large-file workflow"}
+  ) | Export-Csv -LiteralPath $Path -NoTypeInformation -Encoding UTF8
+}
+
 function Install-ResearchPrerequisites {
   param([string]$LogPath)
 
@@ -226,12 +263,14 @@ function Install-ResearchPrerequisites {
       $url = "https://aka.ms/vs/17/release/vs_buildtools.exe"
       try {
         $log.WriteLine("Downloading Visual Studio 2022 Build Tools bootstrapper: $url")
+        try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
         Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $bootstrap
 
         $installPath = Join-Path ([Environment]::GetEnvironmentVariable("ProgramFiles(x86)")) "Microsoft Visual Studio\2022\BuildTools"
+        $quotedInstallPath = '"' + $installPath + '"'
         $args = @(
           "--quiet","--wait","--norestart","--nocache",
-          "--installPath",$installPath,
+          "--installPath",$quotedInstallPath,
           "--add","Microsoft.Component.MSBuild",
           "--add","Microsoft.Net.Component.4.8.SDK",
           "--add","Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
@@ -319,6 +358,7 @@ $prereqBefore | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $s
 Install-ResearchPrerequisites -LogPath (Join-Path $systemDir "prerequisite-install.log")
 $prereqAfter = Get-PrerequisiteState
 $prereqAfter | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $systemDir "prerequisites-after.json") -Encoding UTF8
+Write-PrerequisiteReport -Path (Join-Path $systemDir "prerequisite-report.csv") -State $prereqAfter
 
 if ((-not $prereqAfter.ildasm -or -not $prereqAfter.dumpbin) -and -not $SkipToolDumps) {
   Write-Warning "ildasm/dumpbin are still unavailable. Raw binaries and managed metadata will still be collected, but tool-dumps will be incomplete."
@@ -419,6 +459,21 @@ try {
 Invoke-TextCapture -Path (Join-Path $systemDir "network-listeners.txt") -Script { & netstat.exe -ano }
 
 try {
+  Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" -ErrorAction SilentlyContinue |
+    Select-Object DeviceID,VolumeName,FileSystem,
+      @{N='SizeGB';E={[math]::Round($_.Size/1GB,2)}},
+      @{N='FreeGB';E={[math]::Round($_.FreeSpace/1GB,2)}} |
+    Export-Csv -LiteralPath (Join-Path $systemDir "fixed-disk-space.csv") -NoTypeInformation -Encoding UTF8
+} catch {}
+
+try {
+  Get-HotFix -ErrorAction SilentlyContinue |
+    Sort-Object InstalledOn |
+    Select-Object HotFixID,Description,InstalledBy,InstalledOn |
+    Export-Csv -LiteralPath (Join-Path $systemDir "windows-hotfixes.csv") -NoTypeInformation -Encoding UTF8
+} catch {}
+
+try {
   $since = (Get-Date).AddDays(-30)
   Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=$since} -ErrorAction SilentlyContinue |
     Where-Object {
@@ -474,6 +529,10 @@ if (-not $SkipRegistry) {
     "hkcu-viessmann.reg"="HKCU\Software\Viessmann"
     "hklm-sql-instance-names.reg"="HKLM\SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL"
     "hklm-wow6432-sql-instance-names.reg"="HKLM\SOFTWARE\WOW6432Node\Microsoft\Microsoft SQL Server\Instance Names\SQL"
+    "hklm-dotnet-framework-ndp.reg"="HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP"
+    "hklm-wow6432-dotnet-framework-ndp.reg"="HKLM\SOFTWARE\WOW6432Node\Microsoft\NET Framework Setup\NDP"
+    "hklm-visualstudio-sxs.reg"="HKLM\SOFTWARE\Microsoft\VisualStudio\SxS\VS7"
+    "hklm-wow6432-visualstudio-sxs.reg"="HKLM\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\SxS\VS7"
   }
   foreach ($name in $regKeys.Keys) {
     Export-RegKey -Key $regKeys[$name] -Path (Join-Path $registryDir $name)
@@ -597,10 +656,23 @@ if (-not $SkipToolDumps) {
   }
   $toolInfo | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $systemDir "optional-tools.json") -Encoding UTF8
 
-  $managedFiles = @($peFiles | Where-Object {
-    $_.Extension.ToLowerInvariant() -in @(".exe",".dll") -and
-    $(try { [void][Reflection.AssemblyName]::GetAssemblyName($_.FullName); $true } catch { $false })
-  })
+  if ($msbuildPath) {
+    Invoke-TextCapture -Path (Join-Path $toolsDir "msbuild-version.txt") -Script { & $msbuildPath -version }
+  }
+  if ($ildasmPath) {
+    Invoke-TextCapture -Path (Join-Path $toolsDir "ildasm-version.txt") -Script { & $ildasmPath /? }
+  }
+  if ($dumpbinPath) {
+    Invoke-TextCapture -Path (Join-Path $toolsDir "dumpbin-version.txt") -Script { & $dumpbinPath /? }
+  }
+
+  $managedFiles = New-Object System.Collections.ArrayList
+  foreach ($candidate in $peFiles | Where-Object { $_.Extension.ToLowerInvariant() -in @(".exe",".dll") }) {
+    try {
+      [void][Reflection.AssemblyName]::GetAssemblyName($candidate.FullName)
+      [void]$managedFiles.Add($candidate)
+    } catch {}
+  }
 
   # Managed assembly reference graph + manifest resources + MVID. This works
   # even when ildasm is unavailable and is especially useful for tracing
@@ -617,7 +689,7 @@ if (-not $SkipToolDumps) {
         Name=$an.Name
         Version=[string]$an.Version
         CultureName=$an.CultureInfo.Name
-        PublicKeyToken=([BitConverter]::ToString($an.GetPublicKeyToken()) -replace '-','').ToLowerInvariant()
+        PublicKeyToken=(Format-PublicKeyToken $an.GetPublicKeyToken())
         ProcessorArchitecture=[string]$an.ProcessorArchitecture
         MVID=try{[string]$asm.ManifestModule.ModuleVersionId}catch{$null}
       })
@@ -627,7 +699,7 @@ if (-not $SkipToolDumps) {
           Assembly=$an.Name
           Reference=$ref.Name
           Version=[string]$ref.Version
-          PublicKeyToken=([BitConverter]::ToString($ref.GetPublicKeyToken()) -replace '-','').ToLowerInvariant()
+          PublicKeyToken=(Format-PublicKeyToken $ref.GetPublicKeyToken())
         })
       }
       foreach ($res in $asm.GetManifestResourceNames()) {
@@ -748,6 +820,21 @@ reproducible collector scripts, hashes and conclusions.
 *.rom filter=lfs diff=lfs merge=lfs -text
 *.img filter=lfs diff=lfs merge=lfs -text
 "@ | Set-Content -LiteralPath (Join-Path $OutputDir ".gitattributes") -Encoding ASCII
+
+try {
+  $allOutputFiles = @(Get-ChildItem -LiteralPath $OutputDir -File -Recurse -ErrorAction SilentlyContinue)
+  $archiveStats = [ordered]@{
+    generated_utc=(Get-Date).ToUniversalTime().ToString("o")
+    file_count=$allOutputFiles.Count
+    total_bytes=($allOutputFiles | Measure-Object -Property Length -Sum).Sum
+    total_gib=[math]::Round((($allOutputFiles | Measure-Object -Property Length -Sum).Sum / 1GB),3)
+    derived_files=@(Get-ChildItem -LiteralPath $derivedDir -File -Recurse -ErrorAction SilentlyContinue).Count
+    raw_files=@(Get-ChildItem -LiteralPath $rawDir -File -Recurse -ErrorAction SilentlyContinue).Count
+    sql_files=@(Get-ChildItem -LiteralPath $sqlDir -File -Recurse -ErrorAction SilentlyContinue).Count
+    tool_dump_files=@(Get-ChildItem -LiteralPath $toolsDir -File -Recurse -ErrorAction SilentlyContinue).Count
+  }
+  $archiveStats | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $OutputDir "archive-stats.json") -Encoding UTF8
+} catch {}
 
 Write-Host "Building final SHA256 manifest..." -ForegroundColor Cyan
 $manifestPath = Join-Path $OutputDir "archive-manifest.sha256"
