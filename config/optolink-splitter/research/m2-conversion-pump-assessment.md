@@ -210,3 +210,75 @@ controller request path (A8) and a dedicated internal-boiler-pump speed target
 (coding 31). The local coding 31 is already 100 %, so M2 remains the leading
 controller-native architecture for maintaining high boiler-side pump speed
 through heating burner operation.
+## Concrete WB2A M2 hardware path
+
+External documentation confirms that the WB2A supports a real M2 mixer circuit
+through a KM-BUS mixer extension. Historical Viessmann installation
+instructions list mixer-extension kits 7301063 (mixer-mounted) and 7301062
+(wall-mounted) as compatible with Vitodens 200-W type WB2A. A more recent
+Viessmann community answer for a WB2A retrofit identifies extension module
+7639039 as suitable and states that its KM-BUS connects at X3.6/X3.7 after
+removing plug 145.
+
+For one mixed heating circuit plus DHW the WB2A service documentation specifies
+plant schema:
+
+```text
+00:4 = M2 + DHW
+```
+
+The M2 extension provides/controls:
+
+- M2 heating-circuit pump;
+- mixer actuator;
+- M2 flow-temperature sensor;
+- KM-BUS communication to the boiler controller.
+
+The mixer extension uses rotary-selector position 2 for M2 in the installation
+manual.
+
+### Why coding 31 matters more under M2
+
+Viessmann documentation defines coding 31 as the speed setpoint of the internal
+circulation pump **when operated as boiler-circuit pump**. Viessmann technical
+support also distinguishes the direct A1 topology: when the internal pump acts
+as the heating-circuit pump, E6/E7 govern it and coding 31 has no effect.
+
+That distinction matches the local measurements exactly:
+
+```text
+current schema 00:2 A1 + DHW
+A1 calculated demand ~33-36 %
+internal pump = 50 % due internal minimum
+coding 31 = 100 % but has no visible effect in A1 mode
+```
+
+A real M2 topology is therefore the first normal operating topology found where
+the role of the internal pump changes in precisely the way needed to make
+coding 31 relevant.
+
+With A8:1, the WB2A service documentation states that M2 asserts a request to
+the internal circulation pump. The resulting working hypothesis is:
+
+```text
+M2 heat request
+  -> A8:1 internal-pump request
+  -> internal pump operates as boiler-circuit pump
+  -> coding 31 supplies boiler-pump speed target
+  -> local coding 31 = 100 %
+```
+
+This remains a hypothesis until measured on a real M2 configuration, but every
+known controller-side semantic is consistent with it.
+
+### M2 differential temperature
+
+Coding 9F becomes relevant with a mixer circuit. Viessmann defines it as the
+minimum amount by which the common/boiler flow target should exceed the highest
+currently required mixed-circuit flow target. The typical factory value is
+8 K and the range is 0..40 K.
+
+This can provide additional thermal headroom during burner operation, but it
+also raises boiler temperature and should not be treated as free efficiency.
+For the pump objective, the main benefit of M2 is the hydraulic role change of
+the internal pump; 9F is a separate secondary tuning parameter.
