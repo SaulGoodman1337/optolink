@@ -80,6 +80,8 @@ def request(client, responses, address, length, timeout=3.0):
 
 
 def snapshot(client, responses):
+    a3a = request(client, responses, "0x0A3A", 1)[0]
+    a3b = request(client, responses, "0x0A3B", 1)[0]
     a3c = request(client, responses, "0x0A3C", 1)[0]
     p7660 = request(client, responses, "0x7660", 2)
     p7663 = request(client, responses, "0x7663", 2)
@@ -87,6 +89,8 @@ def snapshot(client, responses):
     uv = request(client, responses, "0x0A10", 1)[0]
     gfa = request(client, responses, "0x55D3", 11)
     return {
+        "a3a": a3a,
+        "a3b": a3b,
         "a3c": a3c,
         "out7660": p7660[0],
         "speed7660": p7660[1],
@@ -102,10 +106,15 @@ def snapshot(client, responses):
 
 
 def fmt(s):
-    relation = (
+    relation_internal = (
         "A3C=7660"
         if s["a3c"] == s["speed7660"]
         else "A3C!=7660"
+    )
+    relation_a1 = (
+        "A3A=7663"
+        if s["a3a"] == s["speed7663"]
+        else "A3A!=7663"
     )
     timing = ""
     if s.get("flame_age_s") is not None:
@@ -114,13 +123,14 @@ def fmt(s):
         timing = f" POST_FLAME={s['post_flame_s']:.1f}s"
 
     return (
+        f"A3A={s['a3a']:3d}% A3B={s['a3b']:3d}%  "
         f"A3C={s['a3c']:3d}%  "
         f"7660={s['out7660']:02X}/{s['speed7660']:3d}%  "
         f"7663={s['out7663']:02X}/{s['speed7663']:3d}%  "
         f"WW=0x{s['ww']:02X}  UV=0x{s['uv']:02X}  "
         f"FLAME={s['flame']} MOD={s['modulation']:3d}%  "
         f"GFA5=0x{s['gfa_b5']:02X} GFA7=0x{s['gfa_b7']:02X}"
-        f"{timing}  {relation}"
+        f"{timing}  {relation_a1} {relation_internal}"
     )
 
 
@@ -155,7 +165,7 @@ def main():
 
     print("WB2A pump divergence watcher")
     print("============================")
-    print("Reads only: 0A3C, 7660, 7663, 650A, 0A10, 55D3")
+    print("Reads only: 0A3A, 0A3B, 0A3C, 7660, 7663, 650A, 0A10, 55D3")
     print("Trigger:   7660[1] != 7663[1]")
     print("Writes:    none")
     print("Ctrl-C beendet")
@@ -210,7 +220,8 @@ def main():
 
             key = tuple(
                 s[k] for k in (
-                    "a3c", "out7660", "speed7660", "out7663", "speed7663",
+                    "a3a", "a3b", "a3c",
+                    "out7660", "speed7660", "out7663", "speed7663",
                     "ww", "uv", "flame", "modulation", "gfa_b5", "gfa_b7"
                 )
             )
