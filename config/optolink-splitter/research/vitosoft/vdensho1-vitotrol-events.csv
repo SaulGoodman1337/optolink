@@ -1,0 +1,31 @@
+event_id,name_de,token,fc_read,fc_write,address,parameter,block_length,byte_position,byte_length,bit_position,bit_length,unit,conversion
+79,Raumsolltemperatur Partybetrieb A1M1,BedienRTSoll_PartyA1M1~0x2308,Virtual_READ,Virtual_WRITE,0x2308,Byte,1,0,1,0,0,ecnUnit.Grad C,NoConversion
+80,Raumsolltemperatur Partybetrieb M2,BedienRTSoll_PartyM2~0x3308,Virtual_READ,Virtual_WRITE,0x3308,Byte,1,0,1,0,0,ecnUnit.Grad C,NoConversion
+82,Raumtemperatur Soll Normalbetrieb A1M1,BedienRTSolltemperaturA1M1~0x2306,Virtual_READ,Virtual_WRITE,0x2306,Byte,1,0,1,0,0,ecnUnit.Grad C,NoConversion
+83,Raumtemperatur Soll Normalbetrieb M2,BedienRTSolltemperaturM2~0x3306,Virtual_READ,Virtual_WRITE,0x3306,Byte,1,0,1,0,0,ecnUnit.Grad C,NoConversion
+85,Raumtemperatur Soll Reduzierter Betrieb A1M1,BedienRTSolltemperaturReduziertA1M1~0x2307,Virtual_READ,Virtual_WRITE,0x2307,Byte,1,0,1,0,0,ecnUnit.Grad C,NoConversion
+86,Raumtemperatur Soll Reduzierter Betrieb M2,BedienRTSolltemperaturReduziertM2~0x3307,Virtual_READ,Virtual_WRITE,0x3307,Byte,1,0,1,0,0,ecnUnit.Grad C,NoConversion
+273,Externe Raumsolltemperatur Normal A1M1,ExternRTSolltemperaturA1M1~0x2321,Virtual_READ,Virtual_WRITE,0x2321,Byte,1,0,1,0,0,ecnUnit.Grad C,NoConversion
+274,Externe Raumsolltemperatur Normal M2,ExternRTSolltemperaturM2~0x3321,Virtual_READ,Virtual_WRITE,0x3321,Byte,1,0,1,0,0,ecnUnit.Grad C,NoConversion
+732,Raumtemperatur Soll A1M1,HK_RaumsolltemperaturaktuellA1M1~0x2500,Virtual_READ,undefined,0x2500,Byte,22,12,2,0,0,ecnUnit.Grad C,Div10
+733,Raumtemperatur Soll M2,HK_RaumsolltemperaturaktuellM2~0x3500,Virtual_READ,undefined,0x3500,Byte,22,12,2,0,0,ecnUnit.Grad C,Div10
+1053,Fernbedienung Heizkreis M2,KA0_FernbedienungM2~0x37A0,Virtual_READ,Virtual_WRITE,0x37A0,Byte,1,0,1,0,0,,NoConversion
+1055,Fernbedienung Heizkreis A1M1,KA0_KennungFernbedienungA1M1~0x27A0,Virtual_READ,Virtual_WRITE,0x27A0,Byte,1,0,1,0,0,,NoConversion
+1056,(A0) Kennung Fernbedienung A1M1,KA0_KonfiKennungFernbedienungA1M1~0x27A0,Virtual_READ,Virtual_WRITE,0x27A0,Byte,1,0,1,0,0,,NoConversion
+1057,(A0) Kennung Fernbedienung M2,KA0_KonfiKennungFernbedienungM2~0x37A0,Virtual_READ,Virtual_WRITE,0x37A0,Byte,1,0,1,0,0,,NoConversion
+1101,(B0) Raumaufschaltung A1M1,KB0_KonfiRaumaufschaltungA1M1~0x27B0,Virtual_READ,Virtual_WRITE,0x27B0,Byte,1,0,1,0,0,,NoConversion
+1102,(B0) Raumaufschaltung M2,KB0_KonfiRaumaufschaltungM2~0x37B0,Virtual_READ,Virtual_WRITE,0x37B0,Byte,1,0,1,0,0,,NoConversion
+1104,(B2) Raumgerät Raumeinfluß HK1,KB2_KonfiRaumeinflussA1M1~0x27B2,Virtual_READ,Virtual_WRITE,0x27B2,Byte,1,0,1,0,0,,NoConversion
+1105,(B2) Raumgerät Raumeinfluß HK2,KB2_KonfiRaumeinflussM2~0x37B2,Virtual_READ,Virtual_WRITE,0x37B2,Byte,1,0,1,0,0,,NoConversion
+2889,(E2) Raumgerät Istwertkorrektur A1M1,KE2_KonfiRT_KorrekturFernbedienungA1M1~0x27E2,Virtual_READ,Virtual_WRITE,0x27E2,Byte,1,0,1,0,0,,NoConversion
+2890,(E2) Raumgerät Istwertkorrektur M2,KE2_KonfiRT_KorrekturFernbedienungM2~0x37E2,Virtual_READ,Virtual_WRITE,0x37E2,Byte,1,0,1,0,0,,NoConversion
+4089,Externe Raumsolltemperatur HK1,nviHCC1_SpaceSetpt~0xA401,Virtual_READ,Virtual_WRITE,0xA401,Byte,2,0,2,0,0,ecnUnit.Grad C,Div100
+4092,Externe Raumsolltemperatur HK2,nviHCC2_SpaceSetpt~0xA441,Virtual_READ,Virtual_WRITE,0xA441,Byte,2,0,2,0,0,ecnUnit.Grad C,Div100
+4174,Effektive Raumsolltemperatur HK1,nvoHCC1_EffRoomSetpt~0xA406,Virtual_READ,undefined,0xA406,SInt,2,0,2,0,0,ecnUnit.Grad C,Div100
+4176,Effektive Raumsolltemperatur HK2,nvoHCC2_EffRoomSetpt~0xA446,Virtual_READ,undefined,0xA446,SInt,2,0,2,0,0,ecnUnit.Grad C,Div100
+5290,Fernbedienung A1 Software-Index,SWIndex_FB1~0x0A5C,Virtual_READ,undefined,0x0A5C,Array,4,3,1,0,0,,NoConversion
+5291,Fernbedienung M2 Software-Index,SWIndex_FB2~0x0A60,Virtual_READ,undefined,0x0A60,Array,4,3,1,0,0,,NoConversion
+5367,Raumtemperatur A1M1,TiefpassTemperatur_RTS_A1M1~0x0896,Virtual_READ,undefined,0x0896,Int,2,0,2,0,0,ecnUnit.Grad C,Div10
+5376,Raumtemperatur M2,TiefpassTemperaturwert_RTS_M2~0x0898,Virtual_READ,undefined,0x0898,Int,2,0,2,0,0,ecnUnit.Grad C,Div10
+10796,Status Raumtemp.-Sensor HK1,HO2B_SensorStatus_RTS_M1~0x089C,Virtual_READ,undefined,0x089C,Byte,1,0,1,0,0,,NoConversion
+10797,Status Raumtemp.-Sensor HK2,HO2B_SensorStatus_RTS_M2~0x089D,Virtual_READ,undefined,0x089D,Byte,1,0,1,0,0,,NoConversion
