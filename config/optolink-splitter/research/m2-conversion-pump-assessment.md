@@ -282,3 +282,83 @@ This can provide additional thermal headroom during burner operation, but it
 also raises boiler temperature and should not be treated as free efficiency.
 For the pump objective, the main benefit of M2 is the hydraulic role change of
 the internal pump; 9F is a separate secondary tuning parameter.
+## Local hydraulic topology: simple radiator circuit
+
+The local installation has now been clarified as:
+
+```text
+WB2A
+  -> internal pump
+  -> single direct radiator circuit
+
+no hydraulic separator
+no external heating-circuit pump
+no underfloor-heating circuit
+no existing mixer circuit
+```
+
+This materially changes the practical M2 assessment.
+
+For a single radiator circuit there is no independent low-temperature circuit
+that inherently requires a mixer. Converting to M2 would therefore add a mixer,
+M2 pump, flow sensor, KM-BUS extension and hydraulic re-piping primarily to
+change the role of the internal pump from direct heating-circuit pump to
+boiler-circuit pump.
+
+Viessmann documentation/support distinguishes the two roles:
+
+- without mixer/hydraulic separator, the internal pump acts as the heating-
+  circuit pump and E6/E7 are the relevant normal-heating speed limits;
+- with mixer/hydraulic separator, the internal pump becomes the boiler-circuit
+  pump and coding 31 becomes the relevant speed target.
+
+This matches the local observations: schema 00:2, coding 31 = 100 %, but normal
+heating still runs the internal pump at 50 % from an A1 request around 33-36 %.
+
+### Preferred diagnostic before any M2 conversion
+
+The local values are already:
+
+```text
+E6 = 100 %
+E7 = 30 %
+31 = 100 %
+GWG75 = 50 %
+```
+
+Before adding M2 hardware, perform a short controlled heating test with the
+standard A1 minimum pump-speed coding E7 temporarily set to 100 % (E6 is already
+100 %), then restore E7 to 30 % after the test.
+
+Expected result if E7 is the active direct-circuit speed limiter on this WB2A:
+
+```text
+A1 pump demand 0x7663 -> 100 %
+internal pump  0x7660 -> 100 %
+```
+
+The comparison should record whether the burner survives the high-start-power
+phase without crossing the target + GWG61 switch-off threshold. This is a much
+lower-complexity diagnostic than an M2 retrofit and directly tests whether
+100 % boiler-side flow solves the observed cycling mechanism.
+
+If successful, the remaining engineering question is not whether 100 % pump
+helps, but how to obtain it only for the desired heating operating periods.
+Leaving E7 at 100 % permanently would make the pump run at 100 % whenever the
+A1 pump is enabled, potentially for long burner-off periods as well.
+
+### Revised M2 assessment for this installation
+
+M2 remains technically valid and could make coding 31 = 100 % the boiler-pump
+setpoint, while a separate M2 pump controls radiator-circuit flow. For this
+simple radiator-only system, however, M2 is a large hardware solution to a
+control problem that may be demonstrable with the existing direct circuit.
+
+Potential reasons to choose M2 anyway would be:
+
+- deliberate hydraulic separation of boiler-side and radiator-side flow;
+- desire to run high boiler-pump flow without exposing radiators/TRVs to the
+  same differential pressure;
+- desire for independent mixed-circuit temperature control.
+
+Without those needs, first validate E7=100 % behavior on A1.
