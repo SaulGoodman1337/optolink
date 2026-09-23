@@ -149,15 +149,15 @@ function New-ToolEncodedCommand {
   $errExpr = if ($Task.StdErr) { Quote-PsLiteral ([string]$Task.StdErr) } else { "$null" }
 
   $lines = @(
-    "$ErrorActionPreference = 'Continue'",
-    "$tool = " + $toolLiteral,
-    "$toolArgs = " + $argExpr,
-    "$stdoutPath = " + $outExpr,
-    "$stderrPath = " + $errExpr,
-    "if ($stdoutPath -and $stderrPath) { & $tool @toolArgs 1> $stdoutPath 2> $stderrPath } elseif ($stdoutPath) { & $tool @toolArgs 1> $stdoutPath } elseif ($stderrPath) { & $tool @toolArgs 2> $stderrPath } else { & $tool @toolArgs }",
-    "$code = $LASTEXITCODE",
-    "if ($null -eq $code) { $code = 0 }",
-    "exit [int]$code"
+    '$ErrorActionPreference = \'Continue\'',
+    ('$tool = ' + $toolLiteral),
+    ('$toolArgs = ' + $argExpr),
+    ('$stdoutPath = ' + $outExpr),
+    ('$stderrPath = ' + $errExpr),
+    'if ($stdoutPath -and $stderrPath) { & $tool @toolArgs 1> $stdoutPath 2> $stderrPath } elseif ($stdoutPath) { & $tool @toolArgs 1> $stdoutPath } elseif ($stderrPath) { & $tool @toolArgs 2> $stderrPath } else { & $tool @toolArgs }',
+    '$code = $LASTEXITCODE',
+    'if ($null -eq $code) { $code = 0 }',
+    'exit [int]$code'
   )
   $command = $lines -join [Environment]::NewLine
   return [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
@@ -380,7 +380,6 @@ function Get-PrerequisiteState {
     robocopy=$(if(Get-Command robocopy.exe -ErrorAction SilentlyContinue){(Get-Command robocopy.exe).Source}else{$null})
     reg=$(if(Get-Command reg.exe -ErrorAction SilentlyContinue){(Get-Command reg.exe).Source}else{$null})
     ildasm=(Find-ToolPath "ildasm.exe")
-  ilspycmd=(Find-ToolPath "ilspycmd.exe")
     dumpbin=(Find-ToolPath "dumpbin.exe")
     corflags=(Find-ToolPath "corflags.exe")
     sn=(Find-ToolPath "sn.exe")
