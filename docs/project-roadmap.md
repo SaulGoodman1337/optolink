@@ -136,6 +136,63 @@ Main file:
 The old schedule cards should be removed from the diagnostics page once the
 dedicated tab is in place.
 
+### 2b. Apply the new diagnostic cockpit style to the other Home Assistant dashboards
+
+Status: **TODO / visual direction approved in live dashboard**
+
+The redesigned **Diagnose** tab is now the visual reference for further
+Home Assistant work. The current direction was positively evaluated in live
+use and should be carried over selectively to the other dashboard views rather
+than rebuilding them as plain entity lists.
+
+Reference patterns from the Diagnose tab:
+
+- use `background-graph-entities` where a current value benefits from a short
+  history directly behind it;
+- use compact `button-card` status tiles for discrete states, faults, modes and
+  internal controller values;
+- keep every useful entity individually clickable so normal Home Assistant
+  `more-info` remains available;
+- use semantic state colors for real status/fault meaning, but use restrained
+  section accent colors for static/reference data;
+- group related technical values into compact multi-value cards instead of
+  long `entities` / `multiple-entity-row` lists;
+- use process/timeline chains where the controller behavior has a meaningful
+  sequence, following the new combustion-sequence presentation;
+- preserve responsive behavior: dense desktop cockpit, readable mobile layout,
+  no fixed multi-column layout that becomes illegible on phones;
+- avoid popup-only navigation for information that is useful during live
+  troubleshooting;
+- keep raw/research-only values visually distinguishable from confirmed
+  operator-facing values.
+
+Candidate views to rework with the same design language:
+
+- **Heizung**: turn the current status/temperature/pump overview into a more
+  coherent operating cockpit while keeping controls obvious;
+- **Heizkurve**: keep the strong graph-based presentation, but modernize the
+  parameter/status sections and consider a compact logic/process presentation
+  for A3/A5/A6;
+- **Pumpen**: highest-priority follow-up candidate; combine status, commanded
+  speed, actual speed and hydraulic result in compact graph/status cards and
+  consider a pump-control/process chain similar to the combustion timeline;
+- **Nachtabsenkung**: visually separate automation state, active setpoints,
+  timing and demand logic while retaining direct controls;
+- **Zeitprogramme**: replace the plain weekday entity lists with a compact,
+  visually structured weekly overview once the display-only baseline is
+  preserved;
+- **Graphen**: review whether the existing ApexCharts page can be made more
+  consistent with the cockpit styling without duplicating graphs already shown
+  contextually elsewhere.
+
+Implementation rule: redesign one view at a time and verify it on both desktop
+and mobile before propagating the pattern further. Preserve the working
+Diagnose tab as the reference implementation rather than changing all views in
+one large pass.
+
+Main reference file:
+`config/optolink-splitter/homeassistant-dashboard.yaml`
+
 ### 3. Find the real blower-speed datapoint
 
 Status: **open / high interest**
