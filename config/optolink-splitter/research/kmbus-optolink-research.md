@@ -95,15 +95,15 @@ The Vitosoft-derived function table contains:
 | 0x59 | KBUS_EEPROM_LT_READ | untested |
 | 0x5A | KBUS_EEPROM_LT_WRITE | **do not test yet** |
 | 0x5B | KBUS_CONTROL_WRITE | **do not test yet** |
-| 0x5D | KBUS_MEMBERLIST_READ | untested / high interest |
+| 0x5D | KBUS_MEMBERLIST_READ | global Vitosoft event exists, but **not linked to VDensHO1** |
 | 0x5E | KBUS_MEMBERLIST_WRITE | **do not test yet** |
-| 0x5F | KBUS_VIRTUAL_READ | source-confirmed / local untested |
+| 0x5F | KBUS_VIRTUAL_READ | global Vitosoft access method, but **not linked to VDensHO1** |
 | 0x60 | KBUS_VIRTUAL_WRITE | **do not test yet** |
 | 0x61 | KBUS_DIRECT_READ | untested |
 | 0x62 | KBUS_DIRECT_WRITE | **do not test yet** |
 | 0x63 | KBUS_INDIRECT_READ | untested |
 | 0x64 | KBUS_INDIRECT_WRITE | **do not test yet** |
-| 0x65 | KBUS_GATEWAY_READ | untested / high interest |
+| 0x65 | KBUS_GATEWAY_READ | no VDensHO1 Vitosoft event; do not prioritize blindly |
 | 0x66 | KBUS_GATEWAY_WRITE | **do not test yet** |
 
 Primary source for the names:
@@ -151,12 +151,142 @@ Therefore the current debug path directly controls:
 This is stronger than merely knowing that arbitrary function codes can be sent:
 the request-frame layout used by the splitter is known.
 
-What is **not** yet known is how Vitosoft-specific event metadata such as
-`Parameter`, `PrefixRead` and `PrefixWrite` maps onto these VS2 fields for
-the KBus function family. Those values may be encoded in address or payload
-bytes, may be consumed only by higher-level Vitosoft logic, or may vary by
-function. This mapping must be established from real event definitions or
-captures rather than guessed.
+The production Vitosoft metadata now resolves much of the earlier uncertainty
+around the additional event fields.
+
+The global `ecnEventType.xml` contains real KBus/KM-BUS rows with
+`PrefixRead`/`PrefixWrite`. For example, 90 of 91
+`KMBUS_EEPROM_READ` definitions use:
+
+~~~text
+PrefixRead = 030000000101
+~~~
+
+The Vitosoft-derived VS2 message builder and the Optolink-Splitter generic
+request use the same structural location for optional bytes:
+
+~~~text
+41 LEN PROTID FCT ADDR_H ADDR_L BLOCKLEN [DATA ...] CHECKSUM
+~~~
+
+Therefore the strongest current mapping is:
+
+~~~text
+Vitosoft PrefixRead -> request DATA bytes after BlockLength
+~~~
+
+This mapping is **source-supported but not yet hardware-verified** with a real
+Vitosoft-defined KBus event on the local WB2A. The earlier prefix-less 0x43/F8
+experiments remain valid wire evidence, but they must not be treated as normal
+Vitosoft KMBUS_EEPROM_READ semantics.
+
+## Production Vitosoft join for the exact local profile
+
+A complete production Vitosoft 300 SID1 data set was supplied on 2026-09-23
+after first launch.
+
+~~~text
+DataPointDefinitionVersion = 0.0.26.4683
+VDensHO1 datapoint type ID = 60
+VDensHO1 event links        = 581
+missing access definitions  = 0
+~~~
+
+The exact device selector in `ecnDataPointType.xml` is:
+
+~~~text
+VDensHO1
+Identification              20C2
+IdentificationExtension     0100
+IdentificationExtensionTill 0103
+~~~
+
+The local controller reports developer version `01 03`, so this is the exact
+Vitosoft profile for the local WB2A.
+
+### Major result: VDensHO1 itself uses no KBUS/KMBUS FCRead/FCWrite
+
+The complete 581-event join has:
+
+~~~text
+Virtual_READ           462
+GFA_READ                94
+Remote_Procedure_Call   22
+blank                     2
+undefined                 1
+
+KBUS_* / KMBUS_*         0
+~~~
+
+This changes the priority of the project.
+
+The global Vitosoft database contains 1797 KBus/KM-BUS access definitions, but
+none are linked to the exact VDensHO1 profile. Their main users are legacy
+Dekamatik and Vitocom/DEKATEL communication profiles.
+
+In particular:
+
+- the single `KBUS_MEMBERLIST_READ` event is linked to VCOM300/DEKATEL_F
+  profiles, not VDensHO1;
+- `KBUS_VIRTUAL_READ` exists globally (232 definitions), but is not a
+  VDensHO1 access method;
+- `KMBUS_EEPROM_READ` exists globally (91 definitions), but is not part of
+  the VDensHO1 event tree.
+
+Therefore the next local step is **not** a blind 0x5D/0x5F/0x65 sweep.
+
+### KM-BUS accessory state is exposed through ordinary virtual objects
+
+For VDensHO1, Vitosoft exposes remote-control presence/configuration through
+normal virtual addresses.
+
+A1/M1 remote:
+
+~~~text
+0x27A0
+Virtual_READ + Virtual_WRITE
+0 = not present
+1 = Vitotrol 200
+2 = Vitotrol 300
+~~~
+
+M2 remote:
+
+~~~text
+0x37A0
+Virtual_READ + Virtual_WRITE
+0 = not present
+1 = Vitotrol 200
+2 = Vitotrol 300
+~~~
+
+Remote software-index blocks:
+
+~~~text
+A1/M1 0x0A5C / 4 bytes
+M2    0x0A60 / 4 bytes
+~~~
+
+Actual room values are separate and read-only according to Vitosoft:
+
+~~~text
+A1/M1 0x0896 / 2 bytes / Div10 °C / Virtual_READ only
+M2    0x0898 / 2 bytes / Div10 °C / Virtual_READ only
+
+sensor status:
+A1/M1 0x089C
+M2    0x089D
+~~~
+
+This makes an Optolink-only Vitotrol path more concrete but also defines the
+remaining obstacle: the controller-side **remote type** can be configured via
+Virtual_WRITE, while the measured room-temperature object has no documented
+Virtual_WRITE path.
+
+Full extraction details:
+
+- [vitosoft/full-extraction-2026-09-23.md](vitosoft/full-extraction-2026-09-23.md)
+- [vitosoft/vdensho1-vitotrol-events.csv](vitosoft/vdensho1-vitotrol-events.csv)
 
 ## Local hardware-verified results
 
@@ -351,11 +481,11 @@ already-filtered generated catalog.
 | read 0x43 function at F8 | **verified** | accepted repeatedly; payload is dynamic |
 | characterize 0x43 F8 response shape | **LOCAL-VERIFIED** | dynamic 2-byte word is repeated/truncated to requested length; confirmed in raw VS2 frames |
 | prove 0x43 is static/linear EEPROM | **disproved for current F8/8 interpretation** | repeated test is transaction-dependent |
-| enumerate KBus members | **unknown** | 0x5D not yet tested |
+| enumerate KBus members | **not a VDensHO1 Vitosoft path** | 0x5D exists globally only for VCOM300/DEKATEL_F profiles |
 | inspect KBus initialisation | **unknown** | 0x57 not yet tested |
 | transparent KBus read | **unknown** | 0x55 not yet tested |
-| KBUS virtual read | **source-confirmed, local unknown** | 0x5F event type exists elsewhere |
-| gateway/mailbox access | **unknown** | 0x65 not yet tested |
+| KBUS virtual read | **global source-confirmed, not VDensHO1-linked** | 232 definitions elsewhere in Vitosoft |
+| gateway/mailbox access | **global function only / local relevance unknown** | no VDensHO1 Vitosoft event |
 | inject accessory/slave state | **unknown** | no write experiment justified yet |
 | emulate Vitotrol over Optolink only | **unknown** | depends on previous rows |
 | access coding-plug EEPROM through 0x43 | **not proven** | no physical/semantic link established |
@@ -364,20 +494,21 @@ already-filtered generated catalog.
 
 The project should answer these in order:
 
-1. What does the dynamic two-byte result of 0x43 at F8 actually represent,
-   and why is it repeated to the requested length?
-2. Which KBus read function codes are implemented on VDensHO1 / 20C2?
-3. What exact argument layout do those functions require?
-4. How do Vitosoft `Parameter` / `PrefixRead` values map to the VS2 request
-   fields?
-5. Can the controller expose its KBus member/discovery state through 0x5D,
-   0x57 or 0x65?
-6. Can accessory data be read through 0x5F/0x55/0x61/0x63/0x65?
-7. Is any controller-side state writable in RAM without persistent EEPROM
-   effects?
-8. Is there a controller-side path that can create or update a virtual Vitotrol
-   member?
-9. Is there any evidence connecting the KMBUS EEPROM space to the physical
+1. What is the current local state of the VDensHO1 remote-identification
+   objects at 0x27A0/0x37A0 and their software-index/sensor-status objects?
+2. What changes internally when a real or configured Vitotrol is present?
+3. Is there any documented or experimentally safe controller-side path that
+   populates the read-only room-temperature objects at 0x0896/0x0898?
+4. Does a controlled A0 remote-identification write only configure the expected
+   accessory type, or can it create enough internal state for operation without
+   a physical slave?
+5. Can Vitosoft `PrefixRead` be hardware-verified as the optional VS2 DATA
+   bytes using a source-defined event on a suitable device/path?
+6. What does the prefix-less dynamic two-byte result of 0x43 at F8 actually
+   represent?
+7. Are any global KBUS APIs useful on VDensHO1 despite not being present in its
+   Vitosoft event tree?
+8. Is there any evidence connecting the KMBUS EEPROM space to the physical
    Kesselcodierstecker?
 
 ## Experimental rules
