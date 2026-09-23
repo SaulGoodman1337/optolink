@@ -936,3 +936,92 @@ observable controlled 100 % speed setpoint.
 Conclusion: deprioritize 0x7500 as a solution. The normal M2/boiler-circuit
 architecture remains more relevant because it has a dedicated documented
 speed target, coding 31.
+## A1 E7=100 % heating test — 2026-09-23 12:08
+
+A controlled direct-heating test was performed with A1 minimum pump speed
+coding E7 raised to 100 % while E6 was already 100 %.
+
+Direct reads confirmed the control chain:
+
+```text
+0x27E7 = 0x64    E7 = 100 %
+0x7663 = 0x0164  A1 calculated/runtime pump demand = 100 %
+0x7660 = 0x0164  internal pump output/speed = 100 %
+```
+
+This proves that in the local direct A1 topology E7 can force the A1 request
+and the internal speed-controlled pump to 100 % without changing plant schema.
+
+### Burner result at 100 % pump
+
+Key timeline from the capture:
+
+```text
+12:10:28.663  pump 0 -> 100 %, A1 demand 0 -> 100 %
+12:11:54.256  FLAME_START, modulation 66 %, boiler 33.0 C, target 38.0 C
+12:12:03.239  regulation transition, modulation 65 %, boiler 36.5 C
+12:12:36.557  modulation reaches 33 % minimum, boiler 43.0 C
+12:17:33.545  boiler first reaches 46.0 C while still at 33 % modulation
+12:17:54.433  boiler 46.3 C
+12:17:56.247  thermal shutdown transition / B14 43 -> 00
+12:17:58.499  FLAME_STOP
+```
+
+Flame duration was approximately 364 s (6 min 4 s).
+
+This is fundamentally different from the previous 50 % pump heating start,
+where the boiler crossed the approximately target + 8 K shutdown threshold
+within roughly 26 s and the flame stopped after roughly 30 s, before the burner
+could reach minimum modulation.
+
+At 100 % pump the burner successfully survives the startup plateau, reaches the
+33 % heating minimum after about 42 s and then remains there for more than five
+minutes. Boiler temperature initially peaks around 44.3 C, falls back toward
+39.6-40 C as modulation reaches minimum, and only then slowly rises again until
+the target + GWG61 threshold is reached.
+
+### Interpretation
+
+This provides strong causal evidence that insufficient heat transport at the
+50 % internal-pump speed is the dominant cause of the **premature startup
+shutdown / Taktsperre** observed in the earlier heating run.
+
+The later shutdown at 100 % pump is a different operating limit: once the burner
+has reached its 33 % minimum output, the connected radiator circuit under the
+test conditions still absorbs slightly less heat than the boiler produces over
+time. The controller therefore eventually reaches the same thermal upper
+threshold. This is normal minimum-load cycling rather than a failed burner
+startup.
+
+The test also reconfirms GWG61 ~= 8 K: target remained 38.0 C and shutdown
+transition occurred at approximately 46.3 C.
+
+### Pump timing and E7 logging caveat
+
+The logger's one-time configuration snapshot was taken before the E7 change and
+therefore still recorded E7=30 %. During the actual heating phase both 0x7663
+and 0x7660 were clearly 100 %.
+
+After flame stop the capture later shows A1 demand 100 -> 32 % and internal pump
+100 -> 50 %. Because that logger revision did not poll 0x27E7 each cycle, the
+capture alone cannot determine whether this transition was caused by E7 being
+manually restored or by another controller state change.
+
+The logger has therefore been extended to poll 0x27E7 at runtime and emit E7
+change events for future tests.
+
+### Engineering consequence
+
+A real M2 conversion is no longer needed to prove that high boiler-side flow
+solves the premature-start problem. The existing A1 topology can already drive
+the internal pump to 100 % through the documented E7 path.
+
+The remaining problem is narrower:
+
+> find a durable control strategy that provides the desired high pump speed
+> during heating operation without unnecessarily forcing 100 % pump speed for
+> all A1 pump-on periods.
+
+Repeatedly rewriting E7 for every burner cycle should not be adopted until the
+storage/write semantics of this coding parameter are understood; E7 is exposed
+as a configuration/coding value, not as a dedicated volatile runtime request.
