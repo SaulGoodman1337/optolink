@@ -68,7 +68,14 @@ sysDeviceIdent.xml
 sysDeviceIdentExt.xml
 ~~~
 
-If available, also preserve the Vitosoft SQL database:
+If available, also preserve the Vitosoft SQL database. A current community
+reference locates it under:
+
+~~~text
+C:\Program Files\Viessmann Vitosoft 300 SID1\ServiceTool\Database\
+~~~
+
+Look especially for:
 
 ~~~text
 ecnViessmann.mdf
@@ -76,7 +83,10 @@ ecnViessmann.ldf
 ~~~
 
 The database is useful because the generated XML metadata originates from it
-and community tooling can query it directly when an XML field is missing.
+and community tooling can query it directly when an XML field is missing. It
+also contains cached values from a Vitosoft/device synchronization, which can
+be useful later for correlating metadata with values actually read from a
+controller.
 
 ### Windows PowerShell collection
 
