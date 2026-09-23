@@ -17,7 +17,10 @@ Fast runtime set:
   0x0810 / 2   boiler actual temperature, little-endian / 10
 
 One-time read-only configuration snapshot:
+  0x572E                 external-extension presence
   0x5730/31/32/34        internal-pump identity/target/external influences
+  0x779B                 external-demand flow-temperature target
+  0x0A48 / 4             external-extension software-index block
   0x27E5..0x27E9         A1 pump identity/max/min/reduced-mode configuration
   0x37E5..0x37E9         M2 equivalents
   0x6762/65/6C/6F        DHW pump overrun/valve type/DHW pump speed/power limit
@@ -160,6 +163,9 @@ def parse_args():
 
 def capture_probes(client: OptolinkTcp, probe_path: Path) -> None:
     probes = [
+        ("K2E_external_extension_present", "0x572E", 1),
+        ("external_extension_software_index", "0x0A48", 4),
+        ("K9B_external_demand_flow_target_c", "0x779B", 1),
         ("K30_internal_pump_id", "0x5730", 1),
         ("K31_internal_pump_target_pct", "0x5731", 1),
         ("K32_external_block_pump_effect", "0x5732", 1),
