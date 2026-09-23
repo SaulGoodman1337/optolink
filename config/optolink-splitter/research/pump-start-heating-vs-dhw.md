@@ -3285,3 +3285,39 @@ heating/A1 logic + coding values + operating-mode overrides
 The next read-only hardware discriminator is to compare
 `0x0A3A/0x0A3B/0x0A3C/0x7663/0x7660` across pump-off, heating
 pre-ignition, flame-on and takt-lock states.
+
+
+### Local validation of 0x0A3A / 0x0A3B result objects — idle baseline
+
+The raw deep-Vitosoft bundle identified adjacent read-only result objects:
+
+```text
+0x0A3A  HKP_A1_res
+0x0A3B  HKP_M2_res
+0x0A3C  InternePumpeDrehzahl_res
+```
+
+A direct local WB2A read in an idle/pump-off state returned:
+
+```text
+0x0A3A = 00
+0x0A3B = 00
+0x0A3C = 00
+0x7660 = 00 00
+0x7663 = 00 00
+
+0x55D3 = 00 7d 9b 00 00 01 00 00 00 00 01
+0x650A = 00
+0x0A10 = 03
+```
+
+Using the already validated local 0x55D3 extraction, this snapshot is
+consistent with flame off / modulation 0 and no DHW preparation.
+
+This is the first local hardware confirmation that `0x0A3A` and `0x0A3B`
+are readable/implemented on this WB2A. It does **not** yet establish their
+runtime semantics beyond the Vitosoft labels.
+
+Next discriminator: correlate `0x0A3A`, `0x0A3B`, `0x0A3C`,
+`0x7663` and `0x7660` through a normal heating start and subsequent
+flame-off/takt-lock state without any writes.
