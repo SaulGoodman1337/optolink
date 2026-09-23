@@ -775,11 +775,11 @@ Practical implication for the research goal:
    arbitration/minimum limits;
 2. the normal DHW path selects the dedicated 6C pump speed;
 3. no normal start-specific heating pump source has been found;
-4. any automatic 100 % heating-start solution would therefore have to use a
+4. any automatic 100 % heating-burner-phase solution would therefore have to use a
    different controller-supported request/service path, or modify a general
-   pump limit/setpoint, rather than enable a hidden start-only coding.
+   pump limit/setpoint, rather than enable a hidden burner-phase-only coding.
 
 General-limit changes such as raising E7 or GWG75 are not equivalent to the
-requested behavior because they would affect the pump outside burner startup.
+requested behavior because they would affect the pump while the burner is off as well.
 The actuator-test path is also not yet suitable for automation because it is a
 service mode and its side effects have not been characterized.
