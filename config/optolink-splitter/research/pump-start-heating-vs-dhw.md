@@ -1136,3 +1136,84 @@ The exact WB2A service documentation resolves the ambiguous Vitosoft term
 Thus E8/E9 do not represent burner-off or pump-overrun states. They only change
 pump speed in reduced-heating mode. They cannot provide the desired
 flame-dependent 100 % / lower-speed split during one normal heating period.
+
+## Runtime-write search and coding 51 candidate — 2026-09-23
+
+### No writable runtime pump target in exact VDensHO1
+
+A complete review of the exact VDensHO1 pump-related event set still shows no
+normal writable runtime setpoint equivalent to the read-only values:
+
+```text
+0x7660  internal-pump runtime output/speed
+0x7663  A1 runtime/calculated pump-speed request
+0x7665  M2 runtime pump speed
+```
+
+The writable controls remain configuration/coding values such as E6/E7/E8/E9,
+31, 32/34 and A8. There is therefore no exact-profile object that can simply be
+asserted as "A1 pump = 100 %" while flame is present and released afterwards.
+
+### E7 write path and persistence uncertainty
+
+Vitosoft exposes E7 event 2908 as the coding/configuration object
+`KE7_KonfiMinDrehzahlA1M1_GWG~0x27E7`.
+
+Historical P300 implementations also explicitly support writing 0x27E7 as
+"Pumpenleistung Minimal". Their write path uses the normal P300
+`Virtual_WRITE` function code 0x02.
+
+The P300 protocol separately defines `EEPROM_WRITE` as function code 0x06.
+This proves that a host write to 0x27E7 is not itself an explicit raw
+EEPROM_WRITE transaction. It does **not**, however, prove that the controller
+does not persist the virtual coding value internally after processing the
+Virtual_WRITE.
+
+Because E7 is a service coding rather than a volatile runtime setpoint, repeated
+flame-by-flame rewriting of E7 should not be used as a permanent control policy
+until persistence/write-endurance semantics are established.
+
+### Coding 51: conceptually exact, but absent from the local exact profile
+
+Later/other HO1-family profiles expose:
+
+```text
+0x7751  coding 51  K51_KonfiHydrWeicheIntPumpe
+```
+
+Viessmann documentation for controllers that support it defines the relevant
+mode as:
+
+- 51:0: with hydraulic separator, internal circulation pump runs whenever there
+  is a heat request;
+- 51:1: with hydraulic separator, internal circulation pump runs only while the
+  burner is operating, followed by pump overrun;
+- some generations additionally use 51:2 for buffer-tank topology with similar
+  burner-dependent pump operation.
+
+This is conceptually extremely close to the desired behavior, especially in
+combination with coding 31 as the boiler-circuit-pump speed target.
+
+However:
+
+1. coding 51 is **not present** in the exact base VDensHO1 Vitosoft profile used
+   by the local WB2A;
+2. the exact WB2A service coding table exposes coding 52 (hydraulic-separator
+   sensor) but not coding 51;
+3. coding 51 is explicitly tied to a boiler-circuit-pump topology with hydraulic
+   separator or buffer tank, whereas the local installation is a single direct
+   radiator circuit with no separator.
+
+Therefore 0x7751 must not be written on the local boiler based on cross-profile
+semantics.
+
+A read-only probe has been added for both:
+
+```text
+0x7751  latent K51 candidate
+0x7752  exact K52 hydraulic-separator sensor coding
+```
+
+The purpose is only to determine whether the address space exists on the local
+firmware. Even a readable value at 0x7751 would not establish that coding 51 is
+supported or safe in the direct A1 topology.
