@@ -238,7 +238,7 @@ foreach ($rootPath in $roots) {
                         RelativePath = $relative
                         Line = $lineNo
                         Keywords = ($matchedTerms -join ";")
-                        Text = if ($line.Length -gt 3000) { $line.Substring(0, 3000) } else { $line }
+                        Text = Get-ContextSnippet -Text $line -Term $matchedTerms[0] -Radius 1400
                     })
 
                     $hitCount++
@@ -313,9 +313,27 @@ $binaryHitsPath = Join-Path $OutputDir "binary-string-hits.csv"
 $hashesPath = Join-Path $OutputDir "source-hashes.csv"
 
 $inventory | Sort-Object Root, RelativePath | Export-Csv -LiteralPath $inventoryPath -NoTypeInformation -Encoding UTF8
-$textHits | Sort-Object Root, RelativePath, Line | Export-Csv -LiteralPath $textHitsPath -NoTypeInformation -Encoding UTF8
-$binaryHits | Sort-Object Root, RelativePath, Encoding, Keyword | Export-Csv -LiteralPath $binaryHitsPath -NoTypeInformation -Encoding UTF8
-$sourceHashes | Sort-Object Path | Export-Csv -LiteralPath $hashesPath -NoTypeInformation -Encoding UTF8
+
+if ($textHits.Count -gt 0) {
+    $textHits | Sort-Object Root, RelativePath, Line | Export-Csv -LiteralPath $textHitsPath -NoTypeInformation -Encoding UTF8
+}
+else {
+    '"Root","RelativePath","Line","Keywords","Text"' | Set-Content -LiteralPath $textHitsPath -Encoding UTF8
+}
+
+if ($binaryHits.Count -gt 0) {
+    $binaryHits | Sort-Object Root, RelativePath, Encoding, Keyword | Export-Csv -LiteralPath $binaryHitsPath -NoTypeInformation -Encoding UTF8
+}
+else {
+    '"Root","RelativePath","Encoding","Keyword","Context"' | Set-Content -LiteralPath $binaryHitsPath -Encoding UTF8
+}
+
+if ($sourceHashes.Count -gt 0) {
+    $sourceHashes | Sort-Object Path | Export-Csv -LiteralPath $hashesPath -NoTypeInformation -Encoding UTF8
+}
+else {
+    '"File","Path","SizeBytes","SHA256"' | Set-Content -LiteralPath $hashesPath -Encoding UTF8
+}
 
 $interestingTextFiles = @(
     $textHits |
