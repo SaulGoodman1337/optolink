@@ -105,10 +105,13 @@ The central question is:
 > Vitotrol values such as room temperature be supplied, without adding a
 > physical KM-BUS slave interface?
 
-The answer is not known yet. The important change after the latest research is
-that an Optolink-only solution must **not** be dismissed: Viessmann exposes a
-substantial KBus/KM-BUS command family in the VS2/P300 protocol, and there is
-historical and current evidence that at least part of it is real and used.
+An undocumented Optolink-only solution cannot be ruled out mathematically, but
+the current evidence no longer supports treating the generic KBus write family
+as a likely raw-slave injection API. The production Vitosoft set contains no
+KBUS/KMBUS event linked to VDensHO1, and the global write definitions are
+shaped as participant datapoint/channel operations rather than complete
+physical Vitotrol telegrams. Physical KM-BUS slave emulation is therefore the
+current reference path.
 
 ## Hardware result — A0 only arms remote expectation
 
@@ -914,11 +917,12 @@ Current confidence levels:
 | Vitosoft contains KBUS_VIRTUAL_READ/WRITE events | high |
 | current Splitter can send arbitrary VS2 function requests | high |
 | KBUS_* can address useful KBus state on this exact 20C2 | open |
-| MEMBERLIST/GATEWAY can create a virtual Vitotrol | hypothesis |
-| full Vitotrol emulation can be done via Optolink only | open |
+| MEMBERLIST/GATEWAY can create a virtual Vitotrol | **not supported by current Vitosoft usage evidence** |
+| full Vitotrol emulation can be done via Optolink only | undocumented possibility only |
 
-The Optolink-only route is therefore worth a structured read-only investigation
-before adding physical KM-BUS hardware.
+The Optolink-only route remains a static-analysis/passive-capture research
+question. The current evidence does **not** justify blind live write probes
+before building or using the source-supported physical KM-BUS reference.
 
 
 ## WiFiVitotrol source reconstruction of the real KM-BUS runtime path
@@ -1055,9 +1059,35 @@ The relevant generic function names remain:
 0x66 KBUS_GATEWAY_WRITE
 ~~~
 
-No VDensHO1 Vitosoft event currently documents the required argument semantics
-for using those functions as a slave-side injection mechanism. They must not be
-blindly written on the live boiler.
+The production Vitosoft write-family analysis has now gone further than simply
+finding no VDensHO1 event:
 
-The physical KM-BUS slave-emulation path is now source-supported and should be
-kept as the reliable fallback/reference implementation.
+~~~text
+KBUS_TRANSPARENT_WRITE  853 definitions
+  -> all BlockLength 1, participant datapoint access
+
+KBUS_DIRECT_WRITE        11 definitions
+  -> VCOM300/DEKATEL direct-channel records
+
+KBUS_GATEWAY_WRITE        1 definition
+  -> gateway operation "delete all fault messages"
+
+KBUS_CONTROL_WRITE        0 event definitions
+~~~
+
+No one is linked to VDensHO1, and none has a Vitosoft-defined request shape
+matching a complete physical Vitotrol identity, PONG or room-temperature
+telegram.
+
+Therefore the raw-injection interpretation is currently **source-negative**.
+An undocumented firmware capability may still exist, but blind
+0x56/0x5B/0x5E/0x62/0x66 writes on the live WB2A are not justified.
+
+Detailed references:
+
+- [vitotrol-kmbus-wire-protocol.md](vitotrol-kmbus-wire-protocol.md)
+- [vitosoft/kbus-write-function-analysis.md](vitosoft/kbus-write-function-analysis.md)
+- `tools/kmbus-frame.py` for offline CRC/frame generation
+
+The physical KM-BUS slave-emulation path is now the reliable reference
+implementation rather than merely a fallback.
