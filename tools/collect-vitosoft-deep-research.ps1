@@ -72,16 +72,27 @@ $terms=@(
 "KMBUS_RAM_READ","KMBUS_EEPROM_READ","KBUS_VIRTUAL_READ","KBUS_DIRECT_READ","KBUS_INDIRECT_READ","KBUS_GATEWAY_READ",
 "BusHandlerType","OptolinkHandler","Pumpe","Pump","IntPumpe","PumpeIntern","InternePumpe",
 "DrehzahlIntPumpe","InternePumpeDrehzahl","InternePumpeDrehzahl_res","DigitalAusgang_InternePumpe",
+"HKP_A1_res","HKP_M2_res","K1D_KonfiPumpenbeiBrennerein","SR13_K1D_KonfiPumpenbeiBrennerein",
+"KS_Karte_GasKonfiPumpebeiBrennerbetrieb","KS_Karte_GasKonfiPumpebeiBrennerbetrieb_NRx","KS_Karte_OelKonfiPumpebeiBrennerbetrieb",
 "SWIndex_IntPumpe","KM_Error_PumpeIntern","K30_KennungIntPumpe","K30_KennungIntPumpeKM","Heizkreispumpe",
 "Grundfos","UPM3","G-HE","GHE","Umschaltventil","Ventil","Hydraulik","Brenner","Burner","Flamme","Flame",
 "Ionisation","Ionization","Geblaese","Gebläse","Fan","Gas","Zuendung","Zündung","Ignition","Stabilisierung",
 "Stabilization","Modulation","Codierstecker","Kodierstecker","GWG","CodingPlug","EEPROM","XRAM",
 "Remote_Procedure_Call","Firmware","Bootrom","Bootloader","Flash","Programming","Programmier","Software-Index",
-"SWIndex","Aktorentest","Actuator","Service"
+"SWIndex","Aktorentest","Actuator","Service",
+"ecnUpdateDefinition","ecnDeviceSoftwareUpdate","DeviceTypeId","UsingIdentification","UpdateUsingIdentification",
+"ReadyForUpdate","BeginUpdate","EndUpdate","ConnectionString","softwareupdate","SoftwareUpdate"
 )
-$addresses=@("0x0A35","0x0A3C","0x0A4C","0x0A50","0x0A54","0x1010","0x1030","0x1040","0x1070","0x27E5","0x27E6","0x27E7","0x27E8","0x27E9","0x5556","0x55E0","0x5730","0x5731","0x7500","0x7660","0x7663","0x7751","0x778A","0x778B","0x778E","0xA0C2","0xA152","0xA395")
+$addresses=@(
+"0x0A35","0x0A3A","0x0A3B","0x0A3C","0x0A4C","0x0A50","0x0A54",
+"0x1010","0x1030","0x1040","0x1070","0x27E5","0x27E6","0x27E7","0x27E8","0x27E9",
+"0x4006","0x4009","0x400A","0x4011","0x4050","0x4051","0x4052","0x4053","0x4054","0x4055","0x4056","0x4057","0x4058",
+"0x5556","0x55E0","0x571D","0x5730","0x5731","0x581D",
+"0x7500","0x7660","0x7663","0x7701","0x7751","0x778A","0x778B","0x778C","0x778D","0x778E",
+"0xA0C2","0xA152","0xA395"
+)
 $fwTerms=@("firmware","bootrom","bootloader","flash","device programming","programming","programmierung","software update","software-update",".ugw",".hex",".bin",".mot",".s19",".s28",".s37",".rom",".fw",".dfu",".img")
-$textExt=@(".xml",".xsd",".config",".ini",".csv",".txt",".md",".json",".yaml",".yml",".ps1",".py",".cs",".vb",".js",".ts",".sql",".properties",".html",".htm",".aspx",".ascx",".asmx",".asax",".master",".sitemap",".browser",".reg",".inf",".h",".map",".rtf")
+$textExt=@(".xml",".xsd",".config",".ini",".csv",".txt",".md",".json",".yaml",".yml",".ps1",".psm1",".py",".cs",".vb",".js",".ts",".sql",".properties",".resx",".csproj",".vbproj",".sln",".html",".htm",".aspx",".ascx",".asmx",".asax",".master",".sitemap",".browser",".reg",".inf",".h",".hpp",".c",".cpp",".map",".rtf")
 $peExt=@(".dll",".exe")
 $binExt=@(".mdf",".ldf",".ecndat",".sys",".lib",".cat",".dat",".bin",".hex",".mot",".s19",".s28",".s37",".rom",".fw",".dfu",".img",".ugw")
 
@@ -152,10 +163,66 @@ try{
 
   if(-not $SkipManagedMembers){
     Write-Host "Managed type/method inventory..." -ForegroundColor Cyan
-    foreach($f in $files|Where-Object{$_.Extension.ToLowerInvariant() -in $peExt}){
-      $rel=RelPath $Root $f.FullName
-      try{$an=[Reflection.AssemblyName]::GetAssemblyName($f.FullName)}catch{continue}
-      try{$asm=[Reflection.Assembly]::ReflectionOnlyLoadFrom($f.FullName);try{$types=@($asm.GetTypes())}catch [Reflection.ReflectionTypeLoadException]{$types=@($_.Exception.Types|Where-Object{$_});foreach($e in $_.Exception.LoaderExceptions){Csv $merr @($Root,$rel,"GetTypes",$e.Message)}};$flags=[Reflection.BindingFlags]::Public -bor [Reflection.BindingFlags]::NonPublic -bor [Reflection.BindingFlags]::Instance -bor [Reflection.BindingFlags]::Static -bor [Reflection.BindingFlags]::DeclaredOnly;foreach($t in $types){$kind=if($t.IsInterface){"interface"}elseif($t.IsEnum){"enum"}elseif($t.IsValueType){"struct"}else{"class"};Csv $members @($Root,$rel,$an.Name,[string]$an.Version,$t.FullName,$kind,"type",$t.Name,[string]$t.BaseType);$stats.managed_members++;foreach($m in $t.GetMethods($flags)){$p=@($m.GetParameters()|ForEach-Object{([string]$_.ParameterType)+" "+$_.Name}) -join ", ";Csv $members @($Root,$rel,$an.Name,[string]$an.Version,$t.FullName,$kind,"method",$m.Name,(([string]$m.ReturnType)+" "+$m.Name+"("+$p+")"));$stats.managed_members++};foreach($p in $t.GetProperties($flags)){Csv $members @($Root,$rel,$an.Name,[string]$an.Version,$t.FullName,$kind,"property",$p.Name,(([string]$p.PropertyType)+" "+$p.Name));$stats.managed_members++};foreach($q in $t.GetFields($flags)){Csv $members @($Root,$rel,$an.Name,[string]$an.Version,$t.FullName,$kind,"field",$q.Name,(([string]$q.FieldType)+" "+$q.Name));$stats.managed_members++}}}catch{Csv $merr @($Root,$rel,"ReflectionOnlyLoadFrom",$_.Exception.Message)}
+
+    $managedSearchDirs=@(
+      $files |
+        Where-Object{$_.Extension.ToLowerInvariant() -in $peExt} |
+        ForEach-Object{$_.DirectoryName} |
+        Select-Object -Unique
+    )
+
+    $resolver=[ResolveEventHandler]{
+      param($sender,$args)
+      try{return [Reflection.Assembly]::ReflectionOnlyLoad($args.Name)}catch{}
+      try{
+        $simple=(New-Object Reflection.AssemblyName($args.Name)).Name+".dll"
+        foreach($d in $managedSearchDirs){
+          $candidate=Join-Path $d $simple
+          if(Test-Path -LiteralPath $candidate -PathType Leaf){
+            try{return [Reflection.Assembly]::ReflectionOnlyLoadFrom($candidate)}catch{}
+          }
+        }
+      }catch{}
+      return $null
+    }
+
+    [AppDomain]::CurrentDomain.add_ReflectionOnlyAssemblyResolve($resolver)
+    try{
+      foreach($f in $files|Where-Object{$_.Extension.ToLowerInvariant() -in $peExt}){
+        $rel=RelPath $Root $f.FullName
+        try{$an=[Reflection.AssemblyName]::GetAssemblyName($f.FullName)}catch{continue}
+        try{
+          $asm=[Reflection.Assembly]::ReflectionOnlyLoadFrom($f.FullName)
+          try{$types=@($asm.GetTypes())}
+          catch [Reflection.ReflectionTypeLoadException]{
+            $types=@($_.Exception.Types|Where-Object{$_})
+            foreach($e in $_.Exception.LoaderExceptions){Csv $merr @($Root,$rel,"GetTypes",$e.Message)}
+          }
+          $flags=[Reflection.BindingFlags]::Public -bor [Reflection.BindingFlags]::NonPublic -bor [Reflection.BindingFlags]::Instance -bor [Reflection.BindingFlags]::Static -bor [Reflection.BindingFlags]::DeclaredOnly
+          foreach($t in $types){
+            $kind=if($t.IsInterface){"interface"}elseif($t.IsEnum){"enum"}elseif($t.IsValueType){"struct"}else{"class"}
+            Csv $members @($Root,$rel,$an.Name,[string]$an.Version,$t.FullName,$kind,"type",$t.Name,[string]$t.BaseType);$stats.managed_members++
+            foreach($m in $t.GetMethods($flags)){
+              try{$p=@($m.GetParameters()|ForEach-Object{([string]$_.ParameterType)+" "+$_.Name}) -join ", "}
+              catch{$p="<signature-error>"}
+              try{$sig=([string]$m.ReturnType)+" "+$m.Name+"("+$p+")"}catch{$sig=$m.Name}
+              Csv $members @($Root,$rel,$an.Name,[string]$an.Version,$t.FullName,$kind,"method",$m.Name,$sig);$stats.managed_members++
+            }
+            foreach($p in $t.GetProperties($flags)){
+              try{$sig=([string]$p.PropertyType)+" "+$p.Name}catch{$sig=$p.Name}
+              Csv $members @($Root,$rel,$an.Name,[string]$an.Version,$t.FullName,$kind,"property",$p.Name,$sig);$stats.managed_members++
+            }
+            foreach($q in $t.GetFields($flags)){
+              try{$sig=([string]$q.FieldType)+" "+$q.Name}catch{$sig=$q.Name}
+              Csv $members @($Root,$rel,$an.Name,[string]$an.Version,$t.FullName,$kind,"field",$q.Name,$sig);$stats.managed_members++
+            }
+          }
+        }catch{
+          Csv $merr @($Root,$rel,"ReflectionOnlyLoadFrom",$_.Exception.Message)
+        }
+      }
+    }finally{
+      [AppDomain]::CurrentDomain.remove_ReflectionOnlyAssemblyResolve($resolver)
     }
   }
 
