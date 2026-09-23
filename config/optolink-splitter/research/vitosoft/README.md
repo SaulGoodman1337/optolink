@@ -318,6 +318,147 @@ exist in Vitosoft and are documented separately.
 
 See [full-extraction-2026-09-23.md](full-extraction-2026-09-23.md).
 
+## Private-archive static-analysis checkpoint — 2026-09-23
+
+The first private archival capture was incomplete in some tooling stages, but
+it already produced one major protocol result that is now considered the
+current working implementation model for GFA access.
+
+### VSKO / GFA access mechanism
+
+Static analysis of the installed Vitosoft assemblies shows:
+
+- Vitosoft has an explicit `SDKCommandState.VSKO`;
+- normal command state does not expose `GFA_READ/GFA_WRITE`;
+- VSKO state allows `GFA_READ`, `GFA_WRITE`,
+  `PROZESS_READ` and `PROZESS_WRITE`;
+- entering VSKO calls `VSManager.ChangeInterface(VS1)`;
+- Vitosoft's VS2-side GFA abstraction `GFA_READ = 0xC9` is translated to
+  VS1 `GFA_Read = 0x6B`.
+
+The reconstructed protocol transition is therefore:
+
+~~~text
+normal VS2 / P300
+  -> send 0x04 (EOT)
+  -> controller 0x05 (ENQ)
+  -> VS1 synchronization / next 0x05
+  -> PC sends 0x01 (STX)
+  -> VS1 active
+  -> GFA_READ: 0x6B <addr_hi> <addr_lo> <len>
+  -> raw response bytes
+~~~
+
+Example target:
+
+~~~text
+GFA_READ 0x4054 length 1
+wire request in VS1:
+6B 40 54 01
+~~~
+
+Vitosoft returns to VS2/P300 with:
+
+~~~text
+16 00 00
+~~~
+
+This explains the earlier failures when `0xC9` or `0x6B` was sent while
+the normal P300/VS2 session was still active. The function code was not the
+only missing piece; the protocol interface had to be changed first.
+
+Read-only GFA targets already supported by exact VDensHO1 metadata include:
+
+| Address | Meaning | Scaling |
+| --- | --- | --- |
+| `0x4006` | P06 actual blower speed | raw × 30 rpm |
+| `0x4009` | P09 blower speed setpoint | raw × 30 rpm |
+| `0x400A` | P10 blower PWM setpoint | raw × 0.4 % |
+| `0x4011` | P17 flame formation time | raw / 10 s |
+| `0x4050..0x4053` | GFA identity/version/configuration | raw/metadata-specific |
+| `0x4054` | P84 GFA phase | raw enum/state |
+| `0x4055..0x4058` | GFA status objects | raw state |
+
+A future live prober must remain read-only, take exclusive ownership of the
+serial port, stop the normal splitter service before switching to VS1, restore
+VS2/P300 in a `finally` path, then restart the service. Do not issue
+`GFA_WRITE` while investigating blower speed or burner state.
+
+### Private collector v4 status
+
+The first private archive also exposed and helped correct several collection
+problems:
+
+- raw MDF/LDF database files were preserved successfully;
+- SQL SELECT export initially failed because the connection-string builder used
+  property syntax that is brittle on Windows PowerShell 5.1; it now uses
+  canonical dictionary-style fields;
+- transient ZIP/file-lock handling in the deep collector was hardened;
+- Windows PowerShell 5.1 parser failures caused by inline `try`/hashtable
+  expressions were corrected;
+- prerequisite discovery/installation now covers the Visual Studio/.NET
+  Framework developer tools needed for ILDASM/DUMPBIN and 7-Zip.
+
+Manual tests on the actual Vitosoft Windows host verified the installed tools:
+
+~~~text
+dumpbin   vsmInterfaceCommon.dll   exit 0
+corflags  vsmInterfaceCommon.dll   exit 0
+sn -T     vsmInterfaceCommon.dll   exit 0
+ildasm    vsmInterfaceCommon.dll   works / emits IL
+~~~
+
+One separate managed assembly, `MobileClient\FlowCalibration.dll`, returns:
+
+~~~text
+Protected module -- cannot disassemble
+~~~
+
+This is an assembly-level ILDASM protection condition, not evidence that
+ILDASM itself is broken.
+
+The attempted external-tool worker pools based on nested
+`Start-Process`/PowerShell child-process wrappers proved unreliable on
+Windows PowerShell 5.1 and were deliberately removed from the current v4
+collector. Current execution strategy:
+
+- raw-tree copy: multithreaded `robocopy /MT`;
+- Deep and read-only SQL collectors: independent stages may overlap;
+- ILDASM, DUMPBIN, CORFLAGS and `sn.exe`: direct sequential invocation using
+  the same call mechanism that was manually verified;
+- each tool family first runs a single self-test before the complete file set;
+- ILDASM-protected assemblies are counted separately rather than treated as a
+  systemic tool failure;
+- ILSpyCmd is included as a managed-decompiler fallback for assemblies that
+  ILDASM refuses;
+- 7-Zip compression remains multithreaded.
+
+Current hardened script used for the next fresh full run:
+
+~~~text
+tools/collect-vitosoft-private-archive-v4.ps1
+~~~
+
+The interrupted partial output directories were deleted. The next private
+archive run is therefore a fresh collection, not a resume.
+
+### Firmware/update interpretation boundary
+
+The first raw MDF scan confirmed the presence of the strings:
+
+~~~text
+VDensHO1
+20C2
+ecnUpdateDefinition
+ecnDeviceSoftwareUpdate
+~~~
+
+Binary adjacency also exposed apparent version-like pairs such as
+`0100 / 0103` and `0104 / 019F`. These values are **not yet interpreted as
+firmware ranges** because their SQL table/row context has not been proven.
+The next successful SQL export/decompilation pass must establish that context
+before any firmware-update conclusion is made.
+
 ## Project policy for Vitosoft information
 
 When Vitosoft-derived information materially affects this project:
@@ -516,32 +657,27 @@ if ($errors.Count -gt 0) {
 & $script -CreateArchive
 ```
 
-Parallel execution is enabled by default. The collector derives a conservative
-worker count from the logical CPU count (roughly half the logical CPUs, capped
-at 6) and uses multithreaded robocopy separately.
+Current performance strategy is intentionally conservative on Windows
+PowerShell 5.1:
 
-Override examples:
+- the raw file copy uses multithreaded robocopy;
+- the independent deep-derived and read-only SQL stages can overlap;
+- ILDASM, DUMPBIN, CORFLAGS and strong-name inspection run through direct,
+  sequential tool invocations because this exact path was verified manually;
+- 7-Zip uses multithreaded compression.
 
-```powershell
-# More aggressive on a fast SSD / many-core machine:
-& $script -CreateArchive -Parallelism 8 -CopyThreads 16
+Earlier attempts to parallelize every external analysis tool through nested
+PowerShell/Start-Process workers were removed after they produced unreliable
+empty/invalid exit-status handling on the target PowerShell 5.1 host. Reliable
+collection is preferred over tool-level concurrency.
 
-# Deterministic/sequential fallback for HDDs or troubleshooting:
-& $script -CreateArchive -Sequential
-```
-
-Parallelized/overlapped work includes:
-
-- deep-derived collection and SQL read-only collection;
-- ILDASM tasks;
-- DUMPBIN tasks;
-- CORFLAGS tasks;
-- strong-name inspection;
-- robocopy file transfer via `/MT`;
-- 7-Zip multithreaded compression.
+The current hardened collector variant is
+`tools/collect-vitosoft-private-archive-v4.ps1`. It runs one self-test per
+tool group before processing all files, so a systemic invocation problem stops
+after one file instead of creating dozens of repeated failures.
 
 The collector records measured phase durations in
-`system/phase-timings.csv` and records the chosen CPU/parallelism values in
+`system/phase-timings.csv` and records the chosen CPU/copy settings in
 `private-archive-summary.json`.
 
 The collector now runs a prerequisite preflight before the Vitosoft scan. It
