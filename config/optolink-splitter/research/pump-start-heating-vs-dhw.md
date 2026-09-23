@@ -1490,3 +1490,148 @@ Current status:
 
 The preferred research direction remains finding an exact volatile/runtime
 pump-control object or proving the storage semantics of the normal coding path.
+
+
+### Virtual-WILO exact-profile result
+
+The complete production `DPDefinitions.xml -> ecnEventType.xml` join for the
+exact local `VDensHO1` profile contains **581 events**. Its access-function
+distribution contains:
+
+```text
+FCRead:
+  Virtual_READ
+  GFA_READ
+  Remote_Procedure_Call
+  blank / undefined
+
+FCWrite:
+  Virtual_WRITE
+  Remote_Procedure_Call
+  blank / undefined
+```
+
+There are **zero** VDensHO1 events whose access metadata uses:
+
+```text
+Virtual_WILO_READ
+Virtual_WILO_WRITE
+```
+
+This is the strongest current evidence against the idea that the WB2A internal
+pump is exposed through the P300 Wilo function codes.
+
+In particular, the known internal-pump objects remain ordinary VDensHO1
+virtual objects:
+
+```text
+0x5730  coding 30 / internal-pump type
+0x5731  coding 31 / internal-pump target
+0x7660  internal-pump output + speed
+0x0A54  internal-pump software-index block
+```
+
+None of these is bound by Vitosoft metadata to `Virtual_WILO_READ` or
+`Virtual_WILO_WRITE`.
+
+This means the Wilo FCs must be treated as a separate protocol namespace or
+gateway/device mechanism, not as an alternate FC that can simply be substituted
+for `Virtual_READ` on the normal WB2A pump addresses.
+
+### What the global Wilo references actually show
+
+The global Vitosoft/reference material contains at least two Wilo-related
+families which are distinct from the WB2A internal-pump runtime path:
+
+1. **Vitocom Wilo management**
+   - Vitosoft contains a dedicated `Wilo Management` group in the
+     `Vitocom300_LAN` profile.
+   - The Vitosoft conversion vocabulary also contains
+     `Vitocom300SGEinrichtenKanalWILO`, alongside equivalent LON and MBUS
+     channel-setup conversions.
+   - This strongly suggests a communication/gateway use case for at least part
+     of the Wilo protocol support.
+
+2. **Coding-plug Wilo diverter-valve parameters**
+   - the global event set contains `GWGB0..GWGBA` parameters labelled
+     `Wilo UV ...`;
+   - these describe a Wilo **Umschaltventil** actuator calibration/positioning
+     family, not the internal circulation-pump speed command.
+
+Therefore a textual match on `Wilo` must not be promoted to an internal-pump
+control path without an exact EventType/FC/device binding.
+
+### New metadata extractor support
+
+The repository Vitosoft extractor now has an optional global Wilo inventory:
+
+```bash
+python3 tools/extract-vitosoft-project-data.py \
+  --data-dir /path/to/vitosoft/XML \
+  --device VDensHO1 \
+  --out-dir /tmp/vitosoft-wilo \
+  --include-global-wilo
+```
+
+Additional output:
+
+```text
+virtual-wilo-events.csv
+```
+
+The CSV records every global event whose low-level metadata uses
+`Virtual_WILO_READ` or `Virtual_WILO_WRITE`, including:
+
+- event ID and token;
+- numeric address;
+- read/write FC;
+- prefixes;
+- block length and byte/bit positions;
+- conversion/type information;
+- the Vitosoft device types to which the event is linked.
+
+The extraction summary also reports:
+
+```text
+virtual_wilo_event_count
+global_virtual_wilo_event_count
+global_virtual_wilo_read_count
+global_virtual_wilo_write_count
+global_virtual_wilo_devices
+```
+
+For the exact `VDensHO1` device, `virtual_wilo_event_count` is expected to
+remain zero based on the already validated 581-event production join.
+
+### Safe next step
+
+Do **not** send raw function `0x24` probes to guessed addresses yet.
+
+The next read-only step is metadata-first:
+
+1. run the new `--include-global-wilo` extraction against the preserved
+   production Vitosoft XML set;
+2. inspect `virtual-wilo-events.csv`;
+3. identify whether any real `Virtual_WILO_READ` event belongs to a boiler,
+   pump or HO1-family device rather than Vitocom/gateway equipment;
+4. only if such an event exists, reproduce its exact Vitosoft request shape:
+   address, block length and any `PrefixRead`;
+5. then consider a single read-only hardware probe of that **known** event.
+
+No `Virtual_WILO_WRITE` hardware experiment is justified at this stage.
+
+### Current conclusion
+
+For the local WB2A / VDensHO1 01.03, the Virtual-WILO route is currently a
+**negative result for direct internal-pump control**:
+
+- the protocol function codes exist;
+- the exact VDensHO1 profile does not use them;
+- the internal-pump objects use the normal virtual access path;
+- known Wilo references point to separate Vitocom/gateway and diverter-valve
+  contexts.
+
+The Wilo path remains worth cataloguing globally, but it is no longer a leading
+candidate for the desired volatile 100 % heating-burner pump override unless
+the global event inventory reveals an exact pump-specific event that is also
+usable by this controller generation.
