@@ -426,34 +426,132 @@ burner state, DHW activity and connected KM-BUS accessories.
 Result: dynamic/transaction-dependent. Every 8-byte response was a changing
 two-byte word repeated four times. See the hardware-verified section above.
 
-### B. Check length dependence at one address — **next**
+### B. Check length dependence at one address — **completed 2026-09-23**
 
-Test every length from 1 through 8, with three complete passes:
+Three passes were run for lengths 1 through 8.
 
-~~~bash
-for pass in 1 2 3; do
-  echo
-  echo "=== PASS $pass ==="
-  for len in 1 2 3 4 5 6 7 8; do
-    echo "--- len=$len ---"
-    /usr/local/bin/optolink-debug request       "request;0x43;0x00F8;$len;;0x00"
-  done
-done
+Observed payloads:
+
+~~~text
+PASS 1
+len1  54
+len2  5491
+len3  549754
+len4  54985498
+len5  5498549854
+len6  460046004600
+len7  54985498549854
+len8  5497549754975497
+
+PASS 2
+len1  54
+len2  5497
+len3  749874
+len4  54985498
+len5  5498549854
+len6  549854985498
+len7  54975497549754
+len8  73ff73ff73ff73ff
+
+PASS 3
+len1  54
+len2  400f
+len3  549754
+len4  54985498
+len5  5491549154
+len6  549854985498
+len7  54985498549854
+len8  5498549854985498
 ~~~
 
-The value itself may change between requests. The important property is the
-**shape** for each length:
+For every response with length >= 2, the payload is exactly the requested-length
+prefix of a transaction-specific two-byte word repeated indefinitely.
 
-- does length 1 return only the first byte of a two-byte result?
-- does length 2 return exactly one two-byte result?
-- do lengths 3/5/7 truncate a repeating two-byte pattern?
-- do lengths 4/6/8 contain exact repetitions?
-- does changing length alter the underlying two-byte result semantics?
+Examples:
 
-This test is deliberately limited to the already verified function/address and
-does not introduce a new address space.
+~~~text
+word 5498:
+len4 -> 54 98 54 98
+len5 -> 54 98 54 98 54
+len6 -> 54 98 54 98 54 98
+len7 -> 54 98 54 98 54 98 54
+len8 -> 54 98 54 98 54 98 54 98
 
-### C. Establish a stable 0x41 control series
+word 7498:
+len3 -> 74 98 74
+
+word 4600:
+len6 -> 46 00 46 00 46 00
+
+word 73ff:
+len8 -> 73 ff 73 ff 73 ff 73 ff
+~~~
+
+This establishes a strong structural rule for the current F8 experiment:
+`RLEN` controls the number of returned bytes, while the controller fills those
+bytes by repeating one two-byte transaction result and truncating it when the
+requested length is odd.
+
+The two-byte result itself remains dynamic. The first byte is often 0x54 but is
+not fixed; observed alternatives include 0x74, 0x46, 0x73 and 0x40.
+
+Length 1 returned 0x54 in all three passes. That is interesting but not enough
+to conclude that 0x54 is a fixed first byte, because longer transactions prove
+that the first byte of the two-byte result can change.
+
+#### Parser verification
+
+The upstream Optolink-Splitter `receive_telegr()` implementation does not
+construct or repeat response data. After validating frame length and checksum it
+returns the received payload slice directly:
+
+~~~text
+retdata = inbuff[7:pllen+2]
+~~~
+
+Therefore the repeated two-byte structure is not produced by the MQTT/debug
+formatting path.
+
+The reference `InsideViessmannVitosoft/Viessmann2MQTT.py` implementation also
+encodes the complete extended command value directly in the VS2 command byte,
+including `KMBUS_EEPROM_READ = 67 / 0x43`. This supports the generic request
+builder's use of a literal 0x43 command byte.
+
+The splitter receiver currently derives a diagnostic `fctcd` value with
+`inbuff[3] & 0x1F`. That masked diagnostic value is not used to build the
+request and does not modify `retdata`; it should not be used to identify
+extended function codes such as 0x43.
+
+### C. Capture the unparsed VS2 response — **next**
+
+Before testing new KBus addresses or function families, capture raw responses
+for the already-known F8 request. This verifies the complete response frame,
+including response command byte and returned block length, without the normal
+response parser.
+
+Length 2 request frame:
+
+~~~text
+41 05 00 43 00 F8 02 42
+~~~
+
+Length 8 request frame:
+
+~~~text
+41 05 00 43 00 F8 08 48
+~~~
+
+Use the splitter's existing single-field full-raw path:
+
+~~~bash
+/usr/local/bin/optolink-debug request "4105004300F80242"
+/usr/local/bin/optolink-debug request "4105004300F80848"
+~~~
+
+Preserve the raw responses exactly. They should include the leading VS2 ACK and
+the complete response telegram.
+
+### D. Establish a stable 0x41 control series
 
 Repeat the known identity read in the same session:
 
@@ -467,7 +565,7 @@ done
 This is the control path. If it changes unexpectedly, the experiment session
 itself is not stable enough for interpretation.
 
-### D. Extract real KBus events from Vitosoft data
+### E. Extract real KBus events from Vitosoft data
 
 For the VDensHO1/20C2 family collect every event whose `FCRead` or `FCWrite`
 contains:
@@ -495,7 +593,7 @@ conversion metadata
 
 Do not collapse duplicate numeric addresses across different function codes.
 
-### E. Only then test additional read functions
+### F. Only then test additional read functions
 
 Priorities:
 
