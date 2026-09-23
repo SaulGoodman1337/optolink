@@ -2305,3 +2305,93 @@ for absent external pumps with the live internal-pump block:
 
 If the A1/M2 blocks show the absent-device pattern while `0x0A54` remains
 populated, that further confirms the internal-pump participant distinction.
+
+
+## KM-BUS software-index control comparison — 2026-09-23
+
+A direct comparison was made between the two optional external KM-BUS heating
+circuit pumps and the installed internal pump:
+
+```text
+0x0A4C / 4  Pumpe A1 Software-Index
+-> 00 00 00 00
+
+0x0A50 / 4  Pumpe M2 Software-Index
+-> 00 00 00 00
+
+0x0A54 / 4  Interne Pumpe Software-Index
+-> 01 11 01 01
+```
+
+Together with the configuration state:
+
+```text
+0x27E5 = 00   separate KM-BUS heating-circuit pump A1 not present
+0x5730 = 01   internal speed-controlled pump present
+0x0A35 = 00   local internal-pump KM-BUS error baseline
+```
+
+this provides an experimental control comparison:
+
+- both absent optional KM-BUS pump slots return the all-zero software-index
+  pattern;
+- the installed internal Grundfos G-HE / UPM3 KM-Bus pump has a populated
+  `0x0A54` participant/index block;
+- therefore `0x0A54` is not merely a generic static structure copied into all
+  pump slots on this controller;
+- the internal pump and the optional A1/M2 KM-BUS pumps are distinct controller
+  objects.
+
+This substantially strengthens the model that the physical internal pump is a
+real KM-BUS participant behind the dedicated VDensHO1 internal-pump path.
+
+Do not enable `0x27E5`: it would configure an additional A1 KM-BUS heating
+circuit pump that is not physically present.
+
+## Vitosoft KM-BUS / internal-pump collector
+
+A read-only PowerShell collector is stored at:
+
+```text
+tools/collect-vitosoft-kmbus-pump.ps1
+```
+
+Its purpose is to extract evidence for the actual internal-pump/KM-BUS runtime
+path without copying the whole Vitosoft installation.
+
+It inventories all files and searches text/configuration sources for, among
+others:
+
+```text
+KMBUS
+KM-BUS
+KM_Error_PumpeIntern
+SWIndex_IntPumpe
+K30_KennungIntPumpeKM
+KE5_KonfiKennung_D_PumpeA1M1_KM
+PumpeIntern / IntPumpe
+DrehzahlIntPumpe / InternePumpeDrehzahl
+DigitalAusgang_InternePumpe
+0x0A54 / 0x0A35 / 0x27E5
+0x7660 / 0x7663
+0x5730 / 0x5731
+Grundfos / UPM3 / G-HE
+```
+
+For EXE/DLL files it does **not** copy the binary. It only records matching
+embedded ASCII/UTF-16 strings with short context, plus file metadata. This keeps
+the research bundle small and avoids sending the complete Vitosoft program.
+
+Output archive contents:
+
+```text
+summary.json
+source-hashes.csv
+file-inventory.csv
+text-hits.csv
+binary-string-hits.csv
+README.txt
+```
+
+This collector performs no Optolink command and does not modify Vitosoft or the
+heating controller.
