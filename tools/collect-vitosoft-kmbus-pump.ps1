@@ -2,7 +2,8 @@ param(
     [string]$Root = "",
     [string]$OutputDir = "",
     [int]$MaxTextHitsPerFile = 500,
-    [int]$MaxBinaryMB = 80
+    [int]$MaxBinaryMB = 80,
+    [int]$ProgressSeconds = 5
 )
 
 $ErrorActionPreference = "Stop"
@@ -165,6 +166,13 @@ $textExtensions = @(
 
 $binaryExtensions = @(".exe", ".dll")
 
+$regexOptions = [Text.RegularExpressions.RegexOptions]::IgnoreCase -bor
+    [Text.RegularExpressions.RegexOptions]::CultureInvariant
+$textPattern = (($textTerms | ForEach-Object { [regex]::Escape($_) }) -join "|")
+$binaryPattern = (($binaryTerms | ForEach-Object { [regex]::Escape($_) }) -join "|")
+$textSearchRegex = [Text.RegularExpressions.Regex]::new($textPattern, $regexOptions)
+$binarySearchRegex = [Text.RegularExpressions.Regex]::new($binaryPattern, $regexOptions)
+
 $roots = @(Get-VitosoftRoots -ExplicitRoot $Root)
 if ($roots.Count -eq 0) {
     throw "No Vitosoft installation root found. Re-run with -Root 'C:\path\to\ServiceTool'."
@@ -190,13 +198,42 @@ $sourceHashes = New-Object System.Collections.Generic.List[object]
 
 foreach ($rootPath in $roots) {
     Write-Host ""
-    Write-Host "Inventorying $rootPath ..." -ForegroundColor Cyan
+    Write-Host "Enumerating files below $rootPath ..." -ForegroundColor Cyan
 
-    $files = Get-ChildItem -LiteralPath $rootPath -File -Recurse -ErrorAction SilentlyContinue
+    $files = @(Get-ChildItem -LiteralPath $rootPath -File -Recurse -ErrorAction SilentlyContinue)
+    $fileCount = $files.Count
+    Write-Host ("Found {0} files. Starting content scan..." -f $fileCount) -ForegroundColor Cyan
+
+    $scanWatch = [Diagnostics.Stopwatch]::StartNew()
+    $nextOverallProgress = [double]$ProgressSeconds
+    $fileIndex = 0
+
     foreach ($file in $files) {
+        $fileIndex++
         $relative = Get-RelativePathCompat -Base $rootPath -Path $file.FullName
         $ext = $file.Extension.ToLowerInvariant()
-        $nameMatches = @(Get-KeywordMatches -Text $relative -Terms $textTerms)
+
+        if ($scanWatch.Elapsed.TotalSeconds -ge $nextOverallProgress) {
+            $overallPercent = if ($fileCount -gt 0) {
+                [Math]::Round(($fileIndex / [double]$fileCount) * 100, 1)
+            }
+            else {
+                100
+            }
+            Write-Host (
+                "[{0}/{1} {2,5}%] {3} | text hits {4} | binary hits {5}" -f
+                $fileIndex, $fileCount, $overallPercent, $relative,
+                $textHits.Count, $binaryHits.Count
+            )
+            $nextOverallProgress = $scanWatch.Elapsed.TotalSeconds + $ProgressSeconds
+        }
+
+        $nameMatches = if ($textSearchRegex.IsMatch($relative)) {
+            @(Get-KeywordMatches -Text $relative -Terms $textTerms)
+        }
+        else {
+            @()
+        }
 
         $inventory.Add([pscustomobject]@{
             Root = $rootPath
@@ -209,6 +246,7 @@ foreach ($rootPath in $roots) {
 
         if ($file.Name -in @("DPDefinitions.xml", "ecnEventType.xml", "Textresource_de.xml")) {
             try {
+                Write-Host ("  Hashing core metadata: {0} ({1:N1} MB)" -f $relative, ($file.Length / 1MB))
                 $hash = Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256
                 $sourceHashes.Add([pscustomobject]@{
                     File = $file.Name
@@ -224,10 +262,42 @@ foreach ($rootPath in $roots) {
 
         if ($textExtensions -contains $ext) {
             $hitCount = 0
+            $reader = $null
             try {
+                if ($file.Length -ge 10MB) {
+                    Write-Host ("  Scanning large text: {0} ({1:N1} MB)" -f $relative, ($file.Length / 1MB))
+                }
+
+                $reader = New-Object IO.StreamReader($file.FullName, $true)
                 $lineNo = 0
-                foreach ($line in [IO.File]::ReadLines($file.FullName)) {
+                $nextFileProgress = $scanWatch.Elapsed.TotalSeconds + $ProgressSeconds
+
+                while (-not $reader.EndOfStream) {
+                    $line = $reader.ReadLine()
                     $lineNo++
+
+                    if ($scanWatch.Elapsed.TotalSeconds -ge $nextFileProgress) {
+                        if ($file.Length -gt 0) {
+                            $filePercent = [Math]::Min(
+                                100,
+                                [Math]::Round(($reader.BaseStream.Position / [double]$file.Length) * 100, 1)
+                            )
+                        }
+                        else {
+                            $filePercent = 100
+                        }
+                        Write-Host (
+                            "    [TEXT {0,5}%] {1} | line {2} | file hits {3} | total hits {4}" -f
+                            $filePercent, $relative, $lineNo, $hitCount, $textHits.Count
+                        )
+                        $nextFileProgress = $scanWatch.Elapsed.TotalSeconds + $ProgressSeconds
+                        $nextOverallProgress = $nextFileProgress
+                    }
+
+                    if (-not $textSearchRegex.IsMatch($line)) {
+                        continue
+                    }
+
                     $matchedTerms = @(Get-KeywordMatches -Text $line -Terms $textTerms)
                     if ($matchedTerms.Count -eq 0) {
                         continue
@@ -250,6 +320,7 @@ foreach ($rootPath in $roots) {
                             Keywords = "<limit>"
                             Text = "Per-file hit limit reached: $MaxTextHitsPerFile"
                         })
+                        Write-Host ("    Hit limit reached for {0}: {1}" -f $relative, $MaxTextHitsPerFile)
                         break
                     }
                 }
@@ -263,34 +334,47 @@ foreach ($rootPath in $roots) {
                     Text = $_.Exception.Message
                 })
             }
+            finally {
+                if ($null -ne $reader) {
+                    $reader.Dispose()
+                }
+            }
         }
         elseif (($binaryExtensions -contains $ext) -and ($file.Length -le ($MaxBinaryMB * 1MB))) {
             try {
+                if ($file.Length -ge 10MB) {
+                    Write-Host ("  Scanning binary strings: {0} ({1:N1} MB)" -f $relative, ($file.Length / 1MB))
+                }
+
                 $bytes = [IO.File]::ReadAllBytes($file.FullName)
 
                 $ascii = [Text.Encoding]::ASCII.GetString($bytes)
-                foreach ($term in $binaryTerms) {
-                    if ($ascii.IndexOf($term, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
-                        $binaryHits.Add([pscustomobject]@{
-                            Root = $rootPath
-                            RelativePath = $relative
-                            Encoding = "ASCII"
-                            Keyword = $term
-                            Context = Get-ContextSnippet -Text $ascii -Term $term
-                        })
+                if ($binarySearchRegex.IsMatch($ascii)) {
+                    foreach ($term in $binaryTerms) {
+                        if ($ascii.IndexOf($term, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                            $binaryHits.Add([pscustomobject]@{
+                                Root = $rootPath
+                                RelativePath = $relative
+                                Encoding = "ASCII"
+                                Keyword = $term
+                                Context = Get-ContextSnippet -Text $ascii -Term $term
+                            })
+                        }
                     }
                 }
 
                 $unicode = [Text.Encoding]::Unicode.GetString($bytes)
-                foreach ($term in $binaryTerms) {
-                    if ($unicode.IndexOf($term, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
-                        $binaryHits.Add([pscustomobject]@{
-                            Root = $rootPath
-                            RelativePath = $relative
-                            Encoding = "UTF-16LE"
-                            Keyword = $term
-                            Context = Get-ContextSnippet -Text $unicode -Term $term
-                        })
+                if ($binarySearchRegex.IsMatch($unicode)) {
+                    foreach ($term in $binaryTerms) {
+                        if ($unicode.IndexOf($term, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                            $binaryHits.Add([pscustomobject]@{
+                                Root = $rootPath
+                                RelativePath = $relative
+                                Encoding = "UTF-16LE"
+                                Keyword = $term
+                                Context = Get-ContextSnippet -Text $unicode -Term $term
+                            })
+                        }
                     }
                 }
             }
@@ -305,6 +389,12 @@ foreach ($rootPath in $roots) {
             }
         }
     }
+
+    $scanWatch.Stop()
+    Write-Host (
+        "Completed {0} files in {1:N1}s | text hits {2} | binary hits {3}" -f
+        $fileCount, $scanWatch.Elapsed.TotalSeconds, $textHits.Count, $binaryHits.Count
+    ) -ForegroundColor Green
 }
 
 $inventoryPath = Join-Path $OutputDir "file-inventory.csv"
@@ -358,6 +448,7 @@ $summary = [ordered]@{
     binary_files_with_hits = $interestingBinaryFiles.Count
     max_text_hits_per_file = $MaxTextHitsPerFile
     max_binary_mb = $MaxBinaryMB
+    progress_seconds = $ProgressSeconds
     notes = @(
         "Read-only collector. It does not modify Vitosoft or the heating controller.",
         "Binary files are not copied; only keyword hit metadata/context is recorded.",
