@@ -133,6 +133,46 @@ boolean toggle. Before any such write:
    test;
 5. do not enable room influence (B0) at the same time.
 
+## Error-history baseline for the next step
+
+The production Vitosoft access metadata also contains the generic system fault
+archive:
+
+~~~text
+ID          ecnsysEventType~Error
+Address     0x7507
+FCRead      Virtual_READ
+BlockLength 90
+BlockFactor 10
+~~~
+
+This represents ten 9-byte system-fault slots. Current community
+reverse-engineering identifies each slot as:
+
+~~~text
+byte 0   fault code
+bytes 1..8   BCD timestamp
+~~~
+
+and distinguishes this system archive from the burner/GFA-specific fault
+history at 0x7590 and following addresses.
+
+For the upcoming controlled Vitotrol experiment it is sufficient to capture at
+least the first/newest 9-byte slot before and after the test:
+
+~~~text
+0x7507 / 9
+~~~
+
+The exact VDensHO1 text resources define:
+
+~~~text
+0xBC = Fehler Fernbedienung HK1
+0xBD = Fehler Fernbedienung HK2
+~~~
+
+so those two codes are the primary fault signatures to watch for.
+
 ## Current conclusion
 
 The local absent-Vitotrol state is now well characterized.
