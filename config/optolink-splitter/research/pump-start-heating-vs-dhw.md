@@ -687,3 +687,51 @@ that M2 can assert a request to the internal pump when A8=1. Before considering
 any write test, first read 0x7700, 0x37A8, 0x3906 and 0x7665 on the local boiler
 and determine whether M2 exists and whether this request path is currently in
 use.
+## Local plant schema confirms A1 + DHW only
+
+Read-only local values:
+
+```text
+0x7700 = 02      plant schema = A1 + DHW
+0x37A8 = 01      M2 would request internal pump if M2 existed
+0x3906 = 00      M2 pump state off
+0x7665 = 0000    M2 pump output/speed 0 %
+0x2906 = 01      A1/M1 pump state on
+```
+
+Therefore the A8/M2 path is not active on this installation. Coding A8=1 is
+best treated as an inactive/default/stored configuration value because the
+selected plant schema contains no M2 circuit. The zero M2 runtime objects
+confirm this.
+
+The active heating path is A1. Two additional configuration facts clarify the
+meaning of the runtime objects:
+
+```text
+0x27E5 = 00  E5 A1 pump identification = staged (not a separate speed-controlled pump)
+0x5730 = 01  internal pump = speed controlled
+```
+
+This supports the following refined model:
+
+```text
+A1 logical pump state 0x2906 = ON
+A1 controller calculates speed demand 0x7663 = ~35-36 %
+                    |
+                    v
+speed-controlled internal pump arbitration
+                    |
+              GWG75 floor = 50 %
+                    |
+                    v
+physical/internal output 0x7660 = 50 %
+```
+
+Thus `0x7663` should be interpreted as the A1 control-loop speed demand, not as
+evidence for a second physical variable-speed A1 pump on this installation.
+The physical controlled actuator is the internal pump identified by coding 30.
+
+The M2/A8 path can be removed from the list of practical candidates for the
+heating-start 100 % objective. Future work should focus on the arbitration
+between A1 calculated demand, internal-pump minimum/limits and mode-specific
+sources such as DHW coding 6C.
