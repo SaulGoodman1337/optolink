@@ -2557,3 +2557,69 @@ the installed pump as `UPM3` or `G-HE`.
 Therefore the installed Grundfos G-HE / UPM3 identity continues to come from
 the physical spare-part identification, not from an Optolink manufacturer
 response.
+
+
+## Local WB2A validation of 0x0A3C — 2026-09-23
+
+The global Vitosoft event `InternePumpeDrehzahl_res~0x0A3C` has now been
+validated directly on the local VDensHO1 / WB2A.
+
+Two read-only snapshots were taken.
+
+### Pump off
+
+```text
+0x0A3C / 1 -> 00
+0x7660 / 2 -> 00 00
+0x7663 / 2 -> 00 00
+```
+
+### Pump on at 100 %
+
+```text
+0x0A3C / 1 -> 64
+0x7660 / 2 -> 01 64
+0x7663 / 2 -> 01 64
+```
+
+Therefore, on the local controller:
+
+```text
+0x0A3C == 0x7660[1]
+```
+
+for both the zero-speed and 100 % states observed so far.
+
+This is consistent with the Vitosoft text-resource definition of
+`InternePumpeDrehzahl_res` as the internal-pump set speed transferred to the
+pump.
+
+The observation also shows that the global event is implemented and readable
+on this VDensHO1 generation even though it is not linked into the exact
+581-event VDensHO1 UI/device-membership export.
+
+Current interpretation:
+
+- `0x7663[1]` = A1/heating-circuit pump demand in the tested heating state;
+- `0x7660[1]` = physical/internal-pump runtime speed;
+- `0x0A3C` = one-byte shadow of the speed transferred toward the internal
+  pump/KM-BUS path.
+
+The two current samples do **not** yet prove which of `0x7660` or `0x7663`
+is upstream of the other because all three values were equal in both samples.
+
+The discriminating test is a state already known to make the physical internal
+pump and A1 demand differ, especially DHW overrun/preparation:
+
+```text
+expected useful state:
+0x7660[1] = 100
+0x7663[1] = 0
+```
+
+Read `0x0A3C` in that state. If it follows `0x7660[1]` rather than
+`0x7663[1]`, that will strongly establish it as the final physical internal
+pump command shadow.
+
+Do not write to `0x0A3C`; the Vitosoft metadata found so far exposes it
+read-only.
