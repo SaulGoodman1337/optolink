@@ -105,13 +105,24 @@ The notes are intentionally split into two layers:
   Optolink, including verified function codes, frame layout, safety rules and
   reproducible read-only experiments.
 - [vitotrol-kbus-optolink-emulation.md](vitotrol-kbus-optolink-emulation.md) —
-  Vitotrol-specific application of the KM-BUS/Optolink research, including
-  emulation hypotheses and physical-bus fallback considerations.
+  Vitotrol-specific application of the KM-BUS/Optolink research. The simple
+  A0-only emulation hypothesis is hardware-disproved: A0=1 raises BC unless a
+  real/emulated KM-BUS slave responds.
+- [vitotrol-kmbus-wire-protocol.md](vitotrol-kmbus-wire-protocol.md) —
+  byte-level physical Vitotrol/KM-BUS reference reconstructed from two working
+  emulator implementations: discovery, identity, PING/PONG, CRC and room-
+  temperature records.
 - [vitosoft/README.md](vitosoft/README.md) —
   project-owned structured extracts and provenance for Vitosoft-derived
-  metadata. The current VDensHO1 transform contains 385 device events, a
-  dedicated 18-row KM-BUS participant extract and a cross-project event index
-  for coding-plug, burner/flame/fan and pump research.
+  metadata. The legacy filtered view contains 385 device events; the validated
+  production XML join contains **581 VDensHO1 events**. The Vitosoft research
+  directory also contains the global KBus write-function analysis showing no
+  source-defined raw Vitotrol telegram injection path for VDensHO1.
+
+Protocol helper:
+
+- `tools/kmbus-frame.py` — offline CRC/frame generator for Vitotrol discovery,
+  identity, PONG and room-temperature KM-BUS telegrams. It does not transmit.
 
 Related implementation/reference files currently in the parent directory:
 
