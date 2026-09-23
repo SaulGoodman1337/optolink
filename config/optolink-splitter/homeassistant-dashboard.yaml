@@ -144,6 +144,57 @@ button_card_templates:
           icon:
             - color: var(--state-inactive-color)
 
+  diag_process_node:
+    template: diag_process
+    section_mode: false
+    styles:
+      card:
+        - height: 100%
+        - min-height: 54px
+        - border: none
+        - border-radius: 10px
+        - box-shadow: none
+        - padding: 6px
+        - background: transparent
+      grid:
+        - grid-template-areas: >-
+            "i" "n" "s"
+        - grid-template-columns: 1fr
+        - grid-template-rows: 22px min-content min-content
+        - row-gap: 2px
+      img_cell:
+        - width: 22px
+        - height: 22px
+        - justify-self: center
+      icon:
+        - width: 19px
+      name:
+        - justify-self: center
+        - align-self: end
+        - text-align: center
+        - font-size: 10px
+        - line-height: 1.1
+      state:
+        - justify-self: center
+        - align-self: start
+        - text-align: center
+        - font-size: 12px
+        - font-weight: 700
+    state:
+      - value: "on"
+        styles:
+          card:
+            - background: color-mix(in srgb, var(--success-color) 10%, transparent)
+            - box-shadow: inset 0 -2px 0 var(--success-color)
+          icon:
+            - color: var(--success-color)
+      - value: "off"
+        styles:
+          card:
+            - background: color-mix(in srgb, var(--disabled-text-color) 5%, transparent)
+          icon:
+            - color: var(--state-inactive-color)
+
   diag_mini:
     section_mode: false
     show_icon: false
@@ -186,6 +237,8 @@ button_card_templates:
         - overflow-wrap: anywhere
 
   diag_group2:
+    variables:
+      accent: var(--primary-color)
     section_mode: true
     show_icon: false
     show_state: false
@@ -197,6 +250,10 @@ button_card_templates:
       card:
         - border-radius: 12px
         - border: 1px solid var(--divider-color)
+        - border-left: |
+            [[[
+              return `3px solid ${variables.accent}`;
+            ]]]
         - box-shadow: none
         - padding: 8px 7px 7px
         - background: var(--ha-card-background, var(--card-background-color))
@@ -208,7 +265,10 @@ button_card_templates:
         - row-gap: 5px
       name:
         - justify-self: start
-        - color: var(--primary-text-color)
+        - color: |
+            [[[
+              return variables.accent;
+            ]]]
         - font-size: 11px
         - font-weight: 600
         - padding-left: 4px
@@ -217,6 +277,8 @@ button_card_templates:
           - border-left: 1px solid var(--divider-color)
 
   diag_group3:
+    variables:
+      accent: var(--primary-color)
     section_mode: true
     show_icon: false
     show_state: false
@@ -228,6 +290,10 @@ button_card_templates:
       card:
         - border-radius: 12px
         - border: 1px solid var(--divider-color)
+        - border-left: |
+            [[[
+              return `3px solid ${variables.accent}`;
+            ]]]
         - box-shadow: none
         - padding: 8px 7px 7px
         - background: var(--ha-card-background, var(--card-background-color))
@@ -239,7 +305,10 @@ button_card_templates:
         - row-gap: 5px
       name:
         - justify-self: start
-        - color: var(--primary-text-color)
+        - color: |
+            [[[
+              return variables.accent;
+            ]]]
         - font-size: 11px
         - font-weight: 600
         - padding-left: 4px
@@ -2584,68 +2653,67 @@ views:
               grid:
                 - grid-template-areas: >-
                     "s1 a1 s2 a2 s3 a3 s4 a4 s5"
-                - grid-template-columns: 1fr 20px 1fr 20px 1fr 20px 1fr 20px 1fr
+                - grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr) 24px minmax(0, 1fr) 24px minmax(0, 1fr) 24px minmax(0, 1fr)
                 - grid-template-rows: 1fr
-                - align-items: stretch
+                - align-items: center
               custom_fields:
                 a1:
                   - align-self: center
-                  - justify-self: center
+                  - justify-self: stretch
+                  - text-align: center
                   - color: var(--secondary-text-color)
                 a2:
                   - align-self: center
-                  - justify-self: center
+                  - justify-self: stretch
+                  - text-align: center
                   - color: var(--secondary-text-color)
                 a3:
                   - align-self: center
-                  - justify-self: center
+                  - justify-self: stretch
+                  - text-align: center
                   - color: var(--secondary-text-color)
                 a4:
                   - align-self: center
-                  - justify-self: center
+                  - justify-self: stretch
+                  - text-align: center
                   - color: var(--secondary-text-color)
             custom_fields:
               s1:
                 card:
                   type: custom:button-card
-                  template: diag_process
-                  section_mode: false
+                  template: diag_process_node
                   entity: binary_sensor.vitodens_200_wb2a_brenner_wiederanlauf_freigegeben
                   name: 1 · Freigabe
                   icon: mdi:restart
-              a1: <ha-icon icon="mdi:chevron-right"></ha-icon>
+              a1: <ha-icon icon="mdi:arrow-right-thin"></ha-icon>
               s2:
                 card:
                   type: custom:button-card
-                  template: diag_process
-                  section_mode: false
+                  template: diag_process_node
                   entity: binary_sensor.vitodens_200_wb2a_brenner_startphase
                   name: 2 · Startphase
                   icon: mdi:rocket-launch
-              a2: <ha-icon icon="mdi:chevron-right"></ha-icon>
+              a2: <ha-icon icon="mdi:arrow-right-thin"></ha-icon>
               s3:
                 card:
                   type: custom:button-card
-                  template: diag_process
-                  section_mode: false
+                  template: diag_process_node
                   entity: binary_sensor.vitodens_200_wb2a_brenner_flamme
                   name: 3 · Flamme
                   icon: mdi:fire
-              a3: <ha-icon icon="mdi:chevron-right"></ha-icon>
+              a3: <ha-icon icon="mdi:arrow-right-thin"></ha-icon>
               s4:
                 card:
                   type: custom:button-card
-                  template: diag_process
-                  section_mode: false
+                  template: diag_process_node
                   entity: binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv
                   name: 4 · Anfahr-OPT
                   icon: mdi:chart-timeline-variant-shimmer
-              a4: <ha-icon icon="mdi:chevron-right"></ha-icon>
+              a4: <ha-icon icon="mdi:arrow-right-thin"></ha-icon>
               s5:
                 card:
                   type: custom:button-card
-                  template: diag_process
-                  section_mode: false
+                  template: diag_process_node
                   entity: binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb
                   name: 5 · Regelbetrieb
                   icon: mdi:tune-variant
@@ -3129,6 +3197,8 @@ views:
             icon: mdi:information-outline
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--blue-color, #2196f3)
             name: Identifikation
             custom_fields:
               v1:
@@ -3153,6 +3223,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--blue-color, #2196f3)
             name: Software
             custom_fields:
               v1:
@@ -3186,6 +3258,8 @@ views:
             icon: mdi:home-cog-outline
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--green-color, #4caf50)
             name: Anlage
             custom_fields:
               v1:
@@ -3210,6 +3284,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group2
+            variables:
+              accent: var(--green-color, #4caf50)
             name: EEPROM
             custom_fields:
               v1:
@@ -3245,6 +3321,8 @@ views:
             icon: mdi:memory
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--purple-color, #9c27b0)
             name: Kessel
             custom_fields:
               v1:
@@ -3269,6 +3347,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group2
+            variables:
+              accent: var(--purple-color, #9c27b0)
             name: Warmwasser
             custom_fields:
               v1:
@@ -3287,6 +3367,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--purple-color, #9c27b0)
             name: Heizleistung
             custom_fields:
               v1:
@@ -3311,6 +3393,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--purple-color, #9c27b0)
             name: Warmwasserleistung
             custom_fields:
               v1:
@@ -3335,6 +3419,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group2
+            variables:
+              accent: var(--purple-color, #9c27b0)
             name: Brenner
             custom_fields:
               v1:
@@ -3353,6 +3439,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group2
+            variables:
+              accent: var(--purple-color, #9c27b0)
             name: Interne Pumpe
             custom_fields:
               v1:
@@ -3371,6 +3459,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--purple-color, #9c27b0)
             name: Geräteausführung
             custom_fields:
               v1:
@@ -3404,6 +3494,8 @@ views:
             icon: mdi:valve
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--blue-color, #2196f3)
             name: Position
             custom_fields:
               v1:
@@ -3428,6 +3520,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--blue-color, #2196f3)
             name: Schrittzahl
             custom_fields:
               v1:
@@ -3452,6 +3546,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--blue-color, #2196f3)
             name: Frequenz 1
             custom_fields:
               v1:
@@ -3476,6 +3572,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group2
+            variables:
+              accent: var(--blue-color, #2196f3)
             name: Frequenz 2
             custom_fields:
               v1:
@@ -3503,6 +3601,8 @@ views:
             icon: mdi:water-boiler
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--cyan-color, #00bcd4)
             name: Start / Stop
             custom_fields:
               v1:
@@ -3527,6 +3627,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--cyan-color, #00bcd4)
             name: DLH-Regler
             custom_fields:
               v1:
@@ -3551,6 +3653,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--cyan-color, #00bcd4)
             name: Nachregelung
             custom_fields:
               v1:
@@ -3584,6 +3688,8 @@ views:
             icon: mdi:gas-burner
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--orange-color, #ff9800)
             name: Schaltdifferenzen
             custom_fields:
               v1:
@@ -3608,6 +3714,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--orange-color, #ff9800)
             name: Brennerpause
             custom_fields:
               v1:
@@ -3632,6 +3740,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group2
+            variables:
+              accent: var(--orange-color, #ff9800)
             name: KT-Regler
             custom_fields:
               v1:
@@ -3659,6 +3769,8 @@ views:
             icon: mdi:chart-line
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--purple-color, #9c27b0)
             name: Kennlinie 10–30
             custom_fields:
               v1:
@@ -3683,6 +3795,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group2
+            variables:
+              accent: var(--purple-color, #9c27b0)
             name: Kennlinie 40–50
             custom_fields:
               v1:
@@ -3701,6 +3815,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group3
+            variables:
+              accent: var(--purple-color, #9c27b0)
             name: Kennlinie 60–80
             custom_fields:
               v1:
@@ -3725,6 +3841,8 @@ views:
               columns: full
           - type: custom:button-card
             template: diag_group2
+            variables:
+              accent: var(--purple-color, #9c27b0)
             name: Kennlinie 90–100
             custom_fields:
               v1:
