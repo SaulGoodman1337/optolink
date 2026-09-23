@@ -2,7 +2,7 @@
 
 Current working backlog for the Optolink / Home Assistant / WB2A project.
 
-Last reviewed: 2026-09-22
+Last reviewed: 2026-09-23
 
 The purpose of this file is to keep open work from the different project chats
 in one place. Detailed experimental evidence remains in the device/coding-plug
@@ -151,12 +151,16 @@ Current next steps:
 4. controlled `0x27A0: 0 -> 1 -> 0` experiment completed: the controller
    accepted the value, then raised `BC = Fehler Fernbedienung HK1`; A0 alone
    is therefore not sufficient for emulation;
-5. determine which actual KM-BUS runtime exchange is required to avoid BC and
-   populate software-index / room-sensor state, and whether any internal
-   writable path can reproduce that state;
-6. retain the global KBUS/KMBUS function family as a secondary reverse-
-   engineering path rather than assuming it is the VDensHO1 Vitotrol API;
-7. separately hardware-verify the Vitosoft `PrefixRead` mapping if a suitable
+5. **completed source reconstruction:** a working Vitotrol slave is class
+   `0x11`, V200 ID `0x34`, slot `0x01`; it answers F8..FB discovery and
+   PINGs, and sends HK1 room temperature as a `0xBF` record `0x20`;
+6. **completed Vitosoft write-family analysis:** `KBUS_TRANSPARENT_WRITE`,
+   `KBUS_DIRECT_WRITE`, `KBUS_GATEWAY_WRITE` and related operations are
+   shaped as participant datapoint/gateway-channel operations, with no
+   source-defined raw Vitotrol telegram injection path and no VDensHO1 links;
+7. keep Optolink-only emulation as an undocumented/static-analysis question;
+   do not issue blind live writes using 0x56/0x5B/0x5E/0x62/0x66;
+8. separately hardware-verify the Vitosoft `PrefixRead` mapping if a suitable
    source-defined KBus event/path becomes available.
 
 The earlier prefix-less `0x43 / KMBUS_EEPROM_READ` experiments remain valid
@@ -165,8 +169,11 @@ KMBUS_EEPROM_READ definitions use a six-byte `PrefixRead`, so those F8 tests
 must not be interpreted as normal Vitosoft EEPROM reads.
 
 Detailed evidence:
-`config/optolink-splitter/research/kmbus-optolink-research.md` and
-`config/optolink-splitter/research/vitosoft/full-extraction-2026-09-23.md`.
+
+- `config/optolink-splitter/research/kmbus-optolink-research.md`;
+- `config/optolink-splitter/research/vitotrol-kmbus-wire-protocol.md`;
+- `config/optolink-splitter/research/vitosoft/kbus-write-function-analysis.md`;
+- `config/optolink-splitter/research/vitosoft/full-extraction-2026-09-23.md`.
 
 ### 6. Continue Vitotrol emulation hardware path
 
@@ -194,14 +201,38 @@ block.
 Keep this as the fallback/parallel route while the Optolink KBus path is being
 investigated.
 
+The byte-level reference is now documented in
+`research/vitotrol-kmbus-wire-protocol.md`. Known minimum behavior includes:
+
+~~~text
+1200 8E1
+class 0x11
+Vitotrol 200 ID 0x34
+slot 0x01
+F8..FB identity response
+PING -> PONG/data response
+HK1 room temperature -> 0xBF record 0x20
+~~~
+
+An offline helper is available as `tools/kmbus-frame.py`; it reproduces known
+CRC vectors and builds discovery, identity, PONG and room-temperature frames
+without accessing any hardware.
+
 Next work:
 
-- define the complete hardware chain around the M-Bus Slave Click;
+- define the complete hardware chain around the M-Bus Slave Click or another
+  proven TTL<->M-Bus slave interface;
 - choose a practical host/interface board and power arrangement;
-- verify electrical/M-Bus compatibility with the intended Vitotrol emulation;
-- define the software protocol bridge to Home Assistant/Optolink;
-- prefer a solution that can be assembled from finished modules without
-  soldering where practical.
+- first implement only discovery/identity + PONG and verify that `BC` no
+  longer appears with `0x27A0=1`;
+- then send a deliberately distinctive test room temperature and verify that
+  `0x0896` follows it and `0x089C` becomes valid;
+- capture the physical bus during the experiment and compare every frame with
+  the reconstructed reference;
+- only after the minimal link is stable, add setpoint/mode commands and the
+  Home Assistant bridge;
+- prefer a solution assembled from finished modules without soldering where
+  practical.
 
 Do not treat the M-Bus Slave Click choice as a completed implementation yet.
 
