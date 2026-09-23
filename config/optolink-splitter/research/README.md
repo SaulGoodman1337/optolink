@@ -159,3 +159,6 @@ Available helpers:
 The RKR logger is the primary helper for restart-inhibition/startup-optimization
 work; the single-session logger remains useful for focused GG1/GFA runtime
 captures.
+- [m2-conversion-pump-assessment.md](m2-conversion-pump-assessment.md) —
+  assessment of converting the local A1 + DHW topology to a real M2 mixer
+  circuit, including implications for internal-pump speed and burner startup.
