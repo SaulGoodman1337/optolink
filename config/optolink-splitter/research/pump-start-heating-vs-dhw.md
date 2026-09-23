@@ -2654,3 +2654,90 @@ making DHW preparation/overrun a practical discriminator for whether
 `0x0A3C` follows the final internal-pump command or the A1 demand.
 
 No writes are performed.
+
+
+## Decisive local divergence capture for 0x0A3C — 2026-09-23
+
+A read-only divergence watch produced the first local WB2A state in which the
+internal physical-pump speed and the A1 pump demand were different.
+
+Sequence:
+
+```text
+14:40:24
+0x0A3C =   0
+0x7660 = 00 /   0 %
+0x7663 = 00 /   0 %
+
+14:42:22
+0x0A3C = 100
+0x7660 = 01 / 100 %
+0x7663 = 01 / 100 %
+
+14:44:56
+0x0A3C =  50
+0x7660 = 01 /  50 %
+0x7663 = 00 /   0 %
+WW      = 0x00
+UV      = 0x01
+```
+
+Ten immediate follow-up samples over roughly 10 seconds remained stable:
+
+```text
+0x0A3C = 50
+0x7660 = 01 / 50 %
+0x7663 = 00 /  0 %
+```
+
+### Conclusion
+
+This is the decisive local discriminator:
+
+```text
+0x0A3C == 0x7660[1]
+0x0A3C != 0x7663[1]
+```
+
+when the two pump paths diverge.
+
+Therefore, on the local VDensHO1 / WB2A, `0x0A3C`
+(`InternePumpeDrehzahl_res`) is not merely an alias of the A1 pump demand.
+It tracks the physical/internal pump speed command represented by
+`0x7660[1]`.
+
+This directly supports the wording recovered from Vitosoft that describes
+`0x0A3C` as the internal-pump set speed transferred to the pump.
+
+Current best runtime model:
+
+```text
+A1 demand / heating-circuit logic
+        |
+        v
+0x7663[1]
+        |
+        +---- internal pump selection / operating-mode logic
+        |     coding-plug floor / post-run / DHW override / other overrides
+        v
+0x7660[1]  ~=  0x0A3C
+                  |
+                  v
+          internal KM-BUS pump path
+                  |
+                  v
+        Grundfos G-HE / UPM3
+```
+
+The observed 50 % divergence state is particularly notable because the local
+coding-plug minimum internal-pump value GWG75 is also 50. This is consistent
+with a physical internal-pump post-run/minimum path after the A1 request has
+dropped to zero, but that causal interpretation still needs explicit burner
+and operating-state correlation.
+
+E7 remained at 100 % during this capture. The result therefore also shows that
+E7 does not globally force the physical internal pump to 100 % once the A1
+pump demand itself is off.
+
+Do not write to `0x0A3C`; all discovered Vitosoft metadata for this event is
+read-only.
