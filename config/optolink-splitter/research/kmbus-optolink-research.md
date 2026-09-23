@@ -649,7 +649,7 @@ done
 This is the control path. If it changes unexpectedly, the experiment session
 itself is not stable enough for interpretation.
 
-### E. Extract real KBus events from Vitosoft data
+### E. Extract real KBus events from Vitosoft data — **current blocker**
 
 For the VDensHO1/20C2 family collect every event whose `FCRead` or `FCWrite`
 contains:
@@ -676,6 +676,22 @@ conversion metadata
 ~~~
 
 Do not collapse duplicate numeric addresses across different function codes.
+
+Public-source review on 2026-09-23 found:
+
+- the public `esphome_vitohome` VDensHO1 catalog identifies device 0x20C2;
+- its generated standard catalog explicitly reports that **117 datapoints**
+  requiring non-standard access methods such as GFA/RPC/PROZESS/KBUS/OT were
+  omitted as unreachable through its normal reader;
+- the generator documentation states that the exact access metadata lives in
+  the Vitosoft export files `DPDefinitions.xml` and `ecnEventType.xml`;
+- those underlying full Vitosoft export files are not shipped in that public
+  repository, so the omitted VDensHO1 KBus event definitions cannot be
+  reconstructed reliably from the generated YAML alone.
+
+Therefore the next high-value input is a Vitosoft XML export containing at least
+`DPDefinitions.xml` and `ecnEventType.xml`. Until that is available, do not
+invent addresses or payload semantics for 0x5D/0x57/0x65.
 
 ### F. Only then test additional read functions
 
