@@ -556,6 +556,22 @@ $scriptsDir = Join-Path $OutputDir "collector-scripts"
 foreach ($d in @($derivedDir,$rawDir,$sqlDir,$systemDir,$registryDir,$toolsDir,$scriptsDir)) {
   New-Item -ItemType Directory -Path $d -Force | Out-Null
 }
+# Resume mode: keep the already copied raw tree, but rebuild stages that may
+# contain partial/stale output from an interrupted run.
+if ($SkipRawTree) {
+  if (-not $SkipDeep -and (Test-Path -LiteralPath $derivedDir -PathType Container)) {
+    Remove-Item -LiteralPath $derivedDir -Recurse -Force
+    New-Item -ItemType Directory -Path $derivedDir -Force | Out-Null
+  }
+  if (-not $SkipSql -and (Test-Path -LiteralPath $sqlDir -PathType Container)) {
+    Remove-Item -LiteralPath $sqlDir -Recurse -Force
+    New-Item -ItemType Directory -Path $sqlDir -Force | Out-Null
+  }
+  if (-not $SkipToolDumps -and (Test-Path -LiteralPath $toolsDir -PathType Container)) {
+    Remove-Item -LiteralPath $toolsDir -Recurse -Force
+    New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null
+  }
+}
 
 Write-Host "Vitosoft PRIVATE archive collector" -ForegroundColor Cyan
 Write-Host "Root:   $Root"
