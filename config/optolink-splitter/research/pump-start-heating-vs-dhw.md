@@ -305,3 +305,122 @@ The next decisive comparison is a normal space-heating run. Record
 `0x7660/2` and `0x7663/2` before burner start, during startup and after stable
 flame. If the two values track in heating mode while DHW keeps `0x7663=0000`,
 the operating-mode arbitration boundary will be directly visible.
+## Heating startup capture — 2026-09-23 10:44
+
+A complete read-only heating startup was captured with the pump comparison
+logger. The burner subsequently shut down into the known restart inhibition /
+Taktsperre.
+
+### Pump path
+
+The decisive runtime values were:
+
+```text
+pre-start:
+  0x7660 = 0000   internal pump OFF / 0 %
+  0x7663 = 0000   A1/M1 pump OFF / 0 %
+
+heating request / pre-purge:
+  0x7660 = 0132   internal pump ON / 50 %
+  0x7663 = 0124   A1/M1 pump ON / 36 %
+
+through ignition, flame establishment, 65-66 % startup plateau,
+modulation down-ramp and flame stop:
+  0x7660 remained 0132 = 50 %
+  0x7663 remained 0124 = 36 %
+```
+
+This is strong hardware evidence that the physical internal pump does **not**
+simply mirror the A1/M1 runtime pump request in heating mode. The A1 controller
+requested 36 %, while the internal pump was clamped to exactly 50 %.
+
+The local coding plug contains:
+
+```text
+GWG75 = 50  Mindestdrehzahl interne Pumpe
+```
+
+Therefore the best-supported interpretation is now:
+
+```text
+A1/M1 calculated request = 36 %
+GWG75 internal-pump minimum = 50 %
+=> physical internal pump = 50 %
+```
+
+This is not yet a universal proof of the complete arbitration formula. A future
+passive capture with an A1 request above 50 % should test whether the internal
+pump follows it above the GWG75 floor. But the 36 -> 50 result is a direct and
+very strong functional correlation with GWG75.
+
+No 100 % heating-start override appeared. The internal pump was already at
+50 % when pre-purge began and stayed at 50 % across all GG1/GFA start-state
+transitions and flame establishment.
+
+### Heating/DHW architecture after both captures
+
+The two modes now differ clearly:
+
+```text
+HEATING
+  A1/M1 runtime request 0x7663 = 36 %
+             |
+             v
+  internal-pump arbitration / GWG75 minimum
+             |
+             v
+  physical internal pump 0x7660 = 50 %
+
+DHW OVERRUN
+  A1/M1 runtime request 0x7663 = 0 % / OFF
+  DHW hydraulic/mode request active
+             |
+             v
+  physical internal pump 0x7660 = 100 %
+```
+
+This confirms that the controller has a separate DHW pump-request path which
+bypasses the A1 runtime object, while heating is subject to a lower calculated
+A1 request plus the internal-pump minimum.
+
+### Burner sequence and thermal shutdown
+
+Key timestamps from the heating run:
+
+```text
+10:44:45.000  internal pump 0 -> 50 %, A1 pump 0 -> 36 %, GFA pre-purge
+10:44:48.503  diverter valve 03 -> 01 (toward heating)
+10:44:55.785  flame start, modulation 66 %, boiler actual 31.0 C
+10:45:07.244  +11.46 s: GFA 21/0b/60 -> 21/0b/62, 55E0.b14 01 -> 43
+10:45:21.777  +25.99 s: boiler actual 46.3 C, target 38.0 C
+10:45:23.855  +28.07 s: 55E0.b14 43 -> 00, boiler actual 48.3 C
+10:45:25.990  +30.21 s: flame stop, boiler actual 49.5 C
+```
+
+The local coding plug has `GWG61 = 8 K` switch-off difference. With a 38.0 C
+boiler/flow target, the observed 46.3 C sample is +8.3 K. The controller then
+enters the shutdown/restart-inhibition state at the next sample and the flame
+is gone roughly 2.1 s later.
+
+This is strong additional evidence for the already proposed GWG61
+interpretation and explains why this test run entered Taktsperre: the 50 %
+internal-pump floor did not remove heat quickly enough during the high startup
+modulation phase, so the boiler crossed the approximately target + 8 K
+switch-off threshold before modulation could settle low enough.
+
+### Immediate read-only follow-up
+
+The highest-value remaining static snapshot from this exact logger run is the
+`.probes.txt` file, especially:
+
+```text
+0x5732  K32 influence of external blocking on pumps
+0x5734  K34 influence of external demand on pumps
+0x6762  DHW/storage-pump overrun
+0x676F  DHW power limit
+0x0A54  internal-pump software index
+```
+
+K34 is particularly relevant to the long-term goal because Vitosoft explicitly
+labels it **Einfluss Extern Anfordern auf Pumpen**. It should remain read-only
+until its current value and exact bit/value semantics are understood.
