@@ -2853,3 +2853,39 @@ A3C=50
 
 Capturing its exact delay from flame loss will tell us when the A1 pump request
 is withdrawn and the internal-pump/GWG75-style post-run path takes over.
+
+
+### Post-flame manual confirmation with E7=100 — 2026-09-23
+
+A manual read after the burner had already gone out still showed:
+
+```text
+0x0A3C = 64
+0x7660 = 01 64
+0x7663 = 01 64
+```
+
+Therefore the absence of a divergence event was real: the A1 pump request was
+still active at 100 %, and the internal pump/final command followed it.
+
+This further confirms that static E7=100 is broader than the desired
+burner-only boost. The controller can remain in a flame-off heating-circuit
+circulation state with:
+
+```text
+FLAME = 0
+0x7663[1] = 100
+0x7660[1] = 100
+0x0A3C    = 100
+```
+
+The later previously captured state
+
+```text
+0x7663[1] = 0
+0x7660[1] = 50
+0x0A3C    = 50
+```
+
+must therefore be triggered by withdrawal of the A1 pump request or another
+later operating-state transition, not directly by flame loss.
