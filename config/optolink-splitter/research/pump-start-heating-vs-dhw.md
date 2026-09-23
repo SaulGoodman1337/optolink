@@ -499,3 +499,124 @@ Therefore coding 34 should be deprioritized for the pump-start objective. It is
 useful architectural evidence that VDensHO1 can route a non-DHW request to the
 internal pump, but it is not an immediately available software-only control
 path on this boiler as installed.
+## Complete DHW startup capture — 2026-09-23 11:02
+
+A full read-only DHW sequence was captured from normal heating state into DHW,
+including two burner phases and transition into DHW overrun.
+
+### Initial transition into DHW
+
+Immediately before the request:
+
+```text
+internal pump 0x7660 = 50 %
+A1/M1 pump   0x7663 = 35 %
+WW status    0x650A = 00 inactive
+storage pump 0x6513 = 00 off
+diverter     0x0A10 = 01 heating
+```
+
+Observed transition:
+
+```text
+11:02:59.164
+  WW 00 -> 01 (charging)
+  storage pump 00 -> 01
+  A1 pump 35 -> 0
+  internal pump remains 50 %
+
+11:03:01.130   +1.966 s
+  internal pump 50 -> 100 %
+  GFA enters 01/08/20 pre-purge/start state
+
+11:03:02.129   +2.965 s
+  diverter 01 -> 03 (toward DHW)
+
+11:03:11.411   +12.247 s
+  flame start
+```
+
+Thus the internal pump reaches 100 % roughly ten seconds before flame
+establishment and before the diverter-valve end position is observed.
+The first sampled 50 -> 100 transition coincides with the GFA pre-purge
+transition, so that single instant alone cannot distinguish whether the mode
+arbiter or GFA startup caused the edge.
+
+The remainder of the capture resolves that ambiguity.
+
+### 100 % persists independently of burner operation
+
+The first DHW burner phase ends at approximately 11:10:52 while:
+
+```text
+WW status = 01 charging
+A1 pump = 0 %
+internal pump = 100 %
+```
+
+The internal pump then remains continuously at 100 % for more than seven
+minutes with the burner OFF. At 11:18:01 the burner starts again while the pump
+is already at 100 % and no new pump-speed transition occurs.
+
+Therefore the 100 % pump state is not a transient GFA/flame-start override.
+It belongs to the DHW hydraulic/operating-mode state and is retained across
+burner cycling inside a single storage-charge operation.
+
+### Transition to DHW overrun
+
+During the second burner phase:
+
+```text
+11:19:30.124  WW 01 -> 02 (DHW overrun), internal pump still 100 %
+11:19:32.268  GFA regulation/shutdown transition, 55E0.b14 43 -> 00
+11:19:33.892  flame stop, internal pump still 100 %
+```
+
+The log ends with the controller still in WW overrun, storage pump ON,
+diverter toward DHW, A1 pump OFF and internal pump at 100 %.
+
+This is consistent with coding 62 = 5 min storage-pump overrun and proves that
+the 100 % pump command spans both active DHW charging and DHW overrun.
+
+### Status of coding 6C hypothesis
+
+Static configuration:
+
+```text
+coding 6C = 100 %  "Drehzahl Interne Pumpe bei WW-Bereitung"
+coding 31 = 100 %
+```
+
+Heating has already shown that coding 31 = 100 % is not directly applied as
+the physical pump speed during normal A1 operation: A1 requested 36 %, the
+internal pump ran at the GWG75 floor of 50 %.
+
+In contrast, as soon as DHW takes ownership of the hydraulic path, A1 is shut
+off and the internal pump changes to exactly the configured 6C value of 100 %,
+then remains there through burner OFF periods and overrun.
+
+Without deliberately perturbing 6C, absolute causal proof is not possible,
+but the combination of Vitosoft semantics and hardware timing now provides
+**very high confidence that coding 6C is the effective DHW pump-speed source**.
+A hidden GFA startup override is no longer required to explain the observed
+100 % behavior.
+
+### Additional controller-side pump paths found in VDensHO1
+
+The exact VDensHO1 event set also exposes:
+
+```text
+0x572F  coding 2F  Entlüftungs-/Befüllungsprogramm
+0x7500  Aktorentest / RelaistestGWG200x
+```
+
+For the exact VDensHO1 actuator-test enum, `0x7500 = 0x04` means
+**INTERNE PUMPE**. This is a direct controller-side service actuator path and
+is independent evidence that the controller can command the internal pump
+outside normal A1 and DHW regulation.
+
+It is not yet a candidate for normal automatic heating-start operation and its
+resulting speed is not documented by the enum. For now only the current values
+of 0x572F and 0x7500 should be read. Any actuator-test write must remain a
+later, deliberate service-mode experiment after behavior and side effects are
+fully understood.
