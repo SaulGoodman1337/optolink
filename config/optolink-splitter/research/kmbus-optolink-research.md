@@ -649,10 +649,39 @@ done
 This is the control path. If it changes unexpectedly, the experiment session
 itself is not stable enough for interpretation.
 
-### E. Extract real KBus events from Vitosoft data — **current blocker**
+### E. Extract real KBus events from Vitosoft data — **partially resolved**
 
-For the VDensHO1/20C2 family collect every event whose `FCRead` or `FCWrite`
-contains:
+A Vitosoft-derived VDensHO1 device export is now preserved in normalized form
+under [vitosoft/](vitosoft/README.md).
+
+Current local derived files:
+
+- `vitosoft/vdensho1-events.csv`: 385 VDensHO1 events;
+- `vitosoft/vdensho1-kmbus-participants.csv`: 18 events from
+  `Diagnose System -> KM-Bus-Teiln.`;
+- `vitosoft/source-manifest.json`: exact upstream paths, source commit and
+  Git-LFS SHA-256 identities for the original XML files;
+- `tools/extract-vitosoft-project-data.py`: extractor for the full XML set.
+
+The KM-BUS participant group is source-confirmed for this device and includes,
+among others:
+
+| Meaning | Event | Address |
+| --- | ---: | ---: |
+| remote control A1/M1 identification | 1055 | 0x27A0 |
+| remote control A1 software index | 5290 | 0x0A5C |
+| remote control M2 identification | 1053 | 0x37A0 |
+| remote control M2 software index | 5291 | 0x0A60 |
+| internal pump identification | 885 | 0x5730 |
+| internal pump software index | 5292 | 0x0A54 |
+| KM-BUS pump A1 identification | 2894 | 0x27E5 |
+| KM-BUS pump A1 software index | 5298 | 0x0A4C |
+
+These are Vitosoft event addresses, not yet proof of the required VS2 function
+code for each event.
+
+The remaining low-level extraction target is every VDensHO1/20C2 event whose
+`FCRead` or `FCWrite` contains:
 
 ~~~text
 KMBUS_
@@ -677,21 +706,20 @@ conversion metadata
 
 Do not collapse duplicate numeric addresses across different function codes.
 
-Public-source review on 2026-09-23 found:
+The original XML sources have now been identified in
+`MorrisonHB/Optolink_02` as Git-LFS objects, including
+`DPDefinitions.xml`, `ecnEventType.xml`, `ecnDataPointType.xml`,
+`Textresource_de.xml` and `ecnEventTypeGroup.xml`. Exact SHA-256 values and
+sizes are preserved in `vitosoft/source-manifest.json`.
 
-- the public `esphome_vitohome` VDensHO1 catalog identifies device 0x20C2;
-- its generated standard catalog explicitly reports that **117 datapoints**
-  requiring non-standard access methods such as GFA/RPC/PROZESS/KBUS/OT were
-  omitted as unreachable through its normal reader;
-- the generator documentation states that the exact access metadata lives in
-  the Vitosoft export files `DPDefinitions.xml` and `ecnEventType.xml`;
-- those underlying full Vitosoft export files are not shipped in that public
-  repository, so the omitted VDensHO1 KBus event definitions cannot be
-  reconstructed reliably from the generated YAML alone.
+The current GitHub tool can see the LFS pointers but cannot materialize the
+large LFS object bytes. Consequently the device membership and addresses are
+already preserved locally, while the exact `FCRead`/`FCWrite`,
+`PrefixRead`/`PrefixWrite` and block-length join still requires the LFS XML
+objects to be made available to the extractor.
 
-Therefore the next high-value input is a Vitosoft XML export containing at least
-`DPDefinitions.xml` and `ecnEventType.xml`. Until that is available, do not
-invent addresses or payload semantics for 0x5D/0x57/0x65.
+Until that join is complete, do not invent argument semantics for
+0x5D/0x57/0x65.
 
 ### F. Only then test additional read functions
 
