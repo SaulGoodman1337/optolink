@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "source": {
+    "uploaded_transcript_name": "Eingefügter Text(20260923-205625).txt",
+    "sha256": "cdea0307880b69ecbc22ea6af9a81a4e2068c36f315a1320210e7639bedeb1ab",
+    "log_named_in_transcript": "/root/wb2a-gfa-session-20260923-225537-169322.log",
+    "separate_device_log_fetched": false,
+    "basis": "User-uploaded console transcript; no live hardware requests made by assistant."
+  },
+  "helper": {
+    "name": "wb2a-gfa-session-probe.py",
+    "version": "1.0.0",
+    "commit": "3b9bb24e035034745b3b3949ad0a86817985597a",
+    "sha256": "32351e07cb0d661c00f7bcb7851d8103aca0b9cbc2f339041202e48b760d6da2",
+    "download_hash_check_passed": true,
+    "offline_tests_passed_on_user_host": 56
+  },
+  "session": {
+    "started": "2026-09-23T22:55:37.745+02:00",
+    "ended": "2026-09-23T22:56:05.509+02:00",
+    "rounds_confirmed": 10,
+    "runtime_samples": 40,
+    "continuation_P80_guards": 11,
+    "all_continuation_guards_20": true,
+    "independently_synchronized_P80_reads": 3,
+    "all_independently_synchronized_P80_values_20": true,
+    "raw_runtime_values_by_parameter": {
+      "P06": [0,0,0,0,0,0,0,0,0,0],
+      "P09": [0,0,0,0,0,0,0,0,0,0],
+      "P10": [0,0,0,0,0,0,0,0,0,0],
+      "P84": [0,0,0,0,0,0,0,0,0,0]
+    },
+    "burst_seconds_including_initial_continuation_guard": 6.359,
+    "P300_ident_before_and_after": ["20c2", "20c2"],
+    "P300_restored": true,
+    "splitter_running_after_restart": true,
+    "party_running_after_restart": true,
+    "result": "PASS",
+    "flame_polled": false,
+    "HA_freshness_after_this_run_reported": false,
+    "no_new_EOT_or_STX_between_continuation_requests": true
+  },
+  "timing": {
+    "basis": "Host receipt timestamps and sample_span_ms in the transcript; not exact acquisition times inside the GFA.",
+    "unit": "ms",
+    "P06_to_P84_span": {"min": 322.3, "max": 417.6, "mean": 367.35, "median": 367.2},
+    "P06_receive_interval": {"min": 597.0, "max": 703.0, "mean": 625.889, "median": 607.0},
+    "runtime_reply_latency": {"min": 55.1, "max": 151.5, "mean": 74.06, "median": 57.4},
+    "approx_rounds_per_second_from_P06_intervals": 1.598,
+    "P06_rx_times": [
+      "22:55:48.752", "22:55:49.455", "22:55:50.062", "22:55:50.663", "22:55:51.272",
+      "22:55:51.939", "22:55:52.537", "22:55:53.134", "22:55:53.740", "22:55:54.385"
+    ],
+    "P06_intervals_ms": [703,607,601,609,667,598,597,606,645],
+    "round_spans_ms": [417.6,322.3,386.8,394.1,386.9,328.2,364.5,369.9,359.0,344.2],
+    "per_register_sample_rate_is_not_40_divided_by_6_359": true,
+    "fixed_sampling_rate_proven": false,
+    "simultaneous_acquisition": false
+  },
+  "interpretation": {
+    "established": "Short response-paced same-session access to the four known registers and P80 guards, with verified P300 restoration, worked in this run.",
+    "zero_values": "Actual one-byte zero replies with nonzero P80 guard replies. Consistent with an idle-like state; no independent flame observation in this capture.",
+    "not_established": [
+      "A burner-start transition or a complete burner cycle",
+      "Long-session stability over minutes",
+      "A full phase-name dictionary or precise flame-start time",
+      "Independent mechanical RPM calibration",
+      "Fresh HA values after this particular run",
+      "Permanent concurrent P300/VS1 Home Assistant operation"
+    ]
+  }
+}
