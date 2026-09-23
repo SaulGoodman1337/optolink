@@ -385,19 +385,9 @@ These are all source-derived from the exact VDensHO1 profile.
 Only after this baseline should a controlled `0x27A0` write be considered.
 
 
-## GFA_READ wire-code correction — 2026-09-23
+## Direct GFA_READ probing on local WB2A — 2026-09-23
 
-A local test initially used `0x6B` for GFA_READ:
-
-```text
-request;0x6B;0x4054;1;;0x00
--> 3;0x4054;05
-```
-
-The return code `3` is a VS2 Error Message; the request was not a successful
-GFA read.
-
-The protocol sources distinguish two different command encodings:
+The protocol sources expose two GFA read command identifiers:
 
 ```text
 VS1/KW:
@@ -407,32 +397,62 @@ VS2/P300:
   GFA_READ = 201 decimal = 0xC9
 ```
 
-This is consistent with the extended VS2/P300 function values already used
-successfully in this project, e.g. `0x41 KMBUS_RAM_READ` and
-`0x43 KMBUS_EEPROM_READ`.
+The splitter generic VS2 request path constructs the same basic request shape
+as the public Vitosoft protocol reconstruction: protocol/message byte,
+function-code byte, 16-bit address and requested block length.
 
-Therefore all direct P300 GFA probes for the local WB2A must use `0xC9`,
-not `0x6B`.
+Both candidate forms were tested locally.
 
-The exact VDensHO1 metadata for `0x4054` confirms:
-
-```text
-token:       VSKO_Scot_CES_P84~0x4054
-name:        (P84) GFA Betriebsphase
-block:       1 byte
-FCRead:      GFA_READ
-PrefixRead:  empty
-device link: VDensHO1 included
-```
-
-Next read-only validation:
+Initial VS1/KW-style value sent through the VS2 request path:
 
 ```text
-request;0xC9;0x4050;1;;0x00
-...
-request;0xC9;0x4058;1;;0x00
-request;0xC9;0x4006;1;;0x00
-request;0xC9;0x4009;1;;0x00
-request;0xC9;0x400A;1;;0x00
-request;0xC9;0x4011;1;;0x00
+request;0x6B;0x4054;1;;0x00
+-> 3;0x4054;05
 ```
+
+Correct VS2/P300 enum value:
+
+```text
+request;0xC9;0x4050;1;;0x00 -> 3;0x4050;05
+request;0xC9;0x4051;1;;0x00 -> 3;0x4051;05
+request;0xC9;0x4052;1;;0x00 -> 3;0x4052;05
+request;0xC9;0x4053;1;;0x00 -> 3;0x4053;05
+request;0xC9;0x4054;1;;0x00 -> 3;0x4054;05
+request;0xC9;0x4055;1;;0x00 -> 3;0x4055;05
+request;0xC9;0x4056;1;;0x00 -> 3;0x4056;05
+request;0xC9;0x4057;1;;0x00 -> 3;0x4057;05
+request;0xC9;0x4058;1;;0x00 -> 3;0x4058;05
+request;0xC9;0x4006;1;;0x00 -> 3;0x4006;05
+request;0xC9;0x4009;1;;0x00 -> 3;0x4009;05
+request;0xC9;0x400A;1;;0x00 -> 3;0x400A;05
+request;0xC9;0x4011;1;;0x00 -> 3;0x4011;05
+```
+
+Return code `3` is the splitter's decoded VS2 Error Message. The payload
+contains the single error byte `0x05`.
+
+This is therefore a reproducible **negative local result**: the WB2A does not
+accept these GFA_READ requests through the ordinary active VS2/P300 request
+path in the tested form. Do not treat `0x4006` etc. as ordinary Virtual_READ
+addresses.
+
+The exact VDensHO1 metadata nevertheless confirms that these objects really are
+linked to VDensHO1 and use `FCRead=GFA_READ`, with one-byte blocks and no
+PrefixRead. Examples:
+
+```text
+0x4006  (P06) Drehzahl-Istwert       factor 30 rpm
+0x4009  (P09) Drehzahl-Sollwert      factor 30 rpm
+0x400A  (P10) PWM Sollwert Gebläse   factor 0.4 %
+0x4054  (P84) GFA Betriebsphase
+0x4055  (P85) GFA Status 1
+0x4056  (P86) GFA Status 2
+0x4057  (P87) GFA Status 3
+0x4058  (P88) GFA Status 4
+```
+
+Open question: Vitosoft may access GFA_READ through a different protocol
+session/handler or compatibility path rather than by injecting it into the
+already-active normal P300 request stream. Recover that implementation from
+the Vitosoft interface assemblies/private collector before attempting further
+wire-level variants.
