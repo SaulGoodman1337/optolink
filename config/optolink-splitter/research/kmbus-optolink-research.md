@@ -89,22 +89,63 @@ The Vitosoft-derived function table contains:
 | 0x53 | KBUS_DATABLOCK_READ | untested |
 | 0x54 | KBUS_DATABLOCK_WRITE | **do not test yet** |
 | 0x55 | KBUS_TRANSPARENT_READ | untested |
-| 0x56 | KBUS_TRANSPARENT_WRITE | **do not test yet** |
+| 0x56 | KBUS_TRANSPARENT_WRITE | source-analyzed: Vitosoft uses 1-byte participant datapoint writes; **no raw-frame evidence / do not live-probe** |
 | 0x57 | KBUS_INITIALISATION_READ | untested |
 | 0x58 | KBUS_INITIALISATION_WRITE | **do not test yet** |
 | 0x59 | KBUS_EEPROM_LT_READ | untested |
 | 0x5A | KBUS_EEPROM_LT_WRITE | **do not test yet** |
-| 0x5B | KBUS_CONTROL_WRITE | **do not test yet** |
+| 0x5B | KBUS_CONTROL_WRITE | enum exists but production Vitosoft has **0 event definitions**; argument format unknown / do not live-probe |
 | 0x5D | KBUS_MEMBERLIST_READ | global Vitosoft event exists, but **not linked to VDensHO1** |
-| 0x5E | KBUS_MEMBERLIST_WRITE | **do not test yet** |
+| 0x5E | KBUS_MEMBERLIST_WRITE | source-analyzed gateway participant-list management; **not VDensHO1 / do not live-probe** |
 | 0x5F | KBUS_VIRTUAL_READ | global Vitosoft access method, but **not linked to VDensHO1** |
-| 0x60 | KBUS_VIRTUAL_WRITE | **do not test yet** |
+| 0x60 | KBUS_VIRTUAL_WRITE | source-analyzed 1-byte KBus datapoint writes; **not VDensHO1 / do not live-probe** |
 | 0x61 | KBUS_DIRECT_READ | untested |
-| 0x62 | KBUS_DIRECT_WRITE | **do not test yet** |
+| 0x62 | KBUS_DIRECT_WRITE | source-analyzed VCOM300/DEKATEL direct-channel records; **not VDensHO1 / no raw-frame evidence** |
 | 0x63 | KBUS_INDIRECT_READ | untested |
-| 0x64 | KBUS_INDIRECT_WRITE | **do not test yet** |
+| 0x64 | KBUS_INDIRECT_WRITE | source-analyzed indexed participant/channel writes; **not VDensHO1 / do not live-probe** |
 | 0x65 | KBUS_GATEWAY_READ | no VDensHO1 Vitosoft event; do not prioritize blindly |
-| 0x66 | KBUS_GATEWAY_WRITE | **do not test yet** |
+| 0x66 | KBUS_GATEWAY_WRITE | one Vitosoft gateway-control event only; **no raw-frame evidence / do not live-probe** |
+
+### Write-family semantics from the production Vitosoft set
+
+The complete production `ecnEventType.xml` was analyzed specifically to test
+the hypothesis that a generic KBus write function might inject a complete
+slave-side Vitotrol telegram.
+
+The result is currently **negative**:
+
+~~~text
+KBUS_TRANSPARENT_WRITE  853 definitions, every one BlockLength=1
+KBUS_DIRECT_WRITE        11 definitions, VCOM300/DEKATEL direct channels
+KBUS_GATEWAY_WRITE        1 definition, "delete all fault messages"
+KBUS_MEMBERLIST_WRITE     2 definitions, gateway participant management
+KBUS_CONTROL_WRITE        0 definitions
+~~~
+
+No one of these functions is linked to the exact local VDensHO1 profile.
+
+In particular, `KBUS_TRANSPARENT_WRITE` is shaped as a participant datapoint
+operation:
+
+~~~text
+PrefixWrite = 2-3 byte KBus target/subselector
+BlockLength = 1 application data byte
+~~~
+
+That does not resemble the known physical Vitotrol slave frames, which are
+12-16 bytes including class/command/slot/CRC.
+
+Therefore there is currently **no source-supported VS2 request** that can be
+described as "inject this raw Vitotrol slave telegram into the internal
+KM-BUS master".
+
+Detailed evidence:
+
+- [vitosoft/kbus-write-function-analysis.md](vitosoft/kbus-write-function-analysis.md)
+- [vitotrol-kmbus-wire-protocol.md](vitotrol-kmbus-wire-protocol.md)
+
+Blind live-boiler probes of 0x56/0x5B/0x5E/0x62/0x66 are not justified by the
+current source evidence.
 
 Primary source for the names:
 
