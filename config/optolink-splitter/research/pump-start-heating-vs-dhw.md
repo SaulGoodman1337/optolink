@@ -2159,3 +2159,149 @@ enough for the current investigation.
 Any remaining configuration question should be investigated through the
 VDensHO1/KM-Bus pump objects (for example `0x0A54`, `0x0A35`, `0x27E5`,
 `0x5730`, `0x7660`) rather than by switching protocol families.
+
+
+## Local KM-BUS internal-pump baseline — 2026-09-23
+
+Read-only local results with the installed Grundfos UPM3 / G-HE KM-Bus pump:
+
+```text
+0x0A54 / 4  SWIndex_IntPumpe
+-> 01 11 01 01
+
+0x0A35 / 1  KM_Error_PumpeIntern
+-> 00
+
+0x27E5 / 1  KE5_KonfiKennung_D_PumpeA1M1_KM
+-> 00
+
+0xA152 / 2  nvoRelayState
+-> 04 40
+```
+
+### Interpretation
+
+#### 0x0A54 — internal-pump software-index block
+
+The Vitosoft access metadata for `SWIndex_IntPumpe` uses:
+
+```text
+address       0x0A54
+BlockLength   4
+BytePosition  3
+ByteLength    1
+```
+
+Independent Vitosoft-derived catalogs reproduce this as `length: 4` with
+`byte_offset: 3`.
+
+Therefore the event value Vitosoft calls **Interne Pumpe Software-Index** is
+the fourth byte of the local block:
+
+```text
+raw block:          01 11 01 01
+byte positions:      0  1  2  3
+SWIndex_IntPumpe:             01
+```
+
+The meanings of bytes 0..2 are not established by this event definition and
+must not be guessed.
+
+The non-empty block plus `K30/0x5730 = 01` is strong local evidence that the
+controller has a real internal speed-controlled pump participant represented
+in its KM-BUS diagnostics.
+
+#### 0x0A35 — internal-pump KM-BUS error
+
+Local baseline:
+
+```text
+KM_Error_PumpeIntern = 0x00
+```
+
+This is consistent with normal/no-current-error operation. Until a formal value
+table is extracted, retain `00` as the observed healthy baseline rather than
+inventing additional bit semantics.
+
+#### 0x27E5 — separate A1 KM-BUS pump
+
+Vitosoft-derived enum metadata defines:
+
+```text
+0x00 = 0 nicht vorhanden
+0x01 = 1 vorhanden
+```
+
+The local value is:
+
+```text
+0x27E5 = 00
+```
+
+This does **not** mean that the internal Grundfos pump is missing.
+
+`0x27E5` describes a separate `KM-BUS-Heizkreispumpe A1`. The installed
+G-HE pump is represented as the **internal pump** by `0x5730` and
+`0x0A54`.
+
+Therefore do not change E5 to `01` merely because the physical internal pump
+uses KM-Bus; that would declare an additional A1 KM-BUS heating-circuit pump.
+
+#### 0xA152 — relay-state block
+
+Vitosoft maps the internal-pump relay flag to:
+
+```text
+address      0xA152
+BlockLength  2
+BytePosition 0
+mask         0x20
+```
+
+Local snapshot:
+
+```text
+04 40
+^^
+byte 0 = 0x04
+0x04 & 0x20 = 0
+```
+
+So the Vitosoft `nvoRelayState_Interne_Pumpe` flag was **off at this
+particular snapshot**.
+
+Other Vitosoft definitions sharing this block identify `byte0 & 0x04` as
+`UV Warmwasser` and `byte1 & 0x40` as `ZP`, but these shared LON-style
+relay-state labels must be correlated with the actual WB2A operating state
+before assigning physical meaning to every set bit.
+
+### Consequence for the research direction
+
+The local evidence now separates the two pump concepts cleanly:
+
+```text
+internal pump:
+  0x5730 = 01
+  0x0A54 = 01 11 01 01
+  SWIndex field = 01
+  0x0A35 = 00 baseline
+
+separate A1 KM-BUS pump:
+  0x27E5 = 00 (not present)
+```
+
+The installed Grundfos G-HE/UPM3 should therefore be investigated through the
+**internal-pump KM-BUS path**, not by enabling E5 and not through
+Virtual-WILO.
+
+A useful next read-only discriminator is to compare the software-index blocks
+for absent external pumps with the live internal-pump block:
+
+```bash
+/usr/local/bin/optolink-debug request "r;0x0A4C;4;raw;False"  # Pumpe A1 SW index
+/usr/local/bin/optolink-debug request "r;0x0A50;4;raw;False"  # Pumpe M2 SW index
+/usr/local/bin/optolink-debug request "r;0x0A54;4;raw;False"  # internal pump control
+```
+
+If the A1/M2 blocks show the absent-device pattern while `0x0A54` remains
+populated, that further confirms the internal-pump participant distinction.
