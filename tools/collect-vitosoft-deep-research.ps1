@@ -262,10 +262,39 @@ Commit normalized metadata, hashes, symbol/member inventories and conclusions.
 Do not commit raw proprietary binaries or firmware images to a public repository.
 "@|Set-Content -LiteralPath (Join-Path $OutputDir "README.txt") -Encoding UTF8
 
-  foreach($w in @($manifest,$text,$pe,$pei,$members,$merr,$fwout,$binout,$allstr)){if($w){$w.Flush();$w.Dispose()}}
-  $zip=$OutputDir+".zip";if(Test-Path -LiteralPath $zip){Remove-Item -LiteralPath $zip -Force}
-  Compress-Archive -Path (Join-Path $OutputDir "*") -DestinationPath $zip -Force
-  Write-Host "Finished: $zip" -ForegroundColor Green
+  foreach($w in @($manifest,$text,$pe,$pei,$members,$merr,$fwout,$binout,$allstr)){
+    if($w){
+      try{$w.Flush()}catch{}
+      try{$w.Dispose()}catch{}
+    }
+  }
+
+  # Give Windows/AV/indexers a short chance to release newly written CSV files
+  # before Compress-Archive opens every file in the output tree. The collector
+  # data is already complete at this point; a transient ZIP lock must not make
+  # the whole collection appear to have failed.
+  [GC]::Collect()
+  [GC]::WaitForPendingFinalizers()
+
+  $zip=$OutputDir+".zip"
+  $zipOk=$false
+  for($attempt=1;$attempt -le 3 -and -not $zipOk;$attempt++){
+    try{
+      if(Test-Path -LiteralPath $zip){Remove-Item -LiteralPath $zip -Force -ErrorAction SilentlyContinue}
+      if($attempt -gt 1){Start-Sleep -Seconds 2}
+      Compress-Archive -Path (Join-Path $OutputDir "*") -DestinationPath $zip -Force -ErrorAction Stop
+      $zipOk=$true
+    }
+    catch{
+      Write-Warning ("Compress-Archive attempt {0}/3 failed: {1}" -f $attempt,$_.Exception.Message)
+    }
+  }
+  if($zipOk){
+    Write-Host "Finished: $zip" -ForegroundColor Green
+  }
+  else{
+    Write-Warning "Derived data collection completed, but ZIP creation failed after 3 attempts. Keep/use the output directory directly."
+  }
 }
 finally{
   foreach($w in @($manifest,$text,$pe,$pei,$members,$merr,$fwout,$binout,$allstr)){if($w){try{$w.Dispose()}catch{}}}
