@@ -1349,3 +1349,22 @@ Priority before lower-level RAM reverse engineering:
 2. determine whether additional WB2A pump codings become visible;
 3. only if that fails, consider read-only differential RAM/XRAM mapping with
    known-safe ranges and no writes.
+
+### Coding 8A baseline on local WB2A
+
+Read-only baseline before enabling suppressed-address display:
+
+```text
+0x778A = AF  -> 8A:175, display/configuration conditions active
+0x778B = 00  -> K8B EEPROM status object = 0
+0x778C = 01
+0x778D = 03  -> controller software version 01.03
+```
+
+This confirms the local controller is currently in the normal filtered coding
+display state and independently reconfirms software version 01.03.
+
+Next controlled step: change only coding 8A from 175 to 176 at the boiler
+service menu, then check whether coding 51 appears and whether 0x7751 changes
+from protocol error to a successful read. Restore 8A to 175 immediately after
+the check.
