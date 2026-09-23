@@ -287,6 +287,13 @@ It joins the device membership from `DPDefinitions.xml` against
 - a `KBUS_*` / `KMBUS_*`-only CSV;
 - an extraction summary JSON.
 
+For protocol-family research, add `--include-global-wilo`. This performs a
+global metadata pass for events whose low-level access uses
+`Virtual_WILO_READ` or `Virtual_WILO_WRITE`, maps those events back to the
+Vitosoft device types that reference them, and writes
+`virtual-wilo-events.csv`. This is intended for metadata-first, read-only
+reverse engineering; it does not send any hardware command.
+
 ## Full low-level join status
 
 The missing low-level source set was supplied from a real Vitosoft
