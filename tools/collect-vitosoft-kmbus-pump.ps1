@@ -124,7 +124,17 @@ $textTerms = @(
     "PumpeA1M1",
     "DrehzahlIntPumpe",
     "InternePumpeDrehzahl",
+    "InternePumpeDrehzahl_res",
     "DigitalAusgang_InternePumpe",
+    "sysblock_KMBus_LonMemberList",
+    "KMBusEquipment",
+    "KBUS_MEMBERLIST_READ",
+    "KBUS_MEMBERLIST_WRITE",
+    "KMBUS_RAM_READ",
+    "KMBUS_EEPROM_READ",
+    "BusHandlerType",
+    "OptolinkHandler",
+    "0x0A3C",
     "0x0A54",
     "0x0A35",
     "0x27E5",
@@ -152,7 +162,16 @@ $binaryTerms = @(
     "Interne Pumpe",
     "DrehzahlIntPumpe",
     "InternePumpeDrehzahl",
+    "InternePumpeDrehzahl_res",
     "DigitalAusgang_InternePumpe",
+    "sysblock_KMBus_LonMemberList",
+    "KMBusEquipment",
+    "KBUS_MEMBERLIST_READ",
+    "KBUS_MEMBERLIST_WRITE",
+    "KMBUS_RAM_READ",
+    "KMBUS_EEPROM_READ",
+    "BusHandlerType",
+    "OptolinkHandler",
     "Grundfos",
     "UPM3",
     "G-HE"
@@ -164,6 +183,36 @@ $textExtensions = @(
     ".js", ".ts", ".sql", ".properties"
 )
 
+$priorityTerms = @(
+    "KM_Error_PumpeIntern",
+    "SWIndex_IntPumpe",
+    "K30_KennungIntPumpeKM",
+    "KE5_KonfiKennung_D_PumpeA1M1_KM",
+    "DrehzahlIntPumpe",
+    "InternePumpeDrehzahl",
+    "InternePumpeDrehzahl_res",
+    "DigitalAusgang_InternePumpe",
+    "sysblock_KMBus_LonMemberList",
+    "KMBusEquipment",
+    "KBUS_MEMBERLIST_READ",
+    "KBUS_MEMBERLIST_WRITE",
+    "KMBUS_RAM_READ",
+    "KMBUS_EEPROM_READ",
+    "BusHandlerType",
+    "OptolinkHandler",
+    "0x0A3C",
+    "0x0A54",
+    "0x0A35",
+    "0x27E5",
+    "0x7660",
+    "0x7663",
+    "0x5730",
+    "0x5731",
+    "Grundfos",
+    "UPM3",
+    "G-HE"
+)
+
 $binaryExtensions = @(".exe", ".dll")
 
 $regexOptions = [Text.RegularExpressions.RegexOptions]::IgnoreCase -bor
@@ -172,6 +221,8 @@ $textPattern = (($textTerms | ForEach-Object { [regex]::Escape($_) }) -join "|")
 $binaryPattern = (($binaryTerms | ForEach-Object { [regex]::Escape($_) }) -join "|")
 $textSearchRegex = [Text.RegularExpressions.Regex]::new($textPattern, $regexOptions)
 $binarySearchRegex = [Text.RegularExpressions.Regex]::new($binaryPattern, $regexOptions)
+$priorityPattern = (($priorityTerms | ForEach-Object { [regex]::Escape($_) }) -join "|")
+$prioritySearchRegex = [Text.RegularExpressions.Regex]::new($priorityPattern, $regexOptions)
 
 $roots = @(Get-VitosoftRoots -ExplicitRoot $Root)
 if ($roots.Count -eq 0) {
@@ -195,6 +246,7 @@ $inventory = New-Object System.Collections.Generic.List[object]
 $textHits = New-Object System.Collections.Generic.List[object]
 $binaryHits = New-Object System.Collections.Generic.List[object]
 $sourceHashes = New-Object System.Collections.Generic.List[object]
+$hitSummary = New-Object System.Collections.Generic.List[object]
 
 foreach ($rootPath in $roots) {
     Write-Host ""
@@ -262,6 +314,8 @@ foreach ($rootPath in $roots) {
 
         if ($textExtensions -contains $ext) {
             $hitCount = 0
+            $storedHitCount = 0
+            $limitNoticeStored = $false
             $reader = $null
             try {
                 if ($file.Length -ge 10MB) {
@@ -303,25 +357,29 @@ foreach ($rootPath in $roots) {
                         continue
                     }
 
-                    $textHits.Add([pscustomobject]@{
-                        Root = $rootPath
-                        RelativePath = $relative
-                        Line = $lineNo
-                        Keywords = ($matchedTerms -join ";")
-                        Text = Get-ContextSnippet -Text $line -Term $matchedTerms[0] -Radius 1400
-                    })
-
                     $hitCount++
-                    if ($hitCount -ge $MaxTextHitsPerFile) {
+                    $isPriority = $prioritySearchRegex.IsMatch($line)
+
+                    if (($storedHitCount -lt $MaxTextHitsPerFile) -or $isPriority) {
+                        $textHits.Add([pscustomobject]@{
+                            Root = $rootPath
+                            RelativePath = $relative
+                            Line = $lineNo
+                            Keywords = ($matchedTerms -join ";")
+                            Text = Get-ContextSnippet -Text $line -Term $matchedTerms[0] -Radius 1400
+                        })
+                        $storedHitCount++
+                    }
+                    elseif (-not $limitNoticeStored) {
                         $textHits.Add([pscustomobject]@{
                             Root = $rootPath
                             RelativePath = $relative
                             Line = 0
                             Keywords = "<limit>"
-                            Text = "Per-file hit limit reached: $MaxTextHitsPerFile"
+                            Text = "Generic stored-hit limit reached: $MaxTextHitsPerFile; scanning continued and priority hits were still retained."
                         })
-                        Write-Host ("    Hit limit reached for {0}: {1}" -f $relative, $MaxTextHitsPerFile)
-                        break
+                        Write-Host ("    Generic hit storage limit reached for {0}: {1}; scan continues" -f $relative, $MaxTextHitsPerFile)
+                        $limitNoticeStored = $true
                     }
                 }
             }
@@ -338,6 +396,13 @@ foreach ($rootPath in $roots) {
                 if ($null -ne $reader) {
                     $reader.Dispose()
                 }
+                $hitSummary.Add([pscustomobject]@{
+                    Root = $rootPath
+                    RelativePath = $relative
+                    TotalMatches = $hitCount
+                    StoredMatches = $storedHitCount
+                    GenericLimitReached = ($hitCount -gt $MaxTextHitsPerFile)
+                })
             }
         }
         elseif (($binaryExtensions -contains $ext) -and ($file.Length -le ($MaxBinaryMB * 1MB))) {
@@ -401,6 +466,7 @@ $inventoryPath = Join-Path $OutputDir "file-inventory.csv"
 $textHitsPath = Join-Path $OutputDir "text-hits.csv"
 $binaryHitsPath = Join-Path $OutputDir "binary-string-hits.csv"
 $hashesPath = Join-Path $OutputDir "source-hashes.csv"
+$hitSummaryPath = Join-Path $OutputDir "hit-summary.csv"
 
 $inventory | Sort-Object Root, RelativePath | Export-Csv -LiteralPath $inventoryPath -NoTypeInformation -Encoding UTF8
 
@@ -423,6 +489,13 @@ if ($sourceHashes.Count -gt 0) {
 }
 else {
     '"File","Path","SizeBytes","SHA256"' | Set-Content -LiteralPath $hashesPath -Encoding UTF8
+}
+
+if ($hitSummary.Count -gt 0) {
+    $hitSummary | Sort-Object TotalMatches -Descending | Export-Csv -LiteralPath $hitSummaryPath -NoTypeInformation -Encoding UTF8
+}
+else {
+    '"Root","RelativePath","TotalMatches","StoredMatches","GenericLimitReached"' | Set-Content -LiteralPath $hitSummaryPath -Encoding UTF8
 }
 
 $interestingTextFiles = @(
@@ -471,6 +544,7 @@ Files:
   file-inventory.csv
   text-hits.csv
   binary-string-hits.csv
+  hit-summary.csv
 
 Research target:
   Viessmann VDensHO1 / WB2A internal Grundfos G-HE / UPM3 KM-Bus pump.
