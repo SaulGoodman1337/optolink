@@ -489,7 +489,8 @@ installation, use:
 
 `tools/collect-vitosoft-private-archive.ps1`
 
-Typical direct invocation:
+Typical direct invocation from an **elevated (Run as Administrator)**
+Windows PowerShell session:
 
 ```powershell
 $script = "$env:TEMP\collect-vitosoft-private-archive.ps1"
@@ -497,8 +498,22 @@ $script = "$env:TEMP\collect-vitosoft-private-archive.ps1"
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/SaulGoodman1337/optolink/main/tools/collect-vitosoft-private-archive.ps1" -OutFile $script
 
 Set-ExecutionPolicy -Scope Process Bypass -Force
-& $script
+& $script -CreateArchive
 ```
+
+The collector now runs a prerequisite preflight before the Vitosoft scan. It
+records the before/after tool state and, unless
+`-SkipPrerequisiteInstall` is supplied, attempts to install missing research
+tools needed for the complete private analysis:
+
+- Visual Studio 2022 Build Tools minimal components for `ildasm.exe`,
+  `dumpbin.exe`, MSBuild and related .NET Framework SDK tools;
+- 7-Zip via winget when available, for reliable large archive creation.
+
+PowerShell 5.1+, robocopy and reg.exe are treated as core Windows
+prerequisites. Optional tools such as dotnet, sqlcmd, sqllocaldb, Git and Git
+LFS are inventoried but are not installed merely for collection when the
+collector has a native alternative.
 
 The private collector includes the normal deep-derived collector and additionally
 attempts to preserve:
@@ -507,14 +522,23 @@ attempts to preserve:
 - related Viessmann ProgramData/AppData/Documents trees;
 - registry keys and Windows service/process/task metadata relevant to
   Viessmann/Vitosoft/SQL;
-- Authenticode metadata and optional ILDASM/DUMPBIN output;
+- Authenticode metadata plus full ILDASM and DUMPBIN output when the tools are
+  available after preflight;
+- managed assembly identity/MVID/reference/resource graphs even if ILDASM is
+  unavailable;
+- .NET/Visual-Studio/toolchain inventory, serial/USB inventory, loaded
+  Vitosoft/SQL process modules, service executable paths, disk space, Windows
+  hotfixes and relevant recent application-event-log entries;
 - raw `ecnViessmann.mdf/.ldf` database files;
 - SELECT-only SQL schema/table exports through
   `tools/export-vitosoft-sql-readonly.ps1` when an already reachable SQL
   instance can be discovered;
 - priority copies of `ecnUpdateDefinition` and
   `ecnDeviceSoftwareUpdate` exports;
-- a complete SHA256 manifest and Git LFS template.
+- a complete SHA256 manifest, archive statistics, prerequisite report and Git
+  LFS template;
+- an integrity-tested `.7z` when `-CreateArchive` is used and 7-Zip is
+  available.
 
 The collector intentionally does **not** auto-attach an MDF via
 `AttachDbFilename`, because attaching a database changes SQL Server state.
