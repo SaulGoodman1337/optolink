@@ -107,13 +107,20 @@ def fmt(s):
         if s["a3c"] == s["speed7660"]
         else "A3C!=7660"
     )
+    timing = ""
+    if s.get("flame_age_s") is not None:
+        timing = f" FLAME_AGE={s['flame_age_s']:.1f}s"
+    elif s.get("post_flame_s") is not None:
+        timing = f" POST_FLAME={s['post_flame_s']:.1f}s"
+
     return (
         f"A3C={s['a3c']:3d}%  "
         f"7660={s['out7660']:02X}/{s['speed7660']:3d}%  "
         f"7663={s['out7663']:02X}/{s['speed7663']:3d}%  "
         f"WW=0x{s['ww']:02X}  UV=0x{s['uv']:02X}  "
         f"FLAME={s['flame']} MOD={s['modulation']:3d}%  "
-        f"GFA5=0x{s['gfa_b5']:02X} GFA7=0x{s['gfa_b7']:02X}  {relation}"
+        f"GFA5=0x{s['gfa_b5']:02X} GFA7=0x{s['gfa_b7']:02X}"
+        f"{timing}  {relation}"
     )
 
 
@@ -142,6 +149,9 @@ def main():
 
     client, responses = connect()
     last_key = None
+    previous_flame = None
+    flame_on_mono = None
+    flame_off_mono = None
 
     print("WB2A pump divergence watcher")
     print("============================")
@@ -165,7 +175,45 @@ def main():
                 time.sleep(1.0)
                 continue
 
-            key = tuple(s.values())
+            now_mono = time.monotonic()
+            flame_now = bool(s["flame"])
+
+            if previous_flame is None:
+                previous_flame = flame_now
+                if flame_now:
+                    flame_on_mono = now_mono
+            elif flame_now != previous_flame:
+                if flame_now:
+                    flame_on_mono = now_mono
+                    flame_off_mono = None
+                    print(
+                        f"{datetime.now().isoformat(timespec='milliseconds')} "
+                        "EVENT      FLAME_ON"
+                    )
+                else:
+                    flame_off_mono = now_mono
+                    print(
+                        f"{datetime.now().isoformat(timespec='milliseconds')} "
+                        "EVENT      FLAME_OFF"
+                    )
+                previous_flame = flame_now
+
+            if flame_now and flame_on_mono is not None:
+                s["flame_age_s"] = now_mono - flame_on_mono
+                s["post_flame_s"] = None
+            elif (not flame_now) and flame_off_mono is not None:
+                s["flame_age_s"] = None
+                s["post_flame_s"] = now_mono - flame_off_mono
+            else:
+                s["flame_age_s"] = None
+                s["post_flame_s"] = None
+
+            key = tuple(
+                s[k] for k in (
+                    "a3c", "out7660", "speed7660", "out7663", "speed7663",
+                    "ww", "uv", "flame", "modulation", "gfa_b5", "gfa_b7"
+                )
+            )
             divergent = s["speed7660"] != s["speed7663"]
 
             if divergent or key != last_key:
