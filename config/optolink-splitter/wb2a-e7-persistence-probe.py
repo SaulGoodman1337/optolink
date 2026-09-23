@@ -2,7 +2,7 @@
 """Controlled WB2A E7 persistence/status probe.
 
 Purpose:
-- observe K8B EEPROM status (0x778B) and K8E I2C EEPROM error flag (0x778E)
+- observe K8B EEPROM status (0x778B) and the raw K8E I2C EEPROM diagnostic byte (0x778E)
   immediately around a single E7 coding change;
 - restore the original E7 value automatically.
 
@@ -89,17 +89,17 @@ def write_value(client, responses, addr, value):
 def snapshot(client, responses, label):
     e7, _ = read_raw(client, responses, "0x27E7")
     eeprom_status, _ = read_raw(client, responses, "0x778B")
-    eeprom_error, _ = read_raw(client, responses, "0x778E")
+    eeprom_diag, _ = read_raw(client, responses, "0x778E")
     print(
         f"{label:<12} E7={e7[0]:3d}%  "
-        f"778B=0x{eeprom_status[0]:02X}  778E=0x{eeprom_error[0]:02X}"
+        f"778B=0x{eeprom_status[0]:02X}  778E=0x{eeprom_diag[0]:02X}"
     )
-    return e7[0], eeprom_status[0], eeprom_error[0]
+    return e7[0], eeprom_status[0], eeprom_diag[0]
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Probe WB2A EEPROM-related status around one minimal E7 write"
+        description="Probe WB2A raw EEPROM-related diagnostics around one minimal E7 write"
     )
     parser.add_argument(
         "--samples",
