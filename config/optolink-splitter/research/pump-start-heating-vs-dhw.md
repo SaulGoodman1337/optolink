@@ -2107,3 +2107,55 @@ Purpose:
   burner and pump states.
 
 These reads do not alter any coding or pump command.
+
+
+## Installed pump identity clarification — 2026-09-23
+
+The physically installed internal pump is:
+
+```text
+Viessmann spare part: 7876412
+designation:          G-HE KM-Bus
+pump family:          Grundfos UPM3
+interface:            KM-Bus
+```
+
+This is important because the earlier Virtual-WILO investigation must **not**
+be read as detection of the installed pump manufacturer.
+
+The `WILO` information came from the **global Vitosoft metadata**, where a
+separate device profile named `WILO` uses `Virtual_WILO_READ/WRITE` and
+Wilo-PLR selectors. It did not come from a successful Optolink identification
+of the local physical pump.
+
+The local `0x24` Optolink probes only established that VDensHO1 returns
+checksum-valid empty acknowledgement-shaped responses for those Wilo requests.
+They returned no manufacturer, type or speed payload.
+
+Independent corroboration:
+
+- Viessmann community/parts compatibility references identify 7876412 as
+  `UPM3 G-HE KM Bus` and as a compatible KM-Bus replacement for WB2A-era
+  appliances.
+- Grundfos documents UPM3 as an OEM high-efficiency circulator family with
+  externally controlled variants including **KMBus**.
+
+Sources:
+
+- https://community.viessmann.de/t5/Gas/Umwaelzpumpe-fuer-Vitodens-200-WB2/td-p/250593
+- https://community.viessmann.de/t5/Gas/Pumpentausch-Vitodens-200/m-p/292674
+- https://api.grundfos.com/literature/Grundfosliterature-5564187.pdf
+
+### Consequence
+
+Do **not** change the WB2A to the Vitosoft `WILO` device profile or attempt to
+enable `Virtual_WILO` because of the installed pump.
+
+The installed 7876412 is controlled through KM-Bus. The fact that the existing
+system already reacts correctly to E7 changes and reports an internal
+speed-controlled pump means the controller/pump relationship is already active
+enough for the current investigation.
+
+Any remaining configuration question should be investigated through the
+VDensHO1/KM-Bus pump objects (for example `0x0A54`, `0x0A35`, `0x27E5`,
+`0x5730`, `0x7660`) rather than by switching protocol families.
