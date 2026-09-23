@@ -2641,6 +2641,7 @@ It repeatedly reads:
 0x7663 / 2
 0x650A / 1
 0x0A10 / 1
+0x55D3 / 11
 ```
 
 and triggers when:
@@ -2649,9 +2650,13 @@ and triggers when:
 0x7660[1] != 0x7663[1]
 ```
 
+The watcher also records flame state, modulation and selected GFA runtime bytes
+from `0x55D3`, so a future 100 -> 50 transition can be classified as
+burner-on, post-flame or another operating-state transition.
+
 On the first divergence it captures an immediate 10-sample burst by default,
-making DHW preparation/overrun a practical discriminator for whether
-`0x0A3C` follows the final internal-pump command or the A1 demand.
+making DHW preparation/overrun or heating post-run a practical discriminator
+for whether `0x0A3C` follows the final internal-pump command or the A1 demand.
 
 No writes are performed.
 
