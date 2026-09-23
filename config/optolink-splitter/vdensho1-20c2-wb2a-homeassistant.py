@@ -1545,25 +1545,34 @@ poll_list = {
         },
 
         # -----------------------------------------------------------------
-        # Fault history. The current poll value is the first-byte fault code.
-        # Full 9-byte timestamp decoding stays in the research profile.
+        # System fault history.
+        #
+        # Each 9-byte slot is:
+        #   byte0       system fault code
+        #   bytes1..8   BCD date/time: YYYY MM DD weekday HH MM SS
+        #
+        # Keep the complete slot in the MQTT state so Home Assistant can show
+        # both the exact fault code and its timestamp. Only mappings recovered
+        # from the exact local VDensHO1 Vitosoft resources are translated;
+        # unknown codes remain visible as raw hex.
         # -----------------------------------------------------------------
         {
             "domain": "sensor",
             "entity_category": "diagnostic",
             "enabled_by_default": True,
             "icon": "mdi:alert-circle-outline",
+            "value_template": "{% set v = value | trim | upper %}{% set c = v[0:2] %}{% set m = {'B7':'Kesselcodierkarte falsch/fehlerhaft','F9':'Fehler Gebläse - Drehzahl nicht erreicht','BC':'Fehler Fernbedienung HK1','BD':'Fehler Fernbedienung HK2'} %}{{ c }}{% if c in m %} · {{ m[c] }}{% endif %}{% if v | length == 18 and v[2:18] != 'FFFFFFFFFFFFFFFF' %} · {{ v[2:6] }}-{{ v[6:8] }}-{{ v[8:10] }} {{ v[12:14] }}:{{ v[14:16] }}:{{ v[16:18] }}{% endif %}",
             "poll": [
-                ("RARE", "fehlerhistorie_01", 0x7507, 9, "b:0:0", "f:02X", False),
-                ("RARE", "fehlerhistorie_02", 0x7510, 9, "b:0:0", "f:02X", False),
-                ("RARE", "fehlerhistorie_03", 0x7519, 9, "b:0:0", "f:02X", False),
-                ("RARE", "fehlerhistorie_04", 0x7522, 9, "b:0:0", "f:02X", False),
-                ("RARE", "fehlerhistorie_05", 0x752B, 9, "b:0:0", "f:02X", False),
-                ("RARE", "fehlerhistorie_06", 0x7534, 9, "b:0:0", "f:02X", False),
-                ("RARE", "fehlerhistorie_07", 0x753D, 9, "b:0:0", "f:02X", False),
-                ("RARE", "fehlerhistorie_08", 0x7546, 9, "b:0:0", "f:02X", False),
-                ("RARE", "fehlerhistorie_09", 0x754F, 9, "b:0:0", "f:02X", False),
-                ("RARE", "fehlerhistorie_10", 0x7558, 9, "b:0:0", "f:02X", False),
+                ("RARE", "fehlerhistorie_01", 0x7507, 9, "raw", False),
+                ("RARE", "fehlerhistorie_02", 0x7510, 9, "raw", False),
+                ("RARE", "fehlerhistorie_03", 0x7519, 9, "raw", False),
+                ("RARE", "fehlerhistorie_04", 0x7522, 9, "raw", False),
+                ("RARE", "fehlerhistorie_05", 0x752B, 9, "raw", False),
+                ("RARE", "fehlerhistorie_06", 0x7534, 9, "raw", False),
+                ("RARE", "fehlerhistorie_07", 0x753D, 9, "raw", False),
+                ("RARE", "fehlerhistorie_08", 0x7546, 9, "raw", False),
+                ("RARE", "fehlerhistorie_09", 0x754F, 9, "raw", False),
+                ("RARE", "fehlerhistorie_10", 0x7558, 9, "raw", False),
             ],
         },
 
