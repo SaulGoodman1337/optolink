@@ -362,3 +362,44 @@ VDensHO1 event model.
 
 See `../pump-start-heating-vs-dhw.md` for the resulting WB2A interpretation
 and the exact read-only probe commands.
+
+
+## KM-BUS / internal-pump PowerShell collector
+
+For the WB2A internal-pump investigation, use:
+
+```text
+tools/collect-vitosoft-kmbus-pump.ps1
+```
+
+The collector is intentionally read-only and compact. It:
+
+- inventories the detected Vitosoft installation;
+- records hashes of the three core production metadata files when present;
+- searches text/XML/configuration files for KM-BUS and internal-pump symbols,
+  addresses and manufacturer terms;
+- scans EXE/DLL files for matching embedded ASCII/UTF-16 strings without
+  copying the binaries;
+- produces a ZIP suitable for repository research/import.
+
+Typical direct PowerShell invocation from GitHub:
+
+```powershell
+$script = "$env:TEMP\collect-vitosoft-kmbus-pump.ps1"
+
+Invoke-WebRequest `
+  -Uri "https://raw.githubusercontent.com/SaulGoodman1337/optolink/main/tools/collect-vitosoft-kmbus-pump.ps1" `
+  -OutFile $script
+
+Set-ExecutionPolicy -Scope Process Bypass -Force
+& $script
+```
+
+If automatic installation discovery fails:
+
+```powershell
+& $script -Root "C:\Program Files (x86)\Viessmann Vitosoft 300 SID1\ServiceTool"
+```
+
+The ZIP contains only inventories, search hits, hashes and short binary-string
+contexts; it does not include Vitosoft EXE/DLL binaries.
