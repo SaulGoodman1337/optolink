@@ -101,7 +101,7 @@ button_card_templates:
             [[[
               const s = String(entity?.state ?? '').toLowerCase();
               if (s.includes('kein fehler') || s === 'ok') return 'var(--success-color)';
-              if (s.includes('unterbrechung') || s.includes('störung') || s.includes('verriegelt') || s.includes('error') || s.includes('fault')) return 'var(--error-color)';
+              if (s.includes('unterbrechung') || s.includes('fehler') || s.includes('störung') || s.includes('verriegelt') || s.includes('error') || s.includes('fault')) return 'var(--error-color)';
               if (s.includes('referenzfehler') || s.includes('warn')) return 'var(--warning-color)';
               return 'var(--primary-color)';
             ]]]
@@ -109,7 +109,7 @@ button_card_templates:
         - border-color: |
             [[[
               const s = String(entity?.state ?? '').toLowerCase();
-              if (s.includes('unterbrechung') || s.includes('störung') || s.includes('verriegelt') || s.includes('error') || s.includes('fault')) return 'var(--error-color)';
+              if (s.includes('unterbrechung') || s.includes('fehler') || s.includes('störung') || s.includes('verriegelt') || s.includes('error') || s.includes('fault')) return 'var(--error-color)';
               if (s.includes('referenzfehler') || s.includes('warn')) return 'var(--warning-color)';
               return 'var(--divider-color)';
             ]]]
