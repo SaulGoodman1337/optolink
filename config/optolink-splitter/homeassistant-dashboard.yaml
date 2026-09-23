@@ -2313,52 +2313,106 @@ views:
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_brenner_modulationsgrad
                 name: Brenner
+                name_gap: 8px
                 state_header: Mod
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: sensor.vitodens_200_wb2a_rkr_brennerzustand
                     name: RKR
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: binary_sensor.vitodens_200_wb2a_brenner_flamme
                     name: Flamme
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur_normal
                 name: Sollwerte
+                name_gap: 8px
                 state_header: RKR
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur
                     name: OPT
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: sensor.vitodens_200_wb2a_blr_kesselsolltemperatur_effektiv
                     name: BLR
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_cfdm_kesselsolltemperatur_effektiv
                 name: CFDM / GFA
+                name_gap: 8px
                 state_header: Soll
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: sensor.vitodens_200_wb2a_cfdm_leistungswert
                     name: CFDM %
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: sensor.vitodens_200_wb2a_gfa_leistungs_ansteuerwert_fein
                     name: GFA
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_cfdm_application_mode
                 name: CFDM Eingänge
+                name_gap: 8px
                 state_header: App
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: sensor.vitodens_200_wb2a_cfdm_consumer_demand_temperatur
                     name: Demand
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: binary_sensor.vitodens_200_wb2a_cfdm_leistungsstatus
                     name: Leistung
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: binary_sensor.vitodens_200_wb2a_brenner_startphase
                 name: Ablauf
+                name_gap: 8px
                 state_header: Start
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb
                     name: Regel
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv
                     name: OPT aktiv
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_rkr_statusbyte_55e0_b14
                 name: RKR intern
+                name_gap: 8px
                 state_header: 55E0.b14
+                styles:
+                  width: 76px
+                  text-align: center
 
       - type: grid
         column_span: 1
@@ -2371,37 +2425,74 @@ views:
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_kesseltemperatur
                 name: Kessel / Vorlauf
+                name_gap: 8px
                 state_header: Kessel
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
                     name: Vorlauf
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlaufsolltemperatur
                     name: VL Soll
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_aussentemperatur
                 name: Außen
+                name_gap: 8px
                 state_header: Aktuell
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: sensor.vitodens_200_wb2a_aussentemperatur_gedaempft
                     name: Gedämpft
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: sensor.vitodens_200_wb2a_cfdm_vorlauftemperatur
                     name: CFDM VL
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_warmwasser_temperatur
                 name: Warmwasser
+                name_gap: 8px
                 state_header: Temp
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: sensor.vitodens_200_wb2a_warmwasser_ladestatus
                     name: Ladung
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_heizkreis_m1_betriebsart_aktuell
                 name: Heizkreis
+                name_gap: 8px
                 state_header: Betrieb
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: sensor.vitodens_200_wb2a_heizkreis_m1_betriebsprogramm_aktuell
                     name: Programm
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
                     name: Ventil
+                    styles:
+                      width: 76px
+                      text-align: center
 
       - type: grid
         column_span: 1
@@ -2513,43 +2604,87 @@ views:
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl
                 name: Heizkreispumpe
+                name_gap: 8px
                 state_header: Drehzahl
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_ausgang
                     name: Ausgang
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
                     name: Vorlauf
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
                 name: Interne Pumpe
+                name_gap: 8px
                 state_header: Drehzahl
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: binary_sensor.vitodens_200_wb2a_interne_pumpe_status
                     name: Status
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
                     name: Ventil
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: binary_sensor.vitodens_200_wb2a_zirkulationspumpe_status
                 name: Zirkulation
+                name_gap: 8px
                 state_header: Status
+                styles:
+                  width: 76px
+                  text-align: center
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_sensorstatus_aussentemperatur_anzeige
                 name: Sensoren 1
+                name_gap: 8px
                 state_header: Außen
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: sensor.vitodens_200_wb2a_sensorstatus_kesseltemperatur_anzeige
                     name: Kessel
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: sensor.vitodens_200_wb2a_sensorstatus_sts2_anzeige
                     name: STS2
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_sensorstatus_vlts_anzeige
                 name: Sensoren 2
+                name_gap: 8px
                 state_header: VLTS
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: sensor.vitodens_200_wb2a_sensorstatus_raum_m1_anzeige
                     name: Raum M1
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: sensor.vitodens_200_wb2a_heizkreis_m1_reglervariante_anzeige
                     name: Regler
+                    styles:
+                      width: 76px
+                      text-align: center
 
       - type: grid
         column_span: 2
