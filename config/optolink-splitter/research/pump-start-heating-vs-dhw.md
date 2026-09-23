@@ -1701,3 +1701,170 @@ status change associated with a single E7 Virtual_WRITE.
 It is still insufficient evidence to justify rewriting E7 on every burner
 cycle. Until persistence/endurance is resolved independently, E7 remains a
 configuration/coding path rather than a proven volatile runtime setpoint.
+
+
+## Global Virtual-WILO production inventory — 2026-09-23
+
+The new global Wilo extractor was run against the preserved local production
+Vitosoft installation.
+
+The source files exactly match the hashes already recorded in
+`research/vitosoft/source-manifest.json`:
+
+```text
+DPDefinitions.xml
+  size   186559004
+  SHA256 efec27568d398021c767771af016143bd51fc196d2d408dbb80faff84d0b19e3
+
+ecnEventType.xml
+  size   9935374
+  SHA256 2338beb0e8544b6149bc4b2433ecabd9509edcdafc2e8e91f00182eba1aff7ba
+
+Textresource_de.xml
+  size   29764414
+  SHA256 bd760a53bcf5058560677d4fdd52b557afbc4e2200cede966a944acc9c7ac2dd
+```
+
+The exact VDensHO1 result is unchanged:
+
+```text
+VDensHO1 events             581
+VDensHO1 Virtual_WILO_READ    0
+VDensHO1 Virtual_WILO_WRITE   0
+```
+
+The global production inventory contains:
+
+```text
+Virtual_WILO_READ events    74
+Virtual_WILO_WRITE events    9
+linked Vitosoft devices      WILO only
+```
+
+This is decisive device-binding evidence: every real Vitosoft event using the
+Wilo-specific P300 function codes is linked to the separate datapoint/device
+profile named `WILO`, not to `VDensHO1`.
+
+### Wilo transport shape
+
+All 74 global Wilo events share the same Vitosoft virtual base address:
+
+```text
+0xA0C2
+```
+
+The individual Wilo value is selected by `PrefixRead`. Examples:
+
+| Event | Meaning | PrefixRead | BlockLength | Value position |
+| ---: | --- | --- | ---: | --- |
+| 6070 | Drehzahl | `0007` | 6 | bytes 4..5 |
+| 6108 | Pumpentyp | `0011` | 5 | byte 4 |
+| 6139 | aktueller Pumpenzustand | `0027` | 6 | bytes 4..5 |
+| 6106 | Pumpenbefehl | `0028` | 5 | byte 4 |
+| 6114 | Regelungsart der Pumpe | `002A` | 5 | byte 4 |
+| 6121 | Sollwert | `0001` | 6 | bytes 4..5 |
+
+The write-capable events are also explicit. For example:
+
+```text
+Pumpenbefehl:
+  FCWrite     Virtual_WILO_WRITE / 0x25
+  PrefixWrite 002801
+
+Regelungsart:
+  FCWrite     Virtual_WILO_WRITE / 0x25
+  PrefixWrite 002A01
+
+Sollwert:
+  FCWrite     Virtual_WILO_WRITE / 0x25
+  PrefixWrite 000132
+```
+
+These write forms are recorded only as protocol evidence. They must **not** be
+sent to the local boiler.
+
+### Independent Wilo-PLR correlation
+
+The open-source WiloPLR protocol implementation independently defines the same
+numeric parameter IDs:
+
+```text
+measurement SPEED             = 7   -> 0x07
+measurement PUMP_TYPE         = 17  -> 0x11
+measurement STATE_DIAGNOSTICS = 39  -> 0x27
+
+command PUMP_COMMAND           = 40  -> 0x28
+command OPERATION_MODE         = 42  -> 0x2A
+command SETPOINT               = 1   -> 0x01
+```
+
+These values exactly match the Vitosoft `PrefixRead` selectors above.
+
+This establishes that `Virtual_WILO_READ/WRITE` is not merely a generic
+alternate Virtual access class. Vitosoft is tunnelling the actual **Wilo PLR
+pump protocol** through the common P300 object at `0xA0C2`.
+
+### Consequence for the WB2A internal pump
+
+The architecture is now best represented as:
+
+```text
+VDensHO1 internal-pump model:
+  0x5730 / 0x5731 / 0x7660 / 0x0A54
+  -> ordinary Virtual_READ / Virtual_WRITE
+  -> no Virtual_WILO event binding
+
+separate Vitosoft WILO profile:
+  0xA0C2 + PLR selector prefix
+  -> Virtual_WILO_READ / Virtual_WILO_WRITE
+  -> Wilo PLR pump
+```
+
+Therefore there is currently **no metadata basis** for treating
+`Virtual_WILO_WRITE` as a volatile override for `0x7660` or E7.
+
+A remaining narrow question is whether the local WB2A firmware nevertheless
+implements the Wilo tunnel and routes it to an attached/internal Wilo pump.
+That can be tested without writes because the exact Vitosoft read shape is now
+known.
+
+### Exact read-only hardware probe
+
+Use the generic splitter request mapping:
+
+```text
+request;<function-code>;<address>;<BlockLength>;<PrefixRead>;<protocol-id>
+```
+
+Start with pump type because it is a one-byte identification value:
+
+```bash
+/usr/local/bin/optolink-debug request \
+  "request;0x24;0xA0C2;5;0011;0x00"
+```
+
+If that returns a successful Wilo-shaped response, follow with speed and
+diagnostic state:
+
+```bash
+/usr/local/bin/optolink-debug request \
+  "request;0x24;0xA0C2;6;0007;0x00"
+
+/usr/local/bin/optolink-debug request \
+  "request;0x24;0xA0C2;6;0027;0x00"
+```
+
+These are exact Vitosoft-derived `Virtual_WILO_READ` events. They contain no
+write operation.
+
+Interpretation boundary:
+
+- protocol error / no response: supports the conclusion that the local
+  VDensHO1 controller does not expose a Wilo PLR endpoint;
+- successful response: proves only that the Wilo tunnel is implemented and a
+  target responds; it does **not** yet prove that the responding Wilo pump is
+  the physical WB2A internal circulation pump;
+- correlation of returned speed with `0x7660[1]` across 50 % and 100 % states
+  would then be required to establish identity.
+
+No `0x25 Virtual_WILO_WRITE` test is justified before that identity is proven.
