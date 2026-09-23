@@ -103,6 +103,11 @@ chmod 755 /usr/local/bin/wb2a-single-session-logger
 chown root:root /usr/local/bin/wb2a-single-session-logger
 ln -sf /usr/local/bin/wb2a-single-session-logger /usr/bin/wb2a-single-session-logger
 
+cs_repo_fetch config/optolink-splitter/wb2a-e7-persistence-probe.py /usr/local/bin/wb2a-e7-persistence-probe
+chmod 755 /usr/local/bin/wb2a-e7-persistence-probe
+chown root:root /usr/local/bin/wb2a-e7-persistence-probe
+ln -sf /usr/local/bin/wb2a-e7-persistence-probe /usr/bin/wb2a-e7-persistence-probe
+
 cs_repo_fetch config/optolink-splitter/optolink-party-emulator.service /etc/systemd/system/optolink-party-emulator.service
 chmod 644 /etc/systemd/system/optolink-party-emulator.service
 chown root:root /etc/systemd/system/optolink-party-emulator.service
