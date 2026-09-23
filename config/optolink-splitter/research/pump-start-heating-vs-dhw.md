@@ -648,3 +648,42 @@ Therefore neither service program nor actuator-test state contributes to the
 observed normal heating 50 % / DHW 100 % pump behavior. These paths remain
 architectural evidence only and are not part of the live arbitration under
 normal operation.
+## Internal M2-to-internal-pump request path found
+
+A targeted search for runtime/configuration paths that can request the internal
+pump without using DHW or the absent external extension found coding A8:
+
+```text
+0x37A8  (A8) Einfluss auf Interne Pumpe
+  0 = ohne
+  1 = M2 setzt Anforderung an Int.Pumpe
+```
+
+This is an important architectural result because it proves that VDensHO1 has
+an internal heating-circuit-to-boiler-pump request path in addition to the A1
+speed object and the DHW path.
+
+Its practical relevance depends on the configured plant schema:
+
+```text
+0x7700  coding 00 / heating-circuit-DHW schema
+  1 = A1
+  2 = A1 + WW
+  3 = M2
+  4 = M2 + WW
+  5 = A1 + M2
+  6 = A1 + M2 + WW
+```
+
+Associated M2 runtime objects are:
+
+```text
+0x3906 / 1  M2 pump state (0 off, 1 on)
+0x7665 / 2  M2 pump output / speed, byte 1 = percent
+```
+
+This path is not yet evidence for a 100 % heating-start command. It only shows
+that M2 can assert a request to the internal pump when A8=1. Before considering
+any write test, first read 0x7700, 0x37A8, 0x3906 and 0x7665 on the local boiler
+and determine whether M2 exists and whether this request path is currently in
+use.
