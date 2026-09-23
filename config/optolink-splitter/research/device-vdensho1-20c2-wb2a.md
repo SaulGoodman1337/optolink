@@ -1219,3 +1219,33 @@ The existing dashboard file to restructure is:
 
 Do not discard the current diagnostic entities during the redesign; reorganize
 them and preserve useful low-level access where appropriate.
+
+## Local system fault F9 — blower speed not reached
+
+The general system fault archive at `0x7507` contains a complete historical
+entry:
+
+~~~text
+F9 20 26 09 21 01 17 31 44
+~~~
+
+Decoded timestamp:
+
+~~~text
+2026-09-21 17:31:44
+~~~
+
+The exact local Vitosoft mapping for VDensHO1 is:
+
+~~~text
+F9 = Fehler Gebläse - Drehzahl nicht erreicht
+~~~
+
+This is useful corroborating evidence for the open blower-speed research task:
+the controller itself monitors whether blower speed reaches a target, so a
+blower-speed command/actual-state path necessarily exists internally even
+though the previously assumed `0x55D3[6:7]` RPM interpretation was disproved.
+
+The F9 history entry does **not** identify the hidden live RPM datapoint by
+itself. It should be used as a clue when searching GFA/GG1/diagnostic objects
+for target/actual speed and speed-deviation states.
