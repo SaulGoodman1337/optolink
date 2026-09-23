@@ -68,7 +68,7 @@ function Safe-Name {
 function Redact-ConnectionString {
   param([string]$ConnectionString)
   try {
-    $b = New-Object System.Data.SqlClient.SqlConnectionStringBuilder($ConnectionString)
+    $b = [System.Data.SqlClient.SqlConnectionStringBuilder]::new($ConnectionString)
     if ($b.ContainsKey("Password")) { $b.Password = "<redacted>" }
     if ($b.ContainsKey("Pwd")) { $b["Pwd"] = "<redacted>" }
     return $b.ConnectionString
@@ -179,7 +179,7 @@ function Add-Candidate {
 
   if (-not $ConnectionString) { return }
   try {
-    $b = New-Object System.Data.SqlClient.SqlConnectionStringBuilder($ConnectionString)
+    $b = [System.Data.SqlClient.SqlConnectionStringBuilder]::new($ConnectionString)
   } catch {
     return
   }
@@ -221,13 +221,13 @@ function Export-Database {
   New-Item -ItemType Directory -Path (Join-Path $Destination "tables") -Force | Out-Null
   New-Item -ItemType Directory -Path (Join-Path $Destination "priority") -Force | Out-Null
 
-  $b = New-Object System.Data.SqlClient.SqlConnectionStringBuilder($ConnectionString)
-  $b.InitialCatalog = $DatabaseName
-  $b.ConnectTimeout = $ConnectTimeoutSeconds
-  $b.ApplicationName = "VitosoftPrivateCollector"
+  $b = [System.Data.SqlClient.SqlConnectionStringBuilder]::new($ConnectionString)
+  $b["Initial Catalog"] = $DatabaseName
+  $b["Connect Timeout"] = $ConnectTimeoutSeconds
+  $b["Application Name"] = "VitosoftPrivateCollector"
   if ($b.ContainsKey("AttachDbFilename")) { $b.Remove("AttachDbFilename") | Out-Null }
 
-  $conn = New-Object System.Data.SqlClient.SqlConnection($b.ConnectionString)
+  $conn = [System.Data.SqlClient.SqlConnection]::new($b.ConnectionString)
   $conn.Open()
 
   $hitPath = Join-Path $Destination "keyword-hits.csv"
@@ -566,12 +566,12 @@ $exportedDatabases = @{}
 foreach ($candidate in $candidates) {
   $b = $null
   try {
-    $b = New-Object System.Data.SqlClient.SqlConnectionStringBuilder($candidate.ConnectionString)
+    $b = [System.Data.SqlClient.SqlConnectionStringBuilder]::new($candidate.ConnectionString)
     if ($b.ContainsKey("AttachDbFilename")) { $b.Remove("AttachDbFilename") | Out-Null }
-    $b.InitialCatalog = "master"
-    $b.ConnectTimeout = $ConnectTimeoutSeconds
-    $b.ApplicationName = "VitosoftPrivateCollector"
-    $conn = New-Object System.Data.SqlClient.SqlConnection($b.ConnectionString)
+    $b["Initial Catalog"] = "master"
+    $b["Connect Timeout"] = $ConnectTimeoutSeconds
+    $b["Application Name"] = "VitosoftPrivateCollector"
+    $conn = [System.Data.SqlClient.SqlConnection]::new($b.ConnectionString)
     $conn.Open()
 
     $dbs = Get-DataTable -Connection $conn -Query "SELECT name,state_desc,user_access_desc FROM sys.databases ORDER BY name;"
