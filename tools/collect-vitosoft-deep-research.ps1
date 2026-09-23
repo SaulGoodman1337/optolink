@@ -195,7 +195,7 @@ Commit normalized metadata, hashes, symbol/member inventories and conclusions.
 Do not commit raw proprietary binaries or firmware images to a public repository.
 "@|Set-Content -LiteralPath (Join-Path $OutputDir "README.txt") -Encoding UTF8
 
-  foreach($w in @($manifest,$text,$pe,$pei,$members,$merr,$fwout,$binout,$allstr)){if($w){$w.Flush()}}
+  foreach($w in @($manifest,$text,$pe,$pei,$members,$merr,$fwout,$binout,$allstr)){if($w){$w.Flush();$w.Dispose()}}
   $zip=$OutputDir+".zip";if(Test-Path -LiteralPath $zip){Remove-Item -LiteralPath $zip -Force}
   Compress-Archive -Path (Join-Path $OutputDir "*") -DestinationPath $zip -Force
   Write-Host "Finished: $zip" -ForegroundColor Green
