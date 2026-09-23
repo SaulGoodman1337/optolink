@@ -46,6 +46,31 @@ The current reverse-engineering state is:
 - `A395.b2` is a separate approximately 60 s post-fire state and is not the
   240 s restart-inhibition timer
 
+## Vitosoft production join — 2026-09-23
+
+The complete production Vitosoft data set for the local controller family is
+now available and joined.
+
+Key results:
+
+- exact profile: `VDensHO1 / 20C2 / developer version 01.03`;
+- Vitosoft datapoint type ID: **60**;
+- complete event count: **581**;
+- missing low-level access definitions: **0**;
+- VDensHO1 events using `KBUS_*` or `KMBUS_*` FCRead/FCWrite: **0**;
+- remote identification is exposed through ordinary `Virtual_READ/WRITE`:
+  - A1/M1: `0x27A0`
+  - M2: `0x37A0`
+- measured room temperature remains read-only in Vitosoft:
+  - A1/M1: `0x0896`
+  - M2: `0x0898`
+
+The old 385-event VDensHO1 export is a filtered/group-oriented view, not the
+complete event inventory.
+
+Detailed source extraction:
+[vitosoft/full-extraction-2026-09-23.md](vitosoft/full-extraction-2026-09-23.md).
+
 ## Current open research tasks
 
 The central cross-chat backlog is maintained in
