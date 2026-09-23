@@ -2746,3 +2746,110 @@ pump demand itself is off.
 
 Do not write to `0x0A3C`; all discovered Vitosoft metadata for this event is
 read-only.
+
+
+## Full heating-cycle correlation with 0x0A3C / 0x7660 / 0x7663 — 2026-09-23
+
+A complete read-only heating trace with E7 still at 100 % captured the pump
+command, A1 demand and GFA/flame state from pump start through burner shutdown.
+
+Key timestamps:
+
+```text
+14:49:59.528
+A3C=100  7660=01/100  7663=01/100
+FLAME=0  MOD=0   GFA5=01 GFA7=00
+
+14:50:00.848
+A3C=100  7660=01/100  7663=01/100
+FLAME=0  MOD=0   GFA5=01 GFA7=20
+
+14:50:02.378 .. 14:50:06.436
+FLAME=0, modulation request rises 30 -> 68 %
+GFA7=20
+
+14:50:09.238
+FLAME=0  MOD=65  GFA5=09 GFA7=40
+
+14:50:10.529
+FLAME=1  MOD=66  GFA5=29 GFA7=60
+
+14:50:12.049
+FLAME=1  MOD=66  GFA5=21 GFA7=60
+
+14:50:21.041
+FLAME=1  MOD=66  GFA5=21 GFA7=62
+
+14:50:24.290 onward
+GFA7=62 and modulation begins its sustained down-ramp:
+64, 63, 62, 60, ... 33 %
+
+14:59:01.147
+FLAME=1  MOD=33  GFA5=21 GFA7=72
+
+14:59:02.791
+FLAME=0  MOD=33  GFA5=01 GFA7=00
+
+14:59:05.612
+FLAME=0  MOD=0   GFA5=01 GFA7=00
+A3C=100  7660=01/100  7663=01/100
+```
+
+### Timing derived from this trace
+
+- internal/A1 pump command reached 100 % at 14:49:59.528;
+- flame was first detected at 14:50:10.529;
+- therefore 100 % pump operation began about **11.0 s before flame detection**;
+- `GFA7=0x62` appeared at 14:50:21.041, about **10.5 s after flame
+  detection**;
+- the sustained modulation down-ramp followed shortly afterward;
+- flame remained established until 14:59:02.791, giving a burner run of about
+  **8 min 52 s**;
+- after flame loss the A1 and internal pump command remained at 100 % for at
+  least the next ~2.8 s visible in this excerpt.
+
+### Consequences
+
+With E7=100 %, the 100 % pump request is clearly **not burner-flame-only**:
+
+```text
+pump 100 % starts before flame
+        |
+        v
+pre-ignition / ignition / flame stabilization
+        |
+        v
+whole burner run
+        |
+        v
+pump remains 100 % after flame loss
+```
+
+This confirms that static E7=100 is hydraulically effective for burner
+survival but is broader than the desired control policy.
+
+The trace also strengthens the existing GFA state interpretation:
+
+```text
+GFA7 20  pre-ignition/start sequence
+GFA7 40  immediate pre-flame/ignition transition
+GFA7 60  flame established, stabilization phase
+GFA7 62  established regulation/down-ramp phase
+GFA7 72  terminal burner-run/shutdown transition
+GFA7 00  flame off / idle
+```
+
+These labels are behavioral descriptions from the local trace, not vendor
+enum names.
+
+The important next transition remains the later post-flame point where the
+previous divergence capture showed:
+
+```text
+A3C=50
+7660=01/50
+7663=00/0
+```
+
+Capturing its exact delay from flame loss will tell us when the A1 pump request
+is withdrawn and the internal-pump/GWG75-style post-run path takes over.
