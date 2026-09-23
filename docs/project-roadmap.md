@@ -594,7 +594,7 @@ Detailed firmware context:
 
 ### Private full Vitosoft archival collector
 
-Status: **collector ready / execution pending**
+Status: **v4 hardened collector prepared / fresh full run pending**
 
 A second, intentionally comprehensive collector now exists for material that
 should later live in a **private** research repository:
@@ -622,12 +622,43 @@ machine-specific paths and credentials stored in application configuration.
 It must therefore remain private and must not be committed wholesale to this
 public repository.
 
+Current collector checkpoint (2026-09-23):
+
+- the first private archive was already useful enough to recover the VSKO/GFA
+  protocol-switch mechanism and preserve the SQL MDF/LDF files;
+- Windows PowerShell 5.1 parser incompatibilities in inline hashtable
+  expressions were corrected;
+- the SQL connection builder was corrected for Windows PowerShell 5.1;
+- missing Build Tools / ILDASM / DUMPBIN prerequisites are now detected and
+  can be installed before collection;
+- manual validation on the Vitosoft host proved that `dumpbin`, `corflags`,
+  `sn.exe` and `ildasm` all work correctly on
+  `MobileClient\vsmInterfaceCommon.dll` with exit code 0;
+- `MobileClient\FlowCalibration.dll` is explicitly protected from ILDASM and
+  returns `Protected module -- cannot disassemble`; this is an assembly-level
+  condition, not a broken tool installation;
+- early attempts to parallelize the external PE/.NET tools through nested
+  `Start-Process` wrappers were unreliable on Windows PowerShell 5.1 and have
+  been abandoned;
+- current v4 design keeps raw-tree robocopy and independent Deep/SQL stages
+  parallel, but executes ILDASM/DUMPBIN/CORFLAGS/SN directly and sequentially
+  through the same invocation path that was manually verified;
+- every tool group now has a one-file self-test before processing the complete
+  file set, preventing another 89/106-task failure cascade;
+- ILSpyCmd has been added as a decompiler fallback for managed assemblies that
+  ILDASM intentionally refuses;
+- interrupted/partial archive directories were deleted by the user, so the
+  next execution is a completely fresh full collector run rather than a
+  resume.
+
 Execution task:
 
-1. run the collector on the Vitosoft Windows installation;
+1. run the current private collector from a fresh output directory;
 2. retain the original output and SHA256 manifest unchanged;
-3. create/use a private Git repository with Git LFS for raw binaries/databases;
-4. import only derived conclusions/hashes/scripts back into the public repo.
+3. inspect prerequisite report, self-test/tool-dump results, Deep output and
+   SQL priority exports before drawing new conclusions;
+4. create/use a private Git repository with Git LFS for raw binaries/databases;
+5. import only derived conclusions/hashes/scripts back into the public repo.
 
 ### Coding-plug read/write and external dumping
 
