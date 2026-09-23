@@ -498,6 +498,21 @@ $script = "$env:TEMP\collect-vitosoft-private-archive.ps1"
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/SaulGoodman1337/optolink/main/tools/collect-vitosoft-private-archive.ps1" -OutFile $script
 
 Set-ExecutionPolicy -Scope Process Bypass -Force
+
+# Syntax check before execution (especially useful on Windows PowerShell 5.1)
+$tokens = $null
+$errors = $null
+[System.Management.Automation.Language.Parser]::ParseFile(
+  $script,
+  [ref]$tokens,
+  [ref]$errors
+) | Out-Null
+
+if ($errors.Count -gt 0) {
+  $errors | Format-List *
+  throw "Collector script has PowerShell parser errors."
+}
+
 & $script -CreateArchive
 ```
 
