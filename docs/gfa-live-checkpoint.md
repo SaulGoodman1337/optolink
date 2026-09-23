@@ -1,134 +1,148 @@
 # GFA live checkpoint - 2026-09-23
 
-**Current status: the first recorded local VS1 GFA P80 read succeeded twice.**
+**Current status: P80 and P06/P09/P10/P84 have been read successfully on the local WB2A. Burner-off and burner-on snapshots differ as expected; the burner-on P06 value decodes to 4110 rpm.**
 
-This checkpoint supersedes the older "first hardware execution pending" wording in the collector analysis and P80 runbook for **P80 only**. Runtime P06/P09/P10/P84 access, rapid logging and permanent Home Assistant integration are not yet hardware-validated.
+This checkpoint supersedes older statements that only P80 has been hardware-tested. It does not establish independent tachometer calibration, a complete phase enum, continuous high-rate sampling or permanent Home Assistant integration.
 
-## 1. Evidence from the actual appliance
+Primary new evidence: [source-hashed snapshot comparison](../config/optolink-splitter/research/vitosoft/gfa-snapshots-2026-09-23-evidence.json). Static source definitions remain in [the collector evidence](../config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-evidence.json). The collector analysis describes an earlier static-only checkpoint, not these later hardware runs.
 
-Source: the user's pasted console transcript from the Optolink-Splitter LXC, not a simulated self-test. The transcript names `/root/wb2a-gfa-p80-20260923-223259-168588.log`; the separately stored log file was not fetched in this step.
+## 1. First P80 hardware result
 
-Tested helper: `wb2a-gfa-p80-probe.py` version 1.0.0, commit `ab32e2d2fe2c165390d7098dcffc4bb2e097543d`, SHA256 `6de883c422a09c821b342d12e5bb71dd3d518d8115ec2495bdfb202f5a7f50cb`.
+Source: the user's pasted LXC console transcript naming `/root/wb2a-gfa-p80-20260923-223259-168588.log`; the separately stored log file was not fetched.
 
-The user's download passed its hash check and all 23 embedded offline tests before the live run.
+Tested helper: `wb2a-gfa-p80-probe.py` 1.0.0, commit `ab32e2d2fe2c165390d7098dcffc4bb2e097543d`, SHA256 `6de883c422a09c821b342d12e5bb71dd3d518d8115ec2495bdfb202f5a7f50cb`.
 
-Local environment: Python 3.13.5 / pyserial 3.5, configured CP2102 by-id adapter resolving to `/dev/ttyUSB0`, 4800 8E2, `vs1protocol=False`, no Vitoconnect forwarding adapter. A different USB adapter was not used.
+Environment: Python 3.13.5 / pyserial 3.5, configured CP2102 by-id adapter resolving to `/dev/ttyUSB0`, 4800 8E2, `vs1protocol=False`, no Vitoconnect forwarding adapter. The second USB adapter was not selected.
 
-### Key observed events, Europe/Berlin (+02:00)
+Observed local times (+02:00):
 
-| Time | Actual observation |
+| Time | Observation |
 | --- | --- |
-| 22:32:59.146 | Running party emulator stopped. |
-| 22:32:59.172 | Running splitter stopped. |
-| 22:33:01.258 | P300 Virtual_READ 00F8/2 returned `20 c2`. |
-| 22:33:05.495 | First synchronized VS1 request: `01 6b 40 50 01`. |
-| 22:33:05.595 | First raw GFA reply: `20`. |
-| 22:33:09.880 | Second independently synchronized request: `01 6b 40 50 01`. |
-| 22:33:10.027 | Second raw GFA reply: `20`. |
-| 22:33:12.139 | P300 restored; actual Virtual_READ 00F8/2 again returned `20 c2`. |
-| 22:33:14.167 | Splitter reported running after restart. |
-| 22:33:16.210 | Party emulator reported running after restart; final result PASS. |
+| 22:32:59.146 / .172 | Previously running party emulator and splitter stopped. |
+| 22:33:01.258 | Baseline P300 Virtual_READ 00F8/2 returned `20 c2`. |
+| 22:33:05.495 -> .595 | `01 6b 40 50 01` -> `20`. |
+| 22:33:09.880 -> 22:33:10.027 | Independently synchronized repeat -> `20`. |
+| 22:33:12.139 | P300 restored and 00F8/2 again returned `20 c2`. |
+| 22:33:14.167 / 22:33:16.210 | Splitter and party emulator reported running; PASS. |
 
-The complete P300 response frame, excluding its leading acknowledgement, was the same before and after GFA access:
+Both GFA reads used EOT, interface-detection ENQ, a fresh VS1 ENQ and STX plus the read command. The complete P300 response frame excluding ACK was `41 07 01 01 00 f8 02 20 c2 e5` before and after the test.
 
-```text
-41 07 01 01 00 f8 02 20 c2 e5
-```
+This established the local P80 `0x20` GFA variant and the independently synchronized read/recovery path. The original [P80 runbook](gfa-p80-probe.md) retains the implementation and recovery details. Its original helper is unchanged.
 
-Both GFA reads used EOT `04`, an interface-detection ENQ `05`, a fresh VS1 ENQ `05`, then the STX-prefixed read. This independently synchronized sequence is now locally demonstrated, rather than only reconstructed from Vitosoft IL.
+## 2. Burner-off and burner-on snapshots
 
-The final live status was:
+Source: two uploaded console transcripts. Burner off/on is explicitly reported by the user; the snapshot helper does not independently poll flame state. No claim is made that the separate `/root/*.log` files were fetched, or that both states were imposed by the assistant.
 
-```text
-P80_RESULT=0x20 GFA
-P300_RESTORED=yes
-SPLITTER_RESTARTED=yes
-RESULT=PASS
-```
+Helper: [`wb2a-gfa-snapshot.py`](../config/optolink-splitter/wb2a-gfa-snapshot.py) 1.0.0, commit `8e9b2271c0bbc4bc8691f2778720a444e9f26476`, SHA256 `b8a89bae4a7dbcc4047b115d9c733f596f0e3a9a60d8025db7a86e1c9caf0141`. Both user runs passed the hash check and the 23 base plus 22 snapshot self-tests before actual serial access.
 
-### What is established
+The original snapshot helper remains unchanged. It verifies the pinned P80 helper before loading it, reuses settings/port checks and restoration, and reads each register with independent synchronization. All helpers use the same process lock.
 
-- The local `VDensHO1 / 20C2` accepts this VS1 `GFA_READ` P80 request.
-- P80 returned the same `0x20` byte in two separate synchronized sessions.
-- This matches the GFA branch selected by Vitosoft's P80 display conditions, not the CES, SCOT or DOVER branches.
-- Returning to P300 worked in this run and was verified with a real, checksum-validated device reply.
-- Both previously running services were restored to systemd active/running state.
+### Measurements
 
-### What is NOT established yet
+| Register | Burner off: raw -> decoded | Burner on: raw -> decoded | Burner-on SAMPLE timestamp |
+| --- | --- | --- | --- |
+| P06 / 0x4006 | `00` -> 0 rpm | `89` = 137 -> **4110 rpm** | 22:45:07.923 |
+| P09 / 0x4009 | `00` -> 0% | `7b` = 123 -> **48.2406% modulation setpoint** | 22:45:12.268 |
+| P10 / 0x400A | `00` -> 0% | `67` = 103 -> **41.2% fan PWM setpoint** | 22:45:16.612 |
+| P84 / 0x4054 | `00` | **`06`** | 22:45:20.978 |
 
-- Readability or physical plausibility of any other GFA register.
-- Actual fan RPM, GFA phase names or a complete status-bit dictionary.
-- A persistent VS1 session that can sample several registers rapidly without fresh synchronization.
-- MQTT/Home Assistant data freshness after restart; systemd running alone is not an application-level health check.
-- An unconditional recovery guarantee after power loss, SIGKILL, USB loss or systemd failure.
-- A firmware flashing/readout path or a new pump override.
+The burner-off SAMPLE timestamps are 22:42:17.349, 22:42:21.802, 22:42:26.242 and 22:42:30.667 respectively. The JSON preserves all raw values, exact timestamps, reply latencies and source hashes.
 
-No parameter, setpoint, GFA control value, EEPROM or process write was involved.
+The source definitions for the locally selected GFA variant are events 8175 (P06, x30 rpm), 8259 (P09, x0.3922%), 8179 (P10, x0.4%) and 8208 (P84 raw). P09 is not a blower-RPM setpoint in this variant.
 
-## 2. Next helper: bounded four-register snapshot
+### Communication and recovery
 
-Implementation: [`wb2a-gfa-snapshot.py`](../config/optolink-splitter/wb2a-gfa-snapshot.py).
+| Check | Burner-off run | Burner-on run |
+| --- | --- | --- |
+| Transcript-named log | `wb2a-gfa-snapshot-20260923-224201-168882.log` | `wb2a-gfa-snapshot-20260923-224452-168983.log` |
+| P80 samples, including closing guard | `20 / 20 / 20` | `20 / 20 / 20` |
+| P300 identity before/after | `20c2 / 20c2` | `20c2 / 20c2` |
+| Runtime reads | 4/4 | 4/4 |
+| P300 restored, splitter restarted | yes / yes | yes / yes |
+| Party emulator restored | yes | yes |
+| Final result | PASS | PASS |
+| Total logged duration | 39.126 s | 38.804 s |
+| Splitter stop -> reported running | 37.058 s | 36.735 s |
+| P06 -> P84 SAMPLE line span | 13.318 s | 13.055 s |
 
-Commit: `8e9b2271c0bbc4bc8691f2778720a444e9f26476`.
+The user explicitly reported that Home Assistant supplies values again after the first run. The second transcript confirms restoration of both services, but the same message does not separately confirm Home Assistant freshness after that second run. Do not upgrade systemd state alone into an application-level health measurement.
+
+### Interpretation supported by the comparison
+
+The four data addresses are locally readable, not merely entries in a metadata file. They returned zeros in the user-reported idle run and nonzero values in the user-reported firing run. This supports meaningful operating-state dependence and, combined with the exact P06 definition, a usable GFA-reported fan-speed reading.
+
+The RPM calculation is `0x89 = 137; 137 * 30 = 4110`. It is not an independent optical/tachometer measurement or full-range calibration. The obsolete `0x55D3[6:7] = rpm` interpretation remains rejected.
+
+P09 and P10 are different command quantities, and were also sampled at different times. Their 48.2406% versus 41.2% values are not a percentage mismatch that by itself indicates a fault. Modulation is not measured thermal kW. No simultaneous 0x55DC/0xA305 trace was supplied, so direct equality or conversion between them and P09 remains to be tested.
+
+P84=00 was observed in the idle snapshot; P84=06 was observed in the user-reported firing snapshot. Those are behavioral observations, not a recovered vendor enum. Do not label 06 as a proven exclusive steady-state regulation phase or infer the whole state machine from two points. Here the `RX 06` after the VS1 P84 command is processed as the one-byte register reply, not as a P300 ACK from a different protocol context.
+
+The four measurements are sequential and span about 13 seconds. They cannot determine what happened within the approximately 12-second startup plateau, prove a fan/modulation relationship at one common instant, or establish whether the burner was at its heating minimum, heating start, or DHW state. Those contextual details were not captured.
+
+## 3. Next test: bounded same-session access
+
+New helper: [`wb2a-gfa-session-probe.py`](../config/optolink-splitter/wb2a-gfa-session-probe.py) 1.0.0.
+
+Implementation commit: `3b9bb24e035034745b3b3949ad0a86817985597a`.
 
 SHA256:
 
 ```text
-b8a89bae4a7dbcc4047b115d9c733f596f0e3a9a60d8025db7a86e1c9caf0141
+32351e07cb0d661c00f7bcb7851d8103aca0b9cbc2f339041202e48b760d6da2
 ```
 
-The committed blob `62213a111dc12e5f02575c111c94114edc675011` matches the compiled/tested local file.
+Git blob `db2ecc6e44261f5dd052747c350511f16afcc016` was read back from that commit and matches the locally compiled/tested file. It depends only on the unchanged, SHA256-pinned `wb2a-gfa-p80-probe.py` beside it; the snapshot script is not a dependency.
 
-The successful original P80 helper is deliberately unchanged. The new helper requires it beside the snapshot script, verifies its complete SHA256 before loading it, and reuses its settings parsing, port ownership checks, serial settings, logging and P300 parser. It does not import the production splitter or execute the settings file. Both helpers share the same process lock, preventing concurrent local probe runs.
+**Status: implemented and offline-tested; same-session sequence not yet locally hardware-tested.** A successful independently synchronized snapshot does not establish that commands can be issued back-to-back without another EOT/ENQ/STX cycle. This is the deliberately narrow new question.
 
-### Fixed scope
+### Source basis
 
-| Register | GFA-branch interpretation from the collector | Output field |
-| --- | --- | --- |
-| P06, 0x4006 | Actual fan speed, raw x 30 rpm | `fan_actual_rpm` |
-| P09, 0x4009 | Modulation setpoint, raw x 0.3922 percent; NOT RPM | `modulation_setpoint_pct` |
-| P10, 0x400A | Fan PWM setpoint, raw x 0.4 percent | `fan_pwm_setpoint_pct` |
-| P84, 0x4054 | Operating phase; no validated name table | `phase_raw` |
+The relevant host-code methods were re-read from the supplied private archive without executing Vitosoft:
 
-These are source-derived interpretations, not newly observed measurements. The source entries are recorded in [the collector evidence](../config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-evidence.json), events 8175, 8259, 8179 and 8208.
+- `VS1Message::toByteArray`, particularly IL lines 285-322: GFA reads serialize function, high address, low address and length, without a per-message STX.
+- `VS1::_timer_processor_Elapsed`, around lines 985-1099: connection setup and message processing are distinct states; normal messages and keepalive use the active connection.
+- `VS1::sendVS1Message`, around lines 1283-1510, especially 1331-1341: writes the serialized message and gathers the expected raw reply.
+- `VS1::sendKeepVS1Message`, around 1513 onward: a separate keepalive path exists; this helper does not add its commands or use arbitrary keepalives.
 
-The helper performs: P300 baseline; two P80=0x20 checks; one read each of P06/P09/P10/P84; closing P80=0x20 check; P300 verification and restoration of previously running services. It aborts before runtime reads for any other variant.
+Source file: `tool-dumps/ildasm/MobileClient_vsmInterfaceCore.dll.il` in the private archive with SHA256 `50f8215ea74b1d507c78d28294814db1a5fc65683b3308f23057a2fce8bb4daa`. Full proprietary IL is not published. pyserial timeout and buffer behavior was checked against its official API reference, https://pyserial.readthedocs.io/en/latest/pyserial_api.html .
 
-Every GFA read uses exactly the independent synchronization strategy that succeeded above. There is no arbitrary address or length option, no loop duration, no automatic burner start and no write function. Runtime timeouts or unexpected trailing data stop the sequence rather than trying additional addresses.
+### Fixed sequence and restrictions
 
-**The four samples are taken sequentially with fresh synchronization, not simultaneously.** This is an access/plausibility check, not a one-second-resolution burner-start logger. Do not infer the timing or causal relationship of fast phase changes from this snapshot.
+1. Verify settings and configured port; pause the previously running party emulator and splitter. Own the port exclusively, as in the successful helpers.
+2. Verify P300 identity 20C2 and perform two independently synchronized P80=20 reads.
+3. Read P80 once more **in the same VS1 session**, using `6b 40 50 01` without new STX or EOT. Abort before runtime reads if this fails.
+4. Perform exactly ten response-paced rounds of P06, P09, P10 and P84, followed each time by a P80=20 guard. No deliberate sleep between rounds, no fixed sampling-rate promise.
+5. Finish with independently synchronized P80, verified P300 00F8/2 readback and restoration of previously running services.
 
-Raw bytes, decoded values, timestamps and reply latencies are retained in the log. Values are not silently clamped: for example, declared factors can produce 100.0110 percent or 102.0 percent at raw 255. Such an output requires interpretation and is not automatically a physical setpoint above the nominal limit. Unknown phase values remain raw. A raw VS1 byte has no P300-style checksum; a one-byte response alone does not independently prove measurement semantics. Its future correlation across operating states remains necessary.
+The only added transmissions are the four-byte GFA_READ requests for already locally read P80/P06/P09/P10/P84. No new data addresses, long block reads, coding writes, GFA writes, EEPROM writes, process writes, burner-start commands or actuator tests are enabled.
 
-### Tests actually performed
+There is a cooperative 20-second budget for the burst itself, excluding entry and recovery. A 300-ms host idle-gap guard prevents blind continuation after a scheduling/logging stall; this is a conservative helper limit, not a measured WB2A firmware timeout. Unexpected queued data, trailing data, mismatched P80, partial writes or reply timeout stop the test without automatic retransmission or same-session resynchronization. P300 recovery remains separately bounded to two attempts.
 
-Python compilation passed. `--self-test` ran **45 passing offline tests**: 23 from the unchanged P80 helper plus 22 for snapshot framing, decoding, allowlist rejection, variant guards, zero values, unclamped values, trailing data, timeouts, interrupts, serial/service failures and restoration. Default invocation prints a plan and performs no serial or systemd operation.
+The five reads per round remain sequential. Raw values, host receive timestamps and measured timing are logged. Samples are initially marked `round_guard=pending`; only the following `ROUND_CONFIRMED` establishes that round's P80 guard passed. A P80 guard improves alignment checking but is not a checksum for every raw VS1 sample. Unknown phase values, including data bytes numerically equal to control characters, remain raw rather than being silently filtered out.
 
-Tests use fake ports/services and a simulated clock. They do not replace actual hardware validation of these four registers. No live appliance command was run by the assistant while preparing this helper.
+### Offline verification actually performed
 
-pyserial's read/write timeout semantics were checked against its official API documentation: https://pyserial.readthedocs.io/en/latest/pyserial_api.html
+Compilation, plan-only invocation and **56 passing offline tests**: the unchanged base's 23 tests plus 33 new tests. The new suite checks exact command sequence, allowlist, wrong identities, first-guard failure before runtime access, per-round guard failure, no retry on timeout, trailing/queued data, host-gap/deadline handling, logging stalls, zero values, control-valued raw bytes, scaling, interrupts, partial writes, open/stop/recovery/close/restart failures and initially inactive services.
 
-## 3. First snapshot execution
+All tests simulate serial/systemd and time. They do not establish actual persistent-session timing, kernel/USB behavior on the user's host, full-cycle stability, MQTT health or physical fan calibration.
 
-Run in the same LXC as root. The existing `/root/wb2a-gfa-p80-probe.py` from the successful test is required; leave it unchanged. The helper refuses a missing or different-hash dependency before changing any service.
+### Execute in the same LXC as root
 
-Do not stop the splitter beforehand, change `vs1protocol`, or run another serial program at the same time. Prefer a naturally occurring stable burner state for meaningful runtime values; an idle snapshot is also useful as a baseline. Do not force a start, change codings or use an actuator test just to obtain nonzero values.
-
-During the test, the splitter and an active party emulator are paused, so their normal polling/control service is temporarily unavailable. Leave the helper's cleanup to complete. Ordinary SIGINT/SIGTERM/SIGHUP enter cleanup, but there is no separate watchdog against SIGKILL, host failure or disconnected hardware.
+Leave the existing `/root/wb2a-gfa-p80-probe.py` unchanged. Do not stop services first, change `vs1protocol`, or use another serial program concurrently. Normal idle or stable firing is acceptable; do not deliberately force a burner start or change parameters to obtain nonzero values. This test concerns transport reuse, not completion of a burner cycle.
 
 ```bash
 (
   set -euo pipefail
-  script=/root/wb2a-gfa-snapshot.py
+  script=/root/wb2a-gfa-session-probe.py
   tmp=$(mktemp)
   trap 'rm -f "$tmp"' EXIT
 
   curl --fail --show-error --location --retry 2 --connect-timeout 15 \
-    'https://raw.githubusercontent.com/SaulGoodman1337/optolink/8e9b2271c0bbc4bc8691f2778720a444e9f26476/config/optolink-splitter/wb2a-gfa-snapshot.py' \
+    'https://raw.githubusercontent.com/SaulGoodman1337/optolink/3b9bb24e035034745b3b3949ad0a86817985597a/config/optolink-splitter/wb2a-gfa-session-probe.py' \
     -o "$tmp"
 
   printf '%s  %s\n' \
-    'b8a89bae4a7dbcc4047b115d9c733f596f0e3a9a60d8025db7a86e1c9caf0141' \
+    '32351e07cb0d661c00f7bcb7851d8103aca0b9cbc2f339041202e48b760d6da2' \
     "$tmp" | sha256sum -c -
 
   install -m 0700 "$tmp" "$script"
@@ -137,12 +151,24 @@ During the test, the splitter and an active party emulator are paused, so their 
 )
 ```
 
-No `update` is needed. The new log is `/root/wb2a-gfa-snapshot-<timestamp>-<pid>.log`, created with mode 0600. Inspect all four `SAMPLE` lines, the closing identity, `P300_RESTORED`, service restoration and the final `RESULT`.
+No `update` is needed and no experiment is run by the normal updater. The new root-only log is `/root/wb2a-gfa-session-<timestamp>-<pid>.log`. Without `--execute`, the helper prints its plan only. Missing/modified dependency bytes are rejected before service or serial changes.
 
-`RESULT=PASS` means the bounded request sequence and cleanup succeeded, not that all scaling/phase semantics are physically validated. On failure, preserve the full log and do not repeat blindly. Once the helper exits, confirm Home Assistant resumes normal updates separately from the systemd status.
+Successful example, not an observed result of this new helper:
 
-## 4. Following work
+```text
+SESSION_ROUNDS=10/10
+P80_CONFIRMED=0x20 GFA
+P300_RESTORED=yes
+SPLITTER_RESTARTED=yes
+RESULT=PASS
+```
 
-After real snapshot results: validate nonzero P06 against ordinary burner operation and compare P09/P10 with known modulation behavior. Only then review a persistent-session logger for finer timing. Such a logger must preserve exclusive ownership and recovery; it cannot be added to normal MQTT polling as though GFA_READ were an ordinary P300 virtual read.
+On failure retain the complete log and do not repeat blindly. During the test normal MQTT/TCP updates and the active party-emulator service are paused. Ordinary SIGINT/SIGTERM/SIGHUP enter cleanup, but there is no independent watchdog and no guarantee against SIGKILL, power loss, USB failure or unsuccessful systemd recovery. Port-owner inspection is limited to the visible process namespace. After the helper exits, service state and actual Home Assistant updates remain distinct health checks.
 
-Keep GFA firmware identity/coding-plug diagnostics, E7 persistence, pump request selection and firmware acquisition as separate subsequent tasks. This successful P80 experiment does not resolve them by implication.
+## 4. Following work and interpretation boundary
+
+If the same-session test succeeds, develop a bounded full-cycle observation logger using measured timing. Its first goal is to correlate P06/P09/P10/P84 through a natural start, stabilization, modulation and stop, not modify combustion. Determine separately whether/how to obtain synchronized flame/0x55DC/0x55E0 observations while VS1 owns the interface. Existing P300 MQTT loggers cannot run concurrently through a stopped splitter and do not supply contemporaneous data merely because old HA values remain visible.
+
+Only after transport and interpretation validation should permanent Home Assistant acquisition be designed. A second independent serial process competing with the splitter is not an acceptable permanent integration. Integration requires explicit ownership/scheduling of mode switches or another proven acquisition architecture.
+
+GFA firmware identity/coding-plug diagnostics, E7 persistence, internal-pump request selection, full firmware acquisition and M2 remain separate workstreams. These successful fan/status reads do not resolve them by implication. Production profiles, dashboard YAML, heating parameters and installer/updater behavior were not changed in this step.
