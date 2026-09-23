@@ -2194,7 +2194,6 @@ views:
   # Diagnose view: compact, information-dense cockpit.
   # HACS frontend dependencies:
   # - lovelace-multiple-entity-row
-  # - flex-table-card
   # - card-mod
   - title: Diagnose
     path: diagnose
@@ -2337,8 +2336,10 @@ views:
             icon: mdi:view-dashboard-outline
 
           - type: grid
-            columns: 2
+            columns: 4
             square: false
+            grid_options:
+              columns: full
             cards:
               - type: entities
                 title: Brenner / interne Regelung
@@ -2560,84 +2561,38 @@ views:
             heading_style: subtitle
             icon: mdi:history
 
-          - type: grid
-            columns: 2
-            square: false
-            cards:
-              - type: custom:flex-table-card
-                title: Systemfehler 01–10
-                clickable: true
-                entities:
-                  - sensor.vitodens_200_wb2a_fehlerhistorie_01_anzeige
-                  - sensor.vitodens_200_wb2a_fehlerhistorie_02_anzeige
-                  - sensor.vitodens_200_wb2a_fehlerhistorie_03_anzeige
-                  - sensor.vitodens_200_wb2a_fehlerhistorie_04_anzeige
-                  - sensor.vitodens_200_wb2a_fehlerhistorie_05_anzeige
-                  - sensor.vitodens_200_wb2a_fehlerhistorie_06_anzeige
-                  - sensor.vitodens_200_wb2a_fehlerhistorie_07_anzeige
-                  - sensor.vitodens_200_wb2a_fehlerhistorie_08_anzeige
-                  - sensor.vitodens_200_wb2a_fehlerhistorie_09_anzeige
-                  - sensor.vitodens_200_wb2a_fehlerhistorie_10_anzeige
-                columns:
-                  - name: "#"
-                    data: entity_id
-                    modify: "x.match(/_(\\d{2})(?:_anzeige)?$/)[1]"
-                  - name: Ereignis
-                    data: state
-                css:
-                  table+: "font-size: 12px;"
-                  "tr td+": "padding: 2px 6px;"
-                  "thead th+": "padding: 3px 6px;"
-
-              - type: custom:flex-table-card
-                title: GFA-Historie 01–10
-                clickable: true
-                entities:
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_01
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_02
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_03
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_04
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_05
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_06
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_07
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_08
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_09
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_10
-                columns:
-                  - name: "#"
-                    data: entity_id
-                    modify: "x.match(/_(\\d{2})$/)[1]"
-                  - name: Ereignis
-                    data: state
-                css:
-                  table+: "font-size: 12px;"
-                  "tr td+": "padding: 2px 6px;"
-                  "thead th+": "padding: 3px 6px;"
-
-              - type: custom:flex-table-card
-                title: GFA-Historie 11–20
-                clickable: true
-                entities:
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_11
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_12
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_13
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_14
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_15
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_16
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_17
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_18
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_19
-                  - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_20
-                columns:
-                  - name: "#"
-                    data: entity_id
-                    modify: "x.match(/_(\\d{2})$/)[1]"
-                  - name: Ereignis
-                    data: state
-                css:
-                  table+: "font-size: 12px;"
-                  "tr td+": "padding: 2px 6px;"
-                  "thead th+": "padding: 3px 6px;"
+          - type: markdown
+            content: |
+              | # | Systemfehler | GFA 01–10 | GFA 11–20 |
+              |---:|---|---|---|
+              | 01 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_01_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_01') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_11') }} |
+              | 02 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_02_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_02') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_12') }} |
+              | 03 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_03_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_03') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_13') }} |
+              | 04 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_04_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_04') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_14') }} |
+              | 05 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_05_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_05') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_15') }} |
+              | 06 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_06_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_06') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_16') }} |
+              | 07 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_07_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_07') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_17') }} |
+              | 08 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_08_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_08') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_18') }} |
+              | 09 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_09_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_09') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_19') }} |
+              | 10 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_10_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_10') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_20') }} |
+            card_mod:
+              style: |
+                ha-card {
+                  font-size: 12px;
+                }
+                ha-markdown {
+                  padding: 6px 10px !important;
+                }
+                table {
+                  width: 100%;
+                }
+                th, td {
+                  padding: 3px 8px !important;
+                  vertical-align: middle;
+                  white-space: normal;
+                }
+            grid_options:
+              columns: full
 
       - type: grid
         column_span: 4
