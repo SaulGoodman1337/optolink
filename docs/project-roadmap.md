@@ -10,6 +10,57 @@ research documents; this file contains tasks and next actions.
 
 ## Priority: next session
 
+### Handoff for the next chat — Home Assistant dashboard
+
+The next chat should return to the Home Assistant dashboard first. The private
+Vitosoft collector can continue independently and may later contribute new
+diagnostic metadata, but the dashboard work does **not** need to wait for it.
+
+Current dashboard checkpoint:
+
+- the compact popup-driven diagnostics redesign is already present in
+  `config/optolink-splitter/homeassistant-dashboard.yaml`;
+- Mushroom chips currently summarize flame, modulation, RKR, takt lock,
+  restart release, start phase, regulation, OPT and GFA-lock state;
+- detailed sensor, RKR/CFDM/GFA, fault-history, device/software and coding-plug
+  information is moved into browser_mod popups;
+- a dedicated weekly time-program view for heating, DHW and circulation has
+  been added;
+- the A5/A6 explanation has been revised, but wording and visual clarity still
+  need live verification;
+- fault-history decoding currently includes the hardware/source-supported
+  mappings B7, F9, BC and BD;
+- the previous false blower-rpm interpretation from `0x55D3[6:7]` must not
+  reappear.
+
+First dashboard actions in the new chat:
+
+1. inspect the current YAML rather than reconstructing the dashboard from
+   memory;
+2. visually verify the compact diagnostics view and browser_mod popup syntax in
+   Home Assistant;
+3. verify the dedicated time-program tab and remove any remaining duplicate
+   schedule presentation from diagnostics;
+4. review labels, explanatory text and grouping for RKR/OPT/restart inhibition,
+   burner/GFA state, pumps, faults, software identity and coding plug;
+5. verify all entity IDs used by the redesigned cards against the production
+   Home Assistant profile before treating them as working;
+6. improve the A5/A6 explanation around the actual distinction:
+   A5 is the heating-circuit-pump switching boundary, while A6 is the fixed
+   summer/winter heating shutdown threshold affecting the whole heating mode;
+7. keep unresolved/raw research values visually separated from verified
+   operator-facing values.
+
+Collector interaction with the dashboard:
+
+- collector results may later expose exact GFA phase/fan values, firmware
+  identity or additional software/update metadata;
+- do not add those values to the normal dashboard merely because a string or
+  address exists in Vitosoft;
+- promote them only after access method, scaling and semantics are supported;
+- the already recovered VSKO/GFA access mechanism is a separate read-only
+  research path and is not required for the dashboard redesign itself.
+
 ### 1. Restructure the Home Assistant diagnostics page
 
 Status: **compact popup-driven redesign implemented / Home Assistant visual verification pending**
