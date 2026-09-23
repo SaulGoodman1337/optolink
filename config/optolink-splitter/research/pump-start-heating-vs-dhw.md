@@ -1921,11 +1921,8 @@ return for the local system. This is compatible with the production metadata,
 where all real `Virtual_WILO_*` events belong only to the separate `WILO`
 device profile and none belong to `VDensHO1`.
 
-This is not yet a byte-level proof because the ordinary debug response omits
-the complete response telegram. The final read-only confirmation is to repeat
-one or more of the same requests through the splitter's full-raw path and
-capture the complete returned VS2 frame. A successful empty response is expected
-to carry a response BlockLength of zero.
+This was subsequently confirmed at wire level with the splitter full-raw path;
+see the next section.
 
 No `Virtual_WILO_WRITE / 0x25` operation is justified.
 
@@ -1960,6 +1957,100 @@ including ACK, header, returned BlockLength and CRC:
 These commands are byte-for-byte equivalent read requests to the already
 executed generic requests; they do not perform a write.
 
-The pump-type frame alone is sufficient for the first confirmation. If its raw
-response contains a valid VS2 response with returned BlockLength `00`, the
-meaning of the prior `1;0xa0c2;none` result is fully confirmed at wire level.
+### Full-raw hardware result
+
+The local WB2A returned:
+
+```text
+request:
+41 07 00 24 A0 C2 05 00 11 A3
+response:
+06 41 05 01 24 A0 C2 05 91
+
+request:
+41 07 00 24 A0 C2 06 00 07 9A
+response:
+06 41 05 01 24 A0 C2 06 92
+
+request:
+41 07 00 24 A0 C2 06 00 27 BA
+response:
+06 41 05 01 24 A0 C2 06 92
+```
+
+The returned frames are checksum-valid.
+
+For the first response:
+
+```text
+06          VS2 ACK
+41          STX
+05          payload/package length
+01          LDAP + ResponseMessage
+24          Virtual_WILO_READ
+A0 C2       address
+05          requested Wilo block length echoed back
+91          checksum
+```
+
+The two 6-byte requests have the same shape and echo `06` in the final
+header field.
+
+Important detail: the response package length is only `05`, i.e. it contains
+exactly the mandatory five VS2 message fields after the length byte and **no
+additional data bytes**. The nominal block-length field nevertheless contains
+the requested `05` or `06`.
+
+Thus the Wilo response is not shaped like an ordinary successful
+`Virtual_READ` carrying BlockLength data bytes. It is best treated as a
+Wilo-command-specific acknowledgement/empty response whose header echoes the
+request, not as a decoded pump value.
+
+This also explains the splitter result `1;0xa0c2;none`: its parser validates
+the packet CRC and message identifier, then extracts bytes after the fixed
+header. There are none.
+
+The full-raw receive helper ends after approximately 50 ms of serial silence
+once data has arrived. Therefore these captures alone do not mathematically
+exclude a later asynchronous Wilo telegram. No source found so far documents
+such a second-stage response for this Vitosoft command, however.
+
+### External architecture corroboration
+
+The separate Vitosoft `WILO` profile is identified as device ID `0x0700`
+in another Vitosoft-derived device index. That is distinct from the local
+`VDensHO1 = 0x20C2`.
+
+External product documentation also matches the global Vitosoft model:
+
+- Wilo describes PLR as a point-to-point pump communications protocol requiring
+  a physical interface per pump.
+- Viessmann Vitocom 300 documentation describes external Wilo pump integration
+  via the Wilo-Digicon converter: PLR on the pump side, RS485 on the Vitocom
+  side, with multiple separately connected Wilo pumps.
+
+References:
+
+- https://wilo.com/pl/pl/Narz%C4%99dzia/Cenniki-i-dokumentacja-techniczna/Automatyka-budynku/Protok%C3%B3%C5%82-Wilo-PLR/
+- https://www.manualslib.de/manual/104099/Viessmann-Vitocom-300.html?page=9
+- https://www.manualslib.de/manual/104099/Viessmann-Vitocom-300.html?page=15
+
+Combined with the exact VDensHO1 metadata containing zero
+`Virtual_WILO_*` events, the local empty Wilo responses make this path a very
+poor candidate for the WB2A internal circulation pump.
+
+### Virtual-WILO disposition
+
+For the practical research goal, the Wilo path is now considered **closed as a
+direct runtime-pump-control candidate**:
+
+- `0x24/0x25` are real Wilo-PLR tunnel functions;
+- their production events belong to the separate `WILO` device profile;
+- `WILO` is a separate `0x0700` device class, not `VDensHO1 0x20C2`;
+- exact local `0x24` reads return only empty acknowledgement-shaped frames;
+- none of the VDensHO1 internal-pump events is bound to the Wilo FCs.
+
+Do not test `Virtual_WILO_WRITE / 0x25` on the WB2A.
+
+Further Wilo work would now be protocol archaeology rather than a promising
+route to the desired burner-dependent 100 % internal-pump override.
