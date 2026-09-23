@@ -3,9 +3,14 @@
 This directory contains **project-specific derived data**, not a blind mirror of
 the complete Vitosoft data set.
 
-The source material currently known to this project comes from the public
-`MorrisonHB/Optolink_02` repository at commit
-`ec77c6917909ae229b17a6104db4f81f9a31e263`.
+The project now has two independently traceable Vitosoft sources:
+
+- the public `MorrisonHB/Optolink_02` reference set at commit
+  `ec77c6917909ae229b17a6104db4f81f9a31e263`;
+- a real Vitosoft 300 SID1 production installation collected on 2026-09-23
+  after first launch, with DataPointDefinitionVersion **0.0.26.4683**.
+
+Exact hashes for both source sets are recorded in `source-manifest.json`.
 
 ## Where to obtain the original Vitosoft files
 
@@ -176,6 +181,10 @@ Structured transform of the upstream
 
 Current row count: **385 events**.
 
+This file is now considered a **legacy filtered/group-oriented view**. The full
+production XML join contains **581 VDensHO1 events**. See
+[full-extraction-2026-09-23.md](full-extraction-2026-09-23.md).
+
 Columns:
 
 - section;
@@ -188,8 +197,8 @@ Columns:
 - Vitosoft visibility condition;
 - source device.
 
-This file is useful as a device-specific inventory, but it does **not** contain
-all low-level access metadata from `ecnEventType.xml`.
+This file remains useful for human-readable group/visibility context, but it is
+not the canonical complete event inventory.
 
 ### `vdensho1-kmbus-participants.csv`
 
@@ -216,6 +225,29 @@ Important entries include:
 
 These addresses are **Vitosoft-derived event addresses**. They do not by
 themselves establish which VS2 function code is required to access each event.
+
+### `vdensho1-vitotrol-events.csv`
+
+Curated low-level events relevant to Vitotrol/remote-control emulation on the
+exact VDensHO1 profile. It includes remote identification, software index,
+room-temperature actual/status, room influence and related setpoint objects.
+
+Key source result:
+
+~~~text
+0x27A0 A1/M1 remote identification
+  Virtual_READ + Virtual_WRITE
+  0 = not present
+  1 = Vitotrol 200
+  2 = Vitotrol 300
+
+0x0896 A1/M1 measured room temperature
+  Virtual_READ only
+  Div10 °C
+~~~
+
+See [full-extraction-2026-09-23.md](full-extraction-2026-09-23.md) for the
+complete interpretation boundary.
 
 ### `project-interest-events.csv`
 
@@ -255,28 +287,29 @@ It joins the device membership from `DPDefinitions.xml` against
 - a `KBUS_*` / `KMBUS_*`-only CSV;
 - an extraction summary JSON.
 
-## Missing low-level fields
+## Full low-level join status
 
-For KBus/KM-BUS research the next extraction must join the device event list to
-`ecnEventType.xml` and retain at least:
+The missing low-level source set was supplied from a real Vitosoft
+installation on 2026-09-23. The join of `DPDefinitions.xml` and
+`ecnEventType.xml` is now validated.
 
-- `FCRead`;
-- `FCWrite`;
-- `Address`;
-- `BlockLength`;
-- `ByteLength`;
-- `BytePosition`;
-- `BitLength`;
-- `BitPosition`;
-- `Parameter`;
-- `PrefixRead`;
-- `PrefixWrite`;
-- conversion/unit metadata.
+For VDensHO1:
 
-The original XML files are currently visible through the upstream repository as
-Git-LFS pointers, but their full bytes are not materialized by the GitHub tool
-available in this environment. Once the LFS objects are available locally, the
-project extractor should generate the low-level CSV directly.
+~~~text
+datapoint type ID: 60
+event links:       581
+missing access:    0
+KBUS/KMBUS events: 0
+~~~
+
+The validated extractor is `tools/extract-vitosoft-project-data.py`.
+
+The most important protocol result is that the exact VDensHO1 profile uses
+ordinary `Virtual_READ/Virtual_WRITE`, `GFA_READ` and RPC accesses, but no
+`KBUS_*` or `KMBUS_*` FCRead/FCWrite entries. Global KBus definitions still
+exist in Vitosoft and are documented separately.
+
+See [full-extraction-2026-09-23.md](full-extraction-2026-09-23.md).
 
 ## Project policy for Vitosoft information
 
