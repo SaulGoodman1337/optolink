@@ -562,6 +562,21 @@ Therefore the 100 % pump state is not a transient GFA/flame-start override.
 It belongs to the DHW hydraulic/operating-mode state and is retained across
 burner cycling inside a single storage-charge operation.
 
+### Burner cycling inside one DHW charge
+
+The same capture also separates two different burner stop causes while the pump
+remains at 100 %:
+
+- first DHW burner phase: target 68.0 C, boiler actual reaches 77.0 C and the
+  burner stops while WW status remains 01. This is consistent with the already
+  observed approximately target + GWG61 (8 K) thermal switch-off behavior;
+- second DHW burner phase: WW status changes 01 -> 02 at boiler actual 74.0 C,
+  then the controller shuts the burner down. This stop is tied to storage-charge
+  completion / transition to overrun rather than the thermal +8 K limit.
+
+Thus 100 % pump operation is independent of which burner-stop cause occurs.
+It remains selected for the entire DHW hydraulic state.
+
 ### Transition to DHW overrun
 
 During the second burner phase:
