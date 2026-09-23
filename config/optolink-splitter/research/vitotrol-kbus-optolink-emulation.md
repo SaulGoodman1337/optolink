@@ -82,6 +82,17 @@ This creates a much more precise emulation problem:
 
 Do not write 0x27A0/0x37A0 yet. First record a complete read-only baseline.
 
+Local read-only baseline:
+
+- [vitosoft/vitotrol-baseline-2026-09-23.md](vitosoft/vitotrol-baseline-2026-09-23.md)
+
+The baseline shows both circuits in the same absent-remote state
+(`A0=0`, software-index block all zero, room sensor status 3/unknown, room
+value 20.0 °C). The production Vitosoft resources also define
+`BC = Fehler Fernbedienung HK1` and `BD = Fehler Fernbedienung HK2` for
+VDensHO1, so a manual A0 write must be preceded by an error-history baseline
+and an immediate rollback plan.
+
 Detailed source extraction:
 
 - [vitosoft/full-extraction-2026-09-23.md](vitosoft/full-extraction-2026-09-23.md)
