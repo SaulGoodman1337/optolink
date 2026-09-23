@@ -429,12 +429,41 @@ Write-Host "Vitosoft SQL read-only collector" -ForegroundColor Cyan
 Write-Host "Root:   $Root"
 Write-Host "Output: $OutputDir"
 
-# Preserve MDF/LDF bytes first.
+# Preserve MDF/LDF bytes first. Use a read/share fallback when a database
+# engine keeps the file open. Failures are logged but do not abort SQL discovery.
 $dbFiles = @(Get-ChildItem -LiteralPath $Root -File -Recurse -ErrorAction SilentlyContinue | Where-Object {
   $_.Extension -in @(".mdf",".ldf")
 })
-foreach ($f in $dbFiles) {
-  Copy-Item -LiteralPath $f.FullName -Destination (Join-Path (Join-Path $OutputDir "raw-database") $f.Name) -Force
+$dbCopyLog = New-Object IO.StreamWriter((Join-Path $OutputDir "raw-database-copy.csv"),$false,[Text.UTF8Encoding]::new($true))
+$dbCopyLog.WriteLine('"Source","Destination","Result","Error"')
+try {
+  foreach ($f in $dbFiles) {
+    $dest = Join-Path (Join-Path $OutputDir "raw-database") $f.Name
+    $result = ""
+    $err = ""
+    try {
+      Copy-Item -LiteralPath $f.FullName -Destination $dest -Force -ErrorAction Stop
+      $result = "Copy-Item"
+    } catch {
+      try {
+        $src = [IO.File]::Open($f.FullName,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite)
+        $dst = [IO.File]::Open($dest,[IO.FileMode]::Create,[IO.FileAccess]::Write,[IO.FileShare]::None)
+        try {
+          $src.CopyTo($dst)
+          $result = "FileShare.ReadWrite"
+        } finally {
+          $dst.Dispose()
+          $src.Dispose()
+        }
+      } catch {
+        $result = "failed"
+        $err = $_.Exception.Message
+      }
+    }
+    $dbCopyLog.WriteLine((CsvEscape $f.FullName) + "," + (CsvEscape $dest) + "," + (CsvEscape $result) + "," + (CsvEscape $err))
+  }
+} finally {
+  $dbCopyLog.Dispose()
 }
 
 # Inventory SQL-relevant config lines and candidate connection strings.
