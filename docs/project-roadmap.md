@@ -114,14 +114,14 @@ demand, and how the two functions interact.
 Goal: rewrite the explanatory cards around actual controller behavior and
 avoid historical/editorial comments that do not help operation.
 
-### 5. Investigate Vitotrol emulation over Optolink / KBus
+### 5. Map KBus / KM-BUS access over Optolink
 
-Status: **open / high interest**
+Status: **active / high interest**
 
-A deeper protocol review found substantial evidence that the VS2/P300 Optolink
-protocol exposes real KBus/KM-BUS access methods. This re-opens the possibility
-of an Optolink-only Vitotrol emulation path and should be investigated before
-committing to extra KM-BUS hardware.
+The immediate research goal is broader than Vitotrol emulation: map exactly what
+the local VDensHO1 / 20C2 exposes through the VS2/P300 KBus/KM-BUS function
+family, determine request semantics and separate controller-internal state from
+physical-bus access. Vitotrol emulation is one downstream use case.
 
 Important current findings:
 
@@ -139,26 +139,30 @@ Important current findings:
   arbitrary VS2 function codes can already be transported without creating a
   new debug transport.
 
-Tomorrow / next session:
+Current next steps:
 
-1. record the complete local controller identity using `0x00F8/8` and
-   `0x00F0/1`;
-2. obtain/query real Vitosoft XML events for the VDensHO1/GWG family and list
+1. characterize the already verified `0x43 / KMBUS_EEPROM_READ` response by
+   repeating identical F8/8 reads and testing length dependence;
+2. use `0x41 / KMBUS_RAM_READ` F8/8 as the stable control series;
+3. obtain/query the underlying Vitosoft event data for VDensHO1 / 20C2 and list
    every event whose FCRead/FCWrite contains KMBUS_ or KBUS_;
-3. capture Address, BlockLength/ByteLength, PrefixRead/PrefixWrite and Parameter
-   for those events;
-4. build **read-only** generic requests only from known Vitosoft event
-   definitions;
-5. prioritize MEMBERLIST_READ, INITIALISATION_READ, GATEWAY_READ,
-   TRANSPARENT_READ, VIRTUAL_READ, KMBUS_RAM_READ and KMBUS_EEPROM_READ;
-6. map responses against accessory presence/discovery state;
-7. only after packet semantics and rollback behavior are understood, decide
+4. preserve Address, BlockLength/ByteLength, PrefixRead/PrefixWrite, Parameter
+   and conversion metadata for those events;
+5. construct additional **read-only** requests from known event definitions;
+6. prioritize MEMBERLIST_READ, INITIALISATION_READ, GATEWAY_READ,
+   TRANSPARENT_READ and VIRTUAL_READ;
+7. map responses against accessory presence/discovery and controller operating
+   state;
+8. only after argument semantics and rollback behavior are understood, decide
    whether any KBUS_*_WRITE experiment is justified.
 
 Do **not** blindly test MEMBERLIST_WRITE, INITIALISATION_WRITE, CONTROL_WRITE,
 VIRTUAL_WRITE or GATEWAY_WRITE.
 
-Detailed evidence and the proposed experiment plan are maintained in:
+Canonical protocol evidence and the experiment plan are maintained in:
+`config/optolink-splitter/research/kmbus-optolink-research.md`.
+
+Vitotrol-specific interpretation is maintained separately in:
 `config/optolink-splitter/research/vitotrol-kbus-optolink-emulation.md`.
 
 ### 6. Continue Vitotrol emulation hardware path
