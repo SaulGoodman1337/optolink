@@ -3362,3 +3362,33 @@ Local evidence now supports:
 
 Therefore `0x0A3A` is no longer a priority discriminator for the internal
 WB2A pump-control problem.
+
+
+### Legacy burner/pump virtual objects rejected locally — 2026-09-23
+
+Two explicit historical Vitosoft burner/pump coupling objects from non-VDensHO1
+profiles were probed read-only on the local WB2A:
+
+```text
+r;0x571D;1;raw;False -> 3;0x571d;01
+r;0x581D;1;raw;False -> 3;0x581d;01
+```
+
+The splitter command documentation defines:
+
+```text
+return code 0x03 = ErrMsg
+ErrMsg payload 0x01 = invalid address
+```
+
+Therefore both legacy virtual addresses are explicitly rejected by the local
+controller as invalid addresses:
+
+```text
+0x571D  K1D_KonfiPumpenbeiBrennerein
+0x581D  SR13_K1D_KonfiPumpenbeiBrennerein
+```
+
+This closes the simple legacy-coding route for the WB2A. These objects are
+present in wider Vitosoft metadata for older controller families but are not
+implemented as readable virtual datapoints on this local VDensHO1/20C2 unit.
