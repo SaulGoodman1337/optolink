@@ -783,3 +783,52 @@ General-limit changes such as raising E7 or GWG75 are not equivalent to the
 requested behavior because they would raise the pump for the entire heating-pump demand, not specifically as part of a controller operating mode comparable to DHW.
 The actuator-test path is also not yet suitable for automation because it is a
 service mode and its side effects have not been characterized.
+## Writable-pump-object inventory for the corrected objective
+
+Vitosoft metadata distinguishes event types as:
+
+```text
+Type 1 = read-only
+Type 2 = read/write
+Type 3 = write-only
+```
+
+Filtering the global event index for writable pump-related objects yields only
+configuration/service controls such as:
+
+```text
+0x5730  coding 30 internal-pump type
+0x5731  coding 31 internal-pump target
+0x5732  coding 32 external-block pump effect
+0x5734  coding 34 external-demand pump effect
+0x6762  coding 62 DHW pump overrun
+0x676C  coding 6C DHW internal-pump speed
+0x37A8  coding A8 M2 -> internal-pump request
+0x27E5..0x27E9  A1 pump configuration
+0x37E5..0x37E9  M2 pump configuration
+0x7500  actuator test (service command; not a normal operating-mode setpoint)
+```
+
+The live objects used by the logger are read-only:
+
+```text
+0x7660  internal-pump output/speed
+0x7663  A1 calculated pump-speed demand
+0x7665  M2 pump output/speed
+```
+
+No normal read/write runtime object was found that means "internal pump request"
+or "internal pump speed override" and can simply be asserted while the burner
+is firing.
+
+This sharpens the available solution classes for the corrected objective
+(at least 100 % during the full burner-on phase; controller pre/overrun is OK):
+
+1. use a normal operating topology in which the internal pump is a boiler-circuit
+   pump governed by coding 31 (M2 is the current leading candidate);
+2. globally change pump limits/minimums (works, but affects all heating-pump
+   operation and is not mode-selective);
+3. use a service actuator command (diagnostic only until its interaction with
+   normal operation is understood);
+4. introduce an external/custom control path outside the normal VDensHO1
+   operating-mode model.
