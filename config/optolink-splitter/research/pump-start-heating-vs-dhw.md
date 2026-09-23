@@ -2623,3 +2623,34 @@ pump command shadow.
 
 Do not write to `0x0A3C`; the Vitosoft metadata found so far exposes it
 read-only.
+
+
+### Automatic divergence watcher
+
+A read-only helper is available at:
+
+```text
+config/optolink-splitter/wb2a-pump-divergence-watch.py
+```
+
+It repeatedly reads:
+
+```text
+0x0A3C / 1
+0x7660 / 2
+0x7663 / 2
+0x650A / 1
+0x0A10 / 1
+```
+
+and triggers when:
+
+```text
+0x7660[1] != 0x7663[1]
+```
+
+On the first divergence it captures an immediate 10-sample burst by default,
+making DHW preparation/overrun a practical discriminator for whether
+`0x0A3C` follows the final internal-pump command or the A1 demand.
+
+No writes are performed.
