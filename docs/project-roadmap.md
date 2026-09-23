@@ -375,6 +375,45 @@ altering burner start-safety parameters.
 Detailed evidence:
 `config/optolink-splitter/research/pump-start-heating-vs-dhw.md`.
 
+### WB2A software version / firmware readout
+
+Status: **open / high-value future research**
+
+Determine whether the installed Vitodens 200-W WB2A can expose the actual
+software/firmware revision running in the appliance and whether the executable
+firmware image itself can be read non-destructively.
+
+Keep two goals separate:
+
+**Software/version identification**
+
+- find read-only Optolink/Vitosoft diagnostics for controller application
+  version, build/revision/date and hardware revision;
+- identify software versions of main regulation, burner-control/GFA and
+  subordinate KM-BUS participants separately;
+- inspect hidden/global Vitosoft events, RPC/system-block functions and
+  KM-BUS/KBUS participant information;
+- do not confuse the Vitosoft profile/data-definition version with the
+  firmware revision actually running in the boiler.
+
+**Full firmware extraction**
+
+Investigate in this order:
+
+1. supported Vitosoft/Optolink readout;
+2. documented/recovered P300, KBUS or KMBUS flash/ROM/system-block read
+   functions;
+3. service/programming/debug headers on the controller electronics;
+4. external flash/EPROM/EEPROM devices;
+5. MCU debug readout after exact MCU identification and protection analysis.
+
+Any acquired raw firmware should be archived privately with hashes; commit
+derived maps, disassembly/decompilation findings and reproducible procedures to
+the repository, not proprietary firmware binaries.
+
+Detailed plan:
+`config/optolink-splitter/research/vitosoft/firmware-and-deep-research.md`.
+
 ### Coding-plug read/write and external dumping
 
 Status: **open / research only**
