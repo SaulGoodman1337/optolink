@@ -832,3 +832,61 @@ This sharpens the available solution classes for the corrected objective
    normal operation is understood);
 4. introduce an external/custom control path outside the normal VDensHO1
    operating-mode model.
+## Manual actuator-test capture — 2026-09-23 11:45
+
+A manual service-menu test of **Int. Pumpe Ein** was captured with an older
+installed revision of the pump logger. That logger did not yet poll 0x7500 or
+0xA152 at runtime, so the result must be interpreted cautiously.
+
+Baseline before the apparent test window:
+
+```text
+internal pump 0x7660 = 50 %
+A1 demand     0x7663 = 33 %
+WW inactive
+burner off
+flow target = 38 C
+```
+
+At 11:45:57.476, byte 15 of the 17-byte 0x55E0 structure changed from 0x00 to
+0x04 and remained 0x04 until 11:46:26.920. The value 0x04 is notable because
+0x7500 enum value 0x04 is exactly **INTERNE PUMPE**, but no source currently
+proves that 0x55E0 byte 15 mirrors the actuator-test selector.
+
+During that entire approximately 29 s window:
+
+```text
+internal pump remained 50 %
+A1 demand remained 33 %
+no 100 % pump transition occurred
+```
+
+At 11:46:28.471 the internal pump and A1 demand both changed to 0 %. A later
+manual read after the test showed:
+
+```text
+0x7500 = 00
+0x7660 = 0000
+```
+
+Therefore this capture does **not** support the idea that the service command
+"Int. Pumpe Ein" automatically selects 100 % speed. It is consistent with a
+service relay command that only forces the pump output ON while speed remains
+set by the existing speed-control path, but this is not yet proven because the
+old logger did not capture 0x7500 and relay state concurrently.
+
+The logger has therefore been extended to poll:
+
+```text
+0x7500 / 1   actuator-test selector
+0xA152 / 2   relay-state block
+             byte 0 bit 0x20 = internal-pump relay
+             byte 0 bit 0x02 = burner relay
+```
+
+A short repeat of the same manual service-menu test with the updated logger can
+now determine whether:
+
+1. selecting "Int. Pumpe Ein" really produces 0x7500=04;
+2. the internal-pump relay bit is asserted;
+3. 0x7660 stays at the prior/A1-derived speed or changes to another target.
