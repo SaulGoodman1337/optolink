@@ -267,6 +267,109 @@ A132 byte 28 -> BC
 
 where local Vitosoft maps `BC` to `Fehler Fernbedienung HK1`.
 
+## Controlled A0 write experiment — hardware verified
+
+Test sequence:
+
+~~~text
+0x27A0: 00 -> 01
+observe
+0x27A0: 01 -> 00
+~~~
+
+`01` is the Vitosoft-defined value for a Vitotrol 200 on A1/M1.
+
+Immediate write/read-back:
+
+~~~text
+writeraw;0x27A0;01 -> success
+read 0x27A0          -> 01
+~~~
+
+Within the first observation snapshot, the following state was measured:
+
+~~~text
+0x27A0 -> 01
+0x0A5C -> 00000000
+0x0896 -> c800
+0x089C -> 03
+0x5738 -> 00
+~~~
+
+Thus the remote-identification configuration changed, but the remote software
+index, measured room-temperature value, room-sensor status and GFA error state
+did not.
+
+The current system alarm block changed from:
+
+~~~text
+before:
+00000000000000000000000019173101ea070917091c1e000000000000
+
+during A0=01:
+00000000000000000109000019173101ea070917091c2b0000000000bc
+
+after rollback:
+00000000000000000000000019173101ea070917091c3b000000000000
+~~~
+
+Byte-level delta:
+
+| Byte | Before | A0=01 | After rollback |
+| ---: | ---: | ---: | ---: |
+| 8 | 00 | 01 | 00 |
+| 9 | 00 | 09 | 00 |
+| 22 | 1E | 2B | 3B |
+| 28 | 00 | BC | 00 |
+
+Byte 22 is the Vitosoft-defined `nvoAlarm Sekunde` field and therefore simply
+tracks time. Byte 28 is the Vitosoft-defined current alarm fault code.
+
+The newest system fault-history slot changed to:
+
+~~~text
+BC 20 26 09 23 03 09 25 20
+~~~
+
+Local Vitosoft mapping:
+
+~~~text
+BC = Fehler Fernbedienung HK1
+~~~
+
+The test script detected BC and immediately rolled back:
+
+~~~text
+writeraw;0x27A0;00 -> success
+read 0x27A0          -> 00
+~~~
+
+After rollback:
+
+- current alarm byte 28 returned to `00`;
+- `0x27A0` returned to `00`;
+- `0x0A5C` remained `00000000`;
+- `0x0896` remained `c800`;
+- `0x089C` remained `03`;
+- `0x5738` remained `00`;
+- the BC entry remained in the persistent system fault history, as expected.
+
+### Hardware-verified conclusion
+
+Writing `0x27A0 = 01` does **not** emulate a Vitotrol.
+
+It configures the controller to expect a Vitotrol 200 on A1/M1. Without a
+responding physical or emulated KM-BUS slave, VDensHO1 quickly raises
+`BC = Fehler Fernbedienung HK1`.
+
+The experiment also shows that setting A0 does not itself synthesize remote
+software-index data or a valid room-sensor state.
+
+Therefore an Optolink-only emulation cannot be achieved by A0 configuration
+alone. A successful solution would still need to satisfy the controller's
+actual remote-communication path or find a separate internal injection path
+for the remote data consumed by VDensHO1.
+
 ## Current conclusion
 
 The local absent-Vitotrol state is now well characterized.
