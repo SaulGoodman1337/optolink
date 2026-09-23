@@ -2395,3 +2395,165 @@ README.txt
 
 This collector performs no Optolink command and does not modify Vitosoft or the
 heating controller.
+
+
+## Vitosoft KM-BUS collector result — 2026-09-23
+
+The read-only collector was run against the local production Vitosoft
+installation.
+
+Summary:
+
+```text
+files inventoried              7105
+text hit rows                  8837
+text files with hits             44
+binary string hit rows           12
+binary files with hits             9
+```
+
+The production source hashes again match the previously preserved source set:
+
+```text
+DPDefinitions.xml
+  efec27568d398021c767771af016143bd51fc196d2d408dbb80faff84d0b19e3
+
+MobileClient/Config/ecnEventType.xml
+  2338beb0e8544b6149bc4b2433ecabd9509edcdafc2e8e91f00182eba1aff7ba
+
+Web/XmlDocuments/Textresource_de.xml
+  bd760a53bcf5058560677d4fdd52b557afbc4e2200cede966a944acc9c7ac2dd
+```
+
+A second older `MobileClient/Config/configbackup/ecnEventType.xml` is also
+present and has a different hash. It is useful as historical metadata, but the
+non-backup file remains the authoritative production source.
+
+### Collector hit-limit impact
+
+The 500-row storage limit was reached only for:
+
+- `ecnEventTypeGroup.xml`;
+- several language `Textresource_*.xml` files.
+
+The current production `ecnEventType.xml` produced only 185 matching rows, so
+the important current event metadata was **not truncated** by the collector.
+
+The collector was subsequently changed so that reaching the generic storage
+limit no longer stops scanning a file. It now continues to EOF and always
+retains priority pump/KM-BUS terms.
+
+### Major new runtime clue: 0x0A3C
+
+The production Vitosoft event catalog contains:
+
+```text
+InternePumpeDrehzahl_res~0x0A3C
+```
+
+The English production text resource describes this event as:
+
+```text
+Set speed of internal pump, which is transferred to the pump.
+If no variable speed pump is connected, the value 0 is transferred here.
+```
+
+Other installed language resources express the same semantics.
+
+This wording is materially stronger than the generic `0x7660` label:
+`0x0A3C` is explicitly described as the **internal-pump set speed transferred
+to the pump**.
+
+Independent Vitosoft-derived metadata for this event gives:
+
+```text
+address       0x0A3C
+BlockLength   1
+conversion    NoConversion
+access        Read
+```
+
+Related-controller hardware work also reports `0x0A3C` tracking
+`0x7660[1]`, including a discriminating pump-overrun state where:
+
+```text
+0x0A3C      = 10
+0x7660[1]   = 10
+0x7663[1]   = 0
+```
+
+Reference:
+https://github.com/SoulSolistice/esphome_vitohome/blob/066b7d35889c95e862ea6a7ba84377fe4eeafa78/example/vscotho1_72.dp.curated.yaml
+
+Important limitation:
+
+`InternePumpeDrehzahl_res` is **not** present in the exact 581-event
+VDensHO1 UI/device membership export. It is a global Vitosoft event. Therefore
+the related-controller evidence must not be assumed to apply to WB2A until the
+local address is read.
+
+The correct next step is a read-only local probe:
+
+```bash
+/usr/local/bin/optolink-debug request "r;0x0A3C;1;raw;False"
+```
+
+and comparison with:
+
+```bash
+/usr/local/bin/optolink-debug request "r;0x7660;2;raw;False"
+/usr/local/bin/optolink-debug request "r;0x7663;2;raw;False"
+```
+
+Expected interpretations:
+
+- if `0x0A3C` equals `0x7660[1]`, it is strong local evidence that
+  `0x0A3C` is the controller's final one-byte KM-BUS pump-speed command
+  shadow;
+- if it is always zero or unrelated, the global event is not implemented for
+  this VDensHO1 generation.
+
+Do **not** write to `0x0A3C`. Vitosoft exposes the discovered event read-only.
+
+### KM-BUS software architecture strings
+
+The Vitosoft binaries contain several non-random KM-BUS identifiers:
+
+```text
+KMBusEquipment
+sysblock_KMBus_LonMemberList
+OptolinkHandler
+
+KMBUS_RAM_READ
+KMBUS_EEPROM_READ
+KBUS_MEMBERLIST_READ
+KBUS_MEMBERLIST_WRITE
+KBUS_VIRTUAL_READ
+KBUS_DIRECT_READ
+KBUS_INDIRECT_READ
+KBUS_GATEWAY_READ
+...
+```
+
+In particular, `sysblock_KMBus_LonMemberList` plus the protocol function
+`KBUS_MEMBERLIST_READ = 0x5D` suggests that Vitosoft has an explicit
+KM-BUS/LON participant-enumeration mechanism.
+
+This is a promising **read-only** research branch, but no raw `0x5D` hardware
+probe should be sent until the exact Vitosoft request shape (address, block
+length and any prefix/system-block selector) has been recovered.
+
+### Manufacturer-string result
+
+The collector did **not** find a meaningful production Vitosoft string naming
+the installed pump as `UPM3` or `G-HE`.
+
+- apparent `UPM3` / `G-HE` matches inside Telerik UI DLLs are binary/text
+  false positives;
+- useful `Grundfos` metadata is mostly for Grundfos diverter valves;
+- `ViessmannIPC.xml` contains a `Grundfos Alpha2` entry, unrelated to
+  identifying the installed internal WB2A pump.
+
+Therefore the installed Grundfos G-HE / UPM3 identity continues to come from
+the physical spare-part identification, not from an Optolink manufacturer
+response.
