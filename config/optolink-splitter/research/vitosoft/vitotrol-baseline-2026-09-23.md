@@ -173,6 +173,61 @@ The exact VDensHO1 text resources define:
 
 so those two codes are the primary fault signatures to watch for.
 
+## Measured system-fault baseline
+
+Read-only measurements:
+
+~~~text
+0x7507 / 9
+-> b72026092202025912
+
+0x7507 / 90
+-> b72026092202025912
+   f92026092101173144
+   b72026091906025704
+   b72026090506025704
+   b72026082805025704
+   b72026081405025704
+   b7
+~~~
+
+The 90-byte request returned only **55 data bytes** while still reporting
+success. That is six complete 9-byte slots plus the first byte of slot 7.
+Therefore the full archive must not be assumed to be returned in one request on
+this controller. For controlled experiments, read slots individually in
+9-byte units.
+
+The BCD timestamp layout is consistent with:
+
+~~~text
+code CC YY MM DD weekday hh mm ss
+~~~
+
+Decoded complete slots:
+
+| Slot | Code | Timestamp | Local Vitosoft meaning |
+| ---: | ---: | --- | --- |
+| 1 | B7 | 2026-09-22 02:59:12 | Kesselcodierkarte falsch/fehlerhaft |
+| 2 | F9 | 2026-09-21 17:31:44 | Fehler Gebläse - Drehzahl nicht erreicht |
+| 3 | B7 | 2026-09-19 02:57:04 | Kesselcodierkarte falsch/fehlerhaft |
+| 4 | B7 | 2026-09-05 02:57:04 | Kesselcodierkarte falsch/fehlerhaft |
+| 5 | B7 | 2026-08-28 02:57:04 | Kesselcodierkarte falsch/fehlerhaft |
+| 6 | B7 | 2026-08-14 02:57:04 | Kesselcodierkarte falsch/fehlerhaft |
+
+Slot 7 is incomplete in the long read and begins with B7 only.
+
+The exact local `Textresource_de.xml` entries for VDensHO1 also define:
+
+~~~text
+B7 = Kesselcodierkarte falsch/fehlerhaft
+F9 = Fehler Gebläse - Drehzahl nicht erreicht
+BC = Fehler Fernbedienung HK1
+BD = Fehler Fernbedienung HK2
+~~~
+
+No BC or BD entry is present in the six complete baseline slots. That gives a
+clean fault-history reference for the planned remote-identification experiment.
+
 ## Current conclusion
 
 The local absent-Vitotrol state is now well characterized.
