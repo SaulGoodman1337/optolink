@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "scope": "Derived from two uploaded console transcripts, not a remote fetch of the separately named /root log files. No live commands executed by the assistant during analysis.",
+  "snapshot_helper_commit": "8e9b2271c0bbc4bc8691f2778720a444e9f26476",
+  "snapshot_helper_sha256": "b8a89bae4a7dbcc4047b115d9c733f596f0e3a9a60d8025db7a86e1c9caf0141",
+  "samples_are_simultaneous": false,
+  "decoding_factors_source": "private-archive-2026-09-23-evidence.json",
+  "flame_state_source": "User-reported burner off/on. The snapshot helper did not read an independent flame-state datapoint.",
+  "homeassistant_recovery_user_report": {
+    "after_off_run": "User explicitly reported that Home Assistant supplies values again.",
+    "after_on_run": "No separate explicit confirmation in the supplied message; both services are reported restored in the transcript."
+  },
+  "runs": [
+    {
+      "source_filename": "Eingef\u00fcgter Text(20260923-204303).txt",
+      "source_sha256": "1c97984a8151bb3f092bb83ff2b6884ba5deba621ad1129bfa67ce4780078710",
+      "raw_log_named_in_transcript": "/root/wb2a-gfa-snapshot-20260923-224201-168882.log",
+      "burner_state_user_report": "off",
+      "samples": [
+        {"sample_line_time": "2026-09-23T22:42:17.349+02:00", "parameter": "P06", "address": "0x4006", "raw_hex": "0x00", "raw_decimal": 0, "fan_actual_rpm": 0, "reply_latency_ms": 147.4},
+        {"sample_line_time": "2026-09-23T22:42:21.802+02:00", "parameter": "P09", "address": "0x4009", "raw_hex": "0x00", "raw_decimal": 0, "modulation_setpoint_pct": 0.0, "reply_latency_ms": 167.0},
+        {"sample_line_time": "2026-09-23T22:42:26.242+02:00", "parameter": "P10", "address": "0x400A", "raw_hex": "0x00", "raw_decimal": 0, "fan_pwm_setpoint_pct": 0.0, "reply_latency_ms": 155.6},
+        {"sample_line_time": "2026-09-23T22:42:30.667+02:00", "parameter": "P84", "address": "0x4054", "raw_hex": "0x00", "raw_decimal": 0, "vendor_phase_name": null, "reply_latency_ms": 139.4}
+      ],
+      "p06_to_p84_sample_line_span_s": 13.318,
+      "total_logged_duration_s": 39.126,
+      "splitter_stop_to_reported_running_s": 37.058,
+      "p80_samples_hex": ["20", "20", "20"],
+      "p300_identity_samples_hex": ["20c2", "20c2"],
+      "runtime_reads": "4/4",
+      "result": "PASS",
+      "p300_restored": true,
+      "splitter_restarted": true,
+      "party_emulator_restored": true
+    },
+    {
+      "source_filename": "Eingef\u00fcgter Text (2).txt",
+      "source_sha256": "3c01a6a1cc27bc99f0c8a192b2d191ef309b3a1c1a303c79197d54419d26a7dd",
+      "raw_log_named_in_transcript": "/root/wb2a-gfa-snapshot-20260923-224452-168983.log",
+      "burner_state_user_report": "on",
+      "samples": [
+        {"sample_line_time": "2026-09-23T22:45:07.923+02:00", "parameter": "P06", "address": "0x4006", "raw_hex": "0x89", "raw_decimal": 137, "fan_actual_rpm": 4110, "reply_latency_ms": 102.6},
+        {"sample_line_time": "2026-09-23T22:45:12.268+02:00", "parameter": "P09", "address": "0x4009", "raw_hex": "0x7b", "raw_decimal": 123, "modulation_setpoint_pct": 48.2406, "reply_latency_ms": 59.9},
+        {"sample_line_time": "2026-09-23T22:45:16.612+02:00", "parameter": "P10", "address": "0x400A", "raw_hex": "0x67", "raw_decimal": 103, "fan_pwm_setpoint_pct": 41.2, "reply_latency_ms": 59.1},
+        {"sample_line_time": "2026-09-23T22:45:20.978+02:00", "parameter": "P84", "address": "0x4054", "raw_hex": "0x06", "raw_decimal": 6, "vendor_phase_name": null, "reply_latency_ms": 80.9}
+      ],
+      "p06_to_p84_sample_line_span_s": 13.055,
+      "total_logged_duration_s": 38.804,
+      "splitter_stop_to_reported_running_s": 36.735,
+      "p80_samples_hex": ["20", "20", "20"],
+      "p300_identity_samples_hex": ["20c2", "20c2"],
+      "runtime_reads": "4/4",
+      "result": "PASS",
+      "p300_restored": true,
+      "splitter_restarted": true,
+      "party_emulator_restored": true
+    }
+  ],
+  "interpretation_limits": [
+    "Local GFA_READ accessibility and a nonzero P06 value during user-reported firing are established; no independent tachometer calibration was performed.",
+    "P09 and P10 are different command quantities and were sampled at different times; their numerical difference is not itself evidence of a fault.",
+    "P84=00 and P84=06 are observed states, not a recovered complete vendor enum or proof that 06 is exclusive to steady firing.",
+    "Snapshot transport synchronizes independently before each register. This does not yet validate same-session continuation or high-rate logging.",
+    "The 13-second sample spans do not support subsecond causal timing or reconstruction of the 12-second startup plateau.",
+    "No conclusion about hydraulic flow, pump override, firmware dumping or E7 persistence follows from these GFA reads."
+  ]
+}
