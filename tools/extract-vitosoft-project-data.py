@@ -265,7 +265,26 @@ def write_csv(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-dir", required=True, type=Path)
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        help="directory containing DPDefinitions.xml and ecnEventType.xml",
+    )
+    parser.add_argument(
+        "--dp-definitions",
+        type=Path,
+        help="explicit path to DPDefinitions.xml (overrides --data-dir)",
+    )
+    parser.add_argument(
+        "--event-types",
+        type=Path,
+        help="explicit path to ecnEventType.xml (overrides --data-dir)",
+    )
+    parser.add_argument(
+        "--textresource-de",
+        type=Path,
+        help="explicit path to Textresource_de.xml (optional; overrides --data-dir)",
+    )
     parser.add_argument("--device", default="VDensHO1")
     parser.add_argument("--out-dir", required=True, type=Path)
     parser.add_argument(
@@ -278,9 +297,21 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    dp_path = args.data_dir / "DPDefinitions.xml"
-    event_path = args.data_dir / "ecnEventType.xml"
-    text_path = args.data_dir / "Textresource_de.xml"
+    if args.data_dir is None and (
+        args.dp_definitions is None or args.event_types is None
+    ):
+        raise SystemExit(
+            "provide --data-dir or both --dp-definitions and --event-types"
+        )
+
+    dp_path = args.dp_definitions or (args.data_dir / "DPDefinitions.xml")
+    event_path = args.event_types or (args.data_dir / "ecnEventType.xml")
+    if args.textresource_de is not None:
+        text_path = args.textresource_de
+    elif args.data_dir is not None:
+        text_path = args.data_dir / "Textresource_de.xml"
+    else:
+        text_path = None
 
     for required in (dp_path, event_path):
         if not required.exists():
