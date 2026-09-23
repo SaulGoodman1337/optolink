@@ -480,3 +480,49 @@ analysis input and does not need to be committed wholesale.
 
 See `firmware-and-deep-research.md` for repository policy and the separate
 controller-firmware research track.
+
+
+## Private archival collector
+
+For a deliberately comprehensive **private** capture of the Vitosoft Windows
+installation, use:
+
+`tools/collect-vitosoft-private-archive.ps1`
+
+Typical direct invocation:
+
+```powershell
+$script = "$env:TEMP\collect-vitosoft-private-archive.ps1"
+
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/SaulGoodman1337/optolink/main/tools/collect-vitosoft-private-archive.ps1" -OutFile $script
+
+Set-ExecutionPolicy -Scope Process Bypass -Force
+& $script
+```
+
+The private collector includes the normal deep-derived collector and additionally
+attempts to preserve:
+
+- the complete Vitosoft installation parent tree;
+- related Viessmann ProgramData/AppData/Documents trees;
+- registry keys and Windows service/process/task metadata relevant to
+  Viessmann/Vitosoft/SQL;
+- Authenticode metadata and optional ILDASM/DUMPBIN output;
+- raw `ecnViessmann.mdf/.ldf` database files;
+- SELECT-only SQL schema/table exports through
+  `tools/export-vitosoft-sql-readonly.ps1` when an already reachable SQL
+  instance can be discovered;
+- priority copies of `ecnUpdateDefinition` and
+  `ecnDeviceSoftwareUpdate` exports;
+- a complete SHA256 manifest and Git LFS template.
+
+The collector intentionally does **not** auto-attach an MDF via
+`AttachDbFilename`, because attaching a database changes SQL Server state.
+If no existing SQL instance is reachable, the MDF/LDF bytes are still
+preserved for later isolated analysis.
+
+The resulting private bundle can contain proprietary files, database content,
+machine-specific paths and credentials present in application configuration.
+Do not upload it wholesale to the public repository. The normal
+`collect-vitosoft-deep-research.ps1` remains the preferred public/derived
+research collector.
