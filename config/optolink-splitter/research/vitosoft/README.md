@@ -7,6 +7,112 @@ The source material currently known to this project comes from the public
 `MorrisonHB/Optolink_02` repository at commit
 `ec77c6917909ae229b17a6104db4f81f9a31e263`.
 
+## Where to obtain the original Vitosoft files
+
+The preferred source is a **real Vitosoft 300 SID1 installation after Vitosoft
+has been launched at least once**.
+
+Known installation path:
+
+~~~text
+C:\Program Files\Viessmann Vitosoft 300 SID1\ServiceTool\MobileClient\Config\
+~~~
+
+The Vitosoft reverse-engineering documentation explicitly identifies the
+production-generated files in this directory:
+
+~~~text
+ecnDataPointType.xml
+ecnEventType.xml
+ecnVersion.xml
+~~~
+
+The same Config directory is also the expected data directory for the Vitosoft
+parsers used by this project and is the first place to look for:
+
+~~~text
+DPDefinitions.xml
+ecnEventTypeGroup.xml
+Textresource_de.xml
+Textresource_en.xml
+sysDeviceIdent.xml
+sysDeviceIdentExt.xml
+~~~
+
+Important: the installer contains older XML files. On first Vitosoft launch,
+at least `ecnDataPointType.xml`, `ecnEventType.xml` and `ecnVersion.xml`
+are regenerated from the Vitosoft SQL database. Older installer copies may be
+moved to a directory named `configbackup`.
+
+If the standard path does not exist, also check the equivalent tree below
+`C:\Program Files (x86)\` or search the system for `ecnEventType.xml`.
+
+### Recommended collection set
+
+Highest priority:
+
+~~~text
+DPDefinitions.xml
+ecnEventType.xml
+ecnDataPointType.xml
+ecnVersion.xml
+~~~
+
+Very useful additional files:
+
+~~~text
+ecnEventTypeGroup.xml
+Textresource_de.xml
+Textresource_en.xml
+sysDeviceIdent.xml
+sysDeviceIdentExt.xml
+~~~
+
+If available, also preserve the Vitosoft SQL database:
+
+~~~text
+ecnViessmann.mdf
+ecnViessmann.ldf
+~~~
+
+The database is useful because the generated XML metadata originates from it
+and community tooling can query it directly when an XML field is missing.
+
+### Windows PowerShell collection
+
+From an installed Vitosoft system:
+
+~~~powershell
+$base = "C:\Program Files\Viessmann Vitosoft 300 SID1\ServiceTool\MobileClient\Config"
+
+Get-ChildItem $base -File |
+  Where-Object {
+    $_.Name -in @(
+      "DPDefinitions.xml",
+      "ecnEventType.xml",
+      "ecnDataPointType.xml",
+      "ecnVersion.xml",
+      "ecnEventTypeGroup.xml",
+      "Textresource_de.xml",
+      "Textresource_en.xml",
+      "sysDeviceIdent.xml",
+      "sysDeviceIdentExt.xml"
+    )
+  } |
+  Select-Object Name, Length, FullName
+~~~
+
+If the path is unknown:
+
+~~~powershell
+Get-ChildItem "C:\Program Files","C:\Program Files (x86)" -Filter ecnEventType.xml -Recurse -ErrorAction SilentlyContinue |
+  Select-Object FullName
+~~~
+
+Do not add `DPDefinitions.xml` directly to this repository: the known source
+copy is about 186 MB. Keep the original externally, record its hash, and commit
+only project-specific derived extracts.
+
 ## Why derived data is stored here
 
 The upstream repository exposes the original large Vitosoft XML files through
