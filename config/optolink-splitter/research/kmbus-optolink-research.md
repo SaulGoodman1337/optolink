@@ -239,15 +239,80 @@ of separate byte transactions and instead contains repeated 0x5497 words.
 
 No relationship to the Kesselcodierstecker has been demonstrated.
 
+### Repeated 0x43 F8/8 test — 2026-09-23
+
+Ten identical read-only requests were executed over approximately 23 seconds:
+
+~~~text
+request;0x43;0x00F8;8;;0x00
+~~~
+
+All ten returned retcode 1, but the eight-byte payload changed between
+transactions:
+
+| Run | Raw payload | 2-byte unit |
+| ---: | --- | --- |
+| 1 | 1d801d801d801d80 | 1d80 |
+| 2 | 4800480048004800 | 4800 |
+| 3 | 5497549754975497 | 5497 |
+| 4 | 5498549854985498 | 5498 |
+| 5 | 411d411d411d411d | 411d |
+| 6 | 1d801d801d801d80 | 1d80 |
+| 7 | 5497549754975497 | 5497 |
+| 8 | 5498549854985498 | 5498 |
+| 9 | 5497549754975497 | 5497 |
+| 10 | 3500350035003500 | 3500 |
+
+The simultaneous 0x41 control series was completely stable in five runs:
+
+~~~text
+request;0x41;0x00F8;8;;0x00
+-> 1;0xf8;20c2000300000103
+~~~
+
+#### Established from this experiment
+
+- 0x43 at address 0x00F8 is **dynamic or transaction-dependent**.
+- Every observed 8-byte response consists of one two-byte word repeated four
+  times: `XY XY XY XY`.
+- The changing values are not caused by general Optolink transport instability,
+  because the 0x41 control remained bit-for-bit stable.
+- The observed F8/8 result therefore must **not** be documented as eight
+  sequential EEPROM bytes.
+
+#### Current interpretation boundary
+
+The strongest current hypothesis is that the P300 0x43 request is exposing a
+two-byte register/result/mailbox-like quantity whose value is replicated to
+fill the requested response length, or that our generic request is missing an
+argument that changes the intended addressing semantics.
+
+This is still a **HYPOTHESIS**, not a decoded protocol rule. In particular, the
+two-byte words must not yet be interpreted as temperatures, addresses, status
+words, raw KM-BUS telegram bytes or EEPROM contents.
+
+The next experiment must characterize response-length behavior before trying
+new addresses or other KBUS function families.
+
 ## Source evidence outside the local controller
 
-### Historical KMBUS EEPROM access
+### Historical KMBUS EEPROM access — GWG, not P300
 
-Old vcontrold/OpenV configurations used function 0x43 for a command described as
-KM-Bus EEPROM access. This is evidence that the function family was not only a
-symbolic enumeration.
+Old vcontrold/OpenV configurations contain a `GETKMADDR` macro that sends
+`01 43` and a test command described as "KM-Bus EEProm Adresse eingeben".
 
-This does not define the semantics of 0x43 on VDensHO1 / 20C2.
+Important correction: this macro belongs to the **GWG protocol block** in
+`xml/300/vcontrold.xml`, not to its P300 protocol block. It is therefore
+historical evidence for a GWG KM-BUS EEPROM access mode, but it must **not** be
+used as proof of the packet semantics of P300/VS2 function code 0x43.
+
+The local P300/VS2 evidence for 0x43 stands independently because the WB2A
+actually accepts and answers our generic VS2 function-code request.
+
+Source:
+
+- https://github.com/openv/vcontrold/blob/master/xml/300/vcontrold.xml
+- https://github.com/openv/vcontrold/blob/master/xml/300/vito.xml
 
 ### Vitosoft-derived KBUS_VIRTUAL events
 
@@ -283,8 +348,9 @@ already-filtered generated catalog.
 | send arbitrary VS2 function code | **verified** | generic splitter request works |
 | control VS2 address/length/payload/protid | **source-confirmed** | exact frame builder inspected |
 | read 0x41 KMBUS RAM space | **verified at F8..FF** | coherent 8-byte response |
-| read 0x43 KMBUS EEPROM space | **verified at F8..FF** | response semantics unknown |
-| prove 0x43 is static EEPROM | **not proven** | block/single behavior conflicts |
+| read 0x43 function at F8 | **verified** | accepted repeatedly; payload is dynamic |
+| characterize 0x43 F8/8 shape | **verified** | one changing 2-byte word repeated four times |
+| prove 0x43 is static/linear EEPROM | **disproved for current F8/8 interpretation** | repeated test is transaction-dependent |
 | enumerate KBus members | **unknown** | 0x5D not yet tested |
 | inspect KBus initialisation | **unknown** | 0x57 not yet tested |
 | transparent KBus read | **unknown** | 0x55 not yet tested |
@@ -298,7 +364,8 @@ already-filtered generated catalog.
 
 The project should answer these in order:
 
-1. Is 0x43 static, dynamic or transaction-dependent?
+1. What does the dynamic two-byte result of 0x43 at F8 actually represent,
+   and why is it repeated to the requested length?
 2. Which KBus read function codes are implemented on VDensHO1 / 20C2?
 3. What exact argument layout do those functions require?
 4. How do Vitosoft `Parameter` / `PrefixRead` values map to the VS2 request
@@ -354,35 +421,37 @@ burner state, DHW activity and connected KM-BUS accessories.
 
 ## Immediate read-only experiment sequence
 
-### A. Determine whether 0x43 F8/8 is stable
+### A. Determine whether 0x43 F8/8 is stable — **completed 2026-09-23**
 
-Repeat the exact same request several times without deliberately changing boiler
-state:
+Result: dynamic/transaction-dependent. Every 8-byte response was a changing
+two-byte word repeated four times. See the hardware-verified section above.
+
+### B. Check length dependence at one address — **next**
+
+Test every length from 1 through 8, with three complete passes:
 
 ~~~bash
-for i in $(seq 1 10); do
-  date --iso-8601=seconds
-  /usr/local/bin/optolink-debug request "request;0x43;0x00F8;8;;0x00"
-  sleep 1
+for pass in 1 2 3; do
+  echo
+  echo "=== PASS $pass ==="
+  for len in 1 2 3 4 5 6 7 8; do
+    echo "--- len=$len ---"
+    /usr/local/bin/optolink-debug request       "request;0x43;0x00F8;$len;;0x00"
+  done
 done
 ~~~
 
-Question answered: does the repeated-word value stay constant, change with time,
-or vary transaction-to-transaction?
+The value itself may change between requests. The important property is the
+**shape** for each length:
 
-### B. Check length dependence at one address
+- does length 1 return only the first byte of a two-byte result?
+- does length 2 return exactly one two-byte result?
+- do lengths 3/5/7 truncate a repeating two-byte pattern?
+- do lengths 4/6/8 contain exact repetitions?
+- does changing length alter the underlying two-byte result semantics?
 
-Run the same function/address with lengths 1, 2, 4 and 8:
-
-~~~bash
-/usr/local/bin/optolink-debug request "request;0x43;0x00F8;1;;0x00"
-/usr/local/bin/optolink-debug request "request;0x43;0x00F8;2;;0x00"
-/usr/local/bin/optolink-debug request "request;0x43;0x00F8;4;;0x00"
-/usr/local/bin/optolink-debug request "request;0x43;0x00F8;8;;0x00"
-~~~
-
-Question answered: is the response a contiguous byte stream, repeated unit,
-mailbox/register response or length-dependent structure?
+This test is deliberately limited to the already verified function/address and
+does not introduce a new address space.
 
 ### C. Establish a stable 0x41 control series
 
