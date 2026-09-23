@@ -2054,3 +2054,56 @@ Do not test `Virtual_WILO_WRITE / 0x25` on the WB2A.
 
 Further Wilo work would now be protocol archaeology rather than a promising
 route to the desired burner-dependent 100 % internal-pump override.
+
+
+## Next priority after Virtual-WILO: internal pump / KM-BUS identity
+
+The production VDensHO1 metadata exposes the internal pump as a KM-BUS-related
+diagnostic participant even though the exact VDensHO1 profile has no direct
+`KMBUS_*` event-function bindings:
+
+```text
+0x0A54  SWIndex_IntPumpe
+        "Interne Pumpe Software-Index"
+        Virtual_READ
+        BlockLength 4
+
+0x0A35  KM_Error_PumpeIntern
+        "KM-Bus-Fehler Interne Pumpe"
+        Virtual_READ
+        BlockLength 1
+
+0x27E5  KE5_KonfiKennung_D_PumpeA1M1_KM
+        "KM-BUS-Heizkreispumpe A1"
+        Virtual_READ / Virtual_WRITE
+        BlockLength 1
+
+0xA152  nvoRelayState_Interne_Pumpe
+        "Relais-Status Interne Pumpe"
+        Virtual_READ
+        BlockLength 2
+        internal-pump flag at bit 2
+```
+
+This makes the KM-BUS/internal-pump path a more plausible next research target
+than `Virtual_WILO`.
+
+First step remains read-only:
+
+```bash
+/usr/local/bin/optolink-debug request "r;0x0A54;4;raw;False"
+/usr/local/bin/optolink-debug request "r;0x0A35;1;raw;False"
+/usr/local/bin/optolink-debug request "r;0x27E5;1;raw;False"
+/usr/local/bin/optolink-debug request "r;0xA152;2;raw;False"
+```
+
+Purpose:
+
+- `0x0A54`: determine whether the controller reports a real software index for
+  the internal pump participant;
+- `0x0A35`: establish the current KM-BUS internal-pump error baseline;
+- `0x27E5`: establish the A1 KM-BUS pump identification/coding state;
+- `0xA152`: capture the relay/output status block for later correlation with
+  burner and pump states.
+
+These reads do not alter any coding or pump command.
