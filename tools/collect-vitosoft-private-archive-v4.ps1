@@ -524,17 +524,16 @@ function Install-ResearchPrerequisites {
     # Current pinned ILSpyCmd 11 requires .NET 10.
     $ilspy = Find-ToolPath "ilspycmd.exe"
     if (-not $ilspy) {
-      $dotnet = Get-Command dotnet.exe -ErrorAction SilentlyContinue
       $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
-      if (-not $dotnet -and $winget) {
+      if ($winget) {
         try {
-          $log.WriteLine("Installing .NET 10 SDK through winget for ILSpyCmd.")
+          $log.WriteLine("Ensuring .NET 10 SDK is installed for ILSpyCmd.")
           & $winget.Source install --id Microsoft.DotNet.SDK.10 -e --silent --accept-package-agreements --accept-source-agreements 2>&1 |
             ForEach-Object { $log.WriteLine([string]$_) }
-          $env:PATH = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
-          $dotnet = Get-Command dotnet.exe -ErrorAction SilentlyContinue
         } catch { $log.WriteLine("dotnet SDK install error: " + $_.Exception.ToString()) }
       }
+      $env:PATH = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User") + ";" + (Join-Path $env:USERPROFILE ".dotnet\tools")
+      $dotnet = Get-Command dotnet.exe -ErrorAction SilentlyContinue
       if ($dotnet) {
         try {
           $log.WriteLine("Installing pinned ILSpyCmd 11.0.0.9375 as a global dotnet tool.")
@@ -1219,6 +1218,7 @@ $summary = [ordered]@{
   tool_dumps_only=[bool]$ToolDumpsOnly
   registry_collected=(-not $SkipRegistry)
   tool_dumps_collected=(-not $SkipToolDumps)
+  tool_dumps_present=(Test-Path -LiteralPath $toolsDir -PathType Container)
   prerequisite_install_attempted=(-not $SkipPrerequisiteInstall)
   processor_count=$processorCount
   parallelism=$Parallelism
