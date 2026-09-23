@@ -167,7 +167,7 @@ function Get-DataTable {
     $da.Dispose()
     $cmd.Dispose()
   }
-  return $dt
+  return ,$dt
 }
 
 function Add-Candidate {
