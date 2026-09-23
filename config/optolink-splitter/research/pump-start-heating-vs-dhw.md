@@ -2889,3 +2889,66 @@ The later previously captured state
 
 must therefore be triggered by withdrawal of the A1 pump request or another
 later operating-state transition, not directly by flame loss.
+
+
+### Heating-cycle result: no A1/internal-pump divergence across takt lock — 2026-09-23
+
+A longer read-only trace captured two consecutive heating burner cycles while
+E7 remained at 100 %.
+
+After the first flame-off event:
+
+```text
+14:59:02.791  FLAME=0
+A3C=100  7660=01/100  7663=01/100
+```
+
+the A1 pump demand remained continuously active at 100 % throughout the
+flame-off interval. The next burner start sequence began at:
+
+```text
+15:09:50.793  GFA7=20, FLAME=0
+15:10:01.350  FLAME=1
+```
+
+without any intervening `7663=0` / pump-path divergence.
+
+The second burner cycle then ended at:
+
+```text
+15:10:29.237  FLAME=0
+A3C=100  7660=01/100  7663=01/100
+```
+
+### Consequence
+
+The previously observed divergence:
+
+```text
+A3C=50
+7660=01/50
+7663=00/0
+```
+
+is **not a normal burner-off / takt-lock transition** during an ongoing
+space-heating demand.
+
+During ordinary heating takt-lock with E7=100, A1 circulation remains active:
+
+```text
+FLAME=0
+7663[1]=100
+7660[1]=100
+0x0A3C=100
+```
+
+and the next burner cycle can begin without the A1 pump request ever dropping.
+
+Therefore waiting for `7660[1] != 7663[1]` during normal repeated heating
+cycles is not a productive discriminator. The earlier 50/0 divergence must
+belong to a different operating-state transition, such as withdrawal of the
+overall A1 heat/pump request rather than burner shutdown itself.
+
+For the practical project goal, this further demonstrates why static E7=100 is
+too broad: it holds the pump at 100 % through the entire flame-off takt-lock
+interval, not just during burner startup and combustion.
