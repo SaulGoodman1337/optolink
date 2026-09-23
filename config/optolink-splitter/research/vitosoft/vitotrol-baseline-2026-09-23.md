@@ -228,6 +228,45 @@ BD = Fehler Fernbedienung HK2
 No BC or BD entry is present in the six complete baseline slots. That gives a
 clean fault-history reference for the planned remote-identification experiment.
 
+## Current-alarm baseline immediately before a possible A0 write
+
+Measured read-only:
+
+~~~text
+0xA132 / 29
+-> 00000000000000000000000019173101ea070917091719000000000000
+
+0x5738 / 1
+-> 00
+~~~
+
+For the 29-byte `0xA132` alarm block, the Vitosoft-derived fields of interest
+are at byte positions 27 and 28 (zero-based):
+
+~~~text
+byte 27 = 00   participant number associated with current alarm
+byte 28 = 00   current alarm fault code
+~~~
+
+Thus, immediately before any Vitotrol identification write:
+
+~~~text
+current alarm participant = 0
+current alarm code        = 0
+current GFA error         = 0
+~~~
+
+This is the clean pre-write reference. If a later controlled `0x27A0 = 1`
+test creates the expected missing-remote condition, the primary signatures to
+watch are:
+
+~~~text
+A132 byte 28 -> BC
+0x7507 newest system fault -> BC
+~~~
+
+where local Vitosoft maps `BC` to `Fehler Fernbedienung HK1`.
+
 ## Current conclusion
 
 The local absent-Vitotrol state is now well characterized.
