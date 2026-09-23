@@ -735,3 +735,51 @@ The M2/A8 path can be removed from the list of practical candidates for the
 heating-start 100 % objective. Future work should focus on the arbitration
 between A1 calculated demand, internal-pump minimum/limits and mode-specific
 sources such as DHW coding 6C.
+## No dedicated heating-start pump boost exposed in VDensHO1
+
+A targeted search across the complete VDensHO1 event set for combinations of
+pump with burner start, pre-purge, flame, stabilization, startup and run-up did
+not reveal a dedicated heating-start pump parameter or runtime request.
+
+The pump-related control surfaces exposed by Vitosoft are the already known
+ones:
+
+```text
+0x5731  coding 31, internal-pump target
+0x676C  coding 6C, internal-pump speed during DHW
+0x27E6..0x27E9  A1 pump max/min/reduced-mode settings
+0x37A8  M2 -> internal-pump request (irrelevant locally: no M2)
+0x5732 / 0x5734  external block/request effects (extension absent locally)
+0x572F  vent/fill service program
+0x7500  actuator test
+GWG75   coding-plug minimum internal-pump speed
+GWG76   coding-plug internal-pump overrun
+```
+
+The burner-start-related coding-plug item GWG73 is explicitly an
+**Anfahroptimierung modulierender Brenner**, not a pump parameter.
+
+This negative result matters: the normal VDensHO1 configuration model does not
+appear to expose a distinct "raise internal pump to 100 % during heating burner
+start" switch or setpoint.
+
+The Vitosoft event classes also separate runtime outputs from writable control
+surfaces: `0x7660` (internal-pump output/speed) and `0x7663` (A1 speed demand)
+are exposed as runtime read objects, whereas codings/service selectors are
+separate configuration/control events. Therefore direct writing of the live
+pump output is not supported by the normal Vitosoft data model.
+
+Practical implication for the research goal:
+
+1. the normal heating path computes an A1 request and applies internal-pump
+   arbitration/minimum limits;
+2. the normal DHW path selects the dedicated 6C pump speed;
+3. no normal start-specific heating pump source has been found;
+4. any automatic 100 % heating-start solution would therefore have to use a
+   different controller-supported request/service path, or modify a general
+   pump limit/setpoint, rather than enable a hidden start-only coding.
+
+General-limit changes such as raising E7 or GWG75 are not equivalent to the
+requested behavior because they would affect the pump outside burner startup.
+The actuator-test path is also not yet suitable for automation because it is a
+service mode and its side effects have not been characterized.
