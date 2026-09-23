@@ -6,7 +6,8 @@ Purpose:
   without changing controller state.
 
 Fast runtime set:
-  0x7660 / 2   internal-pump output object; byte 1 is pump speed candidate [%]
+  0x7660 / 2   internal-pump output object; byte 1 is pump speed [%]
+  0x7663 / 2   A1/M1 heating-circuit pump output; byte 1 is pump speed [%]
   0x650A / 1   DHW preparation status
   0x6513 / 1   storage charging pump state
   0x0A10 / 1   diverter-valve state
@@ -25,13 +26,11 @@ One-time read-only configuration snapshot:
 
 No writes are performed.
 
-Important interpretation boundary:
-  Vitosoft exposes event 787 InternePumpeDrehzahl at 0x7660 as an Int and
-  event 245 DigitalAusgang_InternePumpe at the same base address. A closely
-  related generated catalog places the speed value at byte offset 1. The
-  logger therefore records raw 0x7660 and labels byte 1 as a *candidate* pump
-  speed until it is confirmed on this exact 20C2 hardware by correlation with
-  the known ~50 % and 100 % states.
+Interpretation:
+  The generated exact VDensHO1 catalog places both InternePumpeDrehzahl
+  (0x7660) and HKP_A1Drehzahl (0x7663) in byte offset 1 of a two-byte object,
+  with percent units. The local 20C2 hardware has now confirmed 0x7660=01 64
+  during DHW overrun, i.e. output on and internal-pump speed 100 %.
 """
 
 import argparse
@@ -216,7 +215,7 @@ def main():
     print(f"CSV:      {logfile}")
     print(f"Probes:   {probe_path}")
     print("Interval: minimum %.2f s" % args.interval)
-    print("Reads:    7660/2 650A/1 6513/1 0A10/1 55D3/11 55E0/17 2544/2 0810/2")
+    print("Reads:    7660/2 7663/2 650A/1 6513/1 0A10/1 55D3/11 55E0/17 2544/2 0810/2")
     print("Writes:   none")
     print("Ctrl-C beendet")
     print()
@@ -238,7 +237,10 @@ def main():
         "event",
         "raw_7660",
         "pump_output_raw",
-        "pump_speed_pct_candidate",
+        "pump_speed_pct",
+        "raw_7663",
+        "a1_pump_output_raw",
+        "a1_pump_speed_pct",
         "raw_650a",
         "ww_status_raw",
         "raw_6513",
@@ -274,6 +276,7 @@ def main():
 
     previous_flame = None
     previous_pump_speed = None
+    previous_a1_pump_speed = None
     previous_ww = None
     previous_storage = None
     previous_diverter = None
@@ -292,6 +295,7 @@ def main():
 
                 try:
                     raw7660 = read_exact(client, "0x7660", 2)
+                    raw7663 = read_exact(client, "0x7663", 2)
                     raw650a = read_exact(client, "0x650A", 1)
                     raw6513 = read_exact(client, "0x6513", 1)
                     raw0a10 = read_exact(client, "0x0A10", 1)
@@ -318,6 +322,8 @@ def main():
 
                 pump_output = raw7660[0]
                 pump_speed = raw7660[1]
+                a1_pump_output = raw7663[0]
+                a1_pump_speed = raw7663[1]
                 ww_status = raw650a[0]
                 storage_pump = raw6513[0]
                 diverter = raw0a10[0]
@@ -349,6 +355,8 @@ def main():
 
                 if previous_pump_speed is not None and pump_speed != previous_pump_speed:
                     events.append(f"PUMP_{previous_pump_speed}->{pump_speed}")
+                if previous_a1_pump_speed is not None and a1_pump_speed != previous_a1_pump_speed:
+                    events.append(f"A1PUMP_{previous_a1_pump_speed}->{a1_pump_speed}")
                 if previous_ww is not None and ww_status != previous_ww:
                     events.append(f"WW_{previous_ww:02x}->{ww_status:02x}")
                 if previous_storage is not None and storage_pump != previous_storage:
@@ -367,6 +375,7 @@ def main():
 
                 previous_flame = flame
                 previous_pump_speed = pump_speed
+                previous_a1_pump_speed = a1_pump_speed
                 previous_ww = ww_status
                 previous_storage = storage_pump
                 previous_diverter = diverter
@@ -389,7 +398,10 @@ def main():
                     "event": event_text,
                     "raw_7660": raw7660.hex(),
                     "pump_output_raw": pump_output,
-                    "pump_speed_pct_candidate": pump_speed,
+                    "pump_speed_pct": pump_speed,
+                    "raw_7663": raw7663.hex(),
+                    "a1_pump_output_raw": a1_pump_output,
+                    "a1_pump_speed_pct": a1_pump_speed,
                     "raw_650a": raw650a.hex(),
                     "ww_status_raw": ww_status,
                     "raw_6513": raw6513.hex(),
@@ -428,6 +440,7 @@ def main():
                 print(
                     f"{datetime.now().strftime('%H:%M:%S.%f')[:-3]}  "
                     f"P={pump_speed:3d}% OUT={pump_output:02x}  "
+                    f"A1P={a1_pump_speed:3d}% A1OUT={a1_pump_output:02x}  "
                     f"WW={ww_status:02x} SLP={storage_pump:02x} UV={diverter:02x}  "
                     f"FL={int(flame)} MOD={modulation:3d}% T={age_txt}  "
                     f"GFA={gfa_state[0]:02x}/{gfa_state[1]:02x}/{gfa_state[2]:02x}  "
