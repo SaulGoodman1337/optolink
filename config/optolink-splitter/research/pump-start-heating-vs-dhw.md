@@ -1928,3 +1928,38 @@ capture the complete returned VS2 frame. A successful empty response is expected
 to carry a response BlockLength of zero.
 
 No `Virtual_WILO_WRITE / 0x25` operation is justified.
+
+
+### Full-raw confirmation frames
+
+The exact full VS2 requests corresponding to the three generic read-only Wilo
+probes are:
+
+```text
+pump type:
+41 07 00 24 A0 C2 05 00 11 A3
+
+speed:
+41 07 00 24 A0 C2 06 00 07 9A
+
+diagnostic state:
+41 07 00 24 A0 C2 06 00 27 BA
+```
+
+The final byte in each line is the VS2 modulo-256 checksum.
+
+Using the splitter full-raw request path preserves the complete slave response,
+including ACK, header, returned BlockLength and CRC:
+
+```bash
+/usr/local/bin/optolink-debug request "41070024A0C2050011A3"
+/usr/local/bin/optolink-debug request "41070024A0C20600079A"
+/usr/local/bin/optolink-debug request "41070024A0C2060027BA"
+```
+
+These commands are byte-for-byte equivalent read requests to the already
+executed generic requests; they do not perform a write.
+
+The pump-type frame alone is sufficient for the first confirmation. If its raw
+response contains a valid VS2 response with returned BlockLength `00`, the
+meaning of the prior `1;0xa0c2;none` result is fully confirmed at wire level.
