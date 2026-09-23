@@ -226,7 +226,7 @@ function Wait-CollectorChild {
     Seconds=[math]::Round($seconds,3)
     Tasks=1
     Parallelism=1
-    Failed=if($exit -eq 0){0}else{1}
+    Failed=$(if($exit -eq 0){0}else{1})
   })
   if ($exit -ne 0 -and $Child.ErrorMarker) {
     ("Collector exit code: " + $exit) | Set-Content -LiteralPath $Child.ErrorMarker -Encoding UTF8
@@ -336,9 +336,9 @@ function Get-PrerequisiteState {
     generated_utc=(Get-Date).ToUniversalTime().ToString("o")
     administrator=(Test-IsAdministrator)
     powershell=$PSVersionTable.PSVersion.ToString()
-    winget=if(Get-Command winget.exe -ErrorAction SilentlyContinue){(Get-Command winget.exe).Source}else{$null}
-    robocopy=if(Get-Command robocopy.exe -ErrorAction SilentlyContinue){(Get-Command robocopy.exe).Source}else{$null}
-    reg=if(Get-Command reg.exe -ErrorAction SilentlyContinue){(Get-Command reg.exe).Source}else{$null}
+    winget=$(if(Get-Command winget.exe -ErrorAction SilentlyContinue){(Get-Command winget.exe).Source}else{$null})
+    robocopy=$(if(Get-Command robocopy.exe -ErrorAction SilentlyContinue){(Get-Command robocopy.exe).Source}else{$null})
+    reg=$(if(Get-Command reg.exe -ErrorAction SilentlyContinue){(Get-Command reg.exe).Source}else{$null})
     ildasm=(Find-ToolPath "ildasm.exe")
     dumpbin=(Find-ToolPath "dumpbin.exe")
     corflags=(Find-ToolPath "corflags.exe")
@@ -346,12 +346,12 @@ function Get-PrerequisiteState {
     gacutil=(Find-ToolPath "gacutil.exe")
     msbuild=(Find-ToolPath "msbuild.exe")
     vswhere=(Find-ToolPath "vswhere.exe")
-    dotnet=if(Get-Command dotnet.exe -ErrorAction SilentlyContinue){(Get-Command dotnet.exe).Source}else{$null}
-    sqlcmd=if(Get-Command sqlcmd.exe -ErrorAction SilentlyContinue){(Get-Command sqlcmd.exe).Source}else{$null}
-    sqllocaldb=if(Get-Command sqllocaldb.exe -ErrorAction SilentlyContinue){(Get-Command sqllocaldb.exe).Source}else{$null}
+    dotnet=$(if(Get-Command dotnet.exe -ErrorAction SilentlyContinue){(Get-Command dotnet.exe).Source}else{$null})
+    sqlcmd=$(if(Get-Command sqlcmd.exe -ErrorAction SilentlyContinue){(Get-Command sqlcmd.exe).Source}else{$null})
+    sqllocaldb=$(if(Get-Command sqllocaldb.exe -ErrorAction SilentlyContinue){(Get-Command sqllocaldb.exe).Source}else{$null})
     sevenzip=(Find-ToolPath "7z.exe")
-    git=if(Get-Command git.exe -ErrorAction SilentlyContinue){(Get-Command git.exe).Source}else{$null}
-    git_lfs=if(Get-Command git-lfs.exe -ErrorAction SilentlyContinue){(Get-Command git-lfs.exe).Source}else{$null}
+    git=$(if(Get-Command git.exe -ErrorAction SilentlyContinue){(Get-Command git.exe).Source}else{$null})
+    git_lfs=$(if(Get-Command git-lfs.exe -ErrorAction SilentlyContinue){(Get-Command git-lfs.exe).Source}else{$null})
   }
 }
 
@@ -526,12 +526,12 @@ catch { try { $os = Get-WmiObject Win32_OperatingSystem -ErrorAction Stop } catc
 $hostInfo = [ordered]@{
   generated_utc=(Get-Date).ToUniversalTime().ToString("o")
   computer_name=$env:COMPUTERNAME
-  os_caption=if($os){$os.Caption}else{$null}
-  os_version=if($os){$os.Version}else{$null}
-  os_build=if($os){$os.BuildNumber}else{$null}
-  os_architecture=if($os){$os.OSArchitecture}else{$env:PROCESSOR_ARCHITECTURE}
+  os_caption=$(if($os){$os.Caption}else{$null})
+  os_version=$(if($os){$os.Version}else{$null})
+  os_build=$(if($os){$os.BuildNumber}else{$null})
+  os_architecture=$(if($os){$os.OSArchitecture}else{$env:PROCESSOR_ARCHITECTURE})
   powershell=$PSVersionTable.PSVersion.ToString()
-  powershell_edition=if($PSVersionTable.PSEdition){$PSVersionTable.PSEdition}else{"Desktop"}
+  powershell_edition=$(if($PSVersionTable.PSEdition){$PSVersionTable.PSEdition}else{"Desktop"})
   culture=(Get-Culture).Name
   ui_culture=(Get-UICulture).Name
   vitosoft_root=$Root
@@ -591,8 +591,8 @@ try {
           ProcessId=$p.Id
           ModuleName=$m.ModuleName
           FileName=$m.FileName
-          FileVersion=try{$m.FileVersionInfo.FileVersion}catch{$null}
-          ProductVersion=try{$m.FileVersionInfo.ProductVersion}catch{$null}
+          FileVersion=$(try{$m.FileVersionInfo.FileVersion}catch{$null})
+          ProductVersion=$(try{$m.FileVersionInfo.ProductVersion}catch{$null})
         }
       }
     } catch {}
@@ -743,7 +743,7 @@ if (-not $Sequential -and $Parallelism -gt 1) {
   & powershell.exe @deepArgs
   $deepExit = $LASTEXITCODE
   $phase.Stop()
-  [void]$phaseTimings.Add([pscustomobject]@{Phase="deep-derived-collector";Seconds=[math]::Round($phase.Elapsed.TotalSeconds,3);Tasks=1;Parallelism=1;Failed=if($deepExit -eq 0){0}else{1}})
+  [void]$phaseTimings.Add([pscustomobject]@{Phase="deep-derived-collector";Seconds=[math]::Round($phase.Elapsed.TotalSeconds,3);Tasks=1;Parallelism=1;Failed=$(if($deepExit -eq 0){0}else{1})})
   if ($deepExit -ne 0) {
     "Deep collector exit code: $deepExit" | Set-Content -LiteralPath (Join-Path $derivedDir "private-wrapper-deep-error.txt") -Encoding UTF8
   }
@@ -754,7 +754,7 @@ if (-not $Sequential -and $Parallelism -gt 1) {
     & powershell.exe @sqlArgs
     $sqlExit = $LASTEXITCODE
     $phase.Stop()
-    [void]$phaseTimings.Add([pscustomobject]@{Phase="sql-readonly-collector";Seconds=[math]::Round($phase.Elapsed.TotalSeconds,3);Tasks=1;Parallelism=1;Failed=if($sqlExit -eq 0){0}else{1}})
+    [void]$phaseTimings.Add([pscustomobject]@{Phase="sql-readonly-collector";Seconds=[math]::Round($phase.Elapsed.TotalSeconds,3);Tasks=1;Parallelism=1;Failed=$(if($sqlExit -eq 0){0}else{1})})
     if ($sqlExit -ne 0) {
       "SQL collector exit code: $sqlExit" | Set-Content -LiteralPath (Join-Path $sqlDir "private-wrapper-sql-error.txt") -Encoding UTF8
     }
@@ -772,9 +772,9 @@ $signatures = foreach ($f in $peFiles) {
       RelativePath=(RelPath $Root $f.FullName)
       Status=[string]$s.Status
       StatusMessage=$s.StatusMessage
-      SignerSubject=if($s.SignerCertificate){$s.SignerCertificate.Subject}else{$null}
-      SignerIssuer=if($s.SignerCertificate){$s.SignerCertificate.Issuer}else{$null}
-      SignerThumbprint=if($s.SignerCertificate){$s.SignerCertificate.Thumbprint}else{$null}
+      SignerSubject=$(if($s.SignerCertificate){$s.SignerCertificate.Subject}else{$null})
+      SignerIssuer=$(if($s.SignerCertificate){$s.SignerCertificate.Issuer}else{$null})
+      SignerThumbprint=$(if($s.SignerCertificate){$s.SignerCertificate.Thumbprint}else{$null})
     }
   } catch {
     [pscustomobject]@{
@@ -806,11 +806,11 @@ if (-not $SkipToolDumps) {
     gacutil=$gacutilPath
     msbuild=$msbuildPath
     vswhere=$vswherePath
-    dotnet=if(Get-Command dotnet.exe -ErrorAction SilentlyContinue){(Get-Command dotnet.exe).Source}else{$null}
-    sqlcmd=if(Get-Command sqlcmd.exe -ErrorAction SilentlyContinue){(Get-Command sqlcmd.exe).Source}else{$null}
-    sqllocaldb=if(Get-Command sqllocaldb.exe -ErrorAction SilentlyContinue){(Get-Command sqllocaldb.exe).Source}else{$null}
-    git=if(Get-Command git.exe -ErrorAction SilentlyContinue){(Get-Command git.exe).Source}else{$null}
-    git_lfs=if(Get-Command git-lfs.exe -ErrorAction SilentlyContinue){(Get-Command git-lfs.exe).Source}else{$null}
+    dotnet=$(if(Get-Command dotnet.exe -ErrorAction SilentlyContinue){(Get-Command dotnet.exe).Source}else{$null})
+    sqlcmd=$(if(Get-Command sqlcmd.exe -ErrorAction SilentlyContinue){(Get-Command sqlcmd.exe).Source}else{$null})
+    sqllocaldb=$(if(Get-Command sqllocaldb.exe -ErrorAction SilentlyContinue){(Get-Command sqllocaldb.exe).Source}else{$null})
+    git=$(if(Get-Command git.exe -ErrorAction SilentlyContinue){(Get-Command git.exe).Source}else{$null})
+    git_lfs=$(if(Get-Command git-lfs.exe -ErrorAction SilentlyContinue){(Get-Command git-lfs.exe).Source}else{$null})
     sevenzip=(Find-ToolPath "7z.exe")
   }
   $toolInfo | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $systemDir "optional-tools.json") -Encoding UTF8
@@ -850,7 +850,7 @@ if (-not $SkipToolDumps) {
         CultureName=$an.CultureInfo.Name
         PublicKeyToken=(Format-PublicKeyToken ($an.GetPublicKeyToken()))
         ProcessorArchitecture=[string]$an.ProcessorArchitecture
-        MVID=try{[string]$asm.ManifestModule.ModuleVersionId}catch{$null}
+        MVID=$(try{[string]$asm.ManifestModule.ModuleVersionId}catch{$null})
       })
       foreach ($ref in $asm.GetReferencedAssemblies()) {
         [void]$refRows.Add([pscustomobject]@{
