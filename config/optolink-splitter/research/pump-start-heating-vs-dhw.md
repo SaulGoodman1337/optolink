@@ -1217,3 +1217,34 @@ A read-only probe has been added for both:
 The purpose is only to determine whether the address space exists on the local
 firmware. Even a readable value at 0x7751 would not establish that coding 51 is
 supported or safe in the direct A1 topology.
+
+## Read-only result for latent coding 51 — 2026-09-23
+
+The local WB2A was queried directly:
+
+```text
+r;0x7751;1 -> 3;0x7751;01
+r;0x7752;1 -> 1;0x7752;00
+```
+
+In the optolink-splitter VS2/P300 stack return code 0x01 means success and
+0x03 means an **Error Message** response from the controller. The payload byte
+`01` in the 0x7751 error response is not decoded here as a specific error
+reason.
+
+Thus:
+
+- 0x7752 is a valid readable WB2A virtual datapoint and currently equals 0,
+  consistent with coding 52 = no hydraulic-separator sensor;
+- 0x7751 does not behave as a valid readable virtual datapoint on this local
+  controller. The controller actively returns a protocol error rather than a
+  value.
+
+This strongly confirms the exact Vitosoft/service-manual result that coding 51
+is not implemented/exposed on this WB2A profile. No write to 0x7751 should be
+attempted.
+
+The cross-profile coding-51 idea is therefore closed for the local direct A1
+system. The remaining practical paths are static E7=100, a safe dynamic E7
+strategy if persistence/endurance can be proven acceptable, or a topology
+change that turns the internal pump into a boiler-circuit pump.
