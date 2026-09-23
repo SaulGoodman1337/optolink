@@ -3321,3 +3321,44 @@ runtime semantics beyond the Vitosoft labels.
 Next discriminator: correlate `0x0A3A`, `0x0A3B`, `0x0A3C`,
 `0x7663` and `0x7660` through a normal heating start and subsequent
 flame-off/takt-lock state without any writes.
+
+
+### 0x0A3A/0x0A3B heating-start correlation — 2026-09-23
+
+A live heating start was captured with the enhanced watcher.
+
+Observed transition:
+
+```text
+19:00:07  A3A=0 A3B=0 A3C=0   7660=0/0     7663=0/0
+19:00:51  A3A=0 A3B=0 A3C=100 7660=1/100   7663=1/100
+19:01:16  A3A=0 A3B=0 A3C=100 7660=1/100   7663=1/100 GFA7=20
+19:01:28  A3A=0 A3B=0 A3C=100 7660=1/100   7663=1/100 FLAME=1
+```
+
+During the subsequent modulation ramp, `0x0A3A` and `0x0A3B` remained
+zero while both `0x7663` and the internal-pump path stayed at 100 %.
+
+This disproves the working hypothesis that `0x0A3A` is the computed A1
+setpoint feeding the local `0x7663` heating-circuit path.
+
+A better interpretation for this appliance is that `HKP_A1_res` /
+`HKP_M2_res` are result/setpoint objects for separate speed-controlled
+heating-circuit pump participants. This is consistent with the local
+configuration where the separate KM-BUS A1 pump identification object
+`0x27E5` was previously observed as not present, while the built-in internal
+pump is represented separately by `0x5730`, `0x0A54`, `0x0A3C` and
+`0x7660`.
+
+Local evidence now supports:
+
+```text
+0x0A3A  readable but remains 0 on local A1/internal-pump heating path
+0x0A3B  readable but remains 0; no separate M2 pump path active
+0x0A3C  follows final internal-pump command
+0x7660  follows physical/internal pump runtime command
+0x7663  A1 heating-circuit runtime command
+```
+
+Therefore `0x0A3A` is no longer a priority discriminator for the internal
+WB2A pump-control problem.
