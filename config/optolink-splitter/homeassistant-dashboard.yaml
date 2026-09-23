@@ -1436,6 +1436,8 @@ views:
                     content: |
                       ## Was macht A5?
                       
+                      **Merksatz:** A5 ist kein Temperatur-Sollwert, sondern ein **Offset-Index für die Pumpen-Abschaltgrenze**. Der Wert 6 ist der rechnerische Nullpunkt; kleinere/größere A5-Werte verschieben die Grenze nach oben/unten.
+                      
                       A5 ist **kein Raumthermostat**. Die Vitodens braucht dafür keinen Raumtemperaturfühler und vergleicht auch nicht die gemessene Raumtemperatur.
                       
                       Stattdessen benutzt A5 die **eingestellte Raum-Solltemperatur als Rechengröße** und bildet daraus eine Außentemperaturgrenze für die Heizkreispumpe.
@@ -1519,6 +1521,8 @@ views:
                     type: markdown
                     content: |
                       ## Was macht A6?
+                      
+                      **Merksatz:** A6 ist die feste Heizgrenze für den gesamten Heizbetrieb; A5 entscheidet dagegen nur über die Heizkreispumpe anhand einer vom Raum-Soll abhängigen Grenze.
                       
                       A6 ist die **absolute Sommer-/Winter-Heizgrenze** der Vitodens.
                       
@@ -2196,185 +2200,13 @@ views:
       - type: grid
         column_span: 2
         cards:
-          - type: heading
-            heading: Gerät
-            heading_style: title
-            icon: mdi:information-outline
-            badges:
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_systemzeit_anzeige
-                name: Systemzeit
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_anlagenschema_anzeige
-                name: Schema
-                show_state: true
-                show_icon: false
-          - type: entities
-            title: Identifikation
-            entities:
-              - sensor.vitodens_200_wb2a_geraete_id_anzeige
-              - sensor.vitodens_200_wb2a_codierstecker_sachnummer_anzeige
-              - sensor.vitodens_200_wb2a_codierstecker_kennung_anzeige
-              - sensor.vitodens_200_wb2a_bedienteil_sw_index_anzeige
-              - sensor.vitodens_200_wb2a_gfa_kennung_anzeige
-              - sensor.vitodens_200_wb2a_anlagenschema_anzeige
-              - sensor.vitodens_200_wb2a_anlagentyp_anzeige
-              - sensor.vitodens_200_wb2a_bauart_warmwasser_anzeige
-      - type: grid
-        column_span: 2
-        cards:
-          - type: heading
-            heading: Codierstecker
-            heading_style: title
-            icon: mdi:chip
           - type: markdown
             content: >-
-              Gerätespezifische, nur gelesene Grenz- und Kennwerte aus dem
-              Kessel-Codierstecker. Das sind keine aktuellen Sollwerte.
-          - type: entities
-            title: Temperaturgrenzen
-            entities:
-              - entity: sensor.vitodens_200_wb2a_codierstecker_kesselsoll_max
-                name: Kessel-Sollbereich max
-              - entity: sensor.vitodens_200_wb2a_codierstecker_kesselsoll_min
-                name: Kessel-Sollbereich min
-              - entity: sensor.vitodens_200_wb2a_codierstecker_kesseltemperatur_min
-                name: Kessel-Mindesttemperatur
-              - entity: sensor.vitodens_200_wb2a_codierstecker_wwsoll_max
-                name: Warmwasser-Sollbereich max
-              - entity: sensor.vitodens_200_wb2a_codierstecker_wwsoll_min
-                name: Warmwasser-Sollbereich min
-          - type: entities
-            title: Brenner & Leistung
-            entities:
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_min_leistung
-                name: Brennerleistung min
-              - entity: sensor.vitodens_200_wb2a_codierstecker_heizung_leistungsbegrenzung
-                name: Heizleistung Begrenzung GWG32
-              - entity: sensor.vitodens_200_wb2a_codierstecker_heizung_max_leistung
-                name: Heizleistung absolute Grenze GWG5D
-              - entity: sensor.vitodens_200_wb2a_codierstecker_ww_leistungsbegrenzung
-                name: Warmwasserleistung Begrenzung GWG30
-              - entity: sensor.vitodens_200_wb2a_codierstecker_ww_max_leistung
-                name: Warmwasserleistung absolute Grenze GWG5C
-              - entity: sensor.vitodens_200_wb2a_codierstecker_kesselsollleistung_speicherbetrieb
-                name: Kesselsollleistung Speicherbetrieb
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_offset
-                name: Brenner-Offset
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_anfahroptimierung
-                name: Brenner-Anfahroptimierung
-          - type: entities
-            title: Interne Pumpe
-            entities:
-              - entity: sensor.vitodens_200_wb2a_codierstecker_interne_pumpe_min_drehzahl
-                name: Mindestdrehzahl
-              - entity: sensor.vitodens_200_wb2a_codierstecker_interne_pumpe_nachlauf
-                name: Nachlaufzeit
-          - type: entities
-            title: Geräteausführung
-            entities:
-              - entity: sensor.vitodens_200_wb2a_codierstecker_bauart_warmwasser
-                name: WW-Bauart laut Codierstecker
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brennertyp
-                name: Brennertyp laut Codierstecker
-              - entity: sensor.vitodens_200_wb2a_codierstecker_umschaltventil_bauart
-                name: Umschaltventil laut Codierstecker
-          - type: entities
-            title: Grundfos-Umschaltventil Kennfeld
-            entities:
-              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_position_heizen
-                name: Position Heizen
-              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x1
-                name: Verstellweg x1 Schrittzahl
-              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x1
-                name: Verstellweg x1 Frequenzwert
-              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x2
-                name: Verstellweg x2 Schrittzahl
-              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x2
-                name: Verstellweg x2 Frequenzwert
-              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x3
-                name: Verstellweg x3 Schrittzahl
-              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x3
-                name: Verstellweg x3 Frequenzwert
-              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x4
-                name: Verstellweg x4 Schrittzahl
-              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x4
-                name: Verstellweg x4 Frequenzwert
-              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x5
-                name: Verstellweg x5 Schrittzahl
-              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x5
-                name: Verstellweg x5 Frequenzwert
-          - type: entities
-            title: Warmwasser-Regelparameter
-            entities:
-              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_ausschaltdifferenz_start_stop
-                name: DLH Start/Stop Ausschaltdifferenz
-              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_einschaltdifferenz_start_stop
-                name: DLH Start/Stop Einschaltdifferenz
-              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_nachlaufzeit
-                name: DLH Nachlaufzeit
-              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_max_anstiegszeit
-                name: DLH maximale Anstiegszeit
-              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglerverstaerkung
-                name: DLH Reglerverstärkung
-              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglervorhaltezeit
-                name: DLH Reglervorhaltezeit
-              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglernachstellzeit
-                name: DLH Reglernachstellzeit
-              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_ausschaltdifferenz
-                name: DLH Ausschaltdifferenz
-              - entity: sensor.vitodens_200_wb2a_codierstecker_zirkulationspumpe_bei_speicherladung
-                name: Zirkulationspumpe bei Speicherladung
-          - type: entities
-            title: Brennerregelung
-            entities:
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_einschaltdifferenz
-                name: Einschaltdifferenz
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_ausschaltdifferenz
-                name: Ausschaltdifferenz
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_ausschaltdifferenz_volllast
-                name: Ausschaltdifferenz bei Volllast
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_mindestpausenzeit
-                name: Brennermindestpause
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_pausenabbruch_differenz
-                name: Pausenabbruch Differenz
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_pausenabbruch_temperatur
-                name: Pausenabbruch Temperatur
-              - entity: sensor.vitodens_200_wb2a_codierstecker_kt_regler_verstaerkung
-                name: KT-Regler Verstärkung
-              - entity: sensor.vitodens_200_wb2a_codierstecker_kt_regler_nachstellzeit
-                name: KT-Regler Nachstellzeit
-          - type: entities
-            title: Brennerkennlinie
-            entities:
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_10
-                name: 10 % Leistung → Modulation
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_20
-                name: 20 % Leistung → Modulation
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_30
-                name: 30 % Leistung → Modulation
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_40
-                name: 40 % Leistung → Modulation
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_50
-                name: 50 % Leistung → Modulation
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_60
-                name: 60 % Leistung → Modulation
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_70
-                name: 70 % Leistung → Modulation
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_80
-                name: 80 % Leistung → Modulation
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_90
-                name: 90 % Leistung → Modulation
-              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_100
-                name: 100 % Leistung → Modulation
-
-      - type: grid
-        column_span: 2
-        cards:
+              Laufzeitdiagnose für Brenner, Taktsperre, Wiederanlauf und
+              Anfahroptimierung. Zuerst den RKR-/Brennerzustand betrachten;
+              Sensor- und Rohwerte darunter dienen der Ursachenanalyse.
           - type: heading
-            heading: Sensorstatus
+            heading: Brenner & Regelzustand
             heading_style: title
             icon: mdi:thermometer-alert
           - type: entities
@@ -2551,39 +2383,272 @@ views:
         column_span: 2
         cards:
           - type: heading
+            heading: Gerät
+            heading_style: title
+            icon: mdi:information-outline
+            badges:
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_systemzeit_anzeige
+                name: Systemzeit
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_anlagenschema_anzeige
+                name: Schema
+                show_state: true
+                show_icon: false
+          - type: entities
+            title: Identifikation
+            entities:
+              - sensor.vitodens_200_wb2a_geraete_id_anzeige
+              - sensor.vitodens_200_wb2a_codierstecker_sachnummer_anzeige
+              - sensor.vitodens_200_wb2a_codierstecker_kennung_anzeige
+              - sensor.vitodens_200_wb2a_bedienteil_sw_index_anzeige
+              - sensor.vitodens_200_wb2a_gfa_kennung_anzeige
+              - sensor.vitodens_200_wb2a_anlagenschema_anzeige
+              - sensor.vitodens_200_wb2a_anlagentyp_anzeige
+              - sensor.vitodens_200_wb2a_bauart_warmwasser_anzeige
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Codierstecker
+            heading_style: title
+            icon: mdi:chip
+          - type: markdown
+            content: >-
+              Gerätespezifische, nur gelesene Grenz- und Kennwerte aus dem
+              Kessel-Codierstecker. Das sind keine aktuellen Sollwerte.
+          - type: entities
+            title: Temperaturgrenzen
+            entities:
+              - entity: sensor.vitodens_200_wb2a_codierstecker_kesselsoll_max
+                name: Kessel-Sollbereich max
+              - entity: sensor.vitodens_200_wb2a_codierstecker_kesselsoll_min
+                name: Kessel-Sollbereich min
+              - entity: sensor.vitodens_200_wb2a_codierstecker_kesseltemperatur_min
+                name: Kessel-Mindesttemperatur
+              - entity: sensor.vitodens_200_wb2a_codierstecker_wwsoll_max
+                name: Warmwasser-Sollbereich max
+              - entity: sensor.vitodens_200_wb2a_codierstecker_wwsoll_min
+                name: Warmwasser-Sollbereich min
+          - type: entities
+            title: Brenner & Leistung
+            entities:
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_min_leistung
+                name: Brennerleistung min
+              - entity: sensor.vitodens_200_wb2a_codierstecker_heizung_leistungsbegrenzung
+                name: Heizleistung Begrenzung GWG32
+              - entity: sensor.vitodens_200_wb2a_codierstecker_heizung_max_leistung
+                name: Heizleistung absolute Grenze GWG5D
+              - entity: sensor.vitodens_200_wb2a_codierstecker_ww_leistungsbegrenzung
+                name: Warmwasserleistung Begrenzung GWG30
+              - entity: sensor.vitodens_200_wb2a_codierstecker_ww_max_leistung
+                name: Warmwasserleistung absolute Grenze GWG5C
+              - entity: sensor.vitodens_200_wb2a_codierstecker_kesselsollleistung_speicherbetrieb
+                name: Kesselsollleistung Speicherbetrieb
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_offset
+                name: Brenner-Offset
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_anfahroptimierung
+                name: Brenner-Anfahroptimierung
+          - type: entities
+            title: Interne Pumpe
+            entities:
+              - entity: sensor.vitodens_200_wb2a_codierstecker_interne_pumpe_min_drehzahl
+                name: Mindestdrehzahl
+              - entity: sensor.vitodens_200_wb2a_codierstecker_interne_pumpe_nachlauf
+                name: Nachlaufzeit
+          - type: entities
+            title: Geräteausführung
+            entities:
+              - entity: sensor.vitodens_200_wb2a_codierstecker_bauart_warmwasser
+                name: WW-Bauart laut Codierstecker
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brennertyp
+                name: Brennertyp laut Codierstecker
+              - entity: sensor.vitodens_200_wb2a_codierstecker_umschaltventil_bauart
+                name: Umschaltventil laut Codierstecker
+          - type: entities
+            title: Grundfos-Umschaltventil Kennfeld
+            entities:
+              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_position_heizen
+                name: Position Heizen
+              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x1
+                name: Verstellweg x1 Schrittzahl
+              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x1
+                name: Verstellweg x1 Frequenzwert
+              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x2
+                name: Verstellweg x2 Schrittzahl
+              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x2
+                name: Verstellweg x2 Frequenzwert
+              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x3
+                name: Verstellweg x3 Schrittzahl
+              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x3
+                name: Verstellweg x3 Frequenzwert
+              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x4
+                name: Verstellweg x4 Schrittzahl
+              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x4
+                name: Verstellweg x4 Frequenzwert
+              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x5
+                name: Verstellweg x5 Schrittzahl
+              - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x5
+                name: Verstellweg x5 Frequenzwert
+          - type: entities
+            title: Warmwasser-Regelparameter
+            entities:
+              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_ausschaltdifferenz_start_stop
+                name: DLH Start/Stop Ausschaltdifferenz
+              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_einschaltdifferenz_start_stop
+                name: DLH Start/Stop Einschaltdifferenz
+              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_nachlaufzeit
+                name: DLH Nachlaufzeit
+              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_max_anstiegszeit
+                name: DLH maximale Anstiegszeit
+              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglerverstaerkung
+                name: DLH Reglerverstärkung
+              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglervorhaltezeit
+                name: DLH Reglervorhaltezeit
+              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglernachstellzeit
+                name: DLH Reglernachstellzeit
+              - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_ausschaltdifferenz
+                name: DLH Ausschaltdifferenz
+              - entity: sensor.vitodens_200_wb2a_codierstecker_zirkulationspumpe_bei_speicherladung
+                name: Zirkulationspumpe bei Speicherladung
+          - type: entities
+            title: Brennerregelung
+            entities:
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_einschaltdifferenz
+                name: Einschaltdifferenz
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_ausschaltdifferenz
+                name: Ausschaltdifferenz
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_ausschaltdifferenz_volllast
+                name: Ausschaltdifferenz bei Volllast
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_mindestpausenzeit
+                name: Brennermindestpause
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_pausenabbruch_differenz
+                name: Pausenabbruch Differenz
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_pausenabbruch_temperatur
+                name: Pausenabbruch Temperatur
+              - entity: sensor.vitodens_200_wb2a_codierstecker_kt_regler_verstaerkung
+                name: KT-Regler Verstärkung
+              - entity: sensor.vitodens_200_wb2a_codierstecker_kt_regler_nachstellzeit
+                name: KT-Regler Nachstellzeit
+          - type: entities
+            title: Brennerkennlinie
+            entities:
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_10
+                name: 10 % Leistung → Modulation
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_20
+                name: 20 % Leistung → Modulation
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_30
+                name: 30 % Leistung → Modulation
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_40
+                name: 40 % Leistung → Modulation
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_50
+                name: 50 % Leistung → Modulation
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_60
+                name: 60 % Leistung → Modulation
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_70
+                name: 70 % Leistung → Modulation
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_80
+                name: 80 % Leistung → Modulation
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_90
+                name: 90 % Leistung → Modulation
+              - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_100
+                name: 100 % Leistung → Modulation
+
+    cards: []
+
+  - title: Zeitprogramme
+    path: zeitprogramme
+    icon: mdi:calendar-clock
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        column_span: 3
+        cards:
+          - type: heading
             heading: Zeitprogramme
             heading_style: title
             icon: mdi:calendar-clock
+          - type: markdown
+            content: >-
+              Wochenübersicht der im Kessel gespeicherten Schaltzeiten.
+              Anzeige-only: Änderungen werden hier bewusst nicht angeboten,
+              solange die Schreibsemantik der Zeitprogramme nicht vollständig
+              verifiziert ist.
+      - type: grid
+        cards:
+          - type: heading
+            heading: Heizung
+            heading_style: title
+            icon: mdi:radiator
           - type: entities
-            title: Heizung
+            title: Heizkreis M1
+            show_header_toggle: false
             entities:
-              - sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_montag_anzeige
-              - sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_dienstag_anzeige
-              - sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_mittwoch_anzeige
-              - sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_donnerstag_anzeige
-              - sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_freitag_anzeige
-              - sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_samstag_anzeige
-              - sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_sonntag_anzeige
+              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_montag_anzeige
+                name: Montag
+              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_dienstag_anzeige
+                name: Dienstag
+              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_mittwoch_anzeige
+                name: Mittwoch
+              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_donnerstag_anzeige
+                name: Donnerstag
+              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_freitag_anzeige
+                name: Freitag
+              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_samstag_anzeige
+                name: Samstag
+              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_sonntag_anzeige
+                name: Sonntag
+      - type: grid
+        cards:
+          - type: heading
+            heading: Warmwasser
+            heading_style: title
+            icon: mdi:water-thermometer
           - type: entities
-            title: Warmwasser
+            title: Speicherladung
+            show_header_toggle: false
             entities:
-              - sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_montag_anzeige
-              - sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_dienstag_anzeige
-              - sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_mittwoch_anzeige
-              - sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_donnerstag_anzeige
-              - sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_freitag_anzeige
-              - sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_samstag_anzeige
-              - sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_sonntag_anzeige
+              - entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_montag_anzeige
+                name: Montag
+              - entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_dienstag_anzeige
+                name: Dienstag
+              - entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_mittwoch_anzeige
+                name: Mittwoch
+              - entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_donnerstag_anzeige
+                name: Donnerstag
+              - entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_freitag_anzeige
+                name: Freitag
+              - entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_samstag_anzeige
+                name: Samstag
+              - entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_sonntag_anzeige
+                name: Sonntag
+      - type: grid
+        cards:
+          - type: heading
+            heading: Zirkulation
+            heading_style: title
+            icon: mdi:pump
           - type: entities
-            title: Zirkulation
+            title: Zirkulationspumpe
+            show_header_toggle: false
             entities:
-              - sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_montag_anzeige
-              - sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_dienstag_anzeige
-              - sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_mittwoch_anzeige
-              - sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_donnerstag_anzeige
-              - sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_freitag_anzeige
-              - sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_samstag_anzeige
-              - sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_sonntag_anzeige
+              - entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_montag_anzeige
+                name: Montag
+              - entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_dienstag_anzeige
+                name: Dienstag
+              - entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_mittwoch_anzeige
+                name: Mittwoch
+              - entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_donnerstag_anzeige
+                name: Donnerstag
+              - entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_freitag_anzeige
+                name: Freitag
+              - entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_samstag_anzeige
+                name: Samstag
+              - entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_sonntag_anzeige
+                name: Sonntag
     cards: []
 
   - title: Graphen
