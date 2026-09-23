@@ -353,6 +353,26 @@ contains **no KBUS/KMBUS FCRead or FCWrite events**. The earlier plan to search
 for special-access KBUS/KMBUS pump events is therefore obsolete for this
 controller profile.
 
+Next hardware task after returning to the appliance:
+
+- validate the newly discovered read-only result objects `0x0A3A` and
+  `0x0A3B` together with `0x0A3C`, `0x7660` and `0x7663`;
+- first take a stable-state snapshot with:
+  ```text
+  0x0A3A / 1   HKP_A1_res
+  0x0A3B / 1   HKP_M2_res
+  0x0A3C / 1   InternePumpeDrehzahl_res
+  0x7660 / 2   internal-pump runtime/output
+  0x7663 / 2   A1 pump runtime/output
+  ```
+- compare at least pump-off, heating/pre-ignition, flame-on and flame-off
+  takt-lock states;
+- determine whether `0x0A3A` tracks the computed A1 pump setpoint while
+  `0x0A3C` represents the later/final internal-pump selection;
+- keep this experiment strictly read-only;
+- the enhanced `wb2a-pump-divergence-watch.py` already includes
+  `0x0A3A` and `0x0A3B`.
+
 Next work:
 
 - use `wb2a-pump-start-logger --mode heating` for a complete heating start;
@@ -473,6 +493,21 @@ Research goals:
 The first pass must be **strictly read-only SQL**. Do not trigger
 `BeginUpdate`, alter database rows, or initiate a device programming session.
 
+Collector support is now prepared:
+
+- `tools/export-vitosoft-sql-readonly.ps1` preserves MDF/LDF files, discovers
+  reachable existing SQL instances, exports schema plus all user tables using
+  SELECT-only queries, and copies `ecnUpdateDefinition` /
+  `ecnDeviceSoftwareUpdate` into a priority export;
+- `tools/collect-vitosoft-private-archive.ps1` invokes that SQL stage as part
+  of a much broader private Vitosoft archive;
+- automatic `AttachDbFilename` / MDF attach is intentionally not performed,
+  because attaching a database changes SQL Server state.
+
+Next execution task: run the private collector on the Vitosoft Windows system,
+store the resulting raw/private bundle outside the public repository, then
+inspect the SQL priority exports for VDensHO1 / 20C2.
+
 Desired outcome:
 
 - clear answer whether the Vitosoft device-software-update subsystem contains
@@ -483,6 +518,43 @@ Desired outcome:
 
 Detailed firmware context:
 `config/optolink-splitter/research/vitosoft/firmware-and-deep-research.md`.
+
+### Private full Vitosoft archival collector
+
+Status: **collector ready / execution pending**
+
+A second, intentionally comprehensive collector now exists for material that
+should later live in a **private** research repository:
+
+`tools/collect-vitosoft-private-archive.ps1`
+
+It is deliberately broader than the public/derived deep collector. By default
+it collects:
+
+- the complete Vitosoft installation parent tree;
+- related Viessmann directories in ProgramData/AppData/Documents when present;
+- the normal deep-derived metadata/string/member corpus;
+- raw MDF/LDF plus SELECT-only SQL schema/table exports where an existing SQL
+  instance is reachable;
+- Viessmann/SQL-related registry keys;
+- related Windows services/processes/scheduled tasks and installed-software
+  inventory;
+- Authenticode signature metadata;
+- optional ILDASM and DUMPBIN output if those tools are installed;
+- a complete SHA256 manifest;
+- a Git LFS `.gitattributes` template for later private-repository import.
+
+The generated bundle may contain proprietary binaries, database contents,
+machine-specific paths and credentials stored in application configuration.
+It must therefore remain private and must not be committed wholesale to this
+public repository.
+
+Execution task:
+
+1. run the collector on the Vitosoft Windows installation;
+2. retain the original output and SHA256 manifest unchanged;
+3. create/use a private Git repository with Git LFS for raw binaries/databases;
+4. import only derived conclusions/hashes/scripts back into the public repo.
 
 ### Coding-plug read/write and external dumping
 
