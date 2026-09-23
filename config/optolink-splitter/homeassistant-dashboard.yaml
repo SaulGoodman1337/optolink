@@ -1,3 +1,62 @@
+button_card_templates:
+  diag_metric:
+    section_mode: true
+    show_name: true
+    show_state: true
+    show_icon: true
+    show_units: true
+    layout: icon_name_state2nd
+    size: 22px
+    tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
+    styles:
+      card:
+        - border-radius: 14px
+        - border: 1px solid var(--divider-color)
+        - box-shadow: none
+        - padding: 7px 9px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: '"i n" "i s"'
+        - grid-template-columns: 30px 1fr
+        - grid-template-rows: min-content min-content
+        - column-gap: 8px
+      img_cell:
+        - width: 28px
+        - height: 28px
+        - justify-content: center
+        - align-items: center
+      icon:
+        - width: 21px
+      name:
+        - justify-self: start
+        - align-self: end
+        - color: var(--secondary-text-color)
+        - font-size: 11px
+        - font-weight: 500
+        - line-height: 1.15
+        - overflow: hidden
+        - text-overflow: ellipsis
+        - white-space: nowrap
+      state:
+        - justify-self: start
+        - align-self: start
+        - color: var(--primary-text-color)
+        - font-size: 15px
+        - font-weight: 600
+        - line-height: 1.25
+        - overflow: hidden
+        - text-overflow: ellipsis
+        - white-space: nowrap
+
+  diag_metric_compact:
+    template: diag_metric
+    styles:
+      state:
+        - font-size: 14px
+
 views:
   - title: Heizung
     path: heizung
@@ -2193,6 +2252,7 @@ views:
 
   # Diagnose: native Sections are the responsive layout units.
   # HACS frontend dependencies:
+  # - button-card
   # - lovelace-multiple-entity-row
   # - card-mod
   - title: Diagnose
@@ -2305,386 +2365,470 @@ views:
       - type: grid
         column_span: 1
         cards:
-          - type: entities
-            title: Brenner / Regelung
-            show_header_toggle: false
-            state_color: true
-            entities:
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_brenner_modulationsgrad
-                name: Brenner
-                name_gap: 8px
-                state_header: Mod
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_rkr_brennerzustand
-                    name: RKR
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: binary_sensor.vitodens_200_wb2a_brenner_flamme
-                    name: Flamme
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur_normal
-                name: Sollwerte
-                name_gap: 8px
-                state_header: RKR
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur
-                    name: OPT
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: sensor.vitodens_200_wb2a_blr_kesselsolltemperatur_effektiv
-                    name: BLR
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_cfdm_kesselsolltemperatur_effektiv
-                name: CFDM / GFA
-                name_gap: 8px
-                state_header: Soll
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_cfdm_leistungswert
-                    name: CFDM %
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: sensor.vitodens_200_wb2a_gfa_leistungs_ansteuerwert_fein
-                    name: GFA
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_cfdm_application_mode
-                name: CFDM Eingänge
-                name_gap: 8px
-                state_header: App
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_cfdm_consumer_demand_temperatur
-                    name: Demand
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: binary_sensor.vitodens_200_wb2a_cfdm_leistungsstatus
-                    name: Leistung
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: binary_sensor.vitodens_200_wb2a_brenner_startphase
-                name: Ablauf
-                name_gap: 8px
-                state_header: Start
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb
-                    name: Regel
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv
-                    name: OPT aktiv
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_rkr_statusbyte_55e0_b14
-                name: RKR intern
-                name_gap: 8px
-                state_header: 55E0.b14
-                styles:
-                  width: 76px
-                  text-align: center
+          - type: heading
+            heading: Brenner / Regelung
+            heading_style: subtitle
+            icon: mdi:gas-burner
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_brenner_flamme
+            name: Flamme
+            icon: mdi:fire
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_brenner_modulationsgrad
+            name: Modulation
+            icon: mdi:gauge
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric_compact
+            entity: sensor.vitodens_200_wb2a_rkr_brennerzustand
+            name: RKR Zustand
+            icon: mdi:state-machine
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur_normal
+            name: RKR Soll
+            icon: mdi:target
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur
+            name: OPT Soll
+            icon: mdi:target-variant
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_blr_kesselsolltemperatur_effektiv
+            name: BLR Soll
+            icon: mdi:thermometer-chevron-up
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_cfdm_kesselsolltemperatur_effektiv
+            name: CFDM Soll
+            icon: mdi:thermometer-check
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_cfdm_leistungswert
+            name: CFDM Leistung
+            icon: mdi:speedometer
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_gfa_leistungs_ansteuerwert_fein
+            name: GFA Ansteuerung
+            icon: mdi:chart-timeline-variant
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric_compact
+            entity: sensor.vitodens_200_wb2a_cfdm_application_mode
+            name: Application Mode
+            icon: mdi:application-cog
+            grid_options:
+              columns: 6
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_cfdm_consumer_demand_temperatur
+            name: Consumer Demand
+            icon: mdi:thermometer-auto
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_cfdm_leistungsstatus
+            name: CFDM Status
+            icon: mdi:check-circle-outline
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_brenner_startphase
+            name: Startphase
+            icon: mdi:rocket-launch
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb
+            name: Regelbetrieb
+            icon: mdi:tune-variant
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv
+            name: Anfahr-OPT
+            icon: mdi:chart-timeline-variant-shimmer
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_rkr_statusbyte_55e0_b14
+            name: 55E0.b14
+            icon: mdi:code-braces
+            grid_options:
+              columns: 4
+              rows: 1
+
 
       - type: grid
         column_span: 1
         cards:
-          - type: entities
-            title: Temperaturen / Hydraulik
-            show_header_toggle: false
-            state_color: true
-            entities:
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_kesseltemperatur
-                name: Kessel / Vorlauf
-                name_gap: 8px
-                state_header: Kessel
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
-                    name: Vorlauf
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlaufsolltemperatur
-                    name: VL Soll
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_aussentemperatur
-                name: Außen
-                name_gap: 8px
-                state_header: Aktuell
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_aussentemperatur_gedaempft
-                    name: Gedämpft
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: sensor.vitodens_200_wb2a_cfdm_vorlauftemperatur
-                    name: CFDM VL
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_warmwasser_temperatur
-                name: Warmwasser
-                name_gap: 8px
-                state_header: Temp
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_warmwasser_ladestatus
-                    name: Ladung
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_heizkreis_m1_betriebsart_aktuell
-                name: Heizkreis
-                name_gap: 8px
-                state_header: Betrieb
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_heizkreis_m1_betriebsprogramm_aktuell
-                    name: Programm
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
-                    name: Ventil
-                    styles:
-                      width: 76px
-                      text-align: center
+          - type: heading
+            heading: Temperaturen / Hydraulik
+            heading_style: subtitle
+            icon: mdi:thermometer-water
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_kesseltemperatur
+            name: Kessel
+            icon: mdi:water-boiler
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
+            name: Vorlauf
+            icon: mdi:thermometer-chevron-up
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlaufsolltemperatur
+            name: Vorlauf Soll
+            icon: mdi:target
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_cfdm_vorlauftemperatur
+            name: CFDM Vorlauf
+            icon: mdi:thermometer-lines
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_aussentemperatur
+            name: Außen
+            icon: mdi:home-thermometer-outline
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_aussentemperatur_gedaempft
+            name: Außen gedämpft
+            icon: mdi:weather-cloudy
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_warmwasser_temperatur
+            name: Warmwasser
+            icon: mdi:water-thermometer
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric_compact
+            entity: sensor.vitodens_200_wb2a_warmwasser_ladestatus
+            name: WW-Ladung
+            icon: mdi:water-boiler-auto
+            grid_options:
+              columns: 6
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric_compact
+            entity: sensor.vitodens_200_wb2a_heizkreis_m1_betriebsart_aktuell
+            name: Betriebsart
+            icon: mdi:home-clock
+            grid_options:
+              columns: 6
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric_compact
+            entity: sensor.vitodens_200_wb2a_heizkreis_m1_betriebsprogramm_aktuell
+            name: Programm
+            icon: mdi:calendar-clock
+            grid_options:
+              columns: 6
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric_compact
+            entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
+            name: Umschaltventil
+            icon: mdi:valve
+            grid_options:
+              columns: 6
+              rows: 1
+
 
       - type: grid
         column_span: 1
         cards:
-          - type: entities
-            title: Freigaben / Fehler
-            show_header_toggle: false
-            state_color: true
-            entities:
-              - type: custom:multiple-entity-row
-                entity: binary_sensor.vitodens_200_wb2a_brenner_taktsperre_aktiv
-                name: Wiederanlauf
-                name_gap: 8px
-                state_header: Sperre
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: binary_sensor.vitodens_200_wb2a_brenner_wiederanlauf_freigegeben
-                    name: Freigabe
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: binary_sensor.vitodens_200_wb2a_brenner_startphase
-                    name: Start
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb
-                name: Feuerungsablauf
-                name_gap: 8px
-                state_header: Regel
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv
-                    name: OPT
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt
-                    name: GFA Lock
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: binary_sensor.vitodens_200_wb2a_cfdm_fehler
-                name: CFDM / GFA
-                name_gap: 8px
-                state_header: Fehler
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre
-                    name: CFDM Lock
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus
-                    name: GFA Code
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode
-                name: Speicher / Alarm
-                name_gap: 8px
-                state_header: Alarm
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_eeprom_status
-                    name: EEPROM
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: sensor.vitodens_200_wb2a_i2c_eeprom_gwg_flag
-                    name: I²C GWG
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_km_fehler_pumpe_a1
-                name: KM-BUS
-                name_gap: 8px
-                state_header: HK-Pumpe
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_km_fehler_interne_pumpe
-                    name: Int. Pumpe
-                    styles:
-                      width: 76px
-                      text-align: center
+          - type: heading
+            heading: Freigaben / Fehler
+            heading_style: subtitle
+            icon: mdi:shield-check-outline
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_brenner_wiederanlauf_freigegeben
+            name: Wiederanlauf
+            icon: mdi:restart
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_brenner_taktsperre_aktiv
+            name: Taktsperre
+            icon: mdi:timer-lock
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_brenner_startphase
+            name: Startphase
+            icon: mdi:rocket-launch
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb
+            name: Regelbetrieb
+            icon: mdi:tune-variant
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv
+            name: Anfahr-OPT
+            icon: mdi:chart-timeline-variant-shimmer
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt
+            name: GFA Lock
+            icon: mdi:alert-octagon
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_cfdm_fehler
+            name: CFDM Fehler
+            icon: mdi:alert-circle-outline
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre
+            name: CFDM Lock
+            icon: mdi:lock-alert-outline
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus
+            name: GFA Code
+            icon: mdi:identifier
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric_compact
+            entity: sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode
+            name: Alarm
+            icon: mdi:alarm-light-outline
+            grid_options:
+              columns: 6
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_eeprom_status
+            name: EEPROM
+            icon: mdi:memory
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_i2c_eeprom_gwg_flag
+            name: I²C GWG
+            icon: mdi:integrated-circuit-chip
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_km_fehler_pumpe_a1
+            name: KM HK-Pumpe
+            icon: mdi:pump-off
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_km_fehler_interne_pumpe
+            name: KM Int. Pumpe
+            icon: mdi:pump-off
+            grid_options:
+              columns: 4
+              rows: 1
+
 
       - type: grid
         column_span: 1
         cards:
-          - type: entities
-            title: Pumpen / Sensorik
-            show_header_toggle: false
-            state_color: true
-            entities:
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl
-                name: Heizkreispumpe
-                name_gap: 8px
-                state_header: Drehzahl
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_ausgang
-                    name: Ausgang
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
-                    name: Vorlauf
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
-                name: Interne Pumpe
-                name_gap: 8px
-                state_header: Drehzahl
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: binary_sensor.vitodens_200_wb2a_interne_pumpe_status
-                    name: Status
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
-                    name: Ventil
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: binary_sensor.vitodens_200_wb2a_zirkulationspumpe_status
-                name: Zirkulation
-                name_gap: 8px
-                state_header: Status
-                styles:
-                  width: 76px
-                  text-align: center
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_sensorstatus_aussentemperatur_anzeige
-                name: Sensoren 1
-                name_gap: 8px
-                state_header: Außen
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_sensorstatus_kesseltemperatur_anzeige
-                    name: Kessel
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: sensor.vitodens_200_wb2a_sensorstatus_sts2_anzeige
-                    name: STS2
-                    styles:
-                      width: 76px
-                      text-align: center
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_sensorstatus_vlts_anzeige
-                name: Sensoren 2
-                name_gap: 8px
-                state_header: VLTS
-                styles:
-                  width: 76px
-                  text-align: center
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_sensorstatus_raum_m1_anzeige
-                    name: Raum M1
-                    styles:
-                      width: 76px
-                      text-align: center
-                  - entity: sensor.vitodens_200_wb2a_heizkreis_m1_reglervariante_anzeige
-                    name: Regler
-                    styles:
-                      width: 76px
-                      text-align: center
+          - type: heading
+            heading: Pumpen / Sensorik
+            heading_style: subtitle
+            icon: mdi:pump
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_ausgang
+            name: HK-Pumpe
+            icon: mdi:pump
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl
+            name: HK Drehzahl
+            icon: mdi:speedometer
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
+            name: HK Vorlauf
+            icon: mdi:thermometer-chevron-up
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_interne_pumpe_status
+            name: Interne Pumpe
+            icon: mdi:pump
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
+            name: Intern Drehzahl
+            icon: mdi:speedometer
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric_compact
+            entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
+            name: Umschaltventil
+            icon: mdi:valve
+            grid_options:
+              columns: 6
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: binary_sensor.vitodens_200_wb2a_zirkulationspumpe_status
+            name: Zirkulation
+            icon: mdi:pump
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_sensorstatus_aussentemperatur_anzeige
+            name: Sensor Außen
+            icon: mdi:home-thermometer-outline
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_sensorstatus_kesseltemperatur_anzeige
+            name: Sensor Kessel
+            icon: mdi:water-boiler
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_sensorstatus_sts2_anzeige
+            name: STS2
+            icon: mdi:thermometer-alert
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_sensorstatus_vlts_anzeige
+            name: VLTS
+            icon: mdi:thermometer-alert
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric
+            entity: sensor.vitodens_200_wb2a_sensorstatus_raum_m1_anzeige
+            name: Raum M1
+            icon: mdi:home-thermometer
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_metric_compact
+            entity: sensor.vitodens_200_wb2a_heizkreis_m1_reglervariante_anzeige
+            name: Reglervariante
+            icon: mdi:tune
+            grid_options:
+              columns: 6
+              rows: 1
+
 
       - type: grid
         column_span: 2
