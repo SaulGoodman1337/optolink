@@ -55,6 +55,8 @@ Do not remove the Optolink files from the old `community-scripts` repository unt
 
 ## Documentation
 
+- [Collector research checkpoint - 2026-09-23](docs/collector-research-checkpoint.md) - current cross-topic results and next actions; read before older collector-related roadmap entries.
+- [Private archive analysis and evidence](config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-analysis.md) - verified archive/SQL coverage, variant-specific GFA map, corrected firmware and pump assumptions; derived information only.
 - [Project roadmap](docs/project-roadmap.md)
 - [Repository cleanup plan](docs/repository-cleanup-plan.md)
 - [Optolink-Splitter](docs/optolink-splitter.md)
