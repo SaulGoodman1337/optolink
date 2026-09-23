@@ -1,10 +1,15 @@
 # Vitotrol emulation via Optolink / KBus / KM-BUS
 
 Status: **open research**
-Last updated: **2026-09-22**
+Last updated: **2026-09-23**
 
-This note consolidates the current evidence for a possible Vitotrol emulation path
-through the existing Optolink interface of the Vitodens 200-W WB2A controller.
+This note covers the **Vitotrol-specific** application of the KBus/KM-BUS
+research through the existing Optolink interface of the Vitodens 200-W WB2A
+controller.
+
+The canonical protocol-level research, verified function behavior, frame layout,
+safety rules and general KBus/KM-BUS experiment plan are maintained in
+[kmbus-optolink-research.md](kmbus-optolink-research.md).
 
 The central question is:
 
@@ -29,6 +34,7 @@ The current test system is documented elsewhere in this directory as:
 
 Relevant local documents:
 
+- [kmbus-optolink-research.md](kmbus-optolink-research.md)
 - [device-vdensho1-20c2-wb2a.md](device-vdensho1-20c2-wb2a.md)
 - [coding-plug-7833971-2015-0201.md](coding-plug-7833971-2015-0201.md)
 - [README.md](README.md)
