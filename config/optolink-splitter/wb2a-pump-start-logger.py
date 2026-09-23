@@ -11,6 +11,7 @@ Fast runtime set:
   0x650A / 1   DHW preparation status
   0x6513 / 1   storage charging pump state
   0x0A10 / 1   diverter-valve state
+  0x27E7 / 1   A1 minimum pump-speed coding E7
   0x7500 / 1   actuator-test selector
   0xA152 / 2   relay-state block; byte 0 bit 0x20 = internal pump
   0x55D3 / 11  GG1/GFA runtime block incl. flame, 0x55DC modulation, 0x55DD
@@ -227,7 +228,7 @@ def main():
     print(f"CSV:      {logfile}")
     print(f"Probes:   {probe_path}")
     print("Interval: minimum %.2f s" % args.interval)
-    print("Reads:    7660/2 7663/2 650A/1 6513/1 0A10/1 7500/1 A152/2 55D3/11 55E0/17 2544/2 0810/2")
+    print("Reads:    7660/2 7663/2 650A/1 6513/1 0A10/1 27E7/1 7500/1 A152/2 55D3/11 55E0/17 2544/2 0810/2")
     print("Writes:   none")
     print("Ctrl-C beendet")
     print()
@@ -259,6 +260,8 @@ def main():
         "storage_pump_raw",
         "raw_0a10",
         "diverter_raw",
+        "raw_27e7",
+        "a1_e7_min_pct",
         "raw_7500",
         "actuator_test_raw",
         "raw_a152",
@@ -297,6 +300,7 @@ def main():
     previous_ww = None
     previous_storage = None
     previous_diverter = None
+    previous_e7 = None
     previous_actuator_test = None
     previous_internal_pump_relay = None
     previous_gfa_state = None
@@ -318,6 +322,7 @@ def main():
                     raw650a = read_exact(client, "0x650A", 1)
                     raw6513 = read_exact(client, "0x6513", 1)
                     raw0a10 = read_exact(client, "0x0A10", 1)
+                    raw27e7 = read_exact(client, "0x27E7", 1)
                     raw7500 = read_exact(client, "0x7500", 1)
                     rawa152 = read_exact(client, "0xA152", 2)
                     raw55d3 = read_exact(client, "0x55D3", 11)
@@ -348,6 +353,7 @@ def main():
                 ww_status = raw650a[0]
                 storage_pump = raw6513[0]
                 diverter = raw0a10[0]
+                e7_min = raw27e7[0]
                 actuator_test = raw7500[0]
                 internal_pump_relay = int(bool(rawa152[0] & 0x20))
                 burner_relay = int(bool(rawa152[0] & 0x02))
@@ -387,6 +393,8 @@ def main():
                     events.append(f"SLP_{previous_storage:02x}->{storage_pump:02x}")
                 if previous_diverter is not None and diverter != previous_diverter:
                     events.append(f"UV_{previous_diverter:02x}->{diverter:02x}")
+                if previous_e7 is not None and e7_min != previous_e7:
+                    events.append(f"E7_{previous_e7}->{e7_min}")
                 if previous_actuator_test is not None and actuator_test != previous_actuator_test:
                     events.append(
                         f"ACTOR_{previous_actuator_test:02x}->{actuator_test:02x}"
@@ -414,6 +422,7 @@ def main():
                 previous_ww = ww_status
                 previous_storage = storage_pump
                 previous_diverter = diverter
+                previous_e7 = e7_min
                 previous_actuator_test = actuator_test
                 previous_internal_pump_relay = internal_pump_relay
                 previous_gfa_state = gfa_state
@@ -445,6 +454,8 @@ def main():
                     "storage_pump_raw": storage_pump,
                     "raw_0a10": raw0a10.hex(),
                     "diverter_raw": diverter,
+                    "raw_27e7": raw27e7.hex(),
+                    "a1_e7_min_pct": e7_min,
                     "raw_7500": raw7500.hex(),
                     "actuator_test_raw": actuator_test,
                     "raw_a152": rawa152.hex(),
@@ -484,7 +495,7 @@ def main():
                     f"P={pump_speed:3d}% OUT={pump_output:02x}  "
                     f"A1P={a1_pump_speed:3d}% A1OUT={a1_pump_output:02x}  "
                     f"WW={ww_status:02x} SLP={storage_pump:02x} UV={diverter:02x}  "
-                    f"ACT={actuator_test:02x} PR={internal_pump_relay} BR={burner_relay}  "
+                    f"E7={e7_min:3d}% ACT={actuator_test:02x} PR={internal_pump_relay} BR={burner_relay}  "
                     f"FL={int(flame)} MOD={modulation:3d}% T={age_txt}  "
                     f"GFA={gfa_state[0]:02x}/{gfa_state[1]:02x}/{gfa_state[2]:02x}  "
                     f"RKR={rkr_enable:02x} OPT={opt_target:4.1f}C b14={b14:02x}  "
