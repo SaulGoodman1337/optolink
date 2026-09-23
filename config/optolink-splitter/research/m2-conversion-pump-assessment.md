@@ -67,7 +67,10 @@ Therefore the strongest current hypothesis for a true M2 conversion is:
 
 This is strongly supported by the documented coding semantics but is not yet
 hardware-proven on this exact boiler. A real M2 setup or a safe representative
-test would be required for direct confirmation.
+test would be required for direct confirmation. Crucially, an M2 heat request can
+outlast the burner-on phase, so M2 may keep the internal boiler pump at coding 31
+speed during burner-off intervals too. That would not exactly match the target
+behavior.
 
 ## Additional effect: differential temperature 9F
 
@@ -98,7 +101,7 @@ hydraulically necessary.
 
 2. Coding 31 becomes relevant to the internal pump as boiler-circuit pump.
    With the current value 100 %, this is a strong candidate for eliminating the
-   50 % boiler-side flow limitation seen during heating startup.
+   50 % boiler-side flow limitation while the burner is firing.
 
 3. The mixer directly controls actual heating-circuit flow temperature using a
    dedicated M2 flow sensor.
@@ -152,7 +155,7 @@ This is a controller-native direct pump command, but the documentation only
 specifies ON/OFF and does not define the resulting speed.
 
 It is therefore useful as a diagnostic experiment but not currently acceptable
-as an automatic burner-start control path:
+as an automatic burner-on control path:
 
 - relay/actuator test is a service mode;
 - it may take normal actuator arbitration away from the controller;
@@ -170,14 +173,14 @@ Recommended diagnostic only:
 - exit relay test through the documented service-menu procedure;
 - verify 0x7500 returns to 00.
 
-Do not automate 0x7500 around burner starts unless the service-mode side
+Do not automate 0x7500 during burner operation unless the service-mode side
 effects are completely understood.
 
 ## Current conclusion
 
-For the original goal "100 % internal pump only during heating burner startup":
+For the corrected goal "100 % internal pump during the complete heating burner-on phase, then return to normal pump regulation":
 
-- no dedicated VDensHO1 startup-pump boost has been found;
+- no dedicated VDensHO1 burner-on pump override has been found;
 - actuator test is diagnostic/service-only;
 - raising GWG75/E7 would be global, not start-only;
 - a real M2 conversion is the first normal controller-supported architecture
