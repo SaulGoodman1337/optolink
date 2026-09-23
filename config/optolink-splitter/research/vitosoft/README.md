@@ -501,6 +501,34 @@ Set-ExecutionPolicy -Scope Process Bypass -Force
 & $script -CreateArchive
 ```
 
+Parallel execution is enabled by default. The collector derives a conservative
+worker count from the logical CPU count (roughly half the logical CPUs, capped
+at 6) and uses multithreaded robocopy separately.
+
+Override examples:
+
+```powershell
+# More aggressive on a fast SSD / many-core machine:
+& $script -CreateArchive -Parallelism 8 -CopyThreads 16
+
+# Deterministic/sequential fallback for HDDs or troubleshooting:
+& $script -CreateArchive -Sequential
+```
+
+Parallelized/overlapped work includes:
+
+- deep-derived collection and SQL read-only collection;
+- ILDASM tasks;
+- DUMPBIN tasks;
+- CORFLAGS tasks;
+- strong-name inspection;
+- robocopy file transfer via `/MT`;
+- 7-Zip multithreaded compression.
+
+The collector records measured phase durations in
+`system/phase-timings.csv` and records the chosen CPU/parallelism values in
+`private-archive-summary.json`.
+
 The collector now runs a prerequisite preflight before the Vitosoft scan. It
 records the before/after tool state and, unless
 `-SkipPrerequisiteInstall` is supplied, attempts to install missing research
