@@ -1418,3 +1418,24 @@ Vitosoft additionally exposes:
 This is a read-only diagnostic flag and can be monitored during further
 configuration-write experiments, but it is an error flag rather than a write
 counter.
+
+### Local 0x778E baseline: value 0x03
+
+Direct read on the local WB2A returned:
+
+```text
+0x778E = 03
+```
+
+The exact VDensHO1 metadata names this object
+`K8E_I2C_FehlerEEPROM_GWG` ("I2C Fehlerflag EEPROM GWG"), but exposes it as
+a raw byte with no enum/bit-value definition.
+
+Therefore 0x03 must **not** be interpreted as "EEPROM fault present" or as a
+boolean true value. For persistence experiments, 0x778E is only usable as an
+opaque diagnostic byte whose baseline is 0x03; the useful observation is
+whether it changes around a configuration write.
+
+The guarded E7 persistence probe has been updated accordingly: it records the
+existing 0x778E baseline and compares subsequent values without assuming a
+zero/one error semantic.
