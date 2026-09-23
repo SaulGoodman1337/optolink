@@ -210,3 +210,59 @@ For the first analysis compare:
 
 No write experiment is justified until the runtime selector and the effective
 setpoint source are identified.
+## Hardware snapshot — 2026-09-23
+
+Read-only values captured locally during a DHW-related state:
+
+```text
+0x5730 = 01   K30 internal pump = speed controlled
+0x5731 = 64   K31 internal-pump target = 100
+0x676C = 64   K6C DHW internal-pump speed = 100
+
+0x27E5 = 00   E5 A1 pump identification = staged/no separate speed-controlled A1 pump
+0x27E6 = 64   E6 A1 maximum = 100 %
+0x27E7 = 1e   E7 A1 minimum = 30 %
+0x27E8 = 00   E8 reduced/secondary-mode selector = use minimum E7
+0x27E9 = 32   E9 reduced speed = 50 %
+
+0x7660 = 01 64
+0x650A = 02
+0x6513 = 01
+0x0A10 = 03
+```
+
+The exact generated `VDensHO1` catalog confirms the runtime object layout:
+
+- `0x7660[0]` = internal-pump digital output/state;
+- `0x7660[1]` = internal-pump speed in percent;
+- `0x7663[0]` = A1/M1 heating-circuit-pump output/state;
+- `0x7663[1]` = A1/M1 heating-circuit-pump speed in percent.
+
+Therefore the measured `0x7660 = 01 64` is direct evidence for:
+
+```text
+internal pump output = ON
+internal pump speed  = 100 %
+```
+
+The available enum mapping for the runtime states gives:
+
+- `0x650A = 02`: DHW **overrun / Nachlauf**;
+- `0x6513 = 01`: storage charging pump **ON**;
+- `0x0A10 = 03`: diverter valve **toward DHW**.
+
+This is an important discriminator: 100 % internal-pump speed is still present
+in the DHW overrun state. It is therefore not exclusively tied to flame
+presence, ignition or the approximately 12 s flame-stabilization interval.
+The evidence now points first to a DHW hydraulic/mode selection that persists
+through storage-pump overrun.
+
+At the same time, both K31 and K6C are configured to 100 %. Consequently K6C
+alone does not yet uniquely identify the runtime selector. The fact that normal
+space heating has nevertheless shown lower pump speed means that the effective
+heating request is computed elsewhere or is selected through the A1 pump path.
+
+The next high-value runtime point is therefore `0x7663` (A1/M1 pump speed).
+The comparison logger now records it alongside `0x7660`. A heating run can
+answer whether normal operation follows a lower A1 request while DHW bypasses
+that request and applies the 100 % internal-pump target.
