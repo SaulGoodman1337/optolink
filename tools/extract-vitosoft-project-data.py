@@ -15,6 +15,9 @@ Outputs:
   <device>-kbus-events.csv
   <device>-extract-summary.json
 
+With --include-global-wilo:
+  virtual-wilo-events.csv
+
 The parser intentionally performs multiple streaming passes over
 DPDefinitions.xml. The file is ~186 MB in the validated data set and its
 records live inside a Microsoft DataSet/diffgram namespace.
@@ -61,6 +64,8 @@ FIELDS = [
     "option_list",
     "mapping_type",
 ]
+
+WILO_FIELDS = FIELDS + ["devices"]
 
 
 def local(tag: str) -> str:
@@ -110,6 +115,56 @@ def load_device_events(dp_path: Path, event_ids: set[int]) -> dict[int, dict[str
             continue
         if event_id in event_ids:
             result[event_id] = row
+    return result
+
+
+def load_events_by_tokens(
+    dp_path: Path, tokens: set[str]
+) -> dict[int, dict[str, str]]:
+    result: dict[int, dict[str, str]] = {}
+    if not tokens:
+        return result
+    for row in iter_records(dp_path, "ecnEventType"):
+        if row.get("Address", "") not in tokens:
+            continue
+        try:
+            event_id = int(row.get("Id", "-1"))
+        except ValueError:
+            continue
+        result[event_id] = row
+    return result
+
+
+def load_event_device_ids(
+    dp_path: Path, event_ids: set[int]
+) -> dict[int, set[int]]:
+    result = {event_id: set() for event_id in event_ids}
+    if not event_ids:
+        return result
+    for row in iter_records(dp_path, "ecnDataPointTypeEventTypeLink"):
+        try:
+            event_id = int(row.get("EventTypeId", "-1"))
+            device_id = int(row.get("DataPointTypeId", "-1"))
+        except ValueError:
+            continue
+        if event_id in result:
+            result[event_id].add(device_id)
+    return result
+
+
+def load_device_tokens(
+    dp_path: Path, device_ids: set[int]
+) -> dict[int, str]:
+    result: dict[int, str] = {}
+    if not device_ids:
+        return result
+    for row in iter_records(dp_path, "ecnDatapointType"):
+        try:
+            device_id = int(row.get("Id", "-1"))
+        except ValueError:
+            continue
+        if device_id in device_ids:
+            result[device_id] = row.get("Address", "")
     return result
 
 
@@ -190,9 +245,20 @@ def is_kbus(row: dict[str, object]) -> bool:
     return False
 
 
-def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
+def is_virtual_wilo(row: dict[str, object]) -> bool:
+    return (
+        str(row.get("fc_read", "")) == "Virtual_WILO_READ"
+        or str(row.get("fc_write", "")) == "Virtual_WILO_WRITE"
+    )
+
+
+def write_csv(
+    path: Path,
+    rows: list[dict[str, object]],
+    fieldnames: list[str] = FIELDS,
+) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=FIELDS)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
 
@@ -202,6 +268,14 @@ def main() -> None:
     parser.add_argument("--data-dir", required=True, type=Path)
     parser.add_argument("--device", default="VDensHO1")
     parser.add_argument("--out-dir", required=True, type=Path)
+    parser.add_argument(
+        "--include-global-wilo",
+        action="store_true",
+        help=(
+            "also inventory every global ecnEventType entry using "
+            "Virtual_WILO_READ/Virtual_WILO_WRITE and map it to device types"
+        ),
+    )
     args = parser.parse_args()
 
     dp_path = args.data_dir / "DPDefinitions.xml"
@@ -235,11 +309,61 @@ def main() -> None:
         row["description_de"] = translated(str(row["description"]), translations)
 
     kbus_rows = [row for row in rows if is_kbus(row)]
+    device_wilo_rows = [row for row in rows if is_virtual_wilo(row)]
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     stem = args.device.lower()
     write_csv(args.out_dir / f"{stem}-lowlevel-events.csv", rows)
     write_csv(args.out_dir / f"{stem}-kbus-events.csv", kbus_rows)
+
+    global_wilo_rows: list[dict[str, object]] = []
+    if args.include_global_wilo:
+        wilo_tokens = {
+            token
+            for token, low in access.items()
+            if low.get("FCRead", "") == "Virtual_WILO_READ"
+            or low.get("FCWrite", "") == "Virtual_WILO_WRITE"
+        }
+        wilo_events = load_events_by_tokens(dp_path, wilo_tokens)
+        event_device_ids = load_event_device_ids(dp_path, set(wilo_events))
+        all_device_ids = {
+            device_id
+            for device_ids in event_device_ids.values()
+            for device_id in device_ids
+        }
+        device_tokens = load_device_tokens(dp_path, all_device_ids)
+
+        global_wilo_rows = [
+            {
+                **normalized_row(event_id, wilo_events[event_id], access),
+                "devices": ";".join(
+                    sorted(
+                        device_tokens.get(device_id, str(device_id))
+                        for device_id in event_device_ids.get(event_id, set())
+                    )
+                ),
+            }
+            for event_id in sorted(wilo_events)
+        ]
+
+        wilo_labels: set[str] = set()
+        for row in global_wilo_rows:
+            for key in ("name", "description"):
+                value = str(row[key])
+                if value.startswith("@@"):
+                    wilo_labels.add(value[2:])
+        wilo_translations = load_translations(text_path, wilo_labels)
+        for row in global_wilo_rows:
+            row["name_de"] = translated(str(row["name"]), wilo_translations)
+            row["description_de"] = translated(
+                str(row["description"]), wilo_translations
+            )
+
+        write_csv(
+            args.out_dir / "virtual-wilo-events.csv",
+            global_wilo_rows,
+            WILO_FIELDS,
+        )
 
     missing_access = sum(
         1 for row in rows if not row["fc_read"] and not row["fc_write"]
@@ -250,9 +374,30 @@ def main() -> None:
         "event_count": len(rows),
         "access_missing": missing_access,
         "kbus_event_count": len(kbus_rows),
+        "virtual_wilo_event_count": len(device_wilo_rows),
         "fc_read_counts": dict(Counter(str(row["fc_read"] or "<blank>") for row in rows)),
         "fc_write_counts": dict(Counter(str(row["fc_write"] or "<blank>") for row in rows)),
     }
+    if args.include_global_wilo:
+        summary["global_virtual_wilo_event_count"] = len(global_wilo_rows)
+        summary["global_virtual_wilo_read_count"] = sum(
+            1
+            for row in global_wilo_rows
+            if row["fc_read"] == "Virtual_WILO_READ"
+        )
+        summary["global_virtual_wilo_write_count"] = sum(
+            1
+            for row in global_wilo_rows
+            if row["fc_write"] == "Virtual_WILO_WRITE"
+        )
+        summary["global_virtual_wilo_devices"] = sorted(
+            {
+                device
+                for row in global_wilo_rows
+                for device in str(row["devices"]).split(";")
+                if device
+            }
+        )
     (args.out_dir / f"{stem}-extract-summary.json").write_text(
         json.dumps(summary, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
