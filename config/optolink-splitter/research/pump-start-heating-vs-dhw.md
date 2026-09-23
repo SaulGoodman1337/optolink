@@ -266,3 +266,42 @@ The next high-value runtime point is therefore `0x7663` (A1/M1 pump speed).
 The comparison logger now records it alongside `0x7660`. A heating run can
 answer whether normal operation follows a lower A1 request while DHW bypasses
 that request and applies the 100 % internal-pump target.
+## Second hardware snapshot — A1 path isolated during DHW overrun
+
+A second read-only snapshot was taken while the controller still reported
+DHW overrun:
+
+```text
+0x7660 = 01 64   internal pump output ON, internal-pump speed 100 %
+0x7663 = 00 00   A1/M1 pump output OFF, A1/M1 pump speed 0 %
+0x650A = 02      DHW overrun / Nachlauf
+0x0A10 = 03      diverter valve toward DHW
+```
+
+This is a major architectural discriminator.
+
+The internal pump can run at 100 % while the A1 heating-circuit pump runtime
+object is simultaneously completely inactive. Therefore the DHW 100 % state is
+**not** produced by a high A1/M1 pump-speed request propagating through
+`0x7663`.
+
+The current best-supported runtime model is now:
+
+```text
+space heating:
+  A1/M1 pump controller -> 0x7663 -> internal-pump arbitration -> 0x7660
+
+DHW / DHW overrun:
+  DHW hydraulic/mode controller ---------------------------> 0x7660
+  A1/M1 path inactive (0x7663 = 0000)
+```
+
+This proves that the controller contains at least one separate mode-dependent
+internal-pump request path which bypasses the normal A1/M1 runtime pump object.
+It does not yet prove which static parameter supplies the selected 100 % value,
+because both coding 31 and coding 6C are currently set to 100 %.
+
+The next decisive comparison is a normal space-heating run. Record
+`0x7660/2` and `0x7663/2` before burner start, during startup and after stable
+flame. If the two values track in heating mode while DHW keeps `0x7663=0000`,
+the operating-mode arbitration boundary will be directly visible.
