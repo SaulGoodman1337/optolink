@@ -19,7 +19,8 @@ button_card_templates:
         - padding: 6px 8px
         - background: var(--ha-card-background, var(--card-background-color))
       grid:
-        - grid-template-areas: '"i n" "i s"'
+        - grid-template-areas: >-
+            "i n" "i s"
         - grid-template-columns: 27px 1fr
         - grid-template-rows: min-content min-content
         - column-gap: 7px
@@ -162,7 +163,8 @@ button_card_templates:
         - border-radius: 0
         - padding: 2px 5px
       grid:
-        - grid-template-areas: '"n" "s"'
+        - grid-template-areas: >-
+            "n" "s"
         - grid-template-columns: 1fr
         - grid-template-rows: min-content min-content
       name:
@@ -199,7 +201,8 @@ button_card_templates:
         - padding: 8px 7px 7px
         - background: var(--ha-card-background, var(--card-background-color))
       grid:
-        - grid-template-areas: '"n n" "v1 v2"'
+        - grid-template-areas: >-
+            "n n" "v1 v2"
         - grid-template-columns: 1fr 1fr
         - grid-template-rows: min-content 1fr
         - row-gap: 5px
@@ -229,7 +232,8 @@ button_card_templates:
         - padding: 8px 7px 7px
         - background: var(--ha-card-background, var(--card-background-color))
       grid:
-        - grid-template-areas: '"n n n" "v1 v2 v3"'
+        - grid-template-areas: >-
+            "n n n" "v1 v2 v3"
         - grid-template-columns: 1fr 1fr 1fr
         - grid-template-rows: min-content 1fr
         - row-gap: 5px
@@ -2578,7 +2582,8 @@ views:
                 - padding: 8px
                 - background: var(--ha-card-background, var(--card-background-color))
               grid:
-                - grid-template-areas: '"s1 a1 s2 a2 s3 a3 s4 a4 s5"'
+                - grid-template-areas: >-
+                    "s1 a1 s2 a2 s3 a3 s4 a4 s5"
                 - grid-template-columns: 1fr 20px 1fr 20px 1fr 20px 1fr 20px 1fr
                 - grid-template-rows: 1fr
                 - align-items: stretch
