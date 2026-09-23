@@ -780,6 +780,6 @@ Practical implication for the research goal:
    pump limit/setpoint, rather than enable a hidden burner-phase-only coding.
 
 General-limit changes such as raising E7 or GWG75 are not equivalent to the
-requested behavior because they would affect the pump while the burner is off as well.
+requested behavior because they would raise the pump for the entire heating-pump demand, not specifically as part of a controller operating mode comparable to DHW.
 The actuator-test path is also not yet suitable for automation because it is a
 service mode and its side effects have not been characterized.
