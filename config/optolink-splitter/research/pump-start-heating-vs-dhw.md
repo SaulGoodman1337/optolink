@@ -635,3 +635,16 @@ resulting speed is not documented by the enum. For now only the current values
 of 0x572F and 0x7500 should be read. Any actuator-test write must remain a
 later, deliberate service-mode experiment after behavior and side effects are
 fully understood.
+## Service selectors confirmed inactive
+
+Read-only normal-state snapshot:
+
+```text
+0x572F = 00   coding 2F: vent/fill program inactive
+0x7500 = 00   actuator test inactive
+```
+
+Therefore neither service program nor actuator-test state contributes to the
+observed normal heating 50 % / DHW 100 % pump behavior. These paths remain
+architectural evidence only and are not part of the live arbitration under
+normal operation.
