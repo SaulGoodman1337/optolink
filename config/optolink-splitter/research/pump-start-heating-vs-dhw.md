@@ -1313,3 +1313,39 @@ The logger configuration snapshot now also includes:
 The 0x778B object may help characterize configuration persistence/status, but
 its exact runtime semantics are not yet established and it should not be used
 as a write target.
+
+## XRAM/RAM-shadow search — 2026-09-23
+
+The P300 function-code table confirms distinct access classes:
+
+```text
+Virtual_READ   = 0x01
+Virtual_WRITE  = 0x02
+EEPROM_READ    = 0x05
+EEPROM_WRITE   = 0x06
+XRAM_READ      = 0x31
+XRAM_WRITE     = 0x32
+```
+
+A targeted search of the available Vitosoft metadata found no pump-related
+event and no E7-equivalent event whose declared access method is XRAM_READ or
+XRAM_WRITE. In particular, no metadata link was found between XRAM access and:
+
+- 0x27E7 / A1 E7;
+- 0x7663 / A1 runtime pump demand;
+- 0x7660 / internal-pump runtime speed;
+- K31 / internal boiler-pump target.
+
+Therefore there is currently no documented Vitosoft RAM-shadow setpoint that
+could safely replace dynamic E7 coding writes.
+
+This does not prove that the controller firmware has no internal RAM variable;
+it only means such a variable is not exposed through the known Vitosoft event
+model. Blind XRAM scanning/writing is not justified at this stage.
+
+Priority before lower-level RAM reverse engineering:
+
+1. use the controller-supported coding-8A display-unlock mechanism;
+2. determine whether additional WB2A pump codings become visible;
+3. only if that fails, consider read-only differential RAM/XRAM mapping with
+   known-safe ranges and no writes.
