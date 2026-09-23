@@ -9,6 +9,7 @@ param(
   [switch]$SkipSql,
   [switch]$SkipRegistry,
   [switch]$SkipToolDumps,
+  [switch]$SkipPrerequisiteInstall,
   [switch]$CreateArchive
 )
 
@@ -106,6 +107,183 @@ function Export-RegKey {
   } catch {}
 }
 
+function Test-IsAdministrator {
+  try {
+    $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $p = New-Object Security.Principal.WindowsPrincipal($id)
+    return $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+  } catch {
+    return $false
+  }
+}
+
+function Find-ToolPath {
+  param([string]$Name)
+
+  $cmd = Get-Command $Name -ErrorAction SilentlyContinue
+  if ($cmd) { return $cmd.Source }
+
+  $pf86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+  $pf = $env:ProgramFiles
+
+  $patterns = @()
+  switch ($Name.ToLowerInvariant()) {
+    "vswhere.exe" {
+      if ($pf86) { $patterns += (Join-Path $pf86 "Microsoft Visual Studio\Installer\vswhere.exe") }
+    }
+    "dumpbin.exe" {
+      if ($pf86) { $patterns += (Join-Path $pf86 "Microsoft Visual Studio\*\*\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe") }
+      if ($pf)   { $patterns += (Join-Path $pf   "Microsoft Visual Studio\*\*\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe") }
+    }
+    "msbuild.exe" {
+      if ($pf86) { $patterns += (Join-Path $pf86 "Microsoft Visual Studio\*\*\MSBuild\Current\Bin\MSBuild.exe") }
+      if ($pf)   { $patterns += (Join-Path $pf   "Microsoft Visual Studio\*\*\MSBuild\Current\Bin\MSBuild.exe") }
+    }
+    "ildasm.exe" {
+      foreach ($base in @($pf86,$pf) | Where-Object { $_ }) {
+        $sdkRoot = Join-Path $base "Microsoft SDKs\Windows"
+        if (Test-Path -LiteralPath $sdkRoot -PathType Container) {
+          $hit = Get-ChildItem -LiteralPath $sdkRoot -Filter ildasm.exe -File -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if ($hit) { return $hit.FullName }
+        }
+      }
+    }
+    { $_ -in @("corflags.exe","sn.exe","gacutil.exe") } {
+      foreach ($base in @($pf86,$pf) | Where-Object { $_ }) {
+        $sdkRoot = Join-Path $base "Microsoft SDKs\Windows"
+        if (Test-Path -LiteralPath $sdkRoot -PathType Container) {
+          $hit = Get-ChildItem -LiteralPath $sdkRoot -Filter $Name -File -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if ($hit) { return $hit.FullName }
+        }
+      }
+    }
+    "7z.exe" {
+      if ($pf)   { $patterns += (Join-Path $pf "7-Zip\7z.exe") }
+      if ($pf86) { $patterns += (Join-Path $pf86 "7-Zip\7z.exe") }
+    }
+  }
+
+  foreach ($pattern in $patterns) {
+    $hit = Get-ChildItem -Path $pattern -File -ErrorAction SilentlyContinue |
+      Sort-Object FullName -Descending | Select-Object -First 1
+    if ($hit) { return $hit.FullName }
+  }
+
+  return $null
+}
+
+function Get-PrerequisiteState {
+  [ordered]@{
+    generated_utc=(Get-Date).ToUniversalTime().ToString("o")
+    administrator=(Test-IsAdministrator)
+    powershell=$PSVersionTable.PSVersion.ToString()
+    winget=if(Get-Command winget.exe -ErrorAction SilentlyContinue){(Get-Command winget.exe).Source}else{$null}
+    robocopy=if(Get-Command robocopy.exe -ErrorAction SilentlyContinue){(Get-Command robocopy.exe).Source}else{$null}
+    reg=if(Get-Command reg.exe -ErrorAction SilentlyContinue){(Get-Command reg.exe).Source}else{$null}
+    ildasm=(Find-ToolPath "ildasm.exe")
+    dumpbin=(Find-ToolPath "dumpbin.exe")
+    corflags=(Find-ToolPath "corflags.exe")
+    sn=(Find-ToolPath "sn.exe")
+    gacutil=(Find-ToolPath "gacutil.exe")
+    msbuild=(Find-ToolPath "msbuild.exe")
+    vswhere=(Find-ToolPath "vswhere.exe")
+    dotnet=if(Get-Command dotnet.exe -ErrorAction SilentlyContinue){(Get-Command dotnet.exe).Source}else{$null}
+    sqlcmd=if(Get-Command sqlcmd.exe -ErrorAction SilentlyContinue){(Get-Command sqlcmd.exe).Source}else{$null}
+    sqllocaldb=if(Get-Command sqllocaldb.exe -ErrorAction SilentlyContinue){(Get-Command sqllocaldb.exe).Source}else{$null}
+    sevenzip=(Find-ToolPath "7z.exe")
+    git=if(Get-Command git.exe -ErrorAction SilentlyContinue){(Get-Command git.exe).Source}else{$null}
+    git_lfs=if(Get-Command git-lfs.exe -ErrorAction SilentlyContinue){(Get-Command git-lfs.exe).Source}else{$null}
+  }
+}
+
+function Install-ResearchPrerequisites {
+  param([string]$LogPath)
+
+  $log = New-Object IO.StreamWriter($LogPath,$false,[Text.UTF8Encoding]::new($true))
+  try {
+    $before = Get-PrerequisiteState
+    $log.WriteLine("Preflight started: " + (Get-Date).ToString("o"))
+    $log.WriteLine("Administrator: " + $before.administrator)
+
+    if ($SkipPrerequisiteInstall) {
+      $log.WriteLine("Installation skipped by -SkipPrerequisiteInstall.")
+      return
+    }
+
+    if (-not $before.administrator) {
+      $log.WriteLine("Not elevated: automatic prerequisite installation cannot run.")
+      Write-Warning "Collector is not running as Administrator. Missing analysis tools cannot be installed automatically."
+      return
+    }
+
+    # Ildasm is installed with Visual Studio/.NET Framework developer tooling;
+    # dumpbin is part of the MSVC build tools. Install only the minimal
+    # components we need instead of a full IDE.
+    if (-not $before.ildasm -or -not $before.dumpbin) {
+      $bootstrap = Join-Path $env:TEMP "vs_buildtools_vitosoft_collector.exe"
+      $url = "https://aka.ms/vs/17/release/vs_buildtools.exe"
+      try {
+        $log.WriteLine("Downloading Visual Studio 2022 Build Tools bootstrapper: $url")
+        Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $bootstrap
+
+        $installPath = Join-Path ([Environment]::GetEnvironmentVariable("ProgramFiles(x86)")) "Microsoft Visual Studio\2022\BuildTools"
+        $args = @(
+          "--quiet","--wait","--norestart","--nocache",
+          "--installPath",$installPath,
+          "--add","Microsoft.Component.MSBuild",
+          "--add","Microsoft.Net.Component.4.8.SDK",
+          "--add","Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
+        )
+        $log.WriteLine("Installing/updating minimal VS Build Tools components for ildasm/dumpbin.")
+        $p = Start-Process -FilePath $bootstrap -ArgumentList $args -Wait -PassThru
+        $log.WriteLine("VS Build Tools exit code: " + $p.ExitCode)
+        if ($p.ExitCode -notin @(0,3010)) {
+          Write-Warning "Visual Studio Build Tools installer returned exit code $($p.ExitCode). Collector will continue and record missing tools."
+        }
+      } catch {
+        $log.WriteLine("VS Build Tools install error: " + $_.Exception.ToString())
+        Write-Warning "Could not install Visual Studio Build Tools automatically: $($_.Exception.Message)"
+      } finally {
+        try { Remove-Item -LiteralPath $bootstrap -Force -ErrorAction SilentlyContinue } catch {}
+      }
+    }
+
+    # 7-Zip is preferred for the large private archive. If winget is absent,
+    # Compress-Archive remains available as a fallback.
+    $seven = Find-ToolPath "7z.exe"
+    if (-not $seven) {
+      $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+      if ($winget) {
+        try {
+          $log.WriteLine("Installing 7-Zip through winget.")
+          & $winget.Source install --id 7zip.7zip -e --silent --accept-package-agreements --accept-source-agreements 2>&1 |
+            ForEach-Object { $log.WriteLine([string]$_) }
+          $log.WriteLine("winget 7-Zip exit code: " + $LASTEXITCODE)
+        } catch {
+          $log.WriteLine("7-Zip install error: " + $_.Exception.ToString())
+        }
+      } else {
+        $log.WriteLine("winget unavailable; 7-Zip not auto-installed.")
+      }
+    }
+  }
+  finally {
+    $log.Flush()
+    $log.Dispose()
+  }
+}
+
+function Invoke-TextCapture {
+  param([string]$Path,[scriptblock]$Script)
+  try {
+    & $Script 2>&1 | Out-File -LiteralPath $Path -Encoding utf8
+  } catch {
+    $_.Exception.ToString() | Set-Content -LiteralPath ($Path + ".error.txt") -Encoding UTF8
+  }
+}
+
 $Root = Find-VitosoftRoot $Root
 
 if (-not $OutputDir) {
@@ -135,6 +313,16 @@ Write-Host "It may contain proprietary binaries, database contents, machine path
 Write-Host "local configuration and credentials present in copied Vitosoft config files." -ForegroundColor Yellow
 Write-Host "Keep the result private. Do not commit it to the public optolink repository." -ForegroundColor Yellow
 Write-Host ""
+
+$prereqBefore = Get-PrerequisiteState
+$prereqBefore | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $systemDir "prerequisites-before.json") -Encoding UTF8
+Install-ResearchPrerequisites -LogPath (Join-Path $systemDir "prerequisite-install.log")
+$prereqAfter = Get-PrerequisiteState
+$prereqAfter | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $systemDir "prerequisites-after.json") -Encoding UTF8
+
+if ((-not $prereqAfter.ildasm -or -not $prereqAfter.dumpbin) -and -not $SkipToolDumps) {
+  Write-Warning "ildasm/dumpbin are still unavailable. Raw binaries and managed metadata will still be collected, but tool-dumps will be incomplete."
+}
 
 try {
   if ($PSCommandPath -and (Test-Path -LiteralPath $PSCommandPath)) {
@@ -171,6 +359,75 @@ $hostInfo = [ordered]@{
   user_profile=$env:USERPROFILE
 }
 $hostInfo | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $systemDir "host.json") -Encoding UTF8
+
+# Development/runtime environment. These files are useful when later replaying
+# the exact managed-code environment or understanding why a tool was missing.
+if (Get-Command dotnet.exe -ErrorAction SilentlyContinue) {
+  Invoke-TextCapture -Path (Join-Path $systemDir "dotnet-info.txt") -Script { & dotnet.exe --info }
+  Invoke-TextCapture -Path (Join-Path $systemDir "dotnet-sdks.txt") -Script { & dotnet.exe --list-sdks }
+  Invoke-TextCapture -Path (Join-Path $systemDir "dotnet-runtimes.txt") -Script { & dotnet.exe --list-runtimes }
+}
+
+$vswherePath = Find-ToolPath "vswhere.exe"
+if ($vswherePath) {
+  Invoke-TextCapture -Path (Join-Path $systemDir "visual-studio-instances.json") -Script {
+    & $vswherePath -all -products "*" -format json -utf8
+  }
+}
+
+try {
+  Get-CimInstance Win32_SerialPort -ErrorAction SilentlyContinue |
+    Select-Object DeviceID,Name,Description,PNPDeviceID,ProviderType,Status |
+    Export-Csv -LiteralPath (Join-Path $systemDir "serial-ports.csv") -NoTypeInformation -Encoding UTF8
+} catch {}
+
+try {
+  Get-CimInstance Win32_PnPEntity -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.PNPDeviceID -match '^(USB|FTDIBUS)\\' -or
+      $_.Name -match 'FTDI|CP210|USB Serial|Optolink|Viessmann'
+    } |
+    Select-Object Name,Manufacturer,PNPClass,PNPDeviceID,Service,Status |
+    Export-Csv -LiteralPath (Join-Path $systemDir "usb-pnp-devices.csv") -NoTypeInformation -Encoding UTF8
+} catch {}
+
+try {
+  Get-CimInstance Win32_Service -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -match 'Viessmann|Vito|SQL|MSSQL' -or $_.DisplayName -match 'Viessmann|Vito|SQL Server' } |
+    Select-Object Name,DisplayName,State,StartMode,StartName,PathName,ProcessId |
+    Export-Csv -LiteralPath (Join-Path $systemDir "related-services-detailed.csv") -NoTypeInformation -Encoding UTF8
+} catch {}
+
+try {
+  $moduleRows = foreach ($p in Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match 'Vito|Viess|ecn|SQL|MSSQL' }) {
+    try {
+      foreach ($m in $p.Modules) {
+        [pscustomobject]@{
+          ProcessName=$p.ProcessName
+          ProcessId=$p.Id
+          ModuleName=$m.ModuleName
+          FileName=$m.FileName
+          FileVersion=try{$m.FileVersionInfo.FileVersion}catch{$null}
+          ProductVersion=try{$m.FileVersionInfo.ProductVersion}catch{$null}
+        }
+      }
+    } catch {}
+  }
+  $moduleRows | Export-Csv -LiteralPath (Join-Path $systemDir "related-process-modules.csv") -NoTypeInformation -Encoding UTF8
+} catch {}
+
+Invoke-TextCapture -Path (Join-Path $systemDir "network-listeners.txt") -Script { & netstat.exe -ano }
+
+try {
+  $since = (Get-Date).AddDays(-30)
+  Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=$since} -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.ProviderName -match 'Viessmann|Vito|SQL|MSSQL|\.NET Runtime|Application Error' -or
+      $_.Message -match 'Viessmann|Vitosoft|ecnViessmann|vsmInterface|ServiceTool'
+    } |
+    Select-Object TimeCreated,Id,LevelDisplayName,ProviderName,MachineName,Message |
+    Export-Csv -LiteralPath (Join-Path $systemDir "related-application-events-30d.csv") -NoTypeInformation -Encoding UTF8
+} catch {}
 
 try {
   Get-Service -ErrorAction SilentlyContinue |
@@ -315,38 +572,134 @@ $signatures = foreach ($f in $peFiles) {
 $signatures | Export-Csv -LiteralPath (Join-Path $systemDir "authenticode.csv") -NoTypeInformation -Encoding UTF8
 
 if (-not $SkipToolDumps) {
-  $ildasm = Get-Command ildasm.exe -ErrorAction SilentlyContinue
-  $dumpbin = Get-Command dumpbin.exe -ErrorAction SilentlyContinue
+  $ildasmPath = Find-ToolPath "ildasm.exe"
+  $dumpbinPath = Find-ToolPath "dumpbin.exe"
+  $corflagsPath = Find-ToolPath "corflags.exe"
+  $snPath = Find-ToolPath "sn.exe"
+  $gacutilPath = Find-ToolPath "gacutil.exe"
+  $msbuildPath = Find-ToolPath "msbuild.exe"
+  $vswherePath = Find-ToolPath "vswhere.exe"
+
   $toolInfo = [ordered]@{
-    ildasm=if($ildasm){$ildasm.Source}else{$null}
-    dumpbin=if($dumpbin){$dumpbin.Source}else{$null}
+    ildasm=$ildasmPath
+    dumpbin=$dumpbinPath
+    corflags=$corflagsPath
+    sn=$snPath
+    gacutil=$gacutilPath
+    msbuild=$msbuildPath
+    vswhere=$vswherePath
+    dotnet=if(Get-Command dotnet.exe -ErrorAction SilentlyContinue){(Get-Command dotnet.exe).Source}else{$null}
+    sqlcmd=if(Get-Command sqlcmd.exe -ErrorAction SilentlyContinue){(Get-Command sqlcmd.exe).Source}else{$null}
+    sqllocaldb=if(Get-Command sqllocaldb.exe -ErrorAction SilentlyContinue){(Get-Command sqllocaldb.exe).Source}else{$null}
     git=if(Get-Command git.exe -ErrorAction SilentlyContinue){(Get-Command git.exe).Source}else{$null}
     git_lfs=if(Get-Command git-lfs.exe -ErrorAction SilentlyContinue){(Get-Command git-lfs.exe).Source}else{$null}
-    sevenzip=if(Get-Command 7z.exe -ErrorAction SilentlyContinue){(Get-Command 7z.exe).Source}else{$null}
+    sevenzip=(Find-ToolPath "7z.exe")
   }
   $toolInfo | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $systemDir "optional-tools.json") -Encoding UTF8
 
-  if ($ildasm) {
+  $managedFiles = @($peFiles | Where-Object {
+    $_.Extension.ToLowerInvariant() -in @(".exe",".dll") -and
+    $(try { [void][Reflection.AssemblyName]::GetAssemblyName($_.FullName); $true } catch { $false })
+  })
+
+  # Managed assembly reference graph + manifest resources + MVID. This works
+  # even when ildasm is unavailable and is especially useful for tracing
+  # vsmInterface/VSKO/GFA call paths.
+  $refRows = New-Object System.Collections.ArrayList
+  $resRows = New-Object System.Collections.ArrayList
+  $asmRows = New-Object System.Collections.ArrayList
+  foreach ($f in $managedFiles) {
+    try {
+      $an = [Reflection.AssemblyName]::GetAssemblyName($f.FullName)
+      $asm = [Reflection.Assembly]::ReflectionOnlyLoadFrom($f.FullName)
+      [void]$asmRows.Add([pscustomobject]@{
+        RelativePath=(RelPath $Root $f.FullName)
+        Name=$an.Name
+        Version=[string]$an.Version
+        CultureName=$an.CultureInfo.Name
+        PublicKeyToken=([BitConverter]::ToString($an.GetPublicKeyToken()) -replace '-','').ToLowerInvariant()
+        ProcessorArchitecture=[string]$an.ProcessorArchitecture
+        MVID=try{[string]$asm.ManifestModule.ModuleVersionId}catch{$null}
+      })
+      foreach ($ref in $asm.GetReferencedAssemblies()) {
+        [void]$refRows.Add([pscustomobject]@{
+          RelativePath=(RelPath $Root $f.FullName)
+          Assembly=$an.Name
+          Reference=$ref.Name
+          Version=[string]$ref.Version
+          PublicKeyToken=([BitConverter]::ToString($ref.GetPublicKeyToken()) -replace '-','').ToLowerInvariant()
+        })
+      }
+      foreach ($res in $asm.GetManifestResourceNames()) {
+        [void]$resRows.Add([pscustomobject]@{
+          RelativePath=(RelPath $Root $f.FullName)
+          Assembly=$an.Name
+          Resource=$res
+        })
+      }
+    } catch {
+      [void]$asmRows.Add([pscustomobject]@{
+        RelativePath=(RelPath $Root $f.FullName)
+        Name="<error>"
+        Version=$null
+        CultureName=$null
+        PublicKeyToken=$null
+        ProcessorArchitecture=$null
+        MVID=$_.Exception.Message
+      })
+    }
+  }
+  $asmRows | Export-Csv -LiteralPath (Join-Path $toolsDir "managed-assembly-identities.csv") -NoTypeInformation -Encoding UTF8
+  $refRows | Export-Csv -LiteralPath (Join-Path $toolsDir "managed-assembly-references.csv") -NoTypeInformation -Encoding UTF8
+  $resRows | Export-Csv -LiteralPath (Join-Path $toolsDir "managed-manifest-resources.csv") -NoTypeInformation -Encoding UTF8
+
+  if ($ildasmPath) {
     $ilDir = Join-Path $toolsDir "ildasm"
     New-Item -ItemType Directory -Path $ilDir -Force | Out-Null
-    foreach ($f in $peFiles | Where-Object { $_.Extension.ToLowerInvariant() -in @(".exe",".dll") }) {
-      try { [void][Reflection.AssemblyName]::GetAssemblyName($f.FullName) } catch { continue }
+    foreach ($f in $managedFiles) {
       $out = Join-Path $ilDir ((Safe-Name (RelPath $Root $f.FullName)) + ".il")
       try {
-        & $ildasm.Source /text /nobar /linenum /tokens ("/out=" + $out) $f.FullName 1>$null 2>$null
+        & $ildasmPath /text /nobar /linenum /tokens /bytes ("/out=" + $out) $f.FullName 1>$null 2>$null
       } catch {
         $_.Exception.ToString() | Set-Content -LiteralPath ($out + ".error.txt") -Encoding UTF8
       }
     }
   }
 
-  if ($dumpbin) {
+  if ($dumpbinPath) {
     $dumpDir = Join-Path $toolsDir "dumpbin"
     New-Item -ItemType Directory -Path $dumpDir -Force | Out-Null
-    foreach ($f in $peFiles | Where-Object { $_.Extension.ToLowerInvariant() -in @(".exe",".dll") }) {
+    foreach ($f in $peFiles | Where-Object { $_.Extension.ToLowerInvariant() -in @(".exe",".dll",".sys") }) {
       $out = Join-Path $dumpDir ((Safe-Name (RelPath $Root $f.FullName)) + ".txt")
-      try { & $dumpbin.Source /headers /imports /exports $f.FullName 2>&1 | Out-File -LiteralPath $out -Encoding utf8 } catch {}
+      try {
+        & $dumpbinPath /headers /imports /exports /dependents /loadconfig $f.FullName 2>&1 |
+          Out-File -LiteralPath $out -Encoding utf8
+      } catch {
+        $_.Exception.ToString() | Set-Content -LiteralPath ($out + ".error.txt") -Encoding UTF8
+      }
     }
+  }
+
+  if ($corflagsPath) {
+    $corDir = Join-Path $toolsDir "corflags"
+    New-Item -ItemType Directory -Path $corDir -Force | Out-Null
+    foreach ($f in $managedFiles) {
+      $out = Join-Path $corDir ((Safe-Name (RelPath $Root $f.FullName)) + ".txt")
+      try { & $corflagsPath $f.FullName 2>&1 | Out-File -LiteralPath $out -Encoding utf8 } catch {}
+    }
+  }
+
+  if ($snPath) {
+    $snDir = Join-Path $toolsDir "strong-name"
+    New-Item -ItemType Directory -Path $snDir -Force | Out-Null
+    foreach ($f in $managedFiles) {
+      $out = Join-Path $snDir ((Safe-Name (RelPath $Root $f.FullName)) + ".txt")
+      try { & $snPath -T $f.FullName 2>&1 | Out-File -LiteralPath $out -Encoding utf8 } catch {}
+    }
+  }
+
+  if ($gacutilPath) {
+    Invoke-TextCapture -Path (Join-Path $toolsDir "gac-list.txt") -Script { & $gacutilPath /l }
   }
 }
 
@@ -359,6 +712,9 @@ It may contain:
 - proprietary Viessmann/Vitosoft binaries and resources;
 - complete Vitosoft installation/configuration files;
 - MDF/LDF SQL database copies and exported table contents;
+- full managed IL / PE tool dumps when Visual Studio Build Tools are available;
+- managed assembly identities, reference graph and embedded-resource inventory;
+- serial/USB hardware, loaded process modules and recent relevant event-log data;
 - machine-specific paths and registry data;
 - credentials if they were stored unencrypted in copied application config.
 
@@ -420,6 +776,10 @@ $summary = [ordered]@{
   sql_collected=(-not $SkipSql)
   registry_collected=(-not $SkipRegistry)
   tool_dumps_collected=(-not $SkipToolDumps)
+  prerequisite_install_attempted=(-not $SkipPrerequisiteInstall)
+  ildasm=(Find-ToolPath "ildasm.exe")
+  dumpbin=(Find-ToolPath "dumpbin.exe")
+  sevenzip=(Find-ToolPath "7z.exe")
   max_sql_rows_per_table=$MaxSqlRowsPerTable
 }
 $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $OutputDir "private-archive-summary.json") -Encoding UTF8
