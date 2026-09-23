@@ -2414,46 +2414,93 @@ views:
               - type: custom:multiple-entity-row
                 entity: binary_sensor.vitodens_200_wb2a_brenner_taktsperre_aktiv
                 name: Wiederanlauf
+                name_gap: 8px
                 state_header: Sperre
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: binary_sensor.vitodens_200_wb2a_brenner_wiederanlauf_freigegeben
                     name: Freigabe
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: binary_sensor.vitodens_200_wb2a_brenner_startphase
                     name: Start
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb
                 name: Feuerungsablauf
+                name_gap: 8px
                 state_header: Regel
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv
                     name: OPT
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt
                     name: GFA Lock
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: binary_sensor.vitodens_200_wb2a_cfdm_fehler
                 name: CFDM / GFA
+                name_gap: 8px
                 state_header: Fehler
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre
                     name: CFDM Lock
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus
                     name: GFA Code
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode
                 name: Speicher / Alarm
+                name_gap: 8px
                 state_header: Alarm
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: sensor.vitodens_200_wb2a_eeprom_status
                     name: EEPROM
+                    styles:
+                      width: 76px
+                      text-align: center
                   - entity: sensor.vitodens_200_wb2a_i2c_eeprom_gwg_flag
                     name: I²C GWG
+                    styles:
+                      width: 76px
+                      text-align: center
               - type: custom:multiple-entity-row
                 entity: sensor.vitodens_200_wb2a_km_fehler_pumpe_a1
                 name: KM-BUS
+                name_gap: 8px
                 state_header: HK-Pumpe
+                styles:
+                  width: 76px
+                  text-align: center
                 entities:
                   - entity: sensor.vitodens_200_wb2a_km_fehler_interne_pumpe
                     name: Int. Pumpe
+                    styles:
+                      width: 76px
+                      text-align: center
 
       - type: grid
         column_span: 1
