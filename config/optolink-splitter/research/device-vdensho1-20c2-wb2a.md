@@ -821,20 +821,46 @@ older WB2/LGM29 generation. Therefore LGM29-specific addresses such as
 `GWG_FA_Takt_ReglerverzoegerungStart~0x0083` must not be treated as WB2A
 addresses.
 
-The device-specific VDensHO1 Vitosoft list exposes only these named
-fire-control datapoints:
+### 2026-09-23 correction: full production join exposes GFA_READ
 
-- `0x55D3` burner / lockout runtime data
-- `0x55DD` flame signal
-- `0x7650` GFA chip identification
+The preceding 0x0083 result remains valid for the legacy LGM29
+`Virtual_READ` theory, but a later complete production Vitosoft join
+supersedes the earlier statement that VDensHO1 exposes only `0x55D3`,
+`0x55DD` and `0x7650` as named fire-control data.
 
-No named VDensHO1 datapoint for the approximately 12-second regulator delay is
-present in that list.
+The exact VDensHO1 profile contains **94 `GFA_READ` events** in a separate
+GFA address space. Important examples are:
 
-Current conclusion: the ~12 s plateau is strongly consistent with a burner
-control "Reglerverzögerung nach Brennerstart" function, but its storage
-location is not exposed by the known VDensHO1 P300 map and may be an internal
-GG1/GFA firmware parameter.
+```text
+0x4050  P80  ID BCU/GFA chip
+0x4051  P81  software version FA
+0x4052  P82  software version FA revision
+0x4053  P83  appliance/GFA configuration
+0x4054  P84  GFA phase
+0x4055..0x4058 GFA status 1..4
+
+0x4006  P06  blower actual speed       raw * 30 rpm
+0x4009  P09  blower speed setpoint     raw * 30 rpm
+0x400A  P10  blower PWM setpoint       raw * 0.4 %
+0x4011  P17  flame formation time      raw / 10 s
+
+0x0008  C08  gas-flow-ramp start offset
+0x000B  C11  qGasStart correction      signed %
+0x000D  C13  correction of pre-purge/ignition/stabilisation power
+              signed raw * 2 %
+```
+
+All of these exact-profile entries are read-only in the Vitosoft metadata
+(`FCWrite=undefined`). They are now high-priority read-only research targets.
+
+This does **not** yet prove that every object is implemented by the local
+GG1/GFA hardware. Profile membership proves the Vitosoft association; a local
+`GFA_READ` transaction is still required for hardware validation.
+
+The roughly 12 s plateau remains consistent with a burner-control regulation
+delay. The newly discovered GFA objects do not yet name that delay directly,
+but `P17`, the GFA phase/status values and C08/C11/C13 provide substantially
+better observability of the startup sequence and its coding parameters.
 
 
 ## 2026-09-22 20:50 GG1 runtime-byte analysis
