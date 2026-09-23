@@ -67,10 +67,11 @@ Therefore the strongest current hypothesis for a true M2 conversion is:
 
 This is strongly supported by the documented coding semantics but is not yet
 hardware-proven on this exact boiler. A real M2 setup or a safe representative
-test would be required for direct confirmation. Crucially, an M2 heat request can
-outlast the burner-on phase, so M2 may keep the internal boiler pump at coding 31
-speed during burner-off intervals too. That would not exactly match the target
-behavior.
+test would be required for direct confirmation. An M2 heat request can outlast the burner-on phase, so M2 may keep the internal
+boiler pump at coding 31 speed during burner-off intervals too. Under the
+corrected objective this is not inherently a disadvantage; it is analogous to
+the observed DHW mode, where 100 % pump operation also persists through burner
+off periods and overrun.
 
 ## Additional effect: differential temperature 9F
 
@@ -178,7 +179,7 @@ effects are completely understood.
 
 ## Current conclusion
 
-For the corrected goal "100 % internal pump during the complete heating burner-on phase, then return to normal pump regulation":
+For the corrected goal "100 % internal pump for at least the complete heating burner-on phase, analogous to DHW; controller-managed pre-run/overrun is acceptable":
 
 - no dedicated VDensHO1 burner-on pump override has been found;
 - actuator test is diagnostic/service-only;
