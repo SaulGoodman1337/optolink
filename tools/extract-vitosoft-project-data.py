@@ -1,13 +1,23 @@
 #!/usr/bin/env python3
 """Extract device-specific low-level Vitosoft event metadata.
 
+Validated against Vitosoft DataPointDefinitionVersion 0.0.26.4683.
+
 Expected input files:
   DPDefinitions.xml
   ecnEventType.xml
-  ecnDataPointType.xml (optional for identification cross-checks)
 
-The script keeps the original Vitosoft fields needed for Optolink/KBus research
-and emits a complete device CSV plus a KBUS/KMBUS-only CSV.
+Optional:
+  Textresource_de.xml
+
+Outputs:
+  <device>-lowlevel-events.csv
+  <device>-kbus-events.csv
+  <device>-extract-summary.json
+
+The parser intentionally performs multiple streaming passes over
+DPDefinitions.xml. The file is ~186 MB in the validated data set and its
+records live inside a Microsoft DataSet/diffgram namespace.
 """
 
 from __future__ import annotations
@@ -15,31 +25,41 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+from collections import Counter
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
 
+DP_NS = "http://tempuri.org/ECNDataSet.xsd"
+
 FIELDS = [
     "event_id",
     "name",
+    "name_de",
+    "description",
+    "description_de",
     "token",
+    "event_type",
     "address",
     "parameter",
-    "type",
     "fc_read",
     "fc_write",
     "prefix_read",
     "prefix_write",
     "block_length",
-    "byte_length",
     "byte_position",
-    "bit_length",
+    "byte_length",
     "bit_position",
+    "bit_length",
+    "data_type",
+    "unit",
     "conversion",
     "conversion_factor",
     "conversion_offset",
-    "unit",
+    "access_mode",
     "value_list",
+    "option_list",
+    "mapping_type",
 ]
 
 
@@ -48,126 +68,136 @@ def local(tag: str) -> str:
 
 
 def children(element: ET.Element) -> dict[str, str]:
-    out: dict[str, str] = {}
-    for child in element:
-        out[local(child.tag)] = child.text or ""
-    return out
+    return {local(child.tag): child.text or "" for child in element}
 
 
-def int_or_none(value: str):
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def load_dpdefinitions(path: Path):
-    devices: dict[int, dict[str, str]] = {}
-    events: dict[int, dict[str, str]] = {}
-    links: list[tuple[int, int]] = []
-
+def iter_records(path: Path, record_name: str):
+    """Yield rows for one DPDefinitions record type without clearing children early."""
+    wanted = f"{{{DP_NS}}}{record_name}"
+    schema_ns = "{http://www.w3.org/2001/XMLSchema}"
     for _event, elem in ET.iterparse(path, events=("end",)):
-        tag = local(elem.tag)
-        if tag == "ecnDatapointType":
-            row = children(elem)
-            row_id = int_or_none(row.get("Id", ""))
-            if row_id is not None:
-                devices[row_id] = row
-        elif tag == "ecnEventType":
-            row = children(elem)
-            row_id = int_or_none(row.get("Id", ""))
-            if row_id is not None:
-                events[row_id] = row
-        elif tag == "ecnDataPointTypeEventTypeLink":
-            row = children(elem)
-            dp_id = int_or_none(row.get("DataPointTypeId", ""))
-            event_id = int_or_none(row.get("EventTypeId", ""))
-            if dp_id is not None and event_id is not None:
-                links.append((dp_id, event_id))
-        elem.clear()
-
-    return devices, events, links
-
-
-def load_access(path: Path):
-    access: dict[str, dict[str, str]] = {}
-    for _event, elem in ET.iterparse(path, events=("end",)):
-        if local(elem.tag) not in ("EventType", "ecnEventType"):
+        if elem.tag == wanted:
+            yield children(elem)
             elem.clear()
-            continue
-        row = children(elem)
-        row_id = row.get("ID") or row.get("Id")
-        if row_id:
-            access[row_id] = row
-        elem.clear()
-    return access
+        elif isinstance(elem.tag, str) and elem.tag.startswith(schema_ns):
+            elem.clear()
 
 
-def find_device_id(devices: dict[int, dict[str, str]], token: str) -> int:
-    for row_id, row in devices.items():
-        if row.get("Address") == token or row.get("Name") == token:
-            return row_id
+def find_device_id(dp_path: Path, token: str) -> int:
+    for row in iter_records(dp_path, "ecnDatapointType"):
+        if row.get("Address") == token:
+            return int(row["Id"])
     raise SystemExit(f"device token not found in DPDefinitions.xml: {token}")
 
 
-def access_for_event(event: dict[str, str], access: dict[str, dict[str, str]]):
-    raw = event.get("Address", "")
-    candidates = [raw]
-    if "~" in raw:
-        candidates.append(raw.split("~", 1)[0])
-    name = event.get("Name", "")
-    if name:
-        candidates.append(name)
-
-    for candidate in candidates:
-        if candidate in access:
-            return candidate, access[candidate]
-    return (raw.split("~", 1)[0] if raw else ""), {}
+def load_device_event_ids(dp_path: Path, device_id: int) -> set[int]:
+    result: set[int] = set()
+    for row in iter_records(dp_path, "ecnDataPointTypeEventTypeLink"):
+        try:
+            if int(row.get("DataPointTypeId", "-1")) == device_id:
+                result.add(int(row["EventTypeId"]))
+        except (KeyError, ValueError):
+            pass
+    return result
 
 
-def normalized_row(event_id: int, event: dict[str, str], access: dict[str, dict[str, str]]):
-    token, low = access_for_event(event, access)
-    raw_address = low.get("Address", "")
-    if not raw_address and "~" in event.get("Address", ""):
-        raw_address = event["Address"].split("~", 1)[1]
+def load_device_events(dp_path: Path, event_ids: set[int]) -> dict[int, dict[str, str]]:
+    result: dict[int, dict[str, str]] = {}
+    for row in iter_records(dp_path, "ecnEventType"):
+        try:
+            event_id = int(row.get("Id", "-1"))
+        except ValueError:
+            continue
+        if event_id in event_ids:
+            result[event_id] = row
+    return result
 
+
+def load_access(path: Path) -> dict[str, dict[str, str]]:
+    result: dict[str, dict[str, str]] = {}
+    for _event, elem in ET.iterparse(path, events=("end",)):
+        if local(elem.tag) != "EventType":
+            continue
+        row = children(elem)
+        row_id = row.get("ID")
+        if row_id:
+            result[row_id] = row
+        elem.clear()
+    return result
+
+
+def load_translations(path: Path | None, labels: set[str]) -> dict[str, str]:
+    if path is None or not path.exists() or not labels:
+        return {}
+    result: dict[str, str] = {}
+    for _event, elem in ET.iterparse(path, events=("end",)):
+        label = elem.attrib.get("Label")
+        if label in labels:
+            result[label] = elem.attrib.get("Value", "")
+        elem.clear()
+    return result
+
+
+def translated(value: str, translations: dict[str, str]) -> str:
+    if value.startswith("@@"):
+        return translations.get(value[2:], "")
+    return value
+
+
+def normalized_row(
+    event_id: int,
+    event: dict[str, str],
+    access: dict[str, dict[str, str]],
+) -> dict[str, str | int]:
+    token = event.get("Address", "")
+    low = access.get(token, {})
     return {
         "event_id": event_id,
         "name": event.get("Name", ""),
+        "name_de": "",
+        "description": event.get("Description", ""),
+        "description_de": "",
         "token": token,
-        "address": raw_address,
-        "parameter": low.get("Parameter", event.get("Parameter", "")),
-        "type": event.get("Type", ""),
+        "event_type": event.get("Type", ""),
+        "address": low.get("Address", ""),
+        "parameter": low.get("Parameter", ""),
         "fc_read": low.get("FCRead", ""),
         "fc_write": low.get("FCWrite", ""),
         "prefix_read": low.get("PrefixRead", ""),
         "prefix_write": low.get("PrefixWrite", ""),
         "block_length": low.get("BlockLength", ""),
-        "byte_length": low.get("ByteLength", ""),
         "byte_position": low.get("BytePosition", ""),
-        "bit_length": low.get("BitLength", ""),
+        "byte_length": low.get("ByteLength", ""),
         "bit_position": low.get("BitPosition", ""),
+        "bit_length": low.get("BitLength", ""),
+        "data_type": low.get("DataType", low.get("SDKDataType", "")),
+        "unit": low.get("Unit", ""),
         "conversion": low.get("Conversion", ""),
         "conversion_factor": low.get("ConversionFactor", ""),
         "conversion_offset": low.get("ConversionOffset", ""),
-        "unit": low.get("Unit", ""),
+        "access_mode": low.get("AccessMode", ""),
         "value_list": low.get("ValueList", ""),
+        "option_list": low.get("OptionList", ""),
+        "mapping_type": low.get("MappingType", ""),
     }
 
 
 def is_kbus(row: dict[str, object]) -> bool:
-    values = (str(row.get("fc_read", "")), str(row.get("fc_write", "")))
-    return any(v.startswith("KBUS_") or v.startswith("KMBUS_") for v in values)
+    for key in ("fc_read", "fc_write"):
+        value = str(row.get(key, "")).upper()
+        if value.startswith("KBUS_") or value.startswith("KMBUS_"):
+            return True
+    return False
 
 
-def write_csv(path: Path, rows: list[dict[str, object]]):
+def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=FIELDS)
         writer.writeheader()
         writer.writerows(rows)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", required=True, type=Path)
     parser.add_argument("--device", default="VDensHO1")
@@ -176,21 +206,34 @@ def main():
 
     dp_path = args.data_dir / "DPDefinitions.xml"
     event_path = args.data_dir / "ecnEventType.xml"
-    if not dp_path.exists():
-        raise SystemExit(f"missing {dp_path}")
-    if not event_path.exists():
-        raise SystemExit(f"missing {event_path}")
+    text_path = args.data_dir / "Textresource_de.xml"
 
-    devices, events, links = load_dpdefinitions(dp_path)
+    for required in (dp_path, event_path):
+        if not required.exists():
+            raise SystemExit(f"missing {required}")
+
+    device_id = find_device_id(dp_path, args.device)
+    event_ids = load_device_event_ids(dp_path, device_id)
+    events = load_device_events(dp_path, event_ids)
     access = load_access(event_path)
-    device_id = find_device_id(devices, args.device)
-    event_ids = sorted(event_id for dp_id, event_id in links if dp_id == device_id)
 
     rows = [
         normalized_row(event_id, events[event_id], access)
-        for event_id in event_ids
+        for event_id in sorted(event_ids)
         if event_id in events
     ]
+
+    labels: set[str] = set()
+    for row in rows:
+        for key in ("name", "description"):
+            value = str(row[key])
+            if value.startswith("@@"):
+                labels.add(value[2:])
+    translations = load_translations(text_path, labels)
+    for row in rows:
+        row["name_de"] = translated(str(row["name"]), translations)
+        row["description_de"] = translated(str(row["description"]), translations)
+
     kbus_rows = [row for row in rows if is_kbus(row)]
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -198,14 +241,17 @@ def main():
     write_csv(args.out_dir / f"{stem}-lowlevel-events.csv", rows)
     write_csv(args.out_dir / f"{stem}-kbus-events.csv", kbus_rows)
 
+    missing_access = sum(
+        1 for row in rows if not row["fc_read"] and not row["fc_write"]
+    )
     summary = {
         "device": args.device,
         "datapoint_type_id": device_id,
         "event_count": len(rows),
+        "access_missing": missing_access,
         "kbus_event_count": len(kbus_rows),
-        "missing_access_metadata": sum(
-            1 for row in rows if not row["fc_read"] and not row["fc_write"]
-        ),
+        "fc_read_counts": dict(Counter(str(row["fc_read"] or "<blank>") for row in rows)),
+        "fc_write_counts": dict(Counter(str(row["fc_write"] or "<blank>") for row in rows)),
     }
     (args.out_dir / f"{stem}-extract-summary.json").write_text(
         json.dumps(summary, indent=2, ensure_ascii=False) + "\n",
