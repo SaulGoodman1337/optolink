@@ -85,6 +85,7 @@ def snapshot(client, responses):
     p7663 = request(client, responses, "0x7663", 2)
     ww = request(client, responses, "0x650A", 1)[0]
     uv = request(client, responses, "0x0A10", 1)[0]
+    gfa = request(client, responses, "0x55D3", 11)
     return {
         "a3c": a3c,
         "out7660": p7660[0],
@@ -93,6 +94,10 @@ def snapshot(client, responses):
         "speed7663": p7663[1],
         "ww": ww,
         "uv": uv,
+        "flame": int(bool(gfa[5] & 0x20)),
+        "modulation": gfa[9],
+        "gfa_b5": gfa[5],
+        "gfa_b7": gfa[7],
     }
 
 
@@ -106,7 +111,9 @@ def fmt(s):
         f"A3C={s['a3c']:3d}%  "
         f"7660={s['out7660']:02X}/{s['speed7660']:3d}%  "
         f"7663={s['out7663']:02X}/{s['speed7663']:3d}%  "
-        f"WW=0x{s['ww']:02X}  UV=0x{s['uv']:02X}  {relation}"
+        f"WW=0x{s['ww']:02X}  UV=0x{s['uv']:02X}  "
+        f"FLAME={s['flame']} MOD={s['modulation']:3d}%  "
+        f"GFA5=0x{s['gfa_b5']:02X} GFA7=0x{s['gfa_b7']:02X}  {relation}"
     )
 
 
@@ -138,7 +145,7 @@ def main():
 
     print("WB2A pump divergence watcher")
     print("============================")
-    print("Reads only: 0A3C, 7660, 7663, 650A, 0A10")
+    print("Reads only: 0A3C, 7660, 7663, 650A, 0A10, 55D3")
     print("Trigger:   7660[1] != 7663[1]")
     print("Writes:    none")
     print("Ctrl-C beendet")
