@@ -143,6 +143,108 @@ button_card_templates:
           icon:
             - color: var(--state-inactive-color)
 
+  diag_mini:
+    section_mode: false
+    show_icon: false
+    show_name: true
+    show_state: true
+    show_units: true
+    show_ripple: true
+    tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
+    styles:
+      card:
+        - background: transparent
+        - border: none
+        - box-shadow: none
+        - border-radius: 0
+        - padding: 2px 5px
+      grid:
+        - grid-template-areas: '"n"' '"s"'
+        - grid-template-columns: 1fr
+        - grid-template-rows: min-content min-content
+      name:
+        - justify-self: center
+        - color: var(--secondary-text-color)
+        - font-size: 9px
+        - font-weight: 500
+        - line-height: 1.1
+        - text-align: center
+        - white-space: normal
+      state:
+        - justify-self: center
+        - color: var(--primary-text-color)
+        - font-size: 12px
+        - font-weight: 600
+        - line-height: 1.15
+        - text-align: center
+        - white-space: normal
+        - overflow-wrap: anywhere
+
+  diag_group2:
+    section_mode: true
+    show_icon: false
+    show_state: false
+    show_name: true
+    show_ripple: false
+    tap_action:
+      action: none
+    styles:
+      card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
+        - box-shadow: none
+        - padding: 8px 7px 7px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: '"n n"' '"v1 v2"'
+        - grid-template-columns: 1fr 1fr
+        - grid-template-rows: min-content 1fr
+        - row-gap: 5px
+      name:
+        - justify-self: start
+        - color: var(--primary-text-color)
+        - font-size: 11px
+        - font-weight: 600
+        - padding-left: 4px
+      custom_fields:
+        v2:
+          - border-left: 1px solid var(--divider-color)
+
+  diag_group3:
+    section_mode: true
+    show_icon: false
+    show_state: false
+    show_name: true
+    show_ripple: false
+    tap_action:
+      action: none
+    styles:
+      card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
+        - box-shadow: none
+        - padding: 8px 7px 7px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: '"n n n"' '"v1 v2 v3"'
+        - grid-template-columns: 1fr 1fr 1fr
+        - grid-template-rows: min-content 1fr
+        - row-gap: 5px
+      name:
+        - justify-self: start
+        - color: var(--primary-text-color)
+        - font-size: 11px
+        - font-weight: 600
+        - padding-left: 4px
+      custom_fields:
+        v2:
+          - border-left: 1px solid var(--divider-color)
+        v3:
+          - border-left: 1px solid var(--divider-color)
+
 views:
   - title: Heizung
     path: heizung
@@ -2458,60 +2560,92 @@ views:
             icon: mdi:transit-connection-variant
 
           - type: custom:button-card
-            template: diag_process
-            entity: binary_sensor.vitodens_200_wb2a_brenner_wiederanlauf_freigegeben
-            name: 1 · Freigabe
-            icon: mdi:restart
+            section_mode: true
+            show_icon: false
+            show_name: false
+            show_state: false
+            show_ripple: false
+            tap_action:
+              action: none
             visibility:
               - condition: screen
                 media_query: "(min-width: 768px)"
+            styles:
+              card:
+                - border-radius: 14px
+                - border: 1px solid var(--divider-color)
+                - box-shadow: none
+                - padding: 8px
+                - background: var(--ha-card-background, var(--card-background-color))
+              grid:
+                - grid-template-areas: '"s1 a1 s2 a2 s3 a3 s4 a4 s5"'
+                - grid-template-columns: 1fr 20px 1fr 20px 1fr 20px 1fr 20px 1fr
+                - grid-template-rows: 1fr
+                - align-items: stretch
+              custom_fields:
+                a1:
+                  - align-self: center
+                  - justify-self: center
+                  - color: var(--secondary-text-color)
+                a2:
+                  - align-self: center
+                  - justify-self: center
+                  - color: var(--secondary-text-color)
+                a3:
+                  - align-self: center
+                  - justify-self: center
+                  - color: var(--secondary-text-color)
+                a4:
+                  - align-self: center
+                  - justify-self: center
+                  - color: var(--secondary-text-color)
+            custom_fields:
+              s1:
+                card:
+                  type: custom:button-card
+                  template: diag_process
+                  section_mode: false
+                  entity: binary_sensor.vitodens_200_wb2a_brenner_wiederanlauf_freigegeben
+                  name: 1 · Freigabe
+                  icon: mdi:restart
+              a1: <ha-icon icon="mdi:chevron-right"></ha-icon>
+              s2:
+                card:
+                  type: custom:button-card
+                  template: diag_process
+                  section_mode: false
+                  entity: binary_sensor.vitodens_200_wb2a_brenner_startphase
+                  name: 2 · Startphase
+                  icon: mdi:rocket-launch
+              a2: <ha-icon icon="mdi:chevron-right"></ha-icon>
+              s3:
+                card:
+                  type: custom:button-card
+                  template: diag_process
+                  section_mode: false
+                  entity: binary_sensor.vitodens_200_wb2a_brenner_flamme
+                  name: 3 · Flamme
+                  icon: mdi:fire
+              a3: <ha-icon icon="mdi:chevron-right"></ha-icon>
+              s4:
+                card:
+                  type: custom:button-card
+                  template: diag_process
+                  section_mode: false
+                  entity: binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv
+                  name: 4 · Anfahr-OPT
+                  icon: mdi:chart-timeline-variant-shimmer
+              a4: <ha-icon icon="mdi:chevron-right"></ha-icon>
+              s5:
+                card:
+                  type: custom:button-card
+                  template: diag_process
+                  section_mode: false
+                  entity: binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb
+                  name: 5 · Regelbetrieb
+                  icon: mdi:tune-variant
             grid_options:
-              columns: 2
-              rows: 1
-          - type: custom:button-card
-            template: diag_process
-            entity: binary_sensor.vitodens_200_wb2a_brenner_startphase
-            name: 2 · Startphase
-            icon: mdi:rocket-launch
-            visibility:
-              - condition: screen
-                media_query: "(min-width: 768px)"
-            grid_options:
-              columns: 2
-              rows: 1
-          - type: custom:button-card
-            template: diag_process
-            entity: binary_sensor.vitodens_200_wb2a_brenner_flamme
-            name: 3 · Flamme
-            icon: mdi:fire
-            visibility:
-              - condition: screen
-                media_query: "(min-width: 768px)"
-            grid_options:
-              columns: 2
-              rows: 1
-          - type: custom:button-card
-            template: diag_process
-            entity: binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv
-            name: 4 · Anfahr-OPT
-            icon: mdi:chart-timeline-variant-shimmer
-            visibility:
-              - condition: screen
-                media_query: "(min-width: 768px)"
-            grid_options:
-              columns: 3
-              rows: 1
-          - type: custom:button-card
-            template: diag_process
-            entity: binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb
-            name: 5 · Regelbetrieb
-            icon: mdi:tune-variant
-            visibility:
-              - condition: screen
-                media_query: "(min-width: 768px)"
-            grid_options:
-              columns: 3
-              rows: 1
+              columns: full
 
           - type: custom:button-card
             template: diag_process
@@ -2566,8 +2700,9 @@ views:
               - condition: screen
                 media_query: "(max-width: 767px)"
             grid_options:
-              columns: 6
+              columns: 12
               rows: 1
+
 
       - type: grid
         column_span: 1
@@ -2976,46 +3111,118 @@ views:
         column_span: 2
         cards:
           - type: heading
-            heading: Gerät
+            heading: Gerät / System
+            heading_style: title
+            icon: mdi:server
+
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Gerät & Software
             heading_style: subtitle
             icon: mdi:information-outline
-          - type: entities
-            show_header_toggle: false
-            entities:
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_geraete_id_anzeige
-                name: Identifikation
-                state_header: Gerät
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_sachnummer_anzeige
-                    name: Codierstecker
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_kennung_anzeige
-                    name: Kennung
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_regelungssoftware_version
-                name: Software
-                state_header: Regelung
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_bedienteil_sw_index_anzeige
-                    name: Bedienteil
-                  - entity: sensor.vitodens_200_wb2a_gfa_kennung_anzeige
-                    name: GFA
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_anlagenschema_anzeige
-                name: Anlage
-                state_header: Schema
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_anlagentyp_anzeige
-                    name: Typ
-                  - entity: sensor.vitodens_200_wb2a_bauart_warmwasser_anzeige
-                    name: WW
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_eeprom_status
-                name: EEPROM
-                state_header: Status
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_i2c_eeprom_gwg_flag
-                    name: I²C GWG
+          - type: custom:button-card
+            template: diag_group3
+            name: Identifikation
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_geraete_id_anzeige
+                  name: Gerät
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_sachnummer_anzeige
+                  name: Codierstecker
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_kennung_anzeige
+                  name: Kennung
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group3
+            name: Software
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_regelungssoftware_version
+                  name: Regelung
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_bedienteil_sw_index_anzeige
+                  name: Bedienteil
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_gfa_kennung_anzeige
+                  name: GFA
+            grid_options:
+              columns: full
+
+
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Anlage & Speicher
+            heading_style: subtitle
+            icon: mdi:home-cog-outline
+          - type: custom:button-card
+            template: diag_group3
+            name: Anlage
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_anlagenschema_anzeige
+                  name: Schema
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_anlagentyp_anzeige
+                  name: Typ
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_bauart_warmwasser_anzeige
+                  name: Warmwasser
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group2
+            name: EEPROM
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_eeprom_status
+                  name: Status
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_i2c_eeprom_gwg_flag
+                  name: I²C GWG
+            grid_options:
+              columns: full
+
+
       - type: grid
         column_span: 2
         cards:
@@ -3031,66 +3238,157 @@ views:
             heading: Codierstecker – Kernwerte
             heading_style: subtitle
             icon: mdi:memory
-          - type: entities
-            show_header_toggle: false
-            entities:
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_kesselsoll_max
-                name: Kessel
-                state_header: Max
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_kesselsoll_min
-                    name: Soll min
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_kesseltemperatur_min
-                    name: Temp min
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_wwsoll_max
-                name: Warmwasser
-                state_header: Max
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_wwsoll_min
-                    name: Min
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_brenner_min_leistung
-                name: Heizung
-                state_header: Brenner min
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_heizung_leistungsbegrenzung
-                    name: GWG32
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_heizung_max_leistung
-                    name: Max
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_ww_leistungsbegrenzung
-                name: Warmwasserleistung
-                state_header: GWG30
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_ww_max_leistung
-                    name: Max
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_kesselsollleistung_speicherbetrieb
-                    name: Speicher
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_brenner_offset
-                name: Brenner
-                state_header: Offset
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_anfahroptimierung
-                    name: Anfahr-OPT
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_interne_pumpe_min_drehzahl
-                name: Interne Pumpe
-                state_header: Min
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_interne_pumpe_nachlauf
-                    name: Nachlauf
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_bauart_warmwasser
-                name: Geräteausführung
-                state_header: WW
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennertyp
-                    name: Brenner
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_umschaltventil_bauart
-                    name: Ventil
+          - type: custom:button-card
+            template: diag_group3
+            name: Kessel
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_kesselsoll_min
+                  name: Soll min
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_kesseltemperatur_min
+                  name: Temp min
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_kesselsoll_max
+                  name: Max
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group2
+            name: Warmwasser
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_wwsoll_min
+                  name: Min
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_wwsoll_max
+                  name: Max
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group3
+            name: Heizleistung
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brenner_min_leistung
+                  name: Brenner min
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_heizung_leistungsbegrenzung
+                  name: GWG32
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_heizung_max_leistung
+                  name: Max
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group3
+            name: Warmwasserleistung
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_ww_leistungsbegrenzung
+                  name: GWG30
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_ww_max_leistung
+                  name: Max
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_kesselsollleistung_speicherbetrieb
+                  name: Speicher
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group2
+            name: Brenner
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brenner_offset
+                  name: Offset
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brenner_anfahroptimierung
+                  name: Anfahr-OPT
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group2
+            name: Interne Pumpe
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_interne_pumpe_min_drehzahl
+                  name: Min
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_interne_pumpe_nachlauf
+                  name: Nachlauf
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group3
+            name: Geräteausführung
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_bauart_warmwasser
+                  name: Warmwasser
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brennertyp
+                  name: Brenner
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_umschaltventil_bauart
+                  name: Ventil
+            grid_options:
+              columns: full
+
 
       - type: grid
         column_span: 1
@@ -3099,43 +3397,97 @@ views:
             heading: Grundfos-Umschaltventil
             heading_style: subtitle
             icon: mdi:valve
-          - type: entities
-            show_header_toggle: false
-            entities:
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_position_heizen
-                name: Position
-                state_header: Heizen
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x1
-                    name: Schritt x1
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x2
-                    name: Schritt x2
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x3
-                name: Schrittzahl
-                state_header: x3
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x4
-                    name: x4
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x5
-                    name: x5
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x1
-                name: Frequenz 1
-                state_header: x1
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x2
-                    name: x2
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x3
-                    name: x3
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x4
-                name: Frequenz 2
-                state_header: x4
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x5
-                    name: x5
+          - type: custom:button-card
+            template: diag_group3
+            name: Position
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_position_heizen
+                  name: Heizen
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x1
+                  name: Schritt x1
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x2
+                  name: Schritt x2
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group3
+            name: Schrittzahl
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x3
+                  name: x3
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x4
+                  name: x4
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x5
+                  name: x5
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group3
+            name: Frequenz 1
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x1
+                  name: x1
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x2
+                  name: x2
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x3
+                  name: x3
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group2
+            name: Frequenz 2
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x4
+                  name: x4
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x5
+                  name: x5
+            grid_options:
+              columns: full
+
 
       - type: grid
         column_span: 1
@@ -3144,36 +3496,79 @@ views:
             heading: Warmwasser-Regelparameter
             heading_style: subtitle
             icon: mdi:water-boiler
-          - type: entities
-            show_header_toggle: false
-            entities:
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_dlh_ausschaltdifferenz_start_stop
-                name: Start / Stop
-                state_header: Ausdiff
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_einschaltdifferenz_start_stop
-                    name: Eindiff
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_nachlaufzeit
-                    name: Nachlauf
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_dlh_max_anstiegszeit
-                name: DLH-Regler
-                state_header: Anstieg
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglerverstaerkung
-                    name: P
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglervorhaltezeit
-                    name: Vorhalt
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglernachstellzeit
-                name: Nachregelung
-                state_header: Nachstell
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_ausschaltdifferenz
-                    name: Ausdiff
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_zirkulationspumpe_bei_speicherladung
-                    name: Zirkulation
+          - type: custom:button-card
+            template: diag_group3
+            name: Start / Stop
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_dlh_ausschaltdifferenz_start_stop
+                  name: Ausdiff
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_dlh_einschaltdifferenz_start_stop
+                  name: Eindiff
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_dlh_nachlaufzeit
+                  name: Nachlauf
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group3
+            name: DLH-Regler
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_dlh_max_anstiegszeit
+                  name: Anstieg
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglerverstaerkung
+                  name: P
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglervorhaltezeit
+                  name: Vorhalt
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group3
+            name: Nachregelung
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglernachstellzeit
+                  name: Nachstell
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_dlh_ausschaltdifferenz
+                  name: Ausdiff
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_zirkulationspumpe_bei_speicherladung
+                  name: Zirkulation
+            grid_options:
+              columns: full
+
 
       - type: grid
         column_span: 1
@@ -3182,34 +3577,73 @@ views:
             heading: Brennerregelung
             heading_style: subtitle
             icon: mdi:gas-burner
-          - type: entities
-            show_header_toggle: false
-            entities:
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_brenner_einschaltdifferenz
-                name: Schaltdifferenzen
-                state_header: Ein
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_ausschaltdifferenz
-                    name: Aus
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_ausschaltdifferenz_volllast
-                    name: Volllast
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_brenner_mindestpausenzeit
-                name: Brennerpause
-                state_header: Mindestzeit
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_pausenabbruch_differenz
-                    name: Abbruch Diff
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_pausenabbruch_temperatur
-                    name: Abbruch Temp
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_kt_regler_verstaerkung
-                name: KT-Regler
-                state_header: P
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_kt_regler_nachstellzeit
-                    name: Nachstell
+          - type: custom:button-card
+            template: diag_group3
+            name: Schaltdifferenzen
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brenner_einschaltdifferenz
+                  name: Ein
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brenner_ausschaltdifferenz
+                  name: Aus
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brenner_ausschaltdifferenz_volllast
+                  name: Volllast
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group3
+            name: Brennerpause
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brenner_mindestpausenzeit
+                  name: Mindestzeit
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brenner_pausenabbruch_differenz
+                  name: Abbruch Diff
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brenner_pausenabbruch_temperatur
+                  name: Abbruch Temp
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group2
+            name: KT-Regler
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_kt_regler_verstaerkung
+                  name: P
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_kt_regler_nachstellzeit
+                  name: Nachstell
+            grid_options:
+              columns: full
+
 
       - type: grid
         column_span: 1
@@ -3218,49 +3652,108 @@ views:
             heading: Brennerkennlinie
             heading_style: subtitle
             icon: mdi:chart-line
-          - type: entities
-            show_header_toggle: false
-            entities:
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_10
-                name: Kennlinie 10–30
-                state_header: "10"
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_20
-                    name: "20"
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_30
-                    name: "30"
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_40
-                name: Kennlinie 40–50
-                state_header: "40"
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_50
-                    name: "50"
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_60
-                name: Kennlinie 60–80
-                state_header: "60"
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_70
-                    name: "70"
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_80
-                    name: "80"
-              - type: custom:multiple-entity-row
-                entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_90
-                name: Kennlinie 90–100
-                state_header: "90"
-                entities:
-                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_100
-                    name: "100"
-          - type: markdown
-            content: >-
-              **RKR / OPT:** 55E0.b14 Bit 0 blieb in zwei kontrollierten
-              Zyklen bis zum Wiederanlauf-Fenster auf 0. Mit der Freigabe auf
-              1 begann die nächste Feuerungssequenz. 55E0[10:12] verhält sich
-              als interner anfahroptimierter Kesselsollwert (OPT). Rohwerte
-              bleiben als solche bezeichnet und werden nicht als bestätigte
+          - type: custom:button-card
+            template: diag_group3
+            name: Kennlinie 10–30
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_10
+                  name: 10
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_20
+                  name: 20
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_30
+                  name: 30
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group2
+            name: Kennlinie 40–50
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_40
+                  name: 40
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_50
+                  name: 50
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group3
+            name: Kennlinie 60–80
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_60
+                  name: 60
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_70
+                  name: 70
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_80
+                  name: 80
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: diag_group2
+            name: Kennlinie 90–100
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_90
+                  name: 90
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_100
+                  name: 100
+            grid_options:
+              columns: full
+          - type: custom:mushroom-template-card
+            primary: RKR / OPT Research
+            secondary: >-
+              55E0.b14 Bit 0 blieb in zwei kontrollierten Zyklen bis zum
+              Wiederanlauf-Fenster auf 0. Mit der Freigabe auf 1 begann die
+              nächste Feuerungssequenz. 55E0[10:12] verhält sich als interner
+              anfahroptimierter Kesselsollwert (OPT). Rohwerte bleiben als
+              solche bezeichnet und werden nicht als bestätigte
               Betriebsparameter dargestellt.
+            icon: mdi:flask-outline
+            icon_color: blue
+            multiline_secondary: true
+            tap_action:
+              action: none
+            grid_options:
+              columns: full
+
+
     cards: []
 
   - title: Zeitprogramme
