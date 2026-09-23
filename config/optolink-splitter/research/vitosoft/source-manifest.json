@@ -45,5 +45,67 @@
       "sha256": "96db1023b3040e5ac86ffa8daa75e5d0e4a462cf30ad888ebca1b6a4fcf3881f",
       "size": 207
     }
-  ]
+  ],
+  "local_production_collection_2026_09_23": {
+    "data_point_definition_version": "0.0.26.4683",
+    "configbackup_version": "0.0.2.588",
+    "files": [
+      {
+        "path": "Config/DPDefinitions.xml",
+        "sha256": "efec27568d398021c767771af016143bd51fc196d2d408dbb80faff84d0b19e3",
+        "size": 186559004
+      },
+      {
+        "path": "Config/ecnEventType.xml",
+        "sha256": "2338beb0e8544b6149bc4b2433ecabd9509edcdafc2e8e91f00182eba1aff7ba",
+        "size": 9935374
+      },
+      {
+        "path": "Config/ecnDataPointType.xml",
+        "sha256": "c66a57be8004a64cf3bf686bf2aa51d77f7ee96e794e95b3d09318a78fe8f0a3",
+        "size": 163323
+      },
+      {
+        "path": "Config/ecnEventTypeGroup.xml",
+        "sha256": "f72caeed1a39c7fa769dbe88e05ddf3f448ba2d18cf064e43e65d24a5456b8b4",
+        "size": 10504832
+      },
+      {
+        "path": "Config/ecnVersion.xml",
+        "sha256": "96db1023b3040e5ac86ffa8daa75e5d0e4a462cf30ad888ebca1b6a4fcf3881f",
+        "size": 207
+      },
+      {
+        "path": "Config/sysDeviceIdent.xml",
+        "sha256": "0b64170a14beed3ec1d4a96ef29ce87ffdb10d675a9b3a3384c29285d25d22a1",
+        "size": 4182
+      },
+      {
+        "path": "Config/sysDeviceIdentExt.xml",
+        "sha256": "aa0cbe9c01c08bc93d67c4b509d2fb5f9beced278fcc770864bf1688e45763dc",
+        "size": 569
+      },
+      {
+        "path": "Config/Textresource_de.xml",
+        "sha256": "bd760a53bcf5058560677d4fdd52b557afbc4e2200cede966a944acc9c7ac2dd",
+        "size": 29764414
+      },
+      {
+        "path": "Config/Textresource_en.xml",
+        "sha256": "6effeb79aa155424313025c4757c3b743c650b9e9bc56bc34ca57b649ae89893",
+        "size": 29440848
+      },
+      {
+        "path": "Database/ecnViessmann.mdf",
+        "sha256": "9dc6194ebadc241fd64ffe5f3b6fbe40b4dbd8ffb975bdbccffc218b85c3f727",
+        "size": 75956224
+      },
+      {
+        "path": "Database/ecnViessmann.ldf",
+        "sha256": "3e9ace83069f6f39a430cf304b109ac5f6c077b527e9f6040208c040659f5085",
+        "size": 786432
+      }
+    ],
+    "note": "Collected from a real Vitosoft 300 SID1 installation after first launch. Core XML files match the known public LFS reference set except Textresource_de.xml, which differs bytewise and is treated as a local-installation source."
+  }
 }
