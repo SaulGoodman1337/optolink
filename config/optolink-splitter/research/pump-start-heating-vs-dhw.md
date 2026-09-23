@@ -424,3 +424,58 @@ The highest-value remaining static snapshot from this exact logger run is the
 K34 is particularly relevant to the long-term goal because Vitosoft explicitly
 labels it **Einfluss Extern Anfordern auf Pumpen**. It should remain read-only
 until its current value and exact bit/value semantics are understood.
+## Configuration snapshot details — external-demand path and DHW settings
+
+The heating-run probe file captured:
+
+```text
+K32 0x5732 = 00  external-block influence on pumps
+K34 0x5734 = 00  external-demand influence on pumps
+K62 0x6762 = 05  storage-pump overrun = 5 min
+K65 0x6765 = 03  diverter-valve type = Grundfos
+K6C 0x676C = 64  DHW internal-pump speed = 100 %
+K6F 0x676F = 41  DHW power limit = 65 %
+```
+
+The WB2A service documentation defines both coding 32:0 and 34:0 as leaving
+all connected pumps in their normal regulation function. Therefore the current
+configuration contains no special pump action from the external block/request
+input.
+
+However, the same WB2A coding-34 table is relevant to the long-term objective:
+with an active **Externes Anfordern** signal, coding value **34:16** selects:
+
+```text
+internal circulation pump: ON
+other listed pumps:         normal regulation
+```
+
+Values 16..23 all force the internal circulation pump ON while combinations of
+the other pumps may remain in regulation or be switched off.
+
+This is the first controller-documented non-DHW request path found that can
+explicitly force the internal pump ON. It is **not yet a proven 100 % speed
+request**. The documentation specifies ON/OFF effect only, not resulting pump
+speed. Because coding 31 is 100 %, one plausible hypothesis is that a forced
+internal-pump ON state could use the K31 boiler-circuit-pump target, but this
+must not be assumed without a controlled test.
+
+There is also an important side effect: the WB2A service documentation states
+that **Externes Anfordern** also uses coding 9B as a minimum boiler/flow target.
+Thus this path is not automatically a pump-only command; it can affect heat
+request/burner behavior. It must remain read-only until the external-extension
+presence, current 9B value and exact request behavior are established.
+
+The next logger revision therefore also snapshots:
+
+```text
+0x572E  coding 2E, external-extension present/absent
+0x0A48  external-extension software-index block
+0x779B  coding 9B, flow target for external demand
+```
+
+The 5-minute value at coding 62 also explains the earlier DHW sample: the
+controller reported `0x650A=02` (DHW overrun) with the storage pump still ON,
+diverter valve toward DHW and the internal pump at 100 %. The configured
+5-minute storage-pump overrun is consistent with that persistent DHW hydraulic
+state.
