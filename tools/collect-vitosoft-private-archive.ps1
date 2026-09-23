@@ -689,7 +689,7 @@ if (-not $SkipToolDumps) {
         Name=$an.Name
         Version=[string]$an.Version
         CultureName=$an.CultureInfo.Name
-        PublicKeyToken=(Format-PublicKeyToken $an.GetPublicKeyToken())
+        PublicKeyToken=(Format-PublicKeyToken ($an.GetPublicKeyToken()))
         ProcessorArchitecture=[string]$an.ProcessorArchitecture
         MVID=try{[string]$asm.ManifestModule.ModuleVersionId}catch{$null}
       })
@@ -699,7 +699,7 @@ if (-not $SkipToolDumps) {
           Assembly=$an.Name
           Reference=$ref.Name
           Version=[string]$ref.Version
-          PublicKeyToken=(Format-PublicKeyToken $ref.GetPublicKeyToken())
+          PublicKeyToken=(Format-PublicKeyToken ($ref.GetPublicKeyToken()))
         })
       }
       foreach ($res in $asm.GetManifestResourceNames()) {
@@ -823,11 +823,13 @@ reproducible collector scripts, hashes and conclusions.
 
 try {
   $allOutputFiles = @(Get-ChildItem -LiteralPath $OutputDir -File -Recurse -ErrorAction SilentlyContinue)
+  $totalBytes = ($allOutputFiles | Measure-Object -Property Length -Sum).Sum
+  if ($null -eq $totalBytes) { $totalBytes = 0 }
   $archiveStats = [ordered]@{
     generated_utc=(Get-Date).ToUniversalTime().ToString("o")
     file_count=$allOutputFiles.Count
-    total_bytes=($allOutputFiles | Measure-Object -Property Length -Sum).Sum
-    total_gib=[math]::Round((($allOutputFiles | Measure-Object -Property Length -Sum).Sum / 1GB),3)
+    total_bytes=$totalBytes
+    total_gib=[math]::Round(($totalBytes / 1GB),3)
     derived_files=@(Get-ChildItem -LiteralPath $derivedDir -File -Recurse -ErrorAction SilentlyContinue).Count
     raw_files=@(Get-ChildItem -LiteralPath $rawDir -File -Recurse -ErrorAction SilentlyContinue).Count
     sql_files=@(Get-ChildItem -LiteralPath $sqlDir -File -Recurse -ErrorAction SilentlyContinue).Count
@@ -835,6 +837,32 @@ try {
   }
   $archiveStats | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $OutputDir "archive-stats.json") -Encoding UTF8
 } catch {}
+
+$collectorHash = $null
+try {
+  if ($PSCommandPath -and (Test-Path -LiteralPath $PSCommandPath -PathType Leaf)) {
+    $collectorHash = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash.ToLowerInvariant()
+  }
+} catch {}
+
+$summary = [ordered]@{
+  generated_utc=(Get-Date).ToUniversalTime().ToString("o")
+  collector_script_sha256=$collectorHash
+  vitosoft_root=$Root
+  output=$OutputDir
+  device=$Device
+  device_id_hex=$DeviceIdHex
+  raw_tree_collected=(-not $SkipRawTree)
+  sql_collected=(-not $SkipSql)
+  registry_collected=(-not $SkipRegistry)
+  tool_dumps_collected=(-not $SkipToolDumps)
+  prerequisite_install_attempted=(-not $SkipPrerequisiteInstall)
+  ildasm=(Find-ToolPath "ildasm.exe")
+  dumpbin=(Find-ToolPath "dumpbin.exe")
+  sevenzip=(Find-ToolPath "7z.exe")
+  max_sql_rows_per_table=$MaxSqlRowsPerTable
+}
+$summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $OutputDir "private-archive-summary.json") -Encoding UTF8
 
 Write-Host "Building final SHA256 manifest..." -ForegroundColor Cyan
 $manifestPath = Join-Path $OutputDir "archive-manifest.sha256"
@@ -853,34 +881,26 @@ try {
   $manifestWriter.Dispose()
 }
 
-$summary = [ordered]@{
-  generated_utc=(Get-Date).ToUniversalTime().ToString("o")
-  vitosoft_root=$Root
-  output=$OutputDir
-  device=$Device
-  device_id_hex=$DeviceIdHex
-  raw_tree_collected=(-not $SkipRawTree)
-  sql_collected=(-not $SkipSql)
-  registry_collected=(-not $SkipRegistry)
-  tool_dumps_collected=(-not $SkipToolDumps)
-  prerequisite_install_attempted=(-not $SkipPrerequisiteInstall)
-  ildasm=(Find-ToolPath "ildasm.exe")
-  dumpbin=(Find-ToolPath "dumpbin.exe")
-  sevenzip=(Find-ToolPath "7z.exe")
-  max_sql_rows_per_table=$MaxSqlRowsPerTable
-}
-$summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $OutputDir "private-archive-summary.json") -Encoding UTF8
-
 if ($CreateArchive) {
   Write-Host "Creating optional archive..." -ForegroundColor Cyan
-  $seven = Get-Command 7z.exe -ErrorAction SilentlyContinue
-  if ($seven) {
+  $sevenPath = Find-ToolPath "7z.exe"
+  if ($sevenPath) {
     $archive = $OutputDir + ".7z"
-    & $seven.Source a -t7z -mx=5 $archive (Join-Path $OutputDir "*")
-    Write-Host "Archive: $archive"
+    if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force }
+    & $sevenPath a -t7z -mx=5 $archive (Join-Path $OutputDir "*")
+    if ($LASTEXITCODE -ne 0) {
+      throw "7-Zip archive creation failed with exit code $LASTEXITCODE"
+    }
+    Write-Host "Testing archive integrity..." -ForegroundColor Cyan
+    & $sevenPath t $archive | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+      throw "7-Zip archive integrity test failed with exit code $LASTEXITCODE"
+    }
+    Write-Host "Archive: $archive" -ForegroundColor Green
   } else {
     $archive = $OutputDir + ".zip"
     Write-Warning "7z.exe not found; falling back to Compress-Archive. Very large trees may exceed ZIP/.NET limits."
+    if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force }
     Compress-Archive -Path (Join-Path $OutputDir "*") -DestinationPath $archive -Force
     Write-Host "Archive: $archive"
   }
