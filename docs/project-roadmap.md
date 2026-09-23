@@ -324,7 +324,7 @@ Next work:
 Detailed evidence:
 `config/optolink-splitter/research/device-vdensho1-20c2-wb2a.md`.
 
-### Internal pump: automatic 100 % at burner start in heating mode
+### Internal pump: automatic 100 % during burner operation in heating mode
 
 Status: **active / read-only comparison logger added**
 
