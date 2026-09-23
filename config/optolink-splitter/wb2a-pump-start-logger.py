@@ -22,8 +22,11 @@ Fast runtime set:
 One-time read-only configuration snapshot:
   0x572E                 external-extension presence
   0x572F                 vent/fill service program
-  0x7751                 read-only latent K51 candidate; NOT in exact VDensHO1 profile
+  0x7751                 read-only latent K51 candidate
   0x7752                 hydraulic-separator sensor coding K52
+  0x778A                 coding 8A display-condition/service unlock state
+  0x778B                 coding 8B EEPROM-status object
+  0x778C/0x778D          controller software-version bytes
   0x7500                 actuator-test selector (read only)
   0x5730/31/32/34        internal-pump identity/target/external influences
   0x779B                 external-demand flow-temperature target
@@ -174,6 +177,10 @@ def capture_probes(client: OptolinkTcp, probe_path: Path) -> None:
         ("K2F_vent_fill_program", "0x572F", 1),
         ("K51_candidate_hydr_sep_internal_pump", "0x7751", 1),
         ("K52_hydraulic_separator_sensor", "0x7752", 1),
+        ("K8A_display_conditions", "0x778A", 1),
+        ("K8B_EEPROM_status", "0x778B", 1),
+        ("K8C_software_version_msb", "0x778C", 1),
+        ("K8D_software_version_lsb", "0x778D", 1),
         ("actuator_test_selector", "0x7500", 1),
         ("external_extension_software_index", "0x0A48", 4),
         ("K9B_external_demand_flow_target_c", "0x779B", 1),
