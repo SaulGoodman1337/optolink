@@ -479,3 +479,23 @@ controller reported `0x650A=02` (DHW overrun) with the storage pump still ON,
 diverter valve toward DHW and the internal pump at 100 %. The configured
 5-minute storage-pump overrun is consistent with that persistent DHW hydraulic
 state.
+## External-demand path ruled out on this installation
+
+Read-only snapshot:
+
+```text
+0x572E = 00         coding 2E: external extension = not present
+0x0A48 = 00000000   external-extension software-index block = empty
+0x779B = 00         coding 9B external-demand flow target = 0 C/raw 0
+```
+
+This means the controller-side **Externes Anfordern** path is not a practical
+candidate on the current installation without first adding/configuring an
+external extension. The Vitosoft visibility rules for codings 32, 34 and 9B
+are consistent with this: those settings are hidden when coding 2E reports no
+external extension.
+
+Therefore coding 34 should be deprioritized for the pump-start objective. It is
+useful architectural evidence that VDensHO1 can route a non-DHW request to the
+internal pump, but it is not an immediately available software-only control
+path on this boiler as installed.
