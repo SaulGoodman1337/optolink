@@ -144,6 +144,54 @@ function Test-ExpectedToolFailure {
   }
 }
 
+function Invoke-ToolProbe {
+  param([string]$Name,[object]$Task)
+
+  $toolArgs = @($Task.Arguments)
+  $toolPath = [string]$Task.FilePath
+  $probeOut = $Task.StdOut
+  $probeErr = $Task.StdErr
+
+  try {
+    if ($probeOut) { New-Item -ItemType Directory -Path (Split-Path -Parent $probeOut) -Force | Out-Null }
+    if ($probeErr) { New-Item -ItemType Directory -Path (Split-Path -Parent $probeErr) -Force | Out-Null }
+
+    $global:LASTEXITCODE = 0
+    if ($probeOut -and $probeErr) {
+      & $toolPath @toolArgs 1> $probeOut 2> $probeErr
+    } elseif ($probeOut) {
+      & $toolPath @toolArgs 1> $probeOut
+    } elseif ($probeErr) {
+      & $toolPath @toolArgs 1> $null 2> $probeErr
+    } else {
+      & $toolPath @toolArgs
+    }
+
+    $exitCode = $LASTEXITCODE
+    if ($null -eq $exitCode) { $exitCode = 0 }
+
+    if ($exitCode -eq 0) {
+      Write-Host ("{0} self-test: OK" -f $Name) -ForegroundColor Green
+      return $true
+    }
+
+    if (Test-ExpectedToolFailure -Name $Name -Task $Task) {
+      Write-Host ("{0} self-test: protected/blocked assembly; treating runner as functional." -f $Name) -ForegroundColor Yellow
+      return $true
+    }
+
+    Write-Warning ("{0} self-test failed with exit code {1}. Group will be skipped." -f $Name,$exitCode)
+    if ($probeErr -and (Test-Path -LiteralPath $probeErr -PathType Leaf)) {
+      Get-Content -LiteralPath $probeErr -TotalCount 12 -ErrorAction SilentlyContinue |
+        ForEach-Object { Write-Host ("  " + $_) -ForegroundColor Yellow }
+    }
+    return $false
+  } catch {
+    Write-Warning ("{0} self-test threw: {1}. Group will be skipped." -f $Name,$_.Exception.Message)
+    return $false
+  }
+}
+
 function Invoke-ThrottledProcessTasks {
   param([string]$Name,[object[]]$Tasks,[int]$Throttle)
 
@@ -154,14 +202,28 @@ function Invoke-ThrottledProcessTasks {
   # ildasm, dumpbin, corflags and sn.exe. Deep/SQL and robocopy remain parallel.
   Write-Host ("{0}: {1} tasks (direct PS5-safe mode)..." -f $Name,$Tasks.Count) -ForegroundColor Cyan
 
+  if (-not (Invoke-ToolProbe -Name $Name -Task $Tasks[0])) {
+    [void]$phaseTimings.Add([pscustomobject]@{
+      Phase=$Name
+      Seconds=0
+      Tasks=$Tasks.Count
+      Parallelism=1
+      Failed=1
+      Blocked=0
+    })
+    return
+  }
+
   $sw = [Diagnostics.Stopwatch]::StartNew()
-  $done = 0
+  $done = 1
   $failed = 0
   $blocked = 0
 
-  foreach ($task in $Tasks) {
+  for ($taskIndex = 1; $taskIndex -lt $Tasks.Count; $taskIndex++) {
+    $task = $Tasks[$taskIndex]
     $done++
     $toolArgs = @($task.Arguments)
+    $toolPath = [string]$task.FilePath
 
     try {
       if ($task.StdOut) {
@@ -174,13 +236,13 @@ function Invoke-ThrottledProcessTasks {
       $global:LASTEXITCODE = 0
 
       if ($task.StdOut -and $task.StdErr) {
-        & $task.FilePath @toolArgs 1> $task.StdOut 2> $task.StdErr
+        & $toolPath @toolArgs 1> $task.StdOut 2> $task.StdErr
       } elseif ($task.StdOut) {
-        & $task.FilePath @toolArgs 1> $task.StdOut
+        & $toolPath @toolArgs 1> $task.StdOut
       } elseif ($task.StdErr) {
-        & $task.FilePath @toolArgs 1> $null 2> $task.StdErr
+        & $toolPath @toolArgs 1> $null 2> $task.StdErr
       } else {
-        & $task.FilePath @toolArgs
+        & $toolPath @toolArgs
       }
 
       $exitCode = $LASTEXITCODE
