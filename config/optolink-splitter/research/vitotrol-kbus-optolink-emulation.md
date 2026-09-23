@@ -919,3 +919,145 @@ Current confidence levels:
 
 The Optolink-only route is therefore worth a structured read-only investigation
 before adding physical KM-BUS hardware.
+
+
+## WiFiVitotrol source reconstruction of the real KM-BUS runtime path
+
+Public source code from `dumpfheimer/WiFiVitotrol` provides a working
+software implementation of a Vitotrol-like KM-BUS slave. This materially
+clarifies the hardware result above.
+
+### Device identity
+
+The implementation uses:
+
+~~~text
+DEVICE_CLASS = 0x11
+
+Vitotrol 200:
+  DEVICE_ID   = 0x34
+  DEVICE_SN1  = 0x00
+  DEVICE_SN2  = 0x05
+  DEVICE_SLOT = 0x01
+
+Vitotrol 300:
+  DEVICE_ID   = 0x38
+  DEVICE_SN1  = 0x00
+  DEVICE_SN2  = 0x11
+  DEVICE_SLOT = 0x02
+~~~
+
+The slave register map initializes:
+
+~~~text
+F8 = DEVICE_CLASS
+F9 = DEVICE_ID
+FA = DEVICE_SN1
+FB = DEVICE_SN2
+~~~
+
+Therefore a master read of F8..FB for the default Vitotrol-200 setup produces
+the identity bytes:
+
+~~~text
+F8 11 F9 34 FA 00 FB 05
+~~~
+
+The implementation answers the KM-BUS master command family:
+
+~~~text
+0x00  PING
+0x31  request one byte
+0x33  request N bytes
+0x3F  command/unknown
+0xB1  sending one byte
+0xB3  sending N bytes
+0xBF  sending command
+0x80  pong
+~~~
+
+### Runtime room-temperature path
+
+The software does **not** write the controller's Optolink object `0x0896`.
+
+Instead it defines a runtime datapoint:
+
+~~~text
+CurrentRoomTemperature
+type          DATA_10_INT
+periodic send 30000 ms
+~~~
+
+When the KM-BUS master pings the slave and a room-temperature update is due,
+the slave prepares a `0xBF / MSG_SENDING_COMMAND` response with command/data
+payload:
+
+~~~text
+20 <temp-byte xor AA> <high-byte xor AA> <00 xor AA>
+~~~
+
+For temperatures <=25.5 °C the high byte is zero before XOR. Higher
+temperatures use a two-byte representation according to the implementation.
+
+The complete KM-BUS response wrapper is:
+
+~~~text
+00 11 BF 0C SLOT 01
+20 <encoded temperature bytes...>
+CRC16
+~~~
+
+where the source class is `0x11` and the default Vitotrol-200 slot is
+`0x01`.
+
+This is strong source evidence that the local controller values
+
+~~~text
+0x0896  measured room temperature
+0x089C  room-sensor status
+0x0A5C  remote software index
+~~~
+
+are downstream controller state populated by the internal KM-BUS master/slave
+exchange rather than intended Optolink injection registers.
+
+### Why A0=1 produced BC
+
+The hardware experiment is now consistent with the working emulator source:
+
+1. `0x27A0 = 1` tells VDensHO1 to expect a Vitotrol 200 for A1/M1;
+2. the internal KM-BUS master expects a class-`0x11`, slot-`0x01` slave;
+3. no such slave is currently responding;
+4. no identity/software-index/runtime room-temperature state is populated;
+5. VDensHO1 raises `BC = Fehler Fernbedienung HK1`.
+
+Thus the BC fault is not evidence that A0 itself is wrong. It is evidence that
+the expected KM-BUS slave transaction is missing.
+
+### Revised Optolink-only question
+
+The remaining Optolink-only possibility is now much narrower:
+
+> Can one of the generic KBUS transparent/direct/gateway function codes inject
+> or emulate the **slave-side KM-BUS response stream** that the controller's
+> internal KM-BUS master expects?
+
+This is distinct from merely setting controller virtual objects.
+
+The relevant generic function names remain:
+
+~~~text
+0x55 KBUS_TRANSPARENT_READ
+0x56 KBUS_TRANSPARENT_WRITE
+0x61 KBUS_DIRECT_READ
+0x62 KBUS_DIRECT_WRITE
+0x65 KBUS_GATEWAY_READ
+0x66 KBUS_GATEWAY_WRITE
+~~~
+
+No VDensHO1 Vitosoft event currently documents the required argument semantics
+for using those functions as a slave-side injection mechanism. They must not be
+blindly written on the live boiler.
+
+The physical KM-BUS slave-emulation path is now source-supported and should be
+kept as the reliable fallback/reference implementation.
