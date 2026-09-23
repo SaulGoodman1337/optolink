@@ -136,6 +136,98 @@ Web/Service/DeviceWpProgrammingWp.aspx
 That proves Vitosoft has programming workflows for at least some device
 families. It does not prove that VDensHO1/WB2A exposes a flash-programming path.
 
+
+## 2026-09-23 deep-collector result: controller and GFA software paths
+
+The completed deep collector scanned 7105 files and produced a normalized join
+for the exact VDensHO1 / 20C2 profile. The strongest result is that software
+identification is available at two separate control layers even though no
+firmware-image read path was found.
+
+### Main regulation / controller
+
+The exact VDensHO1 event set contains:
+
+| Address | Vitosoft meaning | Access |
+| --- | --- | --- |
+| `0x00FB` | Software-Index des Gerätes | `Virtual_READ` |
+| `0x778C` | Version der Regelungssoftware - oberes Byte | `Virtual_READ` |
+| `0x778D` | Version der Regelungssoftware - unteres Byte | `Virtual_READ` |
+
+The local controller was already observed with:
+
+```text
+0x00FB;4 = 03 00 00 01
+```
+
+The exact VDensHO1 definition only assigns a one-byte Software-Index event to
+`0x00FB`, therefore the first byte `03` is the source-supported software
+index. The meaning of the remaining three bytes must remain unresolved for this
+controller. Similar four-byte decompositions from other Vitosoft device
+families must not be imported into VDensHO1 without hardware evidence.
+
+`0x778C` and `0x778D` are a new, exact-profile route to the regulation
+software version and should be read individually before assigning a combined
+numeric/version notation.
+
+### Fire-control / GFA layer
+
+The complete production join changes an earlier conclusion based on the legacy
+filtered event catalog: exact VDensHO1 membership contains **94 `GFA_READ`
+events**.
+
+High-value examples include:
+
+| GFA address | Vitosoft object |
+| --- | --- |
+| `0x4050` | P80 ID BCU/GFA chip |
+| `0x4051` | P81 Softwareversion FA |
+| `0x4052` | P82 Softwareversion FA - Revision |
+| `0x4053` | P83 appliance/GFA configuration |
+| `0x4054` | P84 GFA phase |
+| `0x4055..0x4058` | GFA status 1..4 |
+| `0x4006` | P06 blower actual speed, raw * 30 rpm |
+| `0x4009` | P09 blower speed setpoint, raw * 30 rpm |
+| `0x400A` | P10 blower PWM setpoint, raw * 0.4 % |
+| `0x4011` | P17 flame formation time, raw / 10 s |
+| `0x0008` | C08 offset of gas-flow-ramp start value |
+| `0x000B` | C11 qGasStart correction, signed % |
+| `0x000D` | C13 correction of pre-purge/ignition/stabilisation power, signed * 2 % |
+
+These definitions are read-only in the exact profile: their write function is
+undefined. Exact profile membership establishes that Vitosoft associates these
+objects with VDensHO1, but local GG1/GFA support still requires a read-only
+hardware test. A failed legacy `Virtual_READ` at address `0x0083` does not
+test this separate `GFA_READ` address space.
+
+### Firmware-image / bootloader result
+
+No file in the installation uses a common controller-firmware extension such as
+`.bin`, `.hex`, `.mot`, `.s19`, `.rom`, `.fw`, `.dfu`, `.img`
+or `.ugw`.
+
+More importantly, the full low-level function inventory contains no
+`FLASH_READ`, `ROM_READ`, `BOOTLOADER_READ` or equivalent firmware-dump
+function. Firmware/flash wording in low-level metadata resolves to unrelated
+device families, notably a LAN-card firmware-version object and Vitocom 300
+"Flashdisk schreiben". Neither is linked to VDensHO1.
+
+The heat-pump "Programming" pages in the Vitosoft web application are
+parameter/programming workflows for heat-pump profiles, not evidence of a
+WB2A firmware flashing interface.
+
+Current conclusion:
+
+- **controller software identification:** source-supported, pending direct reads
+  of `0x778C/0x778D`;
+- **GFA software identification:** source-supported via `GFA_READ`, pending
+  local read-only validation;
+- **full WB2A firmware read through known Vitosoft/Optolink metadata:** no
+  supporting evidence found;
+- **full firmware acquisition:** still a board/MCU identification and hardware
+  dump question unless a presently unknown service path is discovered.
+
+
 ## Why actual firmware would matter
 
 A genuine WB2A controller firmware image could potentially reveal:
@@ -175,14 +267,14 @@ a separate research target.
 
 ## Current priority order
 
-1. Complete the deep Vitosoft research bundle.
-2. Import the normalized VDensHO1/protocol/symbol results into the repository.
-3. Recover the exact request shape for KM-BUS member-list/system-block reads.
-4. Continue the read-only runtime work around `0x0A3C`,
-   `0x7660`, `0x7663`, `0x0A54` and related pump diagnostics.
-5. Identify the WB2A controller and burner-control MCUs from hardware
-   photographs/part numbers.
-6. Only then decide whether a safe firmware-dump path exists.
+1. Read the exact main-controller software version at `0x778C/0x778D`.
+2. Validate the VDensHO1 `GFA_READ` identity/version objects
+   `0x4050..0x4053` read-only on the local appliance.
+3. If supported, validate the high-value GFA runtime objects for blower
+   actual/setpoint/PWM and flame-formation time.
+4. Keep firmware-image extraction separate: identify the WB2A regulation and
+   burner-control MCUs, memories and service/debug headers from hardware.
+5. Continue the pump/KM-BUS work as a separate runtime-control workstream.
 
 ## External context
 
