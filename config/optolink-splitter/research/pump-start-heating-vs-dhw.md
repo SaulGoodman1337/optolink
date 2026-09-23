@@ -1368,3 +1368,53 @@ Next controlled step: change only coding 8A from 175 to 176 at the boiler
 service menu, then check whether coding 51 appears and whether 0x7751 changes
 from protocol error to a successful read. Restore 8A to 175 immediately after
 the check.
+
+### Coding 8A unlock result: coding 51 remains unavailable
+
+Controlled Optolink test:
+
+```text
+baseline:
+  0x778A = AF   (8A:175)
+  0x7751 -> protocol error 3;0x7751;01
+
+write 8A:176:
+  write ACK
+  0x778A = B0
+
+while 8A:176:
+  0x7750 = 03
+  0x7751 -> protocol error 3;0x7751;01
+  0x7752 = 00
+  0x778B = 00
+
+restore 8A:175:
+  write ACK
+  0x778A = AF
+  0x778B = 00
+```
+
+Therefore disabling the coding-display conditions does not make virtual address
+0x7751 readable on the local WB2A. 0x7752 remains normally readable in the same
+state. Coding 51 is thus not merely hidden by the service UI filter; the local
+controller rejects the virtual datapoint even while suppressed-address display
+is enabled.
+
+The coding-51 path is closed for this controller. No write to 0x7751 is
+justified.
+
+The fact that 0x778B stayed 0 across the 8A writes does not prove that no
+nonvolatile write occurred. Any busy/status indication could be shorter than
+the one-second post-write sampling delay, and the exact K8B status semantics
+remain undocumented.
+
+Vitosoft additionally exposes:
+
+```text
+0x778E  K8E_I2C_FehlerEEPROM_GWG
+        "I2C Fehlerflag EEPROM GWG"
+```
+
+This is a read-only diagnostic flag and can be monitored during further
+configuration-write experiments, but it is an error flag rather than a write
+counter.
