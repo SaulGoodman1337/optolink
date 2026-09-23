@@ -87,7 +87,7 @@ function Copy-Tree {
     & robocopy.exe @args | Out-Null
     $code = $LASTEXITCODE
     $Log.WriteLine(('"{0}","{1}","robocopy","{2}"' -f ($Source -replace '"','""'),($Destination -replace '"','""'),$code))
-    if ($code -gt 7) { throw "robocopy failed for $Source with exit code $code" }
+    if ($code -gt 7) { Write-Warning "robocopy reported exit code $code for $Source; continuing with the remaining collection stages." }
   } else {
     Get-ChildItem -LiteralPath $Source -Force -ErrorAction SilentlyContinue |
       Copy-Item -Destination $Destination -Recurse -Force -ErrorAction Stop
