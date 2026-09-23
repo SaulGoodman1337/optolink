@@ -1025,3 +1025,23 @@ The remaining problem is narrower:
 Repeatedly rewriting E7 for every burner cycle should not be adopted until the
 storage/write semantics of this coding parameter are understood; E7 is exposed
 as a configuration/coding value, not as a dedicated volatile runtime request.
+## E8/E9 check after E7=100 % test
+
+Vitosoft defines:
+
+```text
+E8 = Solldrehzahl Pumpe im Nebenbetrieb A1M1
+  0 = minimal nach Cod. E7
+  1 = reduziert nach Cod. E9
+
+E9 = Reduzierte Drehzahl geregelte Pumpe A1M1 [%]
+```
+
+The associated heating-circuit runtime model separately exposes current
+operating mode at 0x2500 byte 1 as Abschaltbetrieb / Reduzierter Betrieb /
+Normalbetrieb. This context indicates that E8/E9 belong to normal-vs-reduced
+heating operating modes, not to a dedicated burner-on/burner-off pump state.
+
+Therefore E8 is not currently considered a solution for lowering pump speed
+specifically when the flame goes out during an otherwise normal daytime A1
+heating period.
