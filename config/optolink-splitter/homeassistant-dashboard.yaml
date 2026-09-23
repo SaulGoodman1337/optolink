@@ -2191,6 +2191,11 @@ views:
                 state: "on"
     cards: []
 
+  # Diagnose view: compact, information-dense cockpit.
+  # HACS frontend dependencies:
+  # - lovelace-multiple-entity-row
+  # - flex-table-card
+  # - card-mod
   - title: Diagnose
     path: diagnose
     icon: mdi:stethoscope
@@ -2243,6 +2248,34 @@ views:
                 tap_action:
                   action: more-info
               - type: template
+                entity: sensor.vitodens_200_wb2a_kesseltemperatur
+                icon: mdi:thermometer
+                content: >-
+                  Kessel {{ states('sensor.vitodens_200_wb2a_kesseltemperatur') }} °C
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur
+                icon: mdi:target
+                content: >-
+                  OPT {{ states('sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur') }} °C
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl
+                icon: mdi:pump
+                content: >-
+                  HK {{ states('sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl') }} %
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
+                icon: mdi:pump
+                content: >-
+                  Intern {{ states('sensor.vitodens_200_wb2a_interne_pumpe_drehzahl') }} %
+                tap_action:
+                  action: more-info
+              - type: template
                 entity: binary_sensor.vitodens_200_wb2a_brenner_taktsperre_aktiv
                 icon: mdi:timer-lock
                 content: >-
@@ -2273,18 +2306,9 @@ views:
                 entity: binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb
                 icon: mdi:tune-variant
                 content: >-
-                  Regelung {{ 'AN' if is_state('binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb', 'on') else 'AUS' }}
+                  Regel {{ 'AN' if is_state('binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb', 'on') else 'AUS' }}
                 icon_color: >-
                   {{ 'green' if is_state('binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb', 'on') else 'grey' }}
-                tap_action:
-                  action: more-info
-              - type: template
-                entity: binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv
-                icon: mdi:chart-timeline-variant-shimmer
-                content: >-
-                  OPT {{ 'AN' if is_state('binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv', 'on') else 'AUS' }}
-                icon_color: >-
-                  {{ 'blue' if is_state('binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv', 'on') else 'grey' }}
                 tap_action:
                   action: more-info
               - type: template
@@ -2296,487 +2320,643 @@ views:
                   {{ 'red' if is_state('binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt', 'on') else 'green' }}
                 tap_action:
                   action: more-info
-
-          - type: custom:mushroom-template-card
-            primary: Brenner / Regelung
-            secondary: >-
-              RKR {{ states('sensor.vitodens_200_wb2a_rkr_brennerzustand') }}
-              · Mod {{ states('sensor.vitodens_200_wb2a_brenner_modulationsgrad') }} %
-              · CFDM {{ states('sensor.vitodens_200_wb2a_cfdm_leistungswert') }}
-              · GFA fein {{ states('sensor.vitodens_200_wb2a_gfa_leistungs_ansteuerwert_fein') }}
-            icon: mdi:gas-burner
-            color: >-
-              {{ 'orange' if is_state('binary_sensor.vitodens_200_wb2a_brenner_flamme', 'on') else 'grey' }}
-            entity_id:
-              - sensor.vitodens_200_wb2a_rkr_brennerzustand
-              - sensor.vitodens_200_wb2a_brenner_modulationsgrad
-              - sensor.vitodens_200_wb2a_cfdm_leistungswert
-              - sensor.vitodens_200_wb2a_gfa_leistungs_ansteuerwert_fein
-              - binary_sensor.vitodens_200_wb2a_brenner_flamme
-            tap_action:
-              action: none
+            card_mod:
+              style: |
+                ha-card {
+                  padding: 2px 4px 4px;
+                }
             grid_options:
-              columns: 6
-              rows: 1
-
-          - type: custom:mushroom-template-card
-            primary: Kessel / Sollwerte
-            secondary: >-
-              Ist {{ states('sensor.vitodens_200_wb2a_kesseltemperatur') }} °C
-              · RKR {{ states('sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur_normal') }} °C
-              · OPT {{ states('sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur') }} °C
-              · BLR {{ states('sensor.vitodens_200_wb2a_blr_kesselsolltemperatur_effektiv') }} °C
-            icon: mdi:thermometer-water
-            color: blue
-            entity_id:
-              - sensor.vitodens_200_wb2a_kesseltemperatur
-              - sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur_normal
-              - sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur
-              - sensor.vitodens_200_wb2a_blr_kesselsolltemperatur_effektiv
-            tap_action:
-              action: none
-            grid_options:
-              columns: 6
-              rows: 1
-
-          - type: custom:mushroom-template-card
-            primary: Pumpen
-            secondary: >-
-              HK {{ states('sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl') }} %
-              · Intern {{ states('sensor.vitodens_200_wb2a_interne_pumpe_drehzahl') }} %
-              · HK {{ 'AN' if is_state('binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_ausgang', 'on') else 'AUS' }}
-              · Intern {{ 'AN' if is_state('binary_sensor.vitodens_200_wb2a_interne_pumpe_status', 'on') else 'AUS' }}
-            icon: mdi:pump
-            color: cyan
-            entity_id:
-              - sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl
-              - sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
-              - binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_ausgang
-              - binary_sensor.vitodens_200_wb2a_interne_pumpe_status
-            tap_action:
-              action: none
-            grid_options:
-              columns: 6
-              rows: 1
-
-          - type: custom:mushroom-template-card
-            primary: Fehlerstatus
-            secondary: >-
-              Alarm {{ states('sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode') }}
-              · GFA {{ states('sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus') }}
-              · KM Int {{ states('sensor.vitodens_200_wb2a_km_fehler_interne_pumpe') }}
-              · CFDM {{ 'FEHLER' if is_state('binary_sensor.vitodens_200_wb2a_cfdm_fehler', 'on') else 'OK' }}
-            icon: mdi:shield-check-outline
-            color: >-
-              {% if is_state('binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt', 'on')
-                 or is_state('binary_sensor.vitodens_200_wb2a_cfdm_fehler', 'on')
-                 or is_state('binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre', 'on') %}
-                red
-              {% else %}
-                green
-              {% endif %}
-            entity_id:
-              - sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode
-              - sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus
-              - sensor.vitodens_200_wb2a_km_fehler_interne_pumpe
-              - binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt
-              - binary_sensor.vitodens_200_wb2a_cfdm_fehler
-              - binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre
-            tap_action:
-              action: none
-            grid_options:
-              columns: 6
-              rows: 1
+              columns: 12
 
       - type: grid
         column_span: 4
         cards:
           - type: heading
-            heading: Details
+            heading: Live-Regelung
             heading_style: subtitle
-            icon: mdi:view-grid-compact
+            icon: mdi:view-dashboard-outline
 
-          - type: custom:mushroom-template-card
-            primary: Sensorik
-            secondary: Status der Eingangssensoren
-            icon: mdi:thermometer-alert
-            color: blue
-            tap_action:
-              action: fire-dom-event
-              browser_mod:
-                service: browser_mod.popup
-                data:
-                  title: Sensorik
-                  adaptive: true
-                  content:
-                    type: entities
-                    show_header_toggle: false
-                    entities:
-                      - sensor.vitodens_200_wb2a_sensorstatus_aussentemperatur_anzeige
-                      - sensor.vitodens_200_wb2a_sensorstatus_kesseltemperatur_anzeige
-                      - sensor.vitodens_200_wb2a_sensorstatus_sts2_anzeige
-                      - sensor.vitodens_200_wb2a_sensorstatus_vlts_anzeige
-                      - sensor.vitodens_200_wb2a_sensorstatus_raum_m1_anzeige
-                      - sensor.vitodens_200_wb2a_heizkreis_m1_reglervariante_anzeige
-                      - binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt
+          - type: entities
+            title: Brenner / interne Regelung
+            show_header_toggle: false
+            entities:
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_brenner_modulationsgrad
+                name: Brenner
+                state_header: Mod
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_rkr_brennerzustand
+                    name: RKR
+                  - entity: sensor.vitodens_200_wb2a_gfa_leistungs_ansteuerwert_fein
+                    name: GFA
+                  - entity: binary_sensor.vitodens_200_wb2a_brenner_flamme
+                    name: Flamme
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur_normal
+                name: Kesselsoll
+                state_header: RKR
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur
+                    name: OPT
+                  - entity: sensor.vitodens_200_wb2a_blr_kesselsolltemperatur_effektiv
+                    name: BLR
+                  - entity: sensor.vitodens_200_wb2a_cfdm_kesselsolltemperatur_effektiv
+                    name: CFDM
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_cfdm_leistungswert
+                name: CFDM
+                state_header: Leistung
+                entities:
+                  - entity: binary_sensor.vitodens_200_wb2a_cfdm_leistungsstatus
+                    name: Status
+                  - entity: sensor.vitodens_200_wb2a_cfdm_application_mode
+                    name: App
+                  - entity: sensor.vitodens_200_wb2a_cfdm_consumer_demand_temperatur
+                    name: Demand
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_rkr_statusbyte_55e0_b14
+                name: RKR intern
+                state_header: 55E0.b14
+                entities:
+                  - entity: binary_sensor.vitodens_200_wb2a_brenner_startphase
+                    name: Start
+                  - entity: binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb
+                    name: Regel
+                  - entity: binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv
+                    name: OPT aktiv
+            card_mod:
+              style: |
+                .card-header {
+                  padding: 10px 12px 4px !important;
+                  font-size: 16px !important;
+                }
+                .card-content {
+                  padding: 4px 12px 8px !important;
+                }
+            grid_options:
+              columns: 6
+
+          - type: entities
+            title: Temperaturen / Anlage
+            show_header_toggle: false
+            entities:
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_kesseltemperatur
+                name: Temperaturen
+                state_header: Kessel
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
+                    name: Vorlauf
+                  - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlaufsolltemperatur
+                    name: VL Soll
+                  - entity: sensor.vitodens_200_wb2a_aussentemperatur
+                    name: Außen
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_aussentemperatur_gedaempft
+                name: Außentemperatur
+                state_header: Gedämpft
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_aussentemperatur
+                    name: Aktuell
+                  - entity: sensor.vitodens_200_wb2a_cfdm_vorlauftemperatur
+                    name: CFDM VL
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_warmwasser_temperatur
+                name: Warmwasser
+                state_header: Temp
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_warmwasser_ladestatus
+                    name: Ladung
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_heizkreis_m1_betriebsart_aktuell
+                name: Anlage
+                state_header: Betrieb
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_heizkreis_m1_betriebsprogramm_aktuell
+                    name: Programm
+                  - entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
+                    name: Ventil
+            card_mod:
+              style: |
+                .card-header {
+                  padding: 10px 12px 4px !important;
+                  font-size: 16px !important;
+                }
+                .card-content {
+                  padding: 4px 12px 8px !important;
+                }
+            grid_options:
+              columns: 6
+
+          - type: entities
+            title: Freigaben / Fehlerstatus
+            show_header_toggle: false
+            entities:
+              - type: custom:multiple-entity-row
+                entity: binary_sensor.vitodens_200_wb2a_brenner_taktsperre_aktiv
+                name: Wiederanlauf
+                state_header: Sperre
+                entities:
+                  - entity: binary_sensor.vitodens_200_wb2a_brenner_wiederanlauf_freigegeben
+                    name: Freigabe
+                  - entity: binary_sensor.vitodens_200_wb2a_brenner_startphase
+                    name: Start
+                  - entity: binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb
+                    name: Regel
+              - type: custom:multiple-entity-row
+                entity: binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt
+                name: GFA / CFDM
+                state_header: GFA Lock
+                entities:
+                  - entity: binary_sensor.vitodens_200_wb2a_cfdm_fehler
+                    name: CFDM Fehler
+                  - entity: binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre
+                    name: CFDM Lock
+                  - entity: sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus
+                    name: GFA Code
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode
+                name: Diagnose
+                state_header: Alarm
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_eeprom_status
+                    name: EEPROM
+                  - entity: sensor.vitodens_200_wb2a_i2c_eeprom_gwg_flag
+                    name: I²C GWG
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_km_fehler_pumpe_a1
+                name: KM-BUS
+                state_header: HK-Pumpe
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_km_fehler_interne_pumpe
+                    name: Int. Pumpe
+            card_mod:
+              style: |
+                .card-header {
+                  padding: 10px 12px 4px !important;
+                  font-size: 16px !important;
+                }
+                .card-content {
+                  padding: 4px 12px 8px !important;
+                }
+            grid_options:
+              columns: 6
+
+          - type: entities
+            title: Pumpen / Sensorik
+            show_header_toggle: false
+            entities:
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl
+                name: Heizkreis
+                state_header: Drehzahl
+                entities:
+                  - entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_ausgang
+                    name: Ausgang
+                  - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
+                    name: Vorlauf
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
+                name: Interne Pumpe
+                state_header: Drehzahl
+                entities:
+                  - entity: binary_sensor.vitodens_200_wb2a_interne_pumpe_status
+                    name: Status
+                  - entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
+                    name: Ventil
+                  - entity: binary_sensor.vitodens_200_wb2a_zirkulationspumpe_status
+                    name: Zirk.
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_sensorstatus_aussentemperatur_anzeige
+                name: Sensorik 1
+                state_header: Außen
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_sensorstatus_kesseltemperatur_anzeige
+                    name: Kessel
+                  - entity: sensor.vitodens_200_wb2a_sensorstatus_sts2_anzeige
+                    name: STS2
+                  - entity: sensor.vitodens_200_wb2a_sensorstatus_vlts_anzeige
+                    name: VLTS
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_sensorstatus_raum_m1_anzeige
+                name: Sensorik 2
+                state_header: Raum M1
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_heizkreis_m1_reglervariante_anzeige
+                    name: Regler
+            card_mod:
+              style: |
+                .card-header {
+                  padding: 10px 12px 4px !important;
+                  font-size: 16px !important;
+                }
+                .card-content {
+                  padding: 4px 12px 8px !important;
+                }
+            grid_options:
+              columns: 6
+
+      - type: grid
+        column_span: 4
+        cards:
+          - type: heading
+            heading: Fehlerhistorien
+            heading_style: subtitle
+            icon: mdi:history
+
+          - type: custom:flex-table-card
+            title: Systemfehler 01–10
+            clickable: true
+            entities:
+              - sensor.vitodens_200_wb2a_fehlerhistorie_01_anzeige
+              - sensor.vitodens_200_wb2a_fehlerhistorie_02_anzeige
+              - sensor.vitodens_200_wb2a_fehlerhistorie_03_anzeige
+              - sensor.vitodens_200_wb2a_fehlerhistorie_04_anzeige
+              - sensor.vitodens_200_wb2a_fehlerhistorie_05_anzeige
+              - sensor.vitodens_200_wb2a_fehlerhistorie_06_anzeige
+              - sensor.vitodens_200_wb2a_fehlerhistorie_07_anzeige
+              - sensor.vitodens_200_wb2a_fehlerhistorie_08_anzeige
+              - sensor.vitodens_200_wb2a_fehlerhistorie_09_anzeige
+              - sensor.vitodens_200_wb2a_fehlerhistorie_10_anzeige
+            columns:
+              - name: "#"
+                data: entity_id
+                modify: "x.match(/_(\\d{2})(?:_anzeige)?$/)[1]"
+              - name: Ereignis
+                data: state
+            css:
+              table+: "font-size: 12px;"
+              "tr td+": "padding: 2px 6px;"
+              "thead th+": "padding: 3px 6px;"
             grid_options:
               columns: 4
-              rows: 1
 
-          - type: custom:mushroom-template-card
-            primary: RKR / CFDM / GFA
-            secondary: Interne Laufzeitwerte
-            icon: mdi:state-machine
-            color: purple
-            tap_action:
-              action: fire-dom-event
-              browser_mod:
-                service: browser_mod.popup
-                data:
-                  title: RKR / CFDM / GFA intern
-                  adaptive: true
-                  content:
-                    type: vertical-stack
-                    cards:
-                      - type: entities
-                        show_header_toggle: false
-                        entities:
-                          - entity: sensor.vitodens_200_wb2a_rkr_brennerzustand
-                            name: RKR Brennerzustand
-                          - entity: binary_sensor.vitodens_200_wb2a_brenner_taktsperre_aktiv
-                            name: Taktsperre aktiv
-                          - entity: binary_sensor.vitodens_200_wb2a_brenner_wiederanlauf_freigegeben
-                            name: Wiederanlauf freigegeben
-                          - entity: binary_sensor.vitodens_200_wb2a_brenner_startphase
-                            name: Brenner-Startphase
-                          - entity: binary_sensor.vitodens_200_wb2a_brenner_anfahroptimierung_aktiv
-                            name: Anfahroptimierung aktiv
-                          - entity: binary_sensor.vitodens_200_wb2a_brenner_regelbetrieb
-                            name: Regelbetrieb
-                          - entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur_normal
-                            name: RKR Kesselsoll normal
-                          - entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur
-                            name: RKR internes Soll (OPT)
-                          - entity: sensor.vitodens_200_wb2a_rkr_statusbyte_55e0_b14
-                            name: RKR Statusbyte 55E0.b14
-                          - entity: sensor.vitodens_200_wb2a_brenner_modulationsgrad
-                            name: Brenner Modulationsgrad
-                          - entity: sensor.vitodens_200_wb2a_cfdm_leistungswert
-                            name: CFDM Leistungswert
-                          - entity: sensor.vitodens_200_wb2a_gfa_leistungs_ansteuerwert_fein
-                            name: GFA Leistungs-/Ansteuerwert fein
-                          - entity: binary_sensor.vitodens_200_wb2a_cfdm_leistungsstatus
-                            name: CFDM Leistungsstatus
-                          - entity: sensor.vitodens_200_wb2a_cfdm_application_mode
-                            name: CFDM Application-Mode-Eingang
-                          - entity: sensor.vitodens_200_wb2a_cfdm_consumer_demand_temperatur
-                            name: CFDM Consumer-Demand-Eingang
-                          - entity: sensor.vitodens_200_wb2a_blr_kesselsolltemperatur_effektiv
-                            name: BLR effektiver Kesselsollwert
-                          - entity: sensor.vitodens_200_wb2a_cfdm_kesselsolltemperatur_effektiv
-                            name: CFDM effektiver Kesselsollwert
-                          - entity: sensor.vitodens_200_wb2a_cfdm_vorlauftemperatur
-                            name: CFDM Vorlauftemperatur
-                      - type: markdown
-                        content: >-
-                          RKR/Taktsperre: 55E0.b14 Bit 0 blieb in zwei
-                          kontrollierten Zyklen bis zum Wiederanlauf-Fenster
-                          auf 0. OPT ist der interne anfahroptimierte
-                          Kesselsollwert aus 55E0[10:12].
+          - type: custom:flex-table-card
+            title: GFA-Historie 01–10
+            clickable: true
+            entities:
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_01
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_02
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_03
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_04
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_05
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_06
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_07
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_08
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_09
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_10
+            columns:
+              - name: "#"
+                data: entity_id
+                modify: "x.match(/_(\\d{2})$/)[1]"
+              - name: Ereignis
+                data: state
+            css:
+              table+: "font-size: 12px;"
+              "tr td+": "padding: 2px 6px;"
+              "thead th+": "padding: 3px 6px;"
             grid_options:
               columns: 4
-              rows: 1
 
-          - type: custom:mushroom-template-card
-            primary: Fehler
-            secondary: Aktuell + Historien
-            icon: mdi:alert-circle-outline
-            color: red
-            tap_action:
-              action: fire-dom-event
-              browser_mod:
-                service: browser_mod.popup
-                data:
-                  title: Fehler & Historien
-                  adaptive: true
-                  content:
-                    type: vertical-stack
-                    cards:
-                      - type: entities
-                        title: Aktueller Status
-                        show_header_toggle: false
-                        entities:
-                          - entity: sensor.vitodens_200_wb2a_km_fehler_pumpe_a1
-                            name: KM Heizkreispumpe A1
-                          - entity: sensor.vitodens_200_wb2a_km_fehler_interne_pumpe
-                            name: KM interne Pumpe
-                          - entity: sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus
-                            name: GFA aktueller Fehlerstatus
-                          - entity: binary_sensor.vitodens_200_wb2a_cfdm_fehler
-                            name: CFDM Fehler
-                          - entity: binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre
-                            name: CFDM harte Sperre
-                          - entity: sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode
-                            name: Aktueller Alarmcode
-                          - entity: sensor.vitodens_200_wb2a_eeprom_status
-                            name: EEPROM Status
-                          - entity: sensor.vitodens_200_wb2a_i2c_eeprom_gwg_flag
-                            name: I²C EEPROM-GWG Flag
-                      - type: entities
-                        title: Letzte 10 Systemfehler
-                        show_header_toggle: false
-                        entities:
-                          - sensor.vitodens_200_wb2a_fehlerhistorie_01_anzeige
-                          - sensor.vitodens_200_wb2a_fehlerhistorie_02_anzeige
-                          - sensor.vitodens_200_wb2a_fehlerhistorie_03_anzeige
-                          - sensor.vitodens_200_wb2a_fehlerhistorie_04_anzeige
-                          - sensor.vitodens_200_wb2a_fehlerhistorie_05_anzeige
-                          - sensor.vitodens_200_wb2a_fehlerhistorie_06_anzeige
-                          - sensor.vitodens_200_wb2a_fehlerhistorie_07_anzeige
-                          - sensor.vitodens_200_wb2a_fehlerhistorie_08_anzeige
-                          - sensor.vitodens_200_wb2a_fehlerhistorie_09_anzeige
-                          - sensor.vitodens_200_wb2a_fehlerhistorie_10_anzeige
-                      - type: entities
-                        title: GFA Fehler-/Ereignishistorie
-                        show_header_toggle: false
-                        entities:
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_01
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_02
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_03
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_04
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_05
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_06
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_07
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_08
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_09
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_10
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_11
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_12
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_13
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_14
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_15
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_16
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_17
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_18
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_19
-                          - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_20
+          - type: custom:flex-table-card
+            title: GFA-Historie 11–20
+            clickable: true
+            entities:
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_11
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_12
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_13
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_14
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_15
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_16
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_17
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_18
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_19
+              - sensor.vitodens_200_wb2a_gfa_fehlerhistorie_20
+            columns:
+              - name: "#"
+                data: entity_id
+                modify: "x.match(/_(\\d{2})$/)[1]"
+              - name: Ereignis
+                data: state
+            css:
+              table+: "font-size: 12px;"
+              "tr td+": "padding: 2px 6px;"
+              "thead th+": "padding: 3px 6px;"
             grid_options:
               columns: 4
-              rows: 1
 
-          - type: custom:mushroom-template-card
-            primary: Gerät
-            secondary: Identifikation & Software
-            icon: mdi:information-outline
-            color: teal
-            tap_action:
-              action: fire-dom-event
-              browser_mod:
-                service: browser_mod.popup
-                data:
-                  title: Gerät & Software
-                  adaptive: true
-                  content:
-                    type: vertical-stack
-                    cards:
-                      - type: entities
-                        title: Identifikation
-                        show_header_toggle: false
-                        entities:
-                          - sensor.vitodens_200_wb2a_geraete_id_anzeige
-                          - sensor.vitodens_200_wb2a_codierstecker_sachnummer_anzeige
-                          - sensor.vitodens_200_wb2a_codierstecker_kennung_anzeige
-                          - sensor.vitodens_200_wb2a_bedienteil_sw_index_anzeige
-                          - sensor.vitodens_200_wb2a_gfa_kennung_anzeige
-                          - sensor.vitodens_200_wb2a_anlagenschema_anzeige
-                          - sensor.vitodens_200_wb2a_anlagentyp_anzeige
-                          - sensor.vitodens_200_wb2a_bauart_warmwasser_anzeige
-                      - type: entities
-                        title: Regelung
-                        show_header_toggle: false
-                        entities:
-                          - entity: sensor.vitodens_200_wb2a_regelungssoftware_version
-                            name: Regelungssoftware
-                          - entity: sensor.vitodens_200_wb2a_eeprom_status
-                            name: EEPROM Status
-                          - entity: sensor.vitodens_200_wb2a_i2c_eeprom_gwg_flag
-                            name: I²C EEPROM-GWG Flag
-            grid_options:
-              columns: 4
-              rows: 1
-
-          - type: custom:mushroom-template-card
-            primary: Codierstecker
-            secondary: Grenzwerte & Kennfelder
+      - type: grid
+        column_span: 4
+        cards:
+          - type: heading
+            heading: Gerät / Codierstecker
+            heading_style: subtitle
             icon: mdi:chip
-            color: amber
-            tap_action:
-              action: fire-dom-event
-              browser_mod:
-                service: browser_mod.popup
-                data:
-                  title: Codierstecker
-                  adaptive: true
-                  content:
-                    type: vertical-stack
-                    cards:
-                      - type: markdown
-                        content: >-
-                          Gerätespezifische, nur gelesene Grenz- und Kennwerte.
-                          Das sind keine aktuellen Sollwerte.
-                      - type: entities
-                        title: Temperaturgrenzen
-                        show_header_toggle: false
-                        entities:
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_kesselsoll_max
-                            name: Kessel-Sollbereich max
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_kesselsoll_min
-                            name: Kessel-Sollbereich min
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_kesseltemperatur_min
-                            name: Kessel-Mindesttemperatur
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_wwsoll_max
-                            name: Warmwasser-Sollbereich max
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_wwsoll_min
-                            name: Warmwasser-Sollbereich min
-                      - type: entities
-                        title: Brenner & Leistung
-                        show_header_toggle: false
-                        entities:
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_min_leistung
-                            name: Brennerleistung min
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_heizung_leistungsbegrenzung
-                            name: Heizleistung Begrenzung GWG32
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_heizung_max_leistung
-                            name: Heizleistung absolute Grenze GWG5D
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_ww_leistungsbegrenzung
-                            name: Warmwasserleistung Begrenzung GWG30
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_ww_max_leistung
-                            name: Warmwasserleistung absolute Grenze GWG5C
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_kesselsollleistung_speicherbetrieb
-                            name: Kesselsollleistung Speicherbetrieb
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_offset
-                            name: Brenner-Offset
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_anfahroptimierung
-                            name: Brenner-Anfahroptimierung
-                      - type: entities
-                        title: Interne Pumpe
-                        show_header_toggle: false
-                        entities:
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_interne_pumpe_min_drehzahl
-                            name: Mindestdrehzahl
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_interne_pumpe_nachlauf
-                            name: Nachlaufzeit
-                      - type: entities
-                        title: Geräteausführung
-                        show_header_toggle: false
-                        entities:
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_bauart_warmwasser
-                            name: WW-Bauart laut Codierstecker
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_brennertyp
-                            name: Brennertyp laut Codierstecker
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_umschaltventil_bauart
-                            name: Umschaltventil laut Codierstecker
-                      - type: entities
-                        title: Grundfos-Umschaltventil Kennfeld
-                        show_header_toggle: false
-                        entities:
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_position_heizen
-                            name: Position Heizen
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x1
-                            name: Verstellweg x1 Schrittzahl
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x1
-                            name: Verstellweg x1 Frequenzwert
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x2
-                            name: Verstellweg x2 Schrittzahl
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x2
-                            name: Verstellweg x2 Frequenzwert
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x3
-                            name: Verstellweg x3 Schrittzahl
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x3
-                            name: Verstellweg x3 Frequenzwert
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x4
-                            name: Verstellweg x4 Schrittzahl
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x4
-                            name: Verstellweg x4 Frequenzwert
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x5
-                            name: Verstellweg x5 Schrittzahl
-                          - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x5
-                            name: Verstellweg x5 Frequenzwert
-                      - type: entities
-                        title: Warmwasser-Regelparameter
-                        show_header_toggle: false
-                        entities:
-                          - sensor.vitodens_200_wb2a_codierstecker_dlh_ausschaltdifferenz_start_stop
-                          - sensor.vitodens_200_wb2a_codierstecker_dlh_einschaltdifferenz_start_stop
-                          - sensor.vitodens_200_wb2a_codierstecker_dlh_nachlaufzeit
-                          - sensor.vitodens_200_wb2a_codierstecker_dlh_max_anstiegszeit
-                          - sensor.vitodens_200_wb2a_codierstecker_dlh_reglerverstaerkung
-                          - sensor.vitodens_200_wb2a_codierstecker_dlh_reglervorhaltezeit
-                          - sensor.vitodens_200_wb2a_codierstecker_dlh_reglernachstellzeit
-                          - sensor.vitodens_200_wb2a_codierstecker_dlh_ausschaltdifferenz
-                          - sensor.vitodens_200_wb2a_codierstecker_zirkulationspumpe_bei_speicherladung
-                      - type: entities
-                        title: Brennerregelung
-                        show_header_toggle: false
-                        entities:
-                          - sensor.vitodens_200_wb2a_codierstecker_brenner_einschaltdifferenz
-                          - sensor.vitodens_200_wb2a_codierstecker_brenner_ausschaltdifferenz
-                          - sensor.vitodens_200_wb2a_codierstecker_brenner_ausschaltdifferenz_volllast
-                          - sensor.vitodens_200_wb2a_codierstecker_brenner_mindestpausenzeit
-                          - sensor.vitodens_200_wb2a_codierstecker_brenner_pausenabbruch_differenz
-                          - sensor.vitodens_200_wb2a_codierstecker_brenner_pausenabbruch_temperatur
-                          - sensor.vitodens_200_wb2a_codierstecker_kt_regler_verstaerkung
-                          - sensor.vitodens_200_wb2a_codierstecker_kt_regler_nachstellzeit
-                      - type: entities
-                        title: Brennerkennlinie
-                        show_header_toggle: false
-                        entities:
-                          - sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_10
-                          - sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_20
-                          - sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_30
-                          - sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_40
-                          - sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_50
-                          - sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_60
-                          - sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_70
-                          - sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_80
-                          - sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_90
-                          - sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_100
+
+          - type: entities
+            title: Gerät & Software
+            show_header_toggle: false
+            entities:
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_geraete_id_anzeige
+                name: Identifikation
+                state_header: Gerät
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_sachnummer_anzeige
+                    name: Codierstecker
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_kennung_anzeige
+                    name: Kennung
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_regelungssoftware_version
+                name: Software
+                state_header: Regelung
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_bedienteil_sw_index_anzeige
+                    name: Bedienteil
+                  - entity: sensor.vitodens_200_wb2a_gfa_kennung_anzeige
+                    name: GFA
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_anlagenschema_anzeige
+                name: Anlage
+                state_header: Schema
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_anlagentyp_anzeige
+                    name: Typ
+                  - entity: sensor.vitodens_200_wb2a_bauart_warmwasser_anzeige
+                    name: WW
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_eeprom_status
+                name: EEPROM
+                state_header: Status
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_i2c_eeprom_gwg_flag
+                    name: I²C GWG
+            card_mod:
+              style: |
+                .card-header {
+                  padding: 10px 12px 4px !important;
+                  font-size: 16px !important;
+                }
+                .card-content {
+                  padding: 4px 12px 8px !important;
+                }
             grid_options:
-              columns: 4
-              rows: 1
+              columns: 6
 
-          - type: custom:mushroom-template-card
-            primary: RKR / OPT Erklärung
-            secondary: Forschungsstand kompakt
-            icon: mdi:book-open-page-variant
-            color: grey
-            tap_action:
-              action: fire-dom-event
-              browser_mod:
-                service: browser_mod.popup
-                data:
-                  title: RKR / OPT
-                  adaptive: true
-                  content:
-                    type: markdown
-                    content: >-
-                      **Taktsperre / Wiederanlauf:** 55E0.b14 Bit 0 blieb in
-                      zwei kontrollierten Zyklen trotz Wärmeanforderung bis zum
-                      Wiederanlauf-Fenster auf 0. Mit der Freigabe auf 1 begann
-                      die nächste Feuerungssequenz.
-
-                      **OPT:** 55E0[10:12] verhält sich als interner
-                      anfahroptimierter Kesselsollwert. Beim Wiederanlauf lag
-                      er zunächst 20 K unter dem normalen RKR-Soll und stieg
-                      danach wieder an.
-
-                      Roh-/Research-Werte werden bewusst nur in den
-                      Detailansichten gezeigt, damit die Live-Diagnose
-                      übersichtlich bleibt.
+          - type: entities
+            title: Codierstecker – Kernwerte
+            show_header_toggle: false
+            entities:
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_codierstecker_kesselsoll_max
+                name: Temperatur
+                state_header: Kessel max
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_kesselsoll_min
+                    name: Kessel min
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_kesseltemperatur_min
+                    name: KT min
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_wwsoll_max
+                    name: WW max
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_wwsoll_min
+                    name: WW min
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_codierstecker_brenner_min_leistung
+                name: Leistung
+                state_header: Brenner min
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_heizung_leistungsbegrenzung
+                    name: Heiz GWG32
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_heizung_max_leistung
+                    name: Heiz max
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_ww_leistungsbegrenzung
+                    name: WW GWG30
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_ww_max_leistung
+                    name: WW max
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_codierstecker_kesselsollleistung_speicherbetrieb
+                name: Brenner
+                state_header: Speicher
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_offset
+                    name: Offset
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_anfahroptimierung
+                    name: Anfahr-OPT
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_codierstecker_interne_pumpe_min_drehzahl
+                name: Pumpe / Gerät
+                state_header: Pumpe min
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_interne_pumpe_nachlauf
+                    name: Nachlauf
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_bauart_warmwasser
+                    name: WW-Bauart
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennertyp
+                    name: Brennertyp
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_umschaltventil_bauart
+                    name: Ventil
+            card_mod:
+              style: |
+                .card-header {
+                  padding: 10px 12px 4px !important;
+                  font-size: 16px !important;
+                }
+                .card-content {
+                  padding: 4px 12px 8px !important;
+                }
             grid_options:
-              columns: 4
-              rows: 1
+              columns: 6
+
+          - type: entities
+            title: Grundfos-Umschaltventil Kennfeld
+            show_header_toggle: false
+            entities:
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_position_heizen
+                name: Position / Schrittzahl
+                state_header: Heizen
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x1
+                    name: x1
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x2
+                    name: x2
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x3
+                    name: x3
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x4
+                    name: x4
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_schrittzahl_x5
+                    name: x5
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x1
+                name: Frequenz
+                state_header: x1
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x2
+                    name: x2
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x3
+                    name: x3
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x4
+                    name: x4
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_grundfos_uv_frequenz_x5
+                    name: x5
+            card_mod:
+              style: |
+                .card-header {
+                  padding: 10px 12px 4px !important;
+                  font-size: 16px !important;
+                }
+                .card-content {
+                  padding: 4px 12px 8px !important;
+                }
+            grid_options:
+              columns: 12
+
+          - type: entities
+            title: Warmwasser-Regelparameter
+            show_header_toggle: false
+            entities:
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_codierstecker_dlh_ausschaltdifferenz_start_stop
+                name: Start / Stop
+                state_header: Ausdiff
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_einschaltdifferenz_start_stop
+                    name: Eindiff
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_nachlaufzeit
+                    name: Nachlauf
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_codierstecker_dlh_max_anstiegszeit
+                name: Regler
+                state_header: Anstieg
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglerverstaerkung
+                    name: P
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglervorhaltezeit
+                    name: Vorhalt
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_dlh_reglernachstellzeit
+                    name: Nachstell
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_codierstecker_dlh_ausschaltdifferenz
+                name: Abschaltung
+                state_header: Differenz
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_zirkulationspumpe_bei_speicherladung
+                    name: Zirk. bei Ladung
+            card_mod:
+              style: |
+                .card-header {
+                  padding: 10px 12px 4px !important;
+                  font-size: 16px !important;
+                }
+                .card-content {
+                  padding: 4px 12px 8px !important;
+                }
+            grid_options:
+              columns: 6
+
+          - type: entities
+            title: Brennerregelung
+            show_header_toggle: false
+            entities:
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_codierstecker_brenner_einschaltdifferenz
+                name: Schaltdifferenzen
+                state_header: Ein
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_ausschaltdifferenz
+                    name: Aus
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_ausschaltdifferenz_volllast
+                    name: Aus Volllast
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_codierstecker_brenner_mindestpausenzeit
+                name: Brennerpause
+                state_header: Mindestzeit
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_pausenabbruch_differenz
+                    name: Abbruch Diff
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brenner_pausenabbruch_temperatur
+                    name: Abbruch Temp
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_codierstecker_kt_regler_verstaerkung
+                name: KT-Regler
+                state_header: P
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_kt_regler_nachstellzeit
+                    name: Nachstell
+            card_mod:
+              style: |
+                .card-header {
+                  padding: 10px 12px 4px !important;
+                  font-size: 16px !important;
+                }
+                .card-content {
+                  padding: 4px 12px 8px !important;
+                }
+            grid_options:
+              columns: 6
+
+          - type: entities
+            title: Brennerkennlinie
+            show_header_toggle: false
+            entities:
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_10
+                name: 10–50 %
+                state_header: "10"
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_20
+                    name: "20"
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_30
+                    name: "30"
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_40
+                    name: "40"
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_50
+                    name: "50"
+              - type: custom:multiple-entity-row
+                entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_60
+                name: 60–100 %
+                state_header: "60"
+                entities:
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_70
+                    name: "70"
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_80
+                    name: "80"
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_90
+                    name: "90"
+                  - entity: sensor.vitodens_200_wb2a_codierstecker_brennerkennlinie_100
+                    name: "100"
+            card_mod:
+              style: |
+                .card-header {
+                  padding: 10px 12px 4px !important;
+                  font-size: 16px !important;
+                }
+                .card-content {
+                  padding: 4px 12px 8px !important;
+                }
+            grid_options:
+              columns: 12
+
+          - type: markdown
+            content: >-
+              **RKR / OPT:** 55E0.b14 Bit 0 blieb in zwei kontrollierten
+              Zyklen bis zum Wiederanlauf-Fenster auf 0. Mit der Freigabe auf
+              1 begann die nächste Feuerungssequenz. 55E0[10:12] verhält sich
+              als interner anfahroptimierter Kesselsollwert (OPT). Rohwerte
+              bleiben als solche bezeichnet und werden nicht als bestätigte
+              Betriebsparameter dargestellt.
+            card_mod:
+              style: |
+                ha-card {
+                  font-size: 12px;
+                }
+                ha-markdown {
+                  padding: 8px 12px !important;
+                }
+            grid_options:
+              columns: 12
     cards: []
+
   - title: Zeitprogramme
     path: zeitprogramme
     icon: mdi:calendar-clock
