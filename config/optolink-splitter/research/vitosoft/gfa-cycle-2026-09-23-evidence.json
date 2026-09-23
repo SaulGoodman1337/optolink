@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "source": {
+    "upload_name": "Eingefügter Text(20260923-211214).txt",
+    "sha256": "c2f84dfd3e70d2204fa03011568b9b58895d0ff094e95948901fab3d830b6642",
+    "content": "Console transcript plus 466 JSONL records pasted by the user; not the full TX/RX log.",
+    "log_name": "wb2a-gfa-cycle-20260923-230628-169672.log",
+    "jsonl_name": "wb2a-gfa-cycle-20260923-230628-169672.jsonl"
+  },
+  "logger": {
+    "version": "1.0.0",
+    "commit": "008e802ea8d5d0dc5a7a8658896722d37ed922da",
+    "sha256": "d5d98242e6f9526522a53f3c801d856ba8c1a7fde6349c05b56059fa732a54e3"
+  },
+  "request_seconds": 300,
+  "rounds_confirmed_by_p80": 463,
+  "runtime_values_in_saved_rounds": 1852,
+  "histograms": {
+    "P06": {"00": 462, "ff": 1},
+    "P09": {"00": 463},
+    "P10": {"00": 463},
+    "P84": {"00": 462, "ff": 1},
+    "saved_round_P80": {"20": 463}
+  },
+  "p06_interval_ms": {"min": 564.993, "mean": 616.970, "max": 746.024},
+  "p06_to_p84_span_ms": {"min": 318.604, "mean": 369.652, "max": 511.339},
+  "anomalies": [
+    {
+      "round": 142,
+      "parameter": "P06",
+      "raw_hex": "ff",
+      "rx_time": "2026-09-23T23:08:06.612+02:00",
+      "legacy_decoded_rpm": 7650,
+      "quality": "suspect_unresolved_not_confirmed_mechanical_speed",
+      "reply_latency_ms": 127.274,
+      "following_p80_hex": "20"
+    },
+    {
+      "round": 222,
+      "parameter": "P84",
+      "raw_hex": "ff",
+      "rx_time": "2026-09-23T23:08:56.490+02:00",
+      "quality": "suspect_unresolved_not_named_burner_phase",
+      "reply_latency_ms": 71.424,
+      "following_p80_hex": "20"
+    },
+    {
+      "round_inferred_from_control_flow": 464,
+      "parameter": "P80",
+      "raw_hex_reported_by_exception": "ff",
+      "failure_log_time": "2026-09-23T23:11:26.069+02:00",
+      "expected_hex": "20",
+      "quality": "guard_failed_capture_aborted",
+      "raw_rx_line_available": false
+    }
+  ],
+  "timing": {
+    "observation_start": "2026-09-23T23:06:39.617+02:00",
+    "failure_log_time": "2026-09-23T23:11:26.069+02:00",
+    "wall_seconds_to_failure_log": 286.452,
+    "summary_elapsed_s": 285.814239,
+    "summary_elapsed_semantics": "Last completed round recording, NOT exact failure time in logger 1.0.0."
+  },
+  "recovery": {
+    "p300_identity": "20c2",
+    "p300_verified_time": "2026-09-23T23:11:28.130+02:00",
+    "splitter_running_time": "2026-09-23T23:11:30.205+02:00",
+    "party_running_time": "2026-09-23T23:11:32.261+02:00",
+    "ha_freshness_independently_confirmed_for_this_run": false
+  },
+  "original_summary": {
+    "kind": "summary",
+    "result": "FAIL",
+    "observation_complete": false,
+    "seconds_requested": 300,
+    "observation_elapsed_s": 285.814239,
+    "rounds_confirmed": 463,
+    "nonzero_rounds": 2,
+    "phase_changes": 2,
+    "P80_confirmed": false,
+    "P300_restored": true,
+    "splitter_restarted": true,
+    "services_restarted": ["optolink-party-emulator.service", "optolink-splitter.service"],
+    "errors": ["Session P80 guard is 0xff, expected 0x20."],
+    "full_burner_cycle_verified": false,
+    "flame_polled": false
+  },
+  "interpretation": {
+    "stop_cause": "Nonmatching P80 byte; not the configured 300-second deadline or a recorded read timeout.",
+    "ff_semantics": "Unknown: device-side invalid/unavailable/busy response and transport corruption remain hypotheses, not diagnoses.",
+    "burner_start_verified": false,
+    "e7_or_burner_fault_inferred": false,
+    "P80_guard_is_per_sample_checksum": false,
+    "next_step": "Inspect only existing raw TX/RX log around the three FF observations; keep guard and timeout aborts intact. No unchanged long-run retry recommended."
+  }
+}
