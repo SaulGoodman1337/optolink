@@ -522,34 +522,87 @@ The splitter receiver currently derives a diagnostic `fctcd` value with
 request and does not modify `retdata`; it should not be used to identify
 extended function codes such as 0x43.
 
-### C. Capture the unparsed VS2 response — **next**
+### C. Capture the unparsed VS2 response — **partially completed 2026-09-23**
 
-Before testing new KBus addresses or function families, capture raw responses
-for the already-known F8 request. This verifies the complete response frame,
-including response command byte and returned block length, without the normal
-response parser.
-
-Length 2 request frame:
+The length-2 request was sent as a full raw VS2 frame:
 
 ~~~text
+TX:
 41 05 00 43 00 F8 02 42
+
+RX:
+06 41 07 01 43 00 F8 02 54 97 30
 ~~~
 
-Length 8 request frame:
+Decoded response:
+
+| Byte(s) | Meaning |
+| --- | --- |
+| `06` | VS2 ACK |
+| `41` | VS2 standard telegram start |
+| `07` | payload length |
+| `01` | LDAP + ResponseMessage |
+| `43` | command echoed as KMBUS_EEPROM_READ |
+| `00 F8` | response address |
+| `02` | returned block length |
+| `54 97` | returned data |
+| `30` | modulo-256 VS2 checksum |
+
+The checksum is valid.
+
+This raw capture directly confirms all of the following without relying on the
+normal response parser:
+
+- the controller acknowledges the request;
+- the response message identifier is a normal response;
+- the returned command byte is still exactly `0x43`;
+- the returned address is `0x00F8`;
+- the controller reports block length `0x02`;
+- the actual wire payload is `54 97`.
+
+Therefore the earlier parsed `5497` result is genuine controller response data.
+
+#### Length-8 raw attempt and debug-helper race
+
+The first length-8 full-raw attempt produced:
 
 ~~~text
-41 05 00 43 00 F8 08 48
+1;0x2303;0
 ~~~
 
-Use the splitter's existing single-field full-raw path:
+This is not a valid raw response to the 0x43 request and is clearly an unrelated
+normal MQTT response.
+
+Root cause: for a single-field full-raw command, `tools/optolink-debug.py`
+could not derive an expected datapoint address and therefore accepted the first
+message arriving on the shared MQTT response topic. Normal address-based
+requests already had filtering; the full-raw path did not.
+
+The helper was fixed on 2026-09-23 so that an all-hex single-field command only
+accepts an all-hex single-field response. Semicolon-delimited normal MQTT
+responses are ignored while waiting for the raw frame.
+
+Fix commit:
+
+~~~text
+9778719071e57bf988201a45d9b805ceb9017802
+~~~
+
+After deploying the updated helper, repeat only the length-8 raw capture:
 
 ~~~bash
-/usr/local/bin/optolink-debug request "4105004300F80242"
 /usr/local/bin/optolink-debug request "4105004300F80848"
 ~~~
 
-Preserve the raw responses exactly. They should include the leading VS2 ACK and
-the complete response telegram.
+Expected structural form, based on the parsed experiments but still to be
+captured directly:
+
+~~~text
+06 41 0D 01 43 00 F8 08 <8 data bytes> <checksum>
+~~~
+
+Do not treat the expected form as an observation until the raw capture has been
+recorded.
 
 ### D. Establish a stable 0x41 control series
 
