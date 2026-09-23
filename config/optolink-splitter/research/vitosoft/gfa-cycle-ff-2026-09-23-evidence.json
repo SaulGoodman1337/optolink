@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "scope": "Offline analysis of the uploaded console transcript including its pasted JSONL. The device-side raw .log was not provided. No new appliance commands or parameter changes.",
+  "source": {
+    "name": "Eingefügter Text(20260923-211214).txt",
+    "sha256": "c2f84dfd3e70d2204fa03011568b9b58895d0ff094e95948901fab3d830b6642",
+    "bytes": 631294,
+    "lines": 1095,
+    "jsonl_transcript_lines": [629, 1094],
+    "parsed_json_objects": 466,
+    "round_records": 463,
+    "console_rounds_compared": 463,
+    "console_and_json_values_agree": true,
+    "raw_decoded_and_recorded_timing_consistency_checked": true,
+    "device_log": "wb2a-gfa-cycle-20260923-230628-169672.log",
+    "device_jsonl": "wb2a-gfa-cycle-20260923-230628-169672.jsonl",
+    "jsonl_available_in_transcript": true,
+    "raw_tx_rx_log_available": false
+  },
+  "helper": {
+    "name": "wb2a-gfa-cycle-logger.py",
+    "version": "1.0.0",
+    "commit": "008e802ea8d5d0dc5a7a8658896722d37ed922da",
+    "sha256": "d5d98242e6f9526522a53f3c801d856ba8c1a7fde6349c05b56059fa732a54e3",
+    "session_helper_sha256": "32351e07cb0d661c00f7bcb7851d8103aca0b9cbc2f339041202e48b760d6da2",
+    "p80_helper_sha256": "6de883c422a09c821b342d12e5bb71dd3d518d8115ec2495bdfb202f5a7f50cb"
+  },
+  "run": {
+    "seconds_requested": 300,
+    "observation_start": "2026-09-23T23:06:39.617+02:00",
+    "failure_log_time": "2026-09-23T23:11:26.069+02:00",
+    "reported_summary_elapsed_s": 285.814239,
+    "wall_start_to_failure_message_s": 286.452,
+    "elapsed_note": "In version 1.0.0 Wire.elapsed is updated after completed rounds; the summary omits the failing partial round. The wall delta uses millisecond log stamps, not the exact failing byte receive time.",
+    "first_runtime_rx": "2026-09-23T23:06:39.840+02:00",
+    "last_confirmed_guard_rx": "2026-09-23T23:11:25.380+02:00",
+    "rounds_with_passing_identity_guard": 463,
+    "failed_attempted_round": 464,
+    "failed_round_published_as_json": false,
+    "runtime_values_retained": 1852,
+    "all_zero_rounds": 461,
+    "rounds_with_nonzero_runtime_bytes": 2,
+    "raw_value_counts": {
+      "P06": {"00": 462, "ff": 1},
+      "P09": {"00": 463},
+      "P10": {"00": 463},
+      "P84": {"00": 462, "ff": 1}
+    },
+    "burner_start_verified": false,
+    "flame_polled": false,
+    "latest_ha_freshness_confirmed": false
+  },
+  "anomalies": [
+    {
+      "round": 142,
+      "transcript_json_line": 772,
+      "parameter": "P06",
+      "address": "0x4006",
+      "raw": 255,
+      "raw_hex": "ff",
+      "rx_time": "2026-09-23T23:08:06.612+02:00",
+      "tx_elapsed_s": 86.868285,
+      "rx_elapsed_s": 86.995559,
+      "reply_latency_ms": 127.274,
+      "preceding_raw": 0,
+      "following_raw": 0,
+      "other_runtime_bytes_in_round": [0, 0, 0],
+      "round_guard_raw": "20",
+      "logger_decoded_rpm": 7650,
+      "quality": "suspect isolated FF, not a validated physical speed or burner start"
+    },
+    {
+      "round": 222,
+      "transcript_json_line": 852,
+      "parameter": "P84",
+      "address": "0x4054",
+      "raw": 255,
+      "raw_hex": "ff",
+      "rx_time": "2026-09-23T23:08:56.490+02:00",
+      "tx_elapsed_s": 136.802004,
+      "rx_elapsed_s": 136.873429,
+      "reply_latency_ms": 71.424,
+      "preceding_raw": 0,
+      "following_raw": 0,
+      "other_runtime_bytes_in_round": [0, 0, 0],
+      "round_guard_raw": "20",
+      "quality": "suspect isolated FF, not a validated manufacturer phase transition"
+    }
+  ],
+  "terminal_guard_failure": {
+    "expected": "20",
+    "reported_received": "ff",
+    "transcript_line": 607,
+    "error": "Session P80 guard is 0xff, expected 0x20.",
+    "wire_rx_line_available": false,
+    "classification": "Known-identity mismatch. The inspected exact()/read_session() code raises a different RX timeout exception on absent data, and does not substitute FF for a timeout. Exact failing reply context requires the raw log."
+  },
+  "timing_retained_rounds": {
+    "units": "milliseconds except rate",
+    "p06_intervals": {"min": 564.993, "mean": 616.969706, "median": 605.7595, "max": 746.024},
+    "p06_to_p84_span": {"min": 318.604, "mean": 369.652445, "median": 381.995, "max": 511.339},
+    "runtime_reply_latency": {"min": 52.467, "mean": 72.626226, "median": 57.228, "max": 160.139},
+    "visible_rx_to_next_tx_gaps": {"min": 50.313, "mean": 50.714621, "median": 50.623, "max": 54.455},
+    "approx_rounds_per_second": 1.62082512460251,
+    "caveat": "Successful-guard records only. No simultaneous sampling, no exact timing for failed P80, and no proof of a firmware session timeout."
+  },
+  "recovery": {
+    "P300_restored": true,
+    "p300_identity_verified": "20c2",
+    "p300_verified_time": "2026-09-23T23:11:28.130+02:00",
+    "splitter_running_time": "2026-09-23T23:11:30.205+02:00",
+    "party_running_time": "2026-09-23T23:11:32.261+02:00",
+    "splitter_stop_to_running_s": 301.347
+  },
+  "original_summary": {
+    "kind": "summary",
+    "result": "FAIL",
+    "observation_complete": false,
+    "seconds_requested": 300,
+    "observation_elapsed_s": 285.814239,
+    "rounds_confirmed": 463,
+    "nonzero_rounds": 2,
+    "phase_changes": 2,
+    "P80_confirmed": false,
+    "P300_restored": true,
+    "splitter_restarted": true,
+    "services_restarted": ["optolink-party-emulator.service", "optolink-splitter.service"],
+    "errors": ["Session P80 guard is 0xff, expected 0x20."],
+    "full_burner_cycle_verified": false,
+    "flame_polled": false
+  },
+  "interpretation_boundaries": {
+    "passing_P80_is_per_value_checksum": false,
+    "7650_rpm_is_validated_physical_event": false,
+    "ff_phase_is_established_vendor_enum": false,
+    "ff_universal_sentinel_proven": false,
+    "five_minute_session_expiry_proven": false,
+    "serial_noise_or_internal_gfa_unavailable_cause_proven": false,
+    "unattended_HA_or_control_use_ready": false,
+    "earlier_P80_and_firing_snapshot_successes_revoked": false
+  },
+  "next_action": "Inspect only the existing raw log around the three FF events before another live run. Preserve raw bytes and distinguish successful identity checks from measurement quality. Do not request the already supplied JSONL again."
+}
