@@ -1439,3 +1439,54 @@ whether it changes around a configuration write.
 The guarded E7 persistence probe has been updated accordingly: it records the
 existing 0x778E baseline and compares subsequent values without assuming a
 zero/one error semantic.
+
+## Virtual_WILO_* re-evaluation — 2026-09-23
+
+A previously noted hypothesis linked local coding 30 value `0x5730 = 01` to a
+Wilo-specific internal-pump interface. That inference was too strong and has
+been corrected.
+
+Exact semantics of coding 30 in the VDensHO1 data model are:
+
+```text
+0 = stufig
+1 = drehzahlgeregelt
+2 = drehzahlgeregelt mit Volumenstrom
+```
+
+Thus `0x5730 = 01` identifies only a speed-controlled internal pump. It does
+**not** identify the pump manufacturer as Wilo.
+
+P300/Vitosoft does define protocol function codes:
+
+```text
+Virtual_WILO_READ  = 36 / 0x24
+Virtual_WILO_WRITE = 37 / 0x25
+```
+
+However, the currently available Vitosoft/event evidence does not bind these
+function codes to the WB2A internal-pump datapoints:
+
+```text
+0x5730  coding 30 internal-pump type
+0x5731  coding 31 internal-pump target speed
+0x7660  internal-pump runtime speed/output
+0x7663  A1 runtime/calculated pump demand
+```
+
+Concrete "Wilo" references found in the extracted Vitosoft material concern
+other areas such as Vitocom/Wilo management and Wilo diverter-valve
+configuration, not the WB2A internal circulation-pump speed path.
+
+Therefore Virtual_WILO_WRITE must not be used as an assumed direct internal-pump
+override. It remains only a protocol-level capability until an exact event or
+address/function-code binding for VDensHO1 is found.
+
+Current status:
+
+- interesting protocol primitive: yes;
+- proven relevant to local WB2A internal pump: no;
+- safe candidate for experimental write: no.
+
+The preferred research direction remains finding an exact volatile/runtime
+pump-control object or proving the storage semantics of the normal coding path.
