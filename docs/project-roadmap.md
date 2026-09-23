@@ -12,10 +12,22 @@ research documents; this file contains tasks and next actions.
 
 ### 1. Restructure the Home Assistant diagnostics page
 
-Status: **implemented in YAML / Home Assistant visual verification pending**
+Status: **compact popup-driven redesign implemented / Home Assistant visual verification pending**
 
 The diagnostics page has grown organically and should be reorganized for
 day-to-day troubleshooting.
+
+Implementation update (2026-09-23):
+
+- replaced the long always-visible diagnostic lists with a compact live overview;
+- added Mushroom status chips for flame, modulation, RKR, takt lock,
+  restart release, start phase, regulation, OPT and GFA lock state;
+- condensed boiler targets, pump state and current fault state into four
+  one-row Mushroom cards;
+- moved sensor status, RKR/CFDM/GFA internals, complete fault histories,
+  device/software identity and coding-plug details into browser_mod popups;
+- uses already-present Mushroom + browser_mod functionality; no new HACS card
+  is required for the first compact version.
 
 Goals:
 
