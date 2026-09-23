@@ -27,6 +27,7 @@ One-time read-only configuration snapshot:
   0x778A                 coding 8A display-condition/service unlock state
   0x778B                 coding 8B EEPROM-status object
   0x778C/0x778D          controller software-version bytes
+  0x778E                 I2C EEPROM error flag
   0x7500                 actuator-test selector (read only)
   0x5730/31/32/34        internal-pump identity/target/external influences
   0x779B                 external-demand flow-temperature target
@@ -181,6 +182,7 @@ def capture_probes(client: OptolinkTcp, probe_path: Path) -> None:
         ("K8B_EEPROM_status", "0x778B", 1),
         ("K8C_software_version_msb", "0x778C", 1),
         ("K8D_software_version_lsb", "0x778D", 1),
+        ("K8E_I2C_EEPROM_error_flag", "0x778E", 1),
         ("actuator_test_selector", "0x7500", 1),
         ("external_extension_software_index", "0x0A48", 4),
         ("K9B_external_demand_flow_target_c", "0x779B", 1),
