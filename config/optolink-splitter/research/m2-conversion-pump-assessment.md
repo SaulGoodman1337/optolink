@@ -191,3 +191,22 @@ M2 is therefore technically plausible if the hydraulic benefits justify the
 hardware conversion, but it should not be undertaken solely as a software
 workaround. Before converting, confirm the actual heating-system hydraulics,
 emitter type, design flow and whether a mixer is thermally appropriate.
+
+## Update: actuator test does not supply a speed command
+
+A repeat test with runtime logging confirmed that selecting service actuator
+`0x7500=04` (INTERNE PUMPE) does not produce a 100 % speed command on this
+installation. During roughly 39 s at selector value 04, both the internal-pump
+runtime speed object `0x7660` and A1 speed demand `0x7663` remained at 0 %;
+the normal internal-pump relay-state bit in `0xA152` also remained clear.
+
+This weakens the service-actuator path substantially. The service manual calls
+the function "Int. Pumpe Ein" but describes it as "Int. Ausgang 20", which is
+consistent with an enable/legacy-output test rather than a variable-speed
+setpoint.
+
+This strengthens the distinction to a real M2 topology: M2 has both a normal
+controller request path (A8) and a dedicated internal-boiler-pump speed target
+(coding 31). The local coding 31 is already 100 %, so M2 remains the leading
+controller-native architecture for maintaining high boiler-side pump speed
+through heating burner operation.
