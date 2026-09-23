@@ -162,7 +162,7 @@ button_card_templates:
         - border-radius: 0
         - padding: 2px 5px
       grid:
-        - grid-template-areas: '"n"' '"s"'
+        - grid-template-areas: '"n" "s"'
         - grid-template-columns: 1fr
         - grid-template-rows: min-content min-content
       name:
@@ -199,7 +199,7 @@ button_card_templates:
         - padding: 8px 7px 7px
         - background: var(--ha-card-background, var(--card-background-color))
       grid:
-        - grid-template-areas: '"n n"' '"v1 v2"'
+        - grid-template-areas: '"n n" "v1 v2"'
         - grid-template-columns: 1fr 1fr
         - grid-template-rows: min-content 1fr
         - row-gap: 5px
@@ -229,7 +229,7 @@ button_card_templates:
         - padding: 8px 7px 7px
         - background: var(--ha-card-background, var(--card-background-color))
       grid:
-        - grid-template-areas: '"n n n"' '"v1 v2 v3"'
+        - grid-template-areas: '"n n n" "v1 v2 v3"'
         - grid-template-columns: 1fr 1fr 1fr
         - grid-template-rows: min-content 1fr
         - row-gap: 5px
