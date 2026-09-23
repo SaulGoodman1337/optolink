@@ -3047,3 +3047,241 @@ searched specifically for symbols around `0x0A3C`, internal-pump command
 selection, burner/GFA state and pump overrides. Those large files are not
 committed to the public repository, so this second-stage search requires the
 original deep-collector ZIP.
+
+
+## Raw deep-Vitosoft bundle: burner-dependent pump controls — 2026-09-23
+
+The full local deep-collector archive
+`vitosoft-deep-research-20260923-143520.zip` was inspected directly rather
+than relying only on the normalized repository subset.
+
+The archive contains the complete derived PE-string corpus, managed-member
+inventory, binary research strings, text hits and normalized event metadata.
+No proprietary Vitosoft executable is stored in this repository.
+
+### Important historical Vitosoft events: "pump during burner operation"
+
+The raw corpus contains several explicit burner-to-pump coupling objects.
+They prove that this control concept exists in the wider Viessmann metadata,
+but their device membership is crucial.
+
+#### Gas coding-card field, event 3030
+
+```text
+Name:         Gasbetrieb: Pumpe bei Brennerbetrieb
+English:      Gas operation: Pump during burner operation
+Token:        KS_Karte_GasKonfiPumpebeiBrennerbetrieb~0x1070
+Address:      0x1070
+BlockLength:  16
+BytePosition: 5
+ByteLength:   1
+Access:       Virtual_READ, no write
+Devices:
+  V100GC1*
+  V200GW1*
+  V300GW2*
+```
+
+This looks extremely close to the desired behavior, but it is **not** a
+VDensHO1/WB2A field.
+
+For exact VDensHO1, the same block and the same byte position are already
+source-resolved as:
+
+```text
+0x1070 byte 5
+GWG75: Mindestdrehzahl Interne Pumpe
+unit: %
+```
+
+The local coding plug reports GWG75 = 50.
+
+Therefore the address reuse means:
+
+```text
+old V100/V200/V300 gas profiles:
+0x1070[5] = pump-during-burner-operation coding
+
+VDensHO1 / WB2A:
+0x1070[5] = GWG75 minimum internal-pump speed
+```
+
+It is **not** a hidden WB2A boolean and must not be written as such.
+
+#### Other historical burner/pump couplings
+
+```text
+0x571D
+K1D_KonfiPumpenbeiBrennerein
+"(1D) Beimischpumpe ein wenn Brenner ein"
+Virtual_READ / Virtual_WRITE
+legacy V100/V200/V300/EA2 families; not VDensHO1
+
+0x581D
+SR13_K1D_KonfiPumpenbeiBrennerein
+"(1D) Pumpenfunktion (BP) bei Brennerbetrieb"
+Virtual_READ / Virtual_WRITE
+V100GC1C only; not VDensHO1
+
+0x7701
+K01_KonfiDirekteBrennerschaltung
+value examples:
+  "Brenner über UT - HK-Pumpe EIN"
+  "Brenner und HK-Pumpe über UT"
+V100KC2 family only; not VDensHO1
+```
+
+These events are useful architectural evidence, but none is source-linked to
+the local WB2A.
+
+A read-only probe of `0x571D` or `0x581D` can establish whether the local
+firmware happens to retain one of these legacy virtual objects, but a readable
+byte alone would still not prove that it controls the internal WB2A pump.
+No write is justified from current evidence.
+
+### New high-value result objects: 0x0A3A / 0x0A3B / 0x0A3C
+
+The complete low-level event inventory contains three adjacent read-only
+Virtual_READ objects:
+
+```text
+0x0A3A  HKP_A1_res
+         "Heizkreispumpe A1 Solldrehzahl"
+
+0x0A3B  HKP_M2_res
+         "Heizkreispumpe M2 Solldrehzahl"
+
+0x0A3C  InternePumpeDrehzahl_res
+         "Interne Pumpe Solldrehzahl"
+```
+
+All three use a one-byte percentage value.
+
+The installed German resource describes `HKP_A1_res` and `HKP_M2_res` as
+set speeds transferred toward a speed-controlled pump. The wording is partly
+generic/copy-pasted, so local correlation is required before assigning an
+exact architecture.
+
+These result objects are not part of the current exact 581-event VDensHO1 UI
+join. However, that fact does not mean they are necessarily unimplemented:
+`0x0A3C` also lacks direct exact-profile membership and has already been
+proven readable and meaningful on the local WB2A.
+
+This makes `0x0A3A` the most valuable new read-only probe from the raw deep
+bundle. It may distinguish the computed A1 pump setpoint from both the
+`0x7663` runtime representation and the final internal-pump command
+`0x0A3C`.
+
+Working discriminator:
+
+```text
+0x0A3A  computed/resulting A1 pump setpoint?   <-- to validate
+0x7663  A1 runtime output/speed
+0x0A3C  final internal-pump setpoint           <-- locally validated
+0x7660  internal physical-pump output/speed    <-- locally validated
+```
+
+The read-only divergence watcher now includes `0x0A3A` and `0x0A3B`.
+
+### F5/F6/F7 are not hidden WB2A heating-pump controls
+
+The corpus also contains:
+
+```text
+0x27F5  KF5_KonfiPumpeNachlauf
+0x27F6  KF6_KonfiPumpeSommerbetrieb
+0x27F7  KF7_KonfiPumpeAbschaltbetrieb
+```
+
+but production device membership assigns these to constant-control
+`VDensHC*`, `VPendHC*`, `VPlusHC*` and `VScotHC*` families, not
+`VDensHO1`.
+
+They therefore must not be promoted to WB2A coding parameters simply because an
+older `configbackup` event list contains their tokens.
+
+### Vitosoft DLL findings
+
+The PE-string corpus exposes pump-address properties in
+`ViessmannCommonObjects.dll`:
+
+```text
+HeatingCircuitPump1SpeedAddress
+HeatingCircuitPump2SpeedAddress
+HeatingCircuitPump3SpeedAddress
+LoadPumpSpeedAddress
+MinReducedPumpSpeedAddress
+StorageChargingPumpSpeedAddress
+InternalPumpSpeedAddress
+MinPumpSpeedAddress
+CirculationPumpSpeedAddress
+
+HeatingCircuitPump1StatusAddress
+...
+InternalPumpStatusAddress
+```
+
+This is evidence that the Vitosoft hydraulic-calibration/application layer has
+an abstract pump-address model.
+
+It does **not** expose an additional WB2A address in the collected strings.
+Managed reflection for this DLL was incomplete because a framework dependency
+(`System.Drawing`) was not preloaded, and the deep archive intentionally does
+not include the proprietary DLL binary for decompilation.
+
+`vsmInterfaceCommon.dll` additionally contains:
+
+```text
+get_MinPumpSpeedVD3XX
+set_MinPumpSpeedVD3XX
+get_MinPumpSpeedReducedVD3XX
+set_MinPumpSpeedReducedVD3XX
+```
+
+and `MCConfig.xml` supplies:
+
+```text
+MinPumpSpeedVD3XX        = 10
+MinPumpSpeedReducedVD3XX = 20
+```
+
+These are Vitosoft application configuration values associated with the
+hydraulic-calibration/VD3XX workflow; no controller event address is attached
+to them. They must not be confused with WB2A E7 or GWG75.
+
+The transport-oriented `vsmInterfaceCore.dll` exposes Optolink/KM-BUS
+machinery and system-block names but no pump-specific selection method in the
+available strings.
+
+### Deep-bundle conclusion
+
+The raw bundle materially improves observability and provides historical
+examples of burner-dependent pump control, but it still does **not** expose a
+normal VDensHO1 coding object equivalent to:
+
+```text
+internal pump = 100 % during burner start/run
+normal heating pump speed during takt lock
+```
+
+The strongest current WB2A model remains:
+
+```text
+heating/A1 logic + coding values + operating-mode overrides
+                         |
+                         v
+               hidden controller logic
+                  /              \
+                 v                v
+       A1 result path        internal-pump result path
+          0x0A3A?                 0x0A3C
+             |                       |
+          0x7663                  0x7660
+                                     |
+                                     v
+                              internal KM-BUS pump
+```
+
+The next read-only hardware discriminator is to compare
+`0x0A3A/0x0A3B/0x0A3C/0x7663/0x7660` across pump-off, heating
+pre-ignition, flame-on and takt-lock states.
