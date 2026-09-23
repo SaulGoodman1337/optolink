@@ -439,3 +439,54 @@ pair. Do not silently format it as `1.03`, `1.3` or decimal 259 until the
 Vitosoft presentation/formatting rule is recovered.
 
 These values are distinct from the Vitosoft data-definition/profile version.
+
+
+### Local software-index readout — 2026-09-23
+
+Additional read-only Virtual_READ probes returned:
+
+```text
+0x00FB / 1 = 03
+0x7330 / 2 = 01 00
+```
+
+The exact VDensHO1 metadata resolves these as:
+
+```text
+0x00FB  Software_Index~0x00FB
+        "Software-Index des Gerätes"
+        BlockLength 1
+        BytePosition 0
+        ByteLength 1
+
+=> local device software index = 0x03
+```
+
+and:
+
+```text
+0x7330  Bedienteil_SW_Index~0x7330
+        "Bedienteil Software-Index"
+        BlockLength 2
+        BytePosition 0
+        ByteLength 1
+
+raw block = 01 00
+=> programming-unit/control-panel software index = 0x01
+```
+
+The second byte of the `0x7330` block is not part of this event's one-byte
+value according to the Vitosoft metadata, so `01 00` must not be interpreted
+as a 16-bit software index `0x0100`.
+
+Current locally confirmed software identity set:
+
+```text
+0x778C/0x778D = 01 / 03   raw control-unit software-version pair = 0x0103
+0x00FB        = 03        device software index
+0x7330[0]     = 01        programming-unit software index
+0x0A54[3]     = 01        internal-pump software index
+```
+
+No display-format or release-name mapping for the raw control-unit version
+`0x0103` has yet been proven.
