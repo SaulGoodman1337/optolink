@@ -78,6 +78,44 @@ Important entries include:
 These addresses are **Vitosoft-derived event addresses**. They do not by
 themselves establish which VS2 function code is required to access each event.
 
+### `project-interest-events.csv`
+
+A curated global Vitosoft event index for the active project workstreams.
+
+Current row count: **161 events**.
+
+Rows are tagged with one or more categories:
+
+- `km_bus_remote`;
+- `coding_plug`;
+- `burner_flame_fan`;
+- `pump_logic`.
+
+This intentionally includes useful events that are not necessarily part of the
+VDensHO1 device tree but are valuable reverse-engineering leads, for example
+coding-plug and GFA/SCOT event families.
+
+### `tools/extract-vitosoft-project-data.py`
+
+Repository tool for the point at which the full Vitosoft XML LFS objects are
+available locally.
+
+Example:
+
+~~~bash
+python3 tools/extract-vitosoft-project-data.py \
+  --data-dir /path/to/vitosoft/XML \
+  --device VDensHO1 \
+  --out-dir config/optolink-splitter/research/vitosoft/generated
+~~~
+
+It joins the device membership from `DPDefinitions.xml` against
+`ecnEventType.xml` and emits:
+
+- a complete low-level device-event CSV;
+- a `KBUS_*` / `KMBUS_*`-only CSV;
+- an extraction summary JSON.
+
 ## Missing low-level fields
 
 For KBus/KM-BUS research the next extraction must join the device event list to
