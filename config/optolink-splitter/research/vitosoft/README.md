@@ -438,3 +438,45 @@ OptolinkHandler
 It continues scanning to EOF after the generic hit limit and writes a
 `hit-summary.csv` report, so a large translation/XML file can no longer hide
 later priority matches.
+
+
+## Deep research collector
+
+For a complete reusable Vitosoft research bundle, use:
+
+```text
+tools/collect-vitosoft-deep-research.ps1
+```
+
+It supersedes the narrow one-purpose collectors when the goal is to preserve
+future research context for VDensHO1/20C2.
+
+Direct PowerShell invocation:
+
+```powershell
+$script = "$env:TEMP\collect-vitosoft-deep-research.ps1"
+
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/SaulGoodman1337/optolink/main/tools/collect-vitosoft-deep-research.ps1" -OutFile $script
+
+Set-ExecutionPolicy -Scope Process Bypass -Force
+& $script
+```
+
+The collector performs:
+
+- complete file inventory and SHA256 hashing;
+- unlimited targeted text scanning;
+- DLL/EXE version and managed-assembly identification;
+- all printable DLL/EXE ASCII and UTF-16LE string extraction by default;
+- .NET type/method/property/field inventory where reflection-only loading is
+  available;
+- firmware/update/programming candidate discovery;
+- binary-string research for MDF/LDF/ECNDAT/SYS/LIB and firmware-like files;
+- automatic execution of `extract-vitosoft-deep-metadata.py`.
+
+The resulting `metadata/` directory contains the small Git-suitable,
+device-centric corpus. The large raw-derived string bundle is primarily an
+analysis input and does not need to be committed wholesale.
+
+See `firmware-and-deep-research.md` for repository policy and the separate
+controller-firmware research track.
