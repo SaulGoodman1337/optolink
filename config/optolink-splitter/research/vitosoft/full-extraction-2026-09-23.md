@@ -383,3 +383,56 @@ Before any write, record the current controller-side Vitotrol state:
 These are all source-derived from the exact VDensHO1 profile.
 
 Only after this baseline should a controlled `0x27A0` write be considered.
+
+
+## GFA_READ wire-code correction — 2026-09-23
+
+A local test initially used `0x6B` for GFA_READ:
+
+```text
+request;0x6B;0x4054;1;;0x00
+-> 3;0x4054;05
+```
+
+The return code `3` is a VS2 Error Message; the request was not a successful
+GFA read.
+
+The protocol sources distinguish two different command encodings:
+
+```text
+VS1/KW:
+  GFA_Read = 0x6B
+
+VS2/P300:
+  GFA_READ = 201 decimal = 0xC9
+```
+
+This is consistent with the extended VS2/P300 function values already used
+successfully in this project, e.g. `0x41 KMBUS_RAM_READ` and
+`0x43 KMBUS_EEPROM_READ`.
+
+Therefore all direct P300 GFA probes for the local WB2A must use `0xC9`,
+not `0x6B`.
+
+The exact VDensHO1 metadata for `0x4054` confirms:
+
+```text
+token:       VSKO_Scot_CES_P84~0x4054
+name:        (P84) GFA Betriebsphase
+block:       1 byte
+FCRead:      GFA_READ
+PrefixRead:  empty
+device link: VDensHO1 included
+```
+
+Next read-only validation:
+
+```text
+request;0xC9;0x4050;1;;0x00
+...
+request;0xC9;0x4058;1;;0x00
+request;0xC9;0x4006;1;;0x00
+request;0xC9;0x4009;1;;0x00
+request;0xC9;0x400A;1;;0x00
+request;0xC9;0x4011;1;;0x00
+```
