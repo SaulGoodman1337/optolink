@@ -3014,6 +3014,47 @@ This agrees with the local failed read of `0x7751` and means the known
 burner-dependent hydraulic-separator pump behavior from other Viessmann
 generations cannot currently be enabled as a normal VDensHO1 coding object.
 
+### FlowCalibration / hydraulic-calibration path resolved offline
+
+The protected Vitosoft FlowCalibration lead has now been followed through the
+surrounding unprotected host code.
+
+The exact host workflow uses:
+
+```text
+0x7950  Neptun hydraulic-calibration start/stop
+0x7688  pressure/head value
+0x0C24  volume flow
+0x0C26  volume-flow scaling
+0x7951  Neptun internal-pump state/speed
+```
+
+and for supported VD3XX result writes:
+
+```text
+0x27D3  heating-curve slope
+0x27D4  heating-curve level
+0x27E6  E6 maximum pump speed
+0x27E7  E7 minimum pump speed
+0x27E9  E9 reduced pump speed
+```
+
+The result writer explicitly rejects the FlowCalibration fallback
+`NichtVD3xx`. Collector-v6 membership independently shows that all Neptun
+objects above are absent from **base VDensHO1**, whereas the GWG E6/E7/E8/E9
+objects are present.
+
+Therefore FlowCalibration does not provide a newly demonstrated volatile
+runtime setpoint for the local WB2A. It independently confirms the known
+E6/E7/E9 configuration family, but it does not fill the missing selector
+between those inputs and `0x0A3C ~= 0x7660[1]`.
+
+Do not probe/write `0x7950` or `0x7951` on the local boiler merely because
+the generic host code contains those controls.
+
+Full evidence:
+[vitosoft/flowcalibration-hydraulic-2026-09-24.md](vitosoft/flowcalibration-hydraulic-2026-09-24.md).
+
 ### Current architectural inference
 
 The combined Vitosoft metadata and local runtime measurements support this

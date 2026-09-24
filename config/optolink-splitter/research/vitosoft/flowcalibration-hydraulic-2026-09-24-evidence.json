@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "scope": "Offline static analysis of Vitosoft FlowCalibration and its MobileClient integration, correlated with Collector-v6 all-device event membership.",
+  "source": {
+    "private_snapshot": "vitosoft-private-archive-20260924-143439",
+    "archive_sha256": "3d31380d6dfabf8ede9e305b115e847fb0670511e253a4ed4e59feef2f7adfee",
+    "analysis_mode": "static only; collected vendor binaries were not executed",
+    "derived_workflow_runs": {
+      "flowcalibration_static": 36031363294,
+      "hydraulic_communication_interface": 36031890585,
+      "deep_reference_search": 36032344145,
+      "hydraulic_target_assemblies": 36032662838,
+      "hydraulic_event_membership": 36033472465
+    }
+  },
+  "protected_flowcalibration": {
+    "production": {
+      "path_examples": [
+        "ServiceTool/MobileClient/FlowCalibration.dll",
+        "ServiceTool/Support/GAC/FlowCalibration (Echt).dll",
+        "ServiceTool/Support/GAC/FlowCalibration.dll"
+      ],
+      "size": 660992,
+      "sha256": "bd8b8ad3a1e6bf8959246167037ba81366bfb77f41b5ecf5d20c14c9ee6c017f",
+      "version": "4.0.11.1"
+    },
+    "test": {
+      "size": 667648,
+      "sha256": "4aa4af45b01223d23f461c769ee5a06067f7d105c9718f3d43e5c330c5f27ee3",
+      "version": "4.0.7.1"
+    },
+    "ildasm": "Protected module -- cannot disassemble",
+    "ilspy": "CLR metadata/public API visible; core protected algorithm bodies remain effectively stubbed/obfuscated",
+    "conclusion": "The two Collector-v6 protected binary states are a production 4.0.11.1 build and an explicit test 4.0.7.1 build, not two unexplained copies."
+  },
+  "flowcalibration_interface": {
+    "mobileclient_sha256": "7c108ab42971377a1b1254b0ac7be1349b3385817150f442a9633c7d4e11dbd1",
+    "version": "4.0.2.2",
+    "visible_result_fields": [
+      "Restförderhöhe",
+      "MaxPumpendrehzahl"
+    ],
+    "visible_concepts": [
+      "valves",
+      "desired volume flow",
+      "pressure loss",
+      "flow measurement",
+      "sensor data"
+    ],
+    "non_vd3xx_enum_value": 9
+  },
+  "vsm_communication_interface": {
+    "path": "ServiceTool/MobileClient/vsmCommunicationInterface.dll",
+    "size": 10752,
+    "sha256": "5514f4320f535f45db46c44a9d59d43c900b5bd2dd2e96362064df998ca6a83d",
+    "version": "1.4.2.0",
+    "named_pipe": "vsmCommunicationPipe",
+    "hydraulic_custom_app_id": 1,
+    "methods": [
+      "StartComProcess",
+      "StopComProcess",
+      "GetComData"
+    ],
+    "hydraulic_value_fields": [
+      "PressureDifference",
+      "VolumeFlow"
+    ]
+  },
+  "host_implementation": {
+    "MobileClient_exe": {
+      "size": 2196992,
+      "sha256": "f05e8ceef23eb94eaef0dca9c25ecbdd0fc83ae4e859d0fc7740f5bc78fd6136"
+    },
+    "ViessmannIPC_dll": {
+      "size": 30208,
+      "sha256": "e87f9c90f05df264a2e2302ae90bce9bdddd8bb84f2481393af4b733c3475c6a"
+    },
+    "ViessmannWebFrontend_Web_dll": {
+      "size": 528384,
+      "sha256": "387ce38f9ca27ca335548e6ca1953e1e46cbd2eaefb4ccc612e38fdbecb1aa11"
+    },
+    "methods": {
+      "heater_type_mapping": "HydraulicCalibrationWrapper.GetFlowCalibrationHeaterType",
+      "result_write": "SendHydraulicCalibrationResult",
+      "start_control": "CreateStartControlForHydraulicCalibration",
+      "external_get_data": "GetHydraulicCalibrationDataForExternalModule"
+    },
+    "heater_type_boundary": {
+      "supported_named_flowcalibration_types": "specific VD3XX / A1 / Boiler_WithOptolink models",
+      "fallback": "NichtVD3xx (enum value 9)",
+      "result_write_behavior_for_non_vd3xx": "rejects result write with 'VD3XX was expected'"
+    },
+    "vd3xx_result_controls": [
+      {
+        "token": "KD3_KonfiNeigungA1~0x27D3",
+        "source": "result.Pitch"
+      },
+      {
+        "token": "KE6_KonfiMaxDrehzahlA1M1_GWG~0x27E6",
+        "source": "result.MaximalPumpSpeed"
+      },
+      {
+        "token": "KD4_KonfiNiveauA1~0x27D4",
+        "source": "scenario.ClimateConfiguration.Niveau"
+      },
+      {
+        "token": "KE7_KonfiMinDrehzahlA1M1_GWG~0x27E7",
+        "source": "configuration MinPumpSpeedVD3XX"
+      },
+      {
+        "token": "KE9_KonfiDrehzahlReduziertA1M1_GWG~0x27E9",
+        "source": "configuration MinPumpSpeedReducedVD3XX"
+      }
+    ],
+    "neptun_start": "Neptun_Hydraulischer_Abgleich_Bytes~0x7950 / Neptun_Hydraulischer_Abgleich~0x7950",
+    "external_read_values": [
+      "Neptun_ParamFoerderhoehe~0x7688",
+      "Neptun_Durchfluss_STRS1~0x0C24",
+      "Neptun_Skalierung_Durchfluss~0x0C26"
+    ],
+    "external_read_conversion": "PressureDifference = UInt16(0x7688 float); VolumeFlow = UInt16(0x0C24 float / 10^0x0C26 when scaling > 0)"
+  },
+  "scenario_model": {
+    "ViessmannIPC_category": "VD2XX_VP200_Vitoladens exists",
+    "ViessmannIPC_type": "VD2XX_Vitodens_200W exists",
+    "flowcalibration_mapping": "non-VD3XX scenarios map to HeaterType.NichtVD3xx",
+    "non_vd3xx_start_parameter": "dp = HydraulicCalibration.DeltaP",
+    "pump_enum_note": "GF_Alpha2 / Wilo_Yonos / Wilo_Stratos selection is exposed for Divicon types, not as an internal-pump selector for VD2XX_Vitodens_200W"
+  },
+  "collector_v6_event_membership": {
+    "base_vdensho1_true": [
+      "KD3_KonfiNeigungA1/D~0x27D3",
+      "KD4_KonfiNiveauA1/D~0x27D4",
+      "KE6_KonfiMaxDrehzahlA1M1_GWG~0x27E6",
+      "KE7_KonfiMinDrehzahlA1M1_GWG~0x27E7",
+      "KE8_KonfiNebenbetriebA1M1_GWG~0x27E8",
+      "KE9_KonfiDrehzahlReduziertA1M1_GWG~0x27E9"
+    ],
+    "base_vdensho1_false": [
+      "Neptun_Durchfluss_STRS1~0x0C24",
+      "Neptun_Skalierung_Durchfluss~0x0C26",
+      "Neptun_ParamFoerderhoehe~0x7688",
+      "Neptun_Hydraulischer_Abgleich~0x7950",
+      "Neptun_Hydraulischer_Abgleich_Bytes~0x7950",
+      "Neptun_Interne_Pumpe~0x7951",
+      "Neptun_Interne_Pumpe_Drehzahl~0x7951",
+      "Neptun_ZP/HKP/SLP/LP/Mischer family 0x7953..0x7961"
+    ],
+    "neptun_profiles": [
+      "VScotHO1_70",
+      "VScotHO1_72",
+      "VScotHO1_90",
+      "VSorp",
+      "Vitovalor",
+      "VScotHO1_200",
+      "VScotHO1_200_01",
+      "VScotHO1_200_10",
+      "VScotHO1_200_11",
+      "VScotHO1_200_20",
+      "VScotHO1_200_30"
+    ]
+  },
+  "conclusions": {
+    "new_wb2a_volatile_pump_override": false,
+    "new_wb2a_address_from_flowcalibration": false,
+    "known_wb2a_controls_confirmed_by_host_code": [
+      "0x27E6",
+      "0x27E7",
+      "0x27E9"
+    ],
+    "flowcalibration_algorithm_fully_recovered": false,
+    "host_integration_recovered": true,
+    "research_status": "FlowCalibration/Neptun is closed as a demonstrated source of a new base-VDensHO1 runtime pump-control path. The hidden selector upstream of 0x0A3C remains a controller-side/firmware question."
+  },
+  "evidence_boundary": [
+    "Missing device-profile membership alone is not a universal capability proof; 0x0A3C is the project counterexample.",
+    "Here the negative conclusion is stronger because the host workflow itself gates result writes to VD3XX and every Neptun read/write event used by that workflow is absent from base VDensHO1 membership.",
+    "No Neptun address is approved for writing on the local WB2A."
+  ]
+}
