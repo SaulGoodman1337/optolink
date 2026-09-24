@@ -122,7 +122,7 @@ The current Vitosoft installation contains no authenticated WB2A firmware image 
 **TODO:**
 
 - [x] Finish software identity first: P81-P83 read successfully as raw `02/06/76` under P80=`20`.
-- [ ] Identify the main-regulation MCU, burner/GFA MCU, external flash/EEPROM devices and accessible service/debug headers from board evidence.
+- [ ] Identify the main-regulation MCU, burner/GFA MCU and external firmware memories. GG1 family topology is documented; readable IC markings are still missing.
 - [ ] Keep regulation firmware, GFA firmware and coding-plug EEPROM as separate storage domains.
 - [ ] Investigate only concrete service/readout paths backed by a function, method, board interface or known protocol.
 - [ ] Archive any future raw firmware privately with hashes; commit only derived maps and reproducible analysis.
