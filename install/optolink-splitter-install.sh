@@ -100,6 +100,11 @@ chmod 750 /usr/local/bin/optolink-maintenance
 chown root:root /usr/local/bin/optolink-maintenance
 ln -sf /usr/local/bin/optolink-maintenance /usr/bin/optolink-maintenance
 
+cs_repo_fetch tools/wb2a-schedule-probe.py /usr/local/bin/wb2a-schedule-probe
+chmod 750 /usr/local/bin/wb2a-schedule-probe
+chown root:root /usr/local/bin/wb2a-schedule-probe
+ln -sf /usr/local/bin/wb2a-schedule-probe /usr/bin/wb2a-schedule-probe
+
 cs_repo_fetch tools/optolink-party-emulator.py /usr/local/bin/optolink-party-emulator
 chmod 755 /usr/local/bin/optolink-party-emulator
 chown root:root /usr/local/bin/optolink-party-emulator
