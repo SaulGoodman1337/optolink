@@ -21,7 +21,7 @@
       "conversion": "raw * 100",
       "unit": "h",
       "read_only_probe": "r;0x5721;1;raw;False",
-      "production_status": "not yet exposed",
+      "production_status": "locally read-verified; approved for read-only diagnostic exposure",
       "interpretation": "Configured burner-runtime maintenance threshold in 100 h steps."
     },
     {
@@ -32,7 +32,7 @@
       "conversion": "NoConversion",
       "unit": "months",
       "read_only_probe": "r;0x5723;1;raw;False",
-      "production_status": "not yet exposed"
+      "production_status": "locally read-verified; approved for read-only diagnostic exposure"
     },
     {
       "address": "0x5724",
@@ -45,7 +45,7 @@
         "1": "Wartung"
       },
       "read_only_probe": "r;0x5724;1;raw;False",
-      "production_status": "not yet exposed",
+      "production_status": "locally read-verified; approved for read-only diagnostic exposure",
       "safety_note": "A separate write-only reset function exists at the same address in Vitosoft metadata. This preparation intentionally performs only Virtual_READ-style reads and must not issue a write/reset."
     },
     {
@@ -56,7 +56,7 @@
       "conversion": "NoConversion",
       "unit": "months",
       "read_only_probe": "r;0x756C;4;raw;False",
-      "production_status": "not yet exposed"
+      "production_status": "locally read-verified; approved for read-only diagnostic exposure"
     },
     {
       "address": "0x7570",
@@ -66,7 +66,7 @@
       "conversion": "NoConversion",
       "unit": "h",
       "read_only_probe": "r;0x7570;4;raw;False",
-      "production_status": "not yet exposed"
+      "production_status": "locally read-verified; approved for read-only diagnostic exposure"
     }
   ],
   "probe_command": "for spec in '0x5721 1' '0x5723 1' '0x5724 1' '0x756C 4' '0x7570 4'; do set -- $spec; echo === $1 len$2 ===; /usr/local/bin/optolink-debug request \"r;$1;$2;raw;False\"; echo; done",
@@ -77,5 +77,49 @@
     "Do not add productive polling until local reads are successful and values are plausible for this exact appliance.",
     "Keep these service values separate from burner fault unlock/reset semantics."
   ],
-  "current_status": "STATICALLY_READY_FOR_BOUNDED_READ_ONLY_LIVE_READ"
+  "current_status": "LIVE_READ_VERIFIED_READ_ONLY_PRODUCTION_EXPOSURE_APPROVED",
+  "live_validation": {
+    "date": "2026-09-24",
+    "appliance": "Vitodens 200-W WB2A / VDensHO1 / 20C2 / SW03",
+    "transport": "optolink-debug Virtual_READ-style read via production splitter/MQTT",
+    "results": [
+      {
+        "address": "0x5721",
+        "length": 1,
+        "raw": "00",
+        "decoded": "0 h configured burner-runtime maintenance threshold (raw * 100 h)"
+      },
+      {
+        "address": "0x5723",
+        "length": 1,
+        "raw": "00",
+        "decoded": "0 months configured maintenance interval"
+      },
+      {
+        "address": "0x5724",
+        "length": 1,
+        "raw": "00",
+        "decoded": "Grundzustand (enum 0)"
+      },
+      {
+        "address": "0x756C",
+        "length": 4,
+        "raw": "00000000",
+        "decoded": "0 months elapsed since last maintenance"
+      },
+      {
+        "address": "0x7570",
+        "length": 4,
+        "raw": "00000000",
+        "decoded": "0 h burner runtime since last maintenance"
+      }
+    ],
+    "assessment": [
+      "All five addresses are locally readable with the source-backed block lengths.",
+      "No write or reset command was issued.",
+      "The observed zero configuration at 0x5721 and 0x5723 means no nonzero maintenance threshold/interval is currently configured; do not reinterpret this as proof of a historical maintenance event.",
+      "0x5724=0 is source-defined Grundzustand, not an active maintenance status.",
+      "The two 4-byte counters are zero locally; zero is endian-independent, so this capture alone cannot distinguish endian interpretation for future nonzero values. Production should use the splitter's established unsigned integer decoding convention and retain raw evidence if a future nonzero value appears."
+    ]
+  }
 }
