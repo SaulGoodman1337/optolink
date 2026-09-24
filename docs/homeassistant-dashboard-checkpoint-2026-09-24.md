@@ -353,7 +353,7 @@ are useful, but they must not be presented as live physical measurements.
 
 ### Wartung view implementation
 
-Status: **backend + staging + Discovery + frontend + API lifecycle + HA UI staging live-verified / Apply test pending**
+Status: **backend + staging + Discovery + frontend + API lifecycle + HA UI staging + HA month Apply live-verified / restore verification pending**
 
 The new `Wartung` dashboard view uses the guarded maintenance MQTT API rather
 than raw Optolink writes. Two discovered MQTT Number entities are staging
