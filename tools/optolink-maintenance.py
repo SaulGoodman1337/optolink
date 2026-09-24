@@ -6,6 +6,7 @@ that were hardware-verified on the local VDensHO1 / 20C2 / SW03 appliance.
 
 Verified controller semantics:
   0x5721  R/W burner-runtime maintenance threshold, raw * 100 h
+           IMPORTANT: changing the threshold can re-baseline 0x7570
   0x5723  R/W maintenance interval, raw months (0..24)
            IMPORTANT: every write re-baselines 0x756C
   0x5724  maintenance state; verified maintenance reset sequence 1 -> 0
@@ -50,6 +51,7 @@ ADDR_BURNER_STARTS = 0x088A
 
 RESET_CONFIRMATION = "RESET-WARTUNG"
 MONTH_REFERENCE_CONFIRMATION = "RESET-ZEITREFERENZ"
+HOURS_REFERENCE_CONFIRMATION = "RESET-BRENNERREFERENZ"
 
 
 class MaintenanceError(RuntimeError):
@@ -471,11 +473,26 @@ def command_set_hours(session: MqttSession, args: argparse.Namespace) -> dict[st
         return {
             "action": "set-hours",
             "changed": False,
-            "reason": "already set; no write performed",
+            "reason": "already set; no write performed, burner reference preserved",
             "hours": hours,
             "raw_hex": current_hex,
             "status": snapshot(session, timeout=args.timeout, verbose=args.verbose),
         }
+
+    # Live verification showed that changing 0x5721 from 0 to a nonzero
+    # threshold re-baselines 0x7570 to the current total burner-runtime
+    # seconds. The inverse 100 h -> 0 h test did not re-baseline it, but the
+    # guard is intentionally conservative for every actual threshold write.
+    if args.confirm_reference_reset != HOURS_REFERENCE_CONFIRMATION:
+        raise MaintenanceError(
+            "changing 0x5721 can re-baseline the burner-runtime maintenance "
+            "reference at 0x7570; repeat with --confirm-reference-reset "
+            f"{HOURS_REFERENCE_CONFIRMATION}"
+        )
+
+    before_ref, before_ref_hex = read_uint_le(
+        session, ADDR_BURNER_REFERENCE, 4, timeout=args.timeout, verbose=args.verbose
+    )
 
     write_verify_byte(
         session,
@@ -487,12 +504,24 @@ def command_set_hours(session: MqttSession, args: argparse.Namespace) -> dict[st
         verbose=args.verbose,
     )
 
+    after_ref, after_ref_hex = read_uint_le(
+        session, ADDR_BURNER_REFERENCE, 4, timeout=args.timeout, verbose=args.verbose
+    )
+
     return {
         "action": "set-hours",
         "changed": True,
         "previous_hours": current_raw * 100,
         "hours": hours,
         "raw": requested_raw,
+        "burner_reference_before": {
+            "raw_hex": before_ref_hex,
+            "burner_seconds_baseline": before_ref,
+        },
+        "burner_reference_after": {
+            "raw_hex": after_ref_hex,
+            "burner_seconds_baseline": after_ref,
+        },
         "status": snapshot(session, timeout=args.timeout, verbose=args.verbose),
     }
 
@@ -704,6 +733,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="set burner-runtime maintenance threshold (0..10000 h, 100 h steps)",
     )
     hours.add_argument("hours", type=int)
+    hours.add_argument(
+        "--confirm-reference-reset",
+        metavar=HOURS_REFERENCE_CONFIRMATION,
+        help="required when a write may re-baseline 0x7570",
+    )
     hours.add_argument(
         "--force",
         action="store_true",
