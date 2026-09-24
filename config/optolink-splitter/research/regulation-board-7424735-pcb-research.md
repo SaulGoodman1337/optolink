@@ -286,6 +286,59 @@ Next board-level questions:
 - Which IC is the physical KM-BUS transceiver?
 - Does that transceiver connect directly to the M30624 UART/port pins or through another controller?
 
+## Possible KM-BUS <-> MCU serial-path convergence
+
+The software research now gives the PCB work a specific trace target.
+
+The local WB2A already accepts VS2/P300 function `0x41 KMBUS_RAM_READ` and
+`0x43 KMBUS_EEPROM_READ`. Separately, the comparison-board M30624FGPFP
+provides multiple serial channels, while its Renesas serial programming/debug
+path uses UART1-related signals.
+
+This creates a testable **hardware hypothesis**, not a conclusion:
+
+~~~text
+145 KM-BUS
+    |
+    v
+bus protection / transceiver
+    |
+    v
+MCU UART or GPIO
+~~~
+
+If the local board eventually confirms the same M16C family, the important
+continuity question is whether the 145 transceiver terminates on the UART1 pins
+used by the M16C serial programming architecture, another UART, or unrelated
+GPIO.
+
+Possible outcomes:
+
+1. **145 -> UART1:** normal KM-BUS and the MCU boot/programming serial channel
+   would share MCU serial resources. Boot-mode control would still require
+   separate reset/mode signals; 145 alone would not automatically become a
+   firmware-dump port.
+2. **145 -> another UART:** KM-BUS and the M16C boot/programming path are
+   electrically separate. X15/X10 then become stronger debug/programming
+   candidates.
+3. **145 -> another controller/ASIC:** the main MCU may see KM-BUS only through
+   an intermediate device, changing the firmware/readout model completely.
+
+The Optolink read-function research also limits a simple "firmware over KM-BUS"
+interpretation. Standard VS2 carries only a 16-bit address field, whereas a
+256-KiB M30624FGPFP program image occupies the 20-bit range
+`0xC0000..0xFFFFF`. Direct program-flash access through Optolink would
+therefore require an additional bank/prefix/RPC/gateway mechanism. No such
+local path is currently demonstrated.
+
+The existing 0x41 read remains highly useful even without flash access because
+RAM-like or mirrored runtime structures can expose state machines, timers,
+mailboxes and hidden pump-selection state.
+
+Cross-reference:
+[vitosoft/kmbus-read-memory-analysis-2026-09-24.md](vitosoft/kmbus-read-memory-analysis-2026-09-24.md)
+and GitHub issue **#30**.
+
 ## X10
 
 X10 is a small black unpopulated/populated header near the PCB edge on the online board.
