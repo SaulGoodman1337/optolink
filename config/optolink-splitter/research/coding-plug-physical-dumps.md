@@ -517,6 +517,18 @@ Both existing spare-chip1 binaries were scanned byte-for-byte for the full GFA v
 
 Therefore a simple flat copy of the active GFA diagnostic block is not present in the two current spare-chip1 captures. This strengthens the need to read both physical EEPROM sides with explicit f01/f02 labels before assigning domains.
 
+A second-pass single-byte scan found a more specific pattern inside the exact duplicated 82-byte logical record. The following active GFA raw values occur at corresponding offsets in **both** mirror copies and in both spare-chip1 images:
+
+```text
+P107 raw 02 : 0x003 <-> 0x05D
+P102 raw 01 : 0x01B <-> 0x06D
+P104 raw 0C : 0x01D <-> 0x06F
+P100 raw 63 : 0x02B <-> 0x07D
+               0x046 <-> 0x098
+```
+
+By contrast, active `P101=15`, `P103=14` and `P106=D6` do not occur anywhere in either spare-chip1 image. The mirrored matches are **candidate correlations only**: a shared byte value is not enough to assign a field. However, the pattern is compatible with a physical record that contains shared model parameters while identity/date/CRC material is plug-specific, transformed, or stored on the other EEPROM.
+
 ## Repository files
 
 Raw captures are stored unchanged under:
