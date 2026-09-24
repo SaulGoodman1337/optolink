@@ -1,0 +1,45 @@
+name: Validate maintenance backend
+
+on:
+  push:
+    paths:
+      - "config/optolink-splitter/optolink_maintenance_core.py"
+      - "config/optolink-splitter/optolink-maintenance-api.service"
+      - "tools/optolink-maintenance.py"
+      - "tools/optolink-maintenance-api.py"
+      - "tools/optolink-splitter-update.sh"
+      - "install/optolink-splitter-install.sh"
+      - "ct/optolink-splitter.sh"
+      - ".github/workflows/validate-maintenance-backend.yml"
+  pull_request:
+    paths:
+      - "config/optolink-splitter/optolink_maintenance_core.py"
+      - "config/optolink-splitter/optolink-maintenance-api.service"
+      - "tools/optolink-maintenance.py"
+      - "tools/optolink-maintenance-api.py"
+      - "tools/optolink-splitter-update.sh"
+      - "install/optolink-splitter-install.sh"
+      - "ct/optolink-splitter.sh"
+      - ".github/workflows/validate-maintenance-backend.yml"
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile Python
+        run: |
+          python3 -m py_compile             config/optolink-splitter/optolink_maintenance_core.py             tools/optolink-maintenance.py             tools/optolink-maintenance-api.py
+
+      - name: Validate shell syntax
+        run: |
+          bash -n tools/optolink-splitter-update.sh
+          bash -n install/optolink-splitter-install.sh
+          bash -n ct/optolink-splitter.sh
+
+      - name: Validate maintenance service shape
+        run: |
+          grep -q '^User=optolink$' config/optolink-splitter/optolink-maintenance-api.service
+          grep -q '^Group=optolink$' config/optolink-splitter/optolink-maintenance-api.service
+          grep -q '^ExecStart=/usr/local/bin/optolink-maintenance-api$' config/optolink-splitter/optolink-maintenance-api.service
