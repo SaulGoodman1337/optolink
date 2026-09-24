@@ -87,11 +87,26 @@ These are intentional changes applied by `tools/optolink-apply-vdensho1-ha-profi
 v1.0.3 accepts **only these two paths and only their exact patched Git-blob IDs**:
 
 ```text
-homeassistant_publish.py 49107392ee71af629e6af8eafec337852d6340aa
-mqtt_util.py             b5173ee7a4e04e9ada50b0ed708d65accc10ca46
+homeassistant_publish.py 21d272008206abaa766563f59bd30379b80a02ce
+mqtt_util.py             5f4b159e0431a87fbdb1683fd6568971cf1a3260
 ```
 
 Any additional tracked modification or any different content in either file remains a hard preflight failure.
+
+## Fourth preflight result - line-ending normalization accounted for
+
+The fourth attempt also stopped before any service or settings change. The two intended profile-patched files had the correct semantic changes but different Git blobs than the first reconstruction.
+
+The reason is the profile helper implementation itself: it uses Python `Path.read_text()` and `Path.write_text()`. The upstream files are CRLF-formatted; Python's universal-newline read followed by text write normalizes them to LF while applying the intended source patch.
+
+Replaying that exact transformation produces the **same blobs observed on the LXC**:
+
+```text
+homeassistant_publish.py 21d272008206abaa766563f59bd30379b80a02ce
+mqtt_util.py             5f4b159e0431a87fbdb1683fd6568971cf1a3260
+```
+
+v1.0.5 pins these real on-disk results. No other tracked modification is accepted.
 
 ## Temporary settings
 
