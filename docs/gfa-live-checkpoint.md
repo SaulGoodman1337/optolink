@@ -1,6 +1,6 @@
 # GFA live checkpoint - 2026-09-23
 
-**Current status: P87/P09 temporal ordering is resolved, and the read-only mixed VS1 compatibility test has now passed. On the exact VDensHO1 / 20C2 appliance, stable Virtual_READ values were byte-identical P300 -> VS1/F7 -> P300 while P80/P06/P09/P87 GFA 6B reads were interleaved in the same persistent VS1 session at 150-ms pacing. The next gate remains the guarded stock-splitter smoke test. Two preflight attempts stopped safely before any service/settings change: first on Git verification, then on the two intentional VDensHO1 profile runtime patches. v1.0.3 now accepts only the exact expected patched `homeassistant_publish.py` and `mqtt_util.py` blobs; any other tracked drift remains fatal. The actual 30-second VS1 run is still pending.**
+**Current status: the stock-splitter permanent-VS1 read gate has passed. On the exact VDensHO1 / 20C2 appliance, the current splitter runtime plus the two intentional VDensHO1 profile patches stayed on one MainPID for 60 seconds, initialized VS1/KW, published all 212 enabled cycle-0 HA topics, showed no internal restart, restored settings byte-for-byte and re-established VS2/300 afterward. The next bounded step is a read-only structured GFA_READ 0x6B integration under the same single serial owner; VS1 writes remain unvalidated.**
 
 Read the [P87/P09 high-resolution correlation](gfa-p87-p09-hires.md) for the latest completed live timing result. The next bounded experiment is the [mixed VS1 Virtual/GFA compatibility probe](vs1-mixed-gfa-integration.md): stable Virtual_READ values are compared P300 -> VS1 F7 -> P300 while P80/P06/P09/P87 GFA_READs are interleaved in the same VS1 session. It is read-only and does not change production settings. The earlier [long-run FF investigation](gfa-cycle-ff-investigation.md) remains relevant to acquisition quality.
 
@@ -17,6 +17,37 @@ Evidence:
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
 
+## 0xxxxxx. Stock splitter permanent-VS1 read gate PASS - 2026-09-24
+
+The completed 60-second gate passed:
+
+```text
+VS1_MAINPID=194040
+JOURNAL_VS1_INITIALIZED=yes
+JOURNAL_MAIN_LOOP=yes
+JOURNAL_UNEXPECTED_RESTART=no
+MQTT_EXPECTED=212
+MQTT_SEEN=212
+MQTT_MISSING=0
+SETTINGS_RESTORED=yes
+RESTORED_BASELINE_PROTOCOL=VS2/300
+RESULT=PASS
+```
+
+Original and restored `settings_ini.py` SHA256 were identical:
+`afb2beeddbdde21b6bbfdf0a66ec3be0f77998a7c1f50c32d7386d5eefe9ea05`.
+
+This hardware-validates the existing HA read path in permanent VS1 mode. It removes the remaining read-side architecture objection to running normal F7 datapoints and future GFA 6B reads under one splitter-owned serial session.
+
+Still unresolved before a permanent production switch:
+
+- VS1 Virtual_WRITE / F4 behavior;
+- the actual structured GFA_READ splitter patch;
+- long-duration FF behavior;
+- catastrophic interruption recovery.
+
+Evidence: [stock VS1 smoke gate](../config/optolink-splitter/research/vitosoft/vs1-stock-splitter-smoke-prep-2026-09-24-evidence.json).
+
 ## 0xxxxx. Stock splitter permanent-VS1 smoke gate prepared - 2026-09-24
 
 The next gate is implemented in [`vs1-stock-splitter-smoke.md`](vs1-stock-splitter-smoke.md). It requires a clean tracked `/opt/optolink` checkout at `origin/main`, leaves splitter source unmodified, and temporarily changes only:
@@ -28,7 +59,7 @@ tcpip_port=None
 olbreath=0.15
 ```
 
-The helper stops Party, runs the stock splitter for 30 seconds, requires a stable MainPID plus `VS1/KW protocol initialized` and `enter main loop`, and subscribes to the existing MQTT base topic. Every current Home Assistant poll item enabled on cycle 0 must publish at least once; retained pre-test messages do not count.
+The helper ultimately ran the stock splitter for 60 seconds, required a stable MainPID plus `VS1/KW protocol initialized` and `enter main loop`, and subscribed to the existing MQTT base topic. All 212 Home Assistant poll items enabled on cycle 0 published freshly; retained pre-test messages did not count.
 
 The original `settings_ini.py` is saved and later restored byte-for-byte, including mode/uid/gid. SIGINT/SIGTERM/SIGHUP cleanup is armed before any service/settings change. The normal splitter and Party state are restored, and the baseline splitter must log `VS2/300 protocol initialized` again.
 
