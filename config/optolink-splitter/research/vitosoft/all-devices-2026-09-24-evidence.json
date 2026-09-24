@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "source_snapshot": "vitosoft-private-archive-20260924-130004",
+  "source_archive_sha256": "ff9eda6738d0cbeaf59b3182acc73ac7d8d2e2ec4b85f5d8878f1f24d7e082ed",
+  "scope": "Small derived cross-profile metadata evidence only. No proprietary raw files, IL, database payloads, credentials or live device requests.",
+  "global": {
+    "device_profiles": 399,
+    "events": 11582,
+    "device_event_links": 104339,
+    "unlinked_events": 399,
+    "protocol_functions": 38,
+    "unique_lowlevel_addresses": 5356
+  },
+  "vdensho1": {
+    "profile_id": 60,
+    "identification": "20C2",
+    "event_links": 581,
+    "unique_addresses": 362,
+    "exact_event_address_aliases": [
+      "VDensHO1",
+      "VPendHO1",
+      "VScotHO1"
+    ]
+  },
+  "nearest_profiles": [
+    {
+      "device": "VScotHO1_4",
+      "common_event_ids": 559,
+      "extra_event_ids": 2,
+      "missing_event_ids": 22
+    },
+    {
+      "device": "VDensHO1_4",
+      "common_event_ids": 558,
+      "extra_event_ids": 2,
+      "missing_event_ids": 23
+    },
+    {
+      "device": "VScotHO1_20",
+      "common_event_ids": 559,
+      "extra_event_ids": 7,
+      "missing_event_ids": 22
+    },
+    {
+      "device": "VPlusHO1",
+      "common_event_ids": 540,
+      "extra_event_ids": 18,
+      "missing_event_ids": 41
+    }
+  ],
+  "selected_unlinked_events": [
+    {
+      "event_id": 777,
+      "address": "0x0A3A",
+      "name": "Heating circuit pump A1 set speed",
+      "fc_read": "Virtual_READ"
+    },
+    {
+      "event_id": 779,
+      "address": "0x0A3B",
+      "name": "Heating circuit pump M2 set speed",
+      "fc_read": "Virtual_READ"
+    },
+    {
+      "event_id": 788,
+      "address": "0x0A3C",
+      "name": "Internal pump set speed",
+      "fc_read": "Virtual_READ"
+    },
+    {
+      "event_id": 7239,
+      "address": "0x0B01",
+      "name": "Heating circuit pump M3 set speed",
+      "fc_read": "Virtual_READ"
+    }
+  ],
+  "function_profile_linkage": {
+    "Virtual_WILO_READ": {
+      "definitions": 74,
+      "linked_profile_count": 1,
+      "linked_profiles": [
+        "WILO"
+      ],
+      "linked_to_VDensHO1": false
+    },
+    "Virtual_WILO_WRITE": {
+      "definitions": 9,
+      "linked_profile_count": 1,
+      "linked_profiles": [
+        "WILO"
+      ],
+      "linked_to_VDensHO1": false
+    },
+    "KMBUS_EEPROM_READ": {
+      "definitions": 91,
+      "linked_profile_count": 40,
+      "linked_to_VDensHO1": false
+    },
+    "EEPROM_READ": {
+      "definitions": 91,
+      "linked_profile_count": 21,
+      "linked_to_VDensHO1": false
+    },
+    "EEPROM_WRITE": {
+      "definitions": 90,
+      "linked_profile_count": 21,
+      "linked_to_VDensHO1": false
+    },
+    "XRAM_READ": {
+      "definitions": 12,
+      "linked_profile_count": 20,
+      "linked_to_VDensHO1": false
+    }
+  },
+  "sql_update_tables": {
+    "ecnUpdateDefinition_rows": 0,
+    "ecnDeviceSoftwareUpdate_rows": 0
+  },
+  "limits": [
+    "Device-profile non-membership is not proof of protocol inaccessibility; known address 0x0A3C is globally defined but unlinked.",
+    "Function/profile linkage is metadata evidence, not permission to send a function to VDensHO1.",
+    "All-device relationships do not supersede burner-variant GFA filtering or live hardware validation."
+  ]
+}
