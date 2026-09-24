@@ -62,6 +62,8 @@ ln -sf /usr/local/bin/optolink-maintenance /usr/bin/optolink-maintenance
 install_repo_file tools/wb2a-schedule-probe.py   /usr/local/bin/wb2a-schedule-probe 0750
 ln -sf /usr/local/bin/wb2a-schedule-probe /usr/bin/wb2a-schedule-probe
 
+install_repo_file tools/optolink-schedule-manager.py   /usr/local/bin/optolink-schedule-manager 0755
+
 install_repo_file tools/optolink-party-emulator.py   /usr/local/bin/optolink-party-emulator 0755
 
 install_repo_file config/optolink-splitter/wb2a-single-session-logger.py   /usr/local/bin/wb2a-single-session-logger 0755
@@ -79,13 +81,14 @@ ln -sf /usr/local/bin/wb2a-e7-persistence-probe /usr/bin/wb2a-e7-persistence-pro
 
 install_repo_file config/optolink-splitter/optolink-splitter.service   /etc/systemd/system/optolink-splitter.service 0644
 install_repo_file config/optolink-splitter/optolink-party-emulator.service   /etc/systemd/system/optolink-party-emulator.service 0644
+install_repo_file config/optolink-splitter/optolink-schedule-manager.service   /etc/systemd/system/optolink-schedule-manager.service 0644
 
 install_repo_file config/optolink-splitter/vcontrol-mapping.md   /root/optolink-vcontrol-mapping.md 0644
 
 systemctl daemon-reload
 systemctl enable optolink-splitter.service >/dev/null 2>&1 || true
 systemctl enable optolink-party-emulator.service >/dev/null 2>&1 || true
-chown root:root   /usr/local/bin/optolink-apply-vdensho1-ha-profile   /usr/local/bin/optolink-apply-vscotho1-profile   /usr/local/bin/optolink-party-test   /usr/local/bin/optolink-debug   /usr/local/bin/optolink-maintenance   /usr/local/bin/wb2a-schedule-probe   /usr/local/bin/optolink-party-emulator   /usr/local/bin/wb2a-single-session-logger   /usr/local/bin/wb2a-rkr-cycle-logger   /usr/local/bin/wb2a-pump-start-logger   /usr/local/bin/wb2a-e7-persistence-probe   /etc/systemd/system/optolink-splitter.service   /etc/systemd/system/optolink-party-emulator.service   /root/optolink-vcontrol-mapping.md
+chown root:root   /usr/local/bin/optolink-apply-vdensho1-ha-profile   /usr/local/bin/optolink-apply-vscotho1-profile   /usr/local/bin/optolink-party-test   /usr/local/bin/optolink-debug   /usr/local/bin/optolink-maintenance   /usr/local/bin/wb2a-schedule-probe   /usr/local/bin/optolink-schedule-manager   /usr/local/bin/optolink-party-emulator   /usr/local/bin/wb2a-single-session-logger   /usr/local/bin/wb2a-rkr-cycle-logger   /usr/local/bin/wb2a-pump-start-logger   /usr/local/bin/wb2a-e7-persistence-probe   /etc/systemd/system/optolink-splitter.service   /etc/systemd/system/optolink-party-emulator.service   /etc/systemd/system/optolink-schedule-manager.service   /root/optolink-vcontrol-mapping.md
 ok "Helpers refreshed"
 
 info "Activating VDensHO1/20C2 Home Assistant profile"
@@ -119,4 +122,5 @@ printf 'Run pump logger: wb2a-pump-start-logger --mode heating|dhw\n' >&2
 printf 'Run E7 persistence probe: wb2a-e7-persistence-probe --run\n' >&2
 printf 'Maintenance CLI: optolink-maintenance status\n' >&2
 printf 'Schedule probe: wb2a-schedule-probe snapshot\n' >&2
+printf 'Schedule manager: systemctl status optolink-schedule-manager\n' >&2
 ok "Optolink-Splitter update completed"
