@@ -1,6 +1,6 @@
 # GFA pacing comparison: measured baseline and 150-ms result
 
-Checkpoint: **2026-09-24, after the 08:30-08:35 paced run**.
+Checkpoint: **2026-09-24, including the clean 08:46-08:47 60-second paced run**.
 
 **The 150-ms spacing was achieved on hardware. Two FF replies occurred in 1130 measurement-round reads, versus four in 804 in the preceding approximately 51-ms run. This is a descriptive improvement, not proof of a timing cause or a fix.** Both new FFs were P80 replies. All four runtime channels remained zero throughout the supplied data.
 
@@ -9,6 +9,49 @@ The paced run ended with `RESULT=FAIL` after 288.915 seconds because its second 
 Both the baseline and paced raw-log/JSONL transcripts are already available in full. **Do not request the same files again. Do not raise retry counts, disable P80, or simply increase duration to obtain PASS.**
 
 Current next action: use the **unchanged** pinned paced helper for **one 60-second observation during naturally already-established burner operation**, with an independent observation of the appliance's flame display. This changes the diagnostic question from idle transport repetition to sustained nonzero runtime behavior. It is not a claim that FF has been solved, and not a full-start experiment.
+
+## 0. Follow-up 60-second paced run: transport PASS, runtime still zero
+
+Input: `Eingefügter Text(20260924-065045).txt`, 163260 bytes, 908 lines, SHA256:
+
+```text
+09656062d76931b89cb6bcab9eefd65710ec57c38e8acf16ad116dcb324615e7
+```
+
+The supplied combined transcript contains `wb2a-gfa-paced-20260924-084613-187025.log` and `wb2a-gfa-paced-20260924-084613-187025.jsonl`. All 52 JSON records were parsed: metadata, observation start, 49 accepted rounds and one summary.
+
+Result:
+
+```text
+OBSERVATION_COMPLETE=yes ACCEPTED_ROUNDS=49 REJECTED_ROUNDS=0 RECONNECTIONS=0
+P80_CONFIRMED=0x20 GFA
+P300_RESTORED=yes
+SPLITTER_RESTARTED=yes
+RESULT=PASS
+```
+
+This is the first supplied paced 60-second run that completes the full requested window with **zero rejected rounds, zero FF replies and zero reconnects**. The 49 accepted rounds contain exactly 245 measurement-round GFA reads:
+
+```text
+P06: 49 x 00
+P09: 49 x 00
+P10: 49 x 00
+P84: 49 x 00
+P80: 49 x 20
+```
+
+The measured reply-to-next-request gap across those 245 reads is 150.094..156.628 ms, mean 150.289 ms. Mean P06-to-P84 span is 733.932 ms. This is useful evidence that a 60-second paced session can be transport-clean on this hardware; it does **not** prove that 150 ms eliminates FF in longer runs.
+
+The intended operating-state question remains unresolved because all runtime values stayed zero from the first to the last accepted round. The transcript itself has no flame channel. More importantly, the active party emulator was stopped at **08:46:13.385**, while observation started at **08:46:24.181** and the first P06 reply arrived at **08:46:24.564**. Thus 10.796 seconds elapsed before the observation window and 11.179 seconds before the first fan-speed sample. The log itself already warns that pausing the party emulator can change externally maintained requests.
+
+Do not infer either of the following without the user's independent appliance observation:
+
+- that the burner was definitely firing while the 49 zero-valued rounds were acquired;
+- that persistent-session GFA runtime reads fail during firing.
+
+The deciding external fact is whether the appliance's own flame display stayed active during the actual 60-second observation. If it extinguished before or near sampling start, the zero series is consistent with idle and does not challenge the earlier firing snapshot. If it remained visibly active, this becomes a new discrepancy requiring targeted investigation.
+
+[Machine-readable 60-second evidence](../config/optolink-splitter/research/vitosoft/gfa-paced-60s-2026-09-24-evidence.json) preserves the exact counts, source hash and timing ambiguity.
 
 ## 1. New paced capture: provenance and actual checks
 
