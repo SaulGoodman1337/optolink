@@ -50,6 +50,7 @@ Do not remove the Optolink files from the old `community-scripts` repository unt
 ## Documentation
 
 - [Private Vitosoft source archive](docs/vitosoft-private-archive.md) - private companion repository, verified collector coverage and explicit full-payload import status; no raw proprietary files in this repository.
+- [Stock splitter permanent-VS1 smoke gate - 2026-09-24](docs/vs1-stock-splitter-smoke.md) - prepared final read-path gate before production GFA polling: stock splitter, current HA poll list, MQTT coverage check, write ingress disabled, byte-exact settings restore.
 - [Mixed VS1 Virtual/GFA integration validation - 2026-09-24](docs/vs1-mixed-gfa-integration.md) - live PASS: stable P300/F7/P300 values matched while GFA 6B reads were interleaved in one VS1 session. Next gate: stock splitter with the existing HA read poll list in temporary permanent-VS1 mode, write ingress disabled.
 - [GFA measured 150-ms pacing result - 2026-09-24](docs/gfa-paced-comparison.md) - 2 FF replies in 1130 measurement-round reads versus 4 in 804 at the earlier spacing; descriptive improvement, not a fix. Final abort was due to insufficient re-entry time; P300/services restored. Next: unchanged helper, one 60-second naturally established firing observation. Read before older GFA next-action sections.
 - [GFA quality-aware logger and FF checkpoint - 2026-09-24](docs/gfa-quality-logger.md) - original quality/re-entry implementation and prior raw-FF analysis; the newer measured result above supersedes its pending-hardware-test wording.
