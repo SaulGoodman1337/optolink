@@ -606,6 +606,7 @@ def command_reset(session: MqttSession, args: argparse.Namespace) -> dict[str, A
         primary_error = exc
     finally:
         if attempted_state_one:
+            restore_ack_error: Exception | None = None
             try:
                 write_byte(
                     session,
@@ -614,7 +615,11 @@ def command_reset(session: MqttSession, args: argparse.Namespace) -> dict[str, A
                     timeout=args.timeout,
                     verbose=args.verbose,
                 )
-                time.sleep(args.settle)
+            except Exception as exc:  # noqa: BLE001 - verify independently
+                restore_ack_error = exc
+
+            time.sleep(args.settle)
+            try:
                 restored, _ = read_uint_le(
                     session,
                     ADDR_MAINTENANCE_STATE,
@@ -622,15 +627,17 @@ def command_reset(session: MqttSession, args: argparse.Namespace) -> dict[str, A
                     timeout=args.timeout,
                     verbose=args.verbose,
                 )
-                if restored != 0:
-                    raise MaintenanceError(
-                        f"SAFETY ERROR: 0x5724 restore readback={restored}, expected 0"
-                    )
-            except Exception as restore_exc:  # noqa: BLE001
+            except Exception as read_exc:  # noqa: BLE001
                 raise MaintenanceError(
-                    f"maintenance reset failed and safety restore failed: "
-                    f"{primary_error or 'unknown primary error'}; restore={restore_exc}"
-                ) from restore_exc
+                    "SAFETY ERROR: could not verify 0x5724=0 after reset; "
+                    f"ACK error={restore_ack_error!s}; readback error={read_exc!s}"
+                ) from read_exc
+
+            if restored != 0:
+                raise MaintenanceError(
+                    "SAFETY ERROR: 0x5724 restore readback="
+                    f"{restored}, expected 0; ACK error={restore_ack_error!s}"
+                )
 
     if primary_error is not None:
         raise MaintenanceError(
