@@ -158,8 +158,11 @@ Current evidence:
 - [ ] Continue semantic clustering of the 850 transparent, 500 EEPROM_LT and
   232 virtual KBus reads by participant/device family; structural prefix
   distributions are already extracted.
-- [ ] Build a bounded `Virtual_READ` vs. `0x41` correlation matrix for known
-  dynamic objects such as `0x0A3C`, `0x7660` and `0x7663`.
+- [~] Build a bounded `Virtual_READ` vs. `0x41` correlation matrix for known
+  objects. **Runbook and evidence template are prepared; first live run is next.**
+  Targets: `0x00F8`, `0x0A3C`, `0x7660`, `0x7663`, `0x5730`,
+  `0x0A54`, `0x27A0`. See
+  [kmbus-ram-correlation-probe.md](kmbus-ram-correlation-probe.md).
 - [ ] Reconstruct one real Vitosoft-defined 0x43 request including prefix before
   considering another local EEPROM-style read.
 - [ ] Keep all work read-only; no broad blind sweep and no KBUS/KMBUS writes.
