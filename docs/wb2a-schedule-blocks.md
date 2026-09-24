@@ -1,6 +1,6 @@
 # WB2A / VDensHO1 time-program block format
 
-Status: **read path and complete four-slot 8-byte write/readback/restore verified; boundary tests pending**
+Status: **read path, complete four-slot writes and 24:00 day-end verified; empty-day test pending**
 
 Scope:
 
@@ -283,12 +283,29 @@ The core day-block structure is therefore hardware-confirmed end-to-end:
 four ordered start/end pairs in eight bytes, with unused pairs represented by
 `FF FF`.
 
+### 24:00 day-end write test — PASS
+
+A guarded probe on Heating M1 Sunday verified the special day-end boundary:
+
+~~~text
+28 C0 FF FF FF FF FF FF
+05:00-24:00
+~~~
+
+Observed result:
+
+- exact test readback: `28C0FFFFFFFFFFFF`;
+- exact restore readback: `28A0FFFFFFFFFFFF`;
+- therefore `0xC0` is hardware-confirmed as a valid `24:00` interval end
+  on this exact controller;
+- production validation should permit `24:00` only as an interval end, never
+  as a start time.
+
 Remaining block-semantic tests before enabling Home Assistant writes:
 
-1. `24:00` as an interval end;
-2. optionally verify an entirely empty day (`FF FF FF FF FF FF FF FF`) so
-   the UI can safely represent "no switching interval";
-3. after those pass, validate the production MQTT/HA write path with strict
+1. verify an entirely empty day (`FF FF FF FF FF FF FF FF`) so the UI can
+   safely represent "no switching interval";
+2. after that passes, validate the production MQTT/HA write path with strict
    project-side validation and non-optimistic readback.
 
 
