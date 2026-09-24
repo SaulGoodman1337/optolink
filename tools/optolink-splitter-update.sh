@@ -89,6 +89,8 @@ install_repo_file config/optolink-splitter/wb2a-xram-p300-read-probe.py   /usr/l
 ln -sf /usr/local/bin/wb2a-xram-p300-read-probe /usr/bin/wb2a-xram-p300-read-probe
 install_repo_file config/optolink-splitter/wb2a-kmbus-eeprom-p300-read-probe.py   /usr/local/bin/wb2a-kmbus-eeprom-p300-read-probe 0750
 ln -sf /usr/local/bin/wb2a-kmbus-eeprom-p300-read-probe /usr/bin/wb2a-kmbus-eeprom-p300-read-probe
+install_repo_file config/optolink-splitter/wb2a-kmbus-eeprom-map-probe.py   /usr/local/bin/wb2a-kmbus-eeprom-map-probe 0750
+ln -sf /usr/local/bin/wb2a-kmbus-eeprom-map-probe /usr/bin/wb2a-kmbus-eeprom-map-probe
 ln -sf /usr/local/bin/wb2a-e7-persistence-probe /usr/bin/wb2a-e7-persistence-probe
 
 install_repo_file config/optolink-splitter/optolink-splitter.service   /etc/systemd/system/optolink-splitter.service 0644
@@ -101,7 +103,7 @@ install_repo_file config/optolink-splitter/vcontrol-mapping.md   /root/optolink-
 systemctl daemon-reload
 systemctl enable optolink-splitter.service >/dev/null 2>&1 || true
 systemctl enable optolink-party-emulator.service >/dev/null 2>&1 || true
-chown root:root   /usr/local/bin/optolink-apply-vdensho1-ha-profile   /usr/local/bin/optolink-apply-vscotho1-profile   /usr/local/bin/optolink-party-test   /usr/local/bin/optolink-debug   /usr/local/bin/optolink-maintenance   /usr/local/bin/wb2a-schedule-probe   /usr/local/bin/optolink-schedule-manager   /usr/local/bin/optolink-party-emulator   /usr/local/bin/wb2a-single-session-logger   /usr/local/bin/wb2a-rkr-cycle-logger   /usr/local/bin/wb2a-pump-start-logger   /usr/local/bin/wb2a-e7-persistence-probe   /usr/local/bin/wb2a-kmbus-p300-read-probe   /usr/local/bin/wb2a-xram-p300-read-probe   /usr/local/bin/wb2a-kmbus-eeprom-p300-read-probe   /etc/systemd/system/optolink-splitter.service   /etc/systemd/system/optolink-party-emulator.service   /etc/systemd/system/optolink-schedule-manager.service   /etc/systemd/system/optolink-maintenance-api.service   /root/optolink-vcontrol-mapping.md
+chown root:root   /usr/local/bin/optolink-apply-vdensho1-ha-profile   /usr/local/bin/optolink-apply-vscotho1-profile   /usr/local/bin/optolink-party-test   /usr/local/bin/optolink-debug   /usr/local/bin/optolink-maintenance   /usr/local/bin/wb2a-schedule-probe   /usr/local/bin/optolink-schedule-manager   /usr/local/bin/optolink-party-emulator   /usr/local/bin/wb2a-single-session-logger   /usr/local/bin/wb2a-rkr-cycle-logger   /usr/local/bin/wb2a-pump-start-logger   /usr/local/bin/wb2a-e7-persistence-probe   /usr/local/bin/wb2a-kmbus-p300-read-probe   /usr/local/bin/wb2a-xram-p300-read-probe   /usr/local/bin/wb2a-kmbus-eeprom-p300-read-probe   /usr/local/bin/wb2a-kmbus-eeprom-map-probe   /etc/systemd/system/optolink-splitter.service   /etc/systemd/system/optolink-party-emulator.service   /etc/systemd/system/optolink-schedule-manager.service   /etc/systemd/system/optolink-maintenance-api.service   /root/optolink-vcontrol-mapping.md
 ok "Helpers refreshed"
 
 info "Activating VDensHO1/20C2 Home Assistant profile"
@@ -152,12 +154,14 @@ printf '  /usr/local/bin/wb2a-e7-persistence-probe\n' >&2
 printf '  /usr/local/bin/wb2a-kmbus-p300-read-probe\n' >&2
 printf '  /usr/local/bin/wb2a-xram-p300-read-probe\n' >&2
 printf '  /usr/local/bin/wb2a-kmbus-eeprom-p300-read-probe\n' >&2
+printf '  /usr/local/bin/wb2a-kmbus-eeprom-map-probe\n' >&2
 printf 'Run RKR logger: wb2a-rkr-cycle-logger\n' >&2
 printf 'Run pump logger: wb2a-pump-start-logger --mode heating|dhw\n' >&2
 printf 'Run E7 persistence probe: wb2a-e7-persistence-probe --run\n' >&2
 printf 'Run KMBUS/P300 read probe: wb2a-kmbus-p300-read-probe --execute\n' >&2
 printf 'Run XRAM/P300 read probe: wb2a-xram-p300-read-probe --execute\n' >&2
 printf 'Run prefixed KMBUS EEPROM/P300 read probe: wb2a-kmbus-eeprom-p300-read-probe --execute\n' >&2
+printf 'Run KMBUS EEPROM source-map probe: wb2a-kmbus-eeprom-map-probe --execute\n' >&2
 printf 'Maintenance CLI: optolink-maintenance status\n' >&2
 printf 'Maintenance API: systemctl status optolink-maintenance-api\n' >&2
 printf 'Schedule probe: wb2a-schedule-probe snapshot\n' >&2
