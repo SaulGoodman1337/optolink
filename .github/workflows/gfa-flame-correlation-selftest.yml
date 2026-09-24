@@ -1,0 +1,25 @@
+name: GFA flame correlation probe self-test
+
+on:
+  push:
+    paths:
+      - ".github/workflows/gfa-flame-correlation-selftest.yml"
+      - "config/optolink-splitter/wb2a-gfa-flame-correlation-probe.py"
+      - "config/optolink-splitter/wb2a-gfa-triggered-status-probe.py"
+      - "config/optolink-splitter/wb2a-gfa-status-probe.py"
+      - "config/optolink-splitter/wb2a-gfa-paced-probe.py"
+      - "config/optolink-splitter/wb2a-gfa-quality-logger.py"
+      - "config/optolink-splitter/wb2a-gfa-cycle-logger.py"
+      - "config/optolink-splitter/wb2a-gfa-session-probe.py"
+      - "config/optolink-splitter/wb2a-gfa-p80-probe.py"
+  workflow_dispatch:
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile
+        run: python3 -m py_compile config/optolink-splitter/wb2a-gfa-flame-correlation-probe.py
+      - name: Run offline self-test
+        run: python3 config/optolink-splitter/wb2a-gfa-flame-correlation-probe.py --self-test

@@ -170,7 +170,8 @@ Current evidence establishes ordering, not vendor meaning: P87 bit 1 becomes set
 
 - [x] Search existing Vitosoft/private resources and protected-binary derivatives for P84/P85-P88 semantics. Collector-v6 scan: 1,134 text-like files, exact SQL follow-up; P84-P88 all map to generic `Allgemein_Int`, `EnumType=False`, with no recovered phase enum or status-bit table.
 - [ ] Continue P84/P87 semantic work only through **independent live correlation or new GFA/firmware documentation**; do not repeat the same Vitosoft static search.
-- [ ] Use already available independent channels where useful (for example P300 flame/status signals and production `A305`) to bracket raw P84/P87 transitions without assigning names prematurely.
+- [x] Prepare a mixed-VS1 flame-correlation helper that brackets P84/P87 against independent `0x55D3` and `0x55DD` flame indicators in the same persistent VS1 session. Offline compile and full pinned test chain pass; see [gfa-flame-correlation.md](gfa-flame-correlation.md).
+- [ ] Run the flame-correlation helper once from a burner-off baseline and analyze first-flame timing against P84/P87. Keep all semantic names provisional.
 - [ ] Keep the approximately 12-second post-flame transition separate from the 240-second restart/start-optimization behavior.
 - [ ] Correlate pump heat removal and shutdown threshold behavior with startup traces.
 - [ ] Do not reduce or disable flame-stabilization/start-safety parameters on the live gas burner.
