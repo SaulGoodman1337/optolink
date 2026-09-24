@@ -119,27 +119,9 @@ chmod 640 /opt/optolink/settings_ini.py /opt/optolink/homeassistant_poll_list.py
 msg_ok "Prepared VDensHO1/20C2 Home Assistant configuration"
 
 msg_info "Creating systemd service"
-cat <<'EOF_SERVICE' >/etc/systemd/system/optolink-splitter.service
-[Unit]
-Description=Optolink Switch/Splitter
-Documentation=https://github.com/philippoo66/optolink-splitter
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=optolink
-Group=optolink
-SupplementaryGroups=dialout
-WorkingDirectory=/opt/optolink
-Environment=PYTHONUNBUFFERED=1
-ExecStart=/opt/optolink/venv/bin/python /opt/optolink/optolinkvs2_switch.py
-Restart=on-failure
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOF_SERVICE
+cs_repo_fetch config/optolink-splitter/optolink-splitter.service /etc/systemd/system/optolink-splitter.service
+chmod 644 /etc/systemd/system/optolink-splitter.service
+chown root:root /etc/systemd/system/optolink-splitter.service
 
 cat <<'EOF_PORTS' >/usr/local/bin/optolink-ports
 #!/usr/bin/env bash
