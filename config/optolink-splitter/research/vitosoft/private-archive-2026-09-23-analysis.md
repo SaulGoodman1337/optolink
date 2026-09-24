@@ -199,9 +199,15 @@ Source: `MobileClient_ViessmannCommonObjects.dll.il`, `Constants.HydraulicCalibr
 
 Event 8339, `Neptun_Interne_Pumpe_Drehzahl~0x7951`, is a real Virtual_READ/Virtual_WRITE definition. Its device membership is later VScotHO1 variants, VSorp and Vitovalor, **not base VDensHO1**. The machine-readable evidence retains the specific member names.
 
-This is a useful resolution of the string lead, but not a proven volatile WB2A pump override. Do not write 0x7950/0x7951 on the WB2A or treat a calibration mode as ordinary closed-loop operation. The protected FlowCalibration assembly also prevents a claim that every internal calibration path has been exhaustively analyzed.
+This lead has now been followed through the protected FlowCalibration layer and the unprotected MobileClient host integration. The production FlowCalibration binary is version 4.0.11.1 (SHA256 `bd8b8ad3a1e6bf8959246167037ba81366bfb77f41b5ecf5d20c14c9ee6c017f`); the second protected state is an explicit test build 4.0.7.1. ILSpy exposes public metadata but not the protected numerical algorithm.
 
-No newly verified selective pump-control object emerged from the inspected host code. Existing measurements still distinguish A1 demand (`0x7663`) from final internal-pump command (`0x0A3C`, correlated with `0x7660[1]`). These are controller command/runtime representations, not independent mechanical rotor-speed measurements.
+More importantly, `MobileClient.exe` resolves the complete surrounding workflow. It starts/stops Neptun hydraulic calibration at `0x7950`, reads `0x7688/0x0C24/0x0C26`, and for supported VD3XX scenarios writes calculated results to KD3/KD4 and the already known E6/E7/E9 controls. The result writer explicitly rejects `NichtVD3xx`.
+
+Collector-v6 device membership confirms that `0x7950`, `0x7951`, `0x7688`, `0x0C24`, `0x0C26` and the wider `0x7953..0x7961` Neptun group are linked to later VScot/VSorp/Vitovalor profiles, not base VDensHO1. The base VDensHO1 does retain the normal GWG E6/E7/E8/E9 objects.
+
+Therefore FlowCalibration is now closed as a source of a **new demonstrated volatile WB2A pump override**. Do not write `0x7950/0x7951` on the WB2A or treat calibration mode as normal runtime control. Existing measurements still distinguish A1 demand (`0x7663`) from the final internal-pump command (`0x0A3C`, correlated with `0x7660[1]`). The selector between them remains a controller-side/firmware question.
+
+Detailed follow-up: [flowcalibration-hydraulic-2026-09-24.md](flowcalibration-hydraulic-2026-09-24.md).
 
 ## 7. E7 storage semantics and EEPROM status remain unresolved
 
