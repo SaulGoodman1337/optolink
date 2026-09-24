@@ -74,5 +74,34 @@
     "normal_cadence_seconds": "approximately 20-30 s",
     "goal": "Eliminate periodic 15-20 s FAST latency spikes before any olbreath reduction."
   },
-  "next_step": "Apply and observe one or more burner cycles. If stable with no FF quarantine, OL errors or restarts, test olbreath 0.10 as a separate controlled change."
+  "next_step": "Apply and observe one or more burner cycles. If stable with no FF quarantine, OL errors or restarts, test olbreath 0.10 as a separate controlled change.",
+  "first_live_apply_attempt": {
+    "timestamp_local": "2026-09-24T14:17:06+02:00",
+    "result": "ABORTED_BEFORE_SCHEDULER_APPLY",
+    "gfa_patcher_self_tests": "9/9 PASS",
+    "gfa_runtime_state": "already patched; no files changed",
+    "scheduler_self_test": "FAILED",
+    "failure": "test_switch_patch fixture indentation did not match the exact fail-closed upstream marker indentation",
+    "device_service_restart_performed": false,
+    "note": "The failure was in the synthetic self-test fixture, not in the live splitter scheduler logic."
+  },
+  "follow_up_fix": {
+    "scheduler_patcher_version": "1.0.3",
+    "commit": "6cae47dc1b13b5b914a7d8a2398af24a2485623c",
+    "git_blob": "3e862fdf00d7d8ee55c9c33d0dedd47b9066f1e8",
+    "changes": [
+      "Corrected all synthetic upstream indentation markers in test_switch_patch.",
+      "Made scheduler patch application transactional with complete rollback on failure.",
+      "Profile helper now runs all pure patcher self-tests before staging profile/runtime changes."
+    ],
+    "helper_revision": "2026-09-24-r7-phased-poll",
+    "helper_blob": "f0ea532704d6bdeca33a488e9fe3c937e9938a75"
+  },
+  "olbreath_context": {
+    "upstream_default_seconds": 0.05,
+    "current_production_seconds": 0.15,
+    "interpretation": "0.15 s is an experimental conservative margin inherited from successful mixed VS1/F7/6B hardware probes, not a recovered Viessmann protocol minimum.",
+    "upstream_function_comment": "give vitotronic some time between comms to do other things",
+    "next_policy": "Keep 0.15 during scheduler validation; if stable, test 0.10 then 0.05 as separate controlled changes."
+  }
 }
