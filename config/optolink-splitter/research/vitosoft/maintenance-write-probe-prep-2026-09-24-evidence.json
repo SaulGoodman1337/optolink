@@ -88,7 +88,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "MAINTENANCE_HA_DISCOVERY_LIVE_VERIFIED_DASHBOARD_FRONTEND_PENDING",
+  "current_status": "MAINTENANCE_API_LIFECYCLE_FIX_READY_FOR_DEPLOYMENT",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -656,6 +656,31 @@
         "The two writable Number entities terminate only at maintenance staging topics, not at the raw splitter command topic.",
         "Retained stage values are 0/0 after the staging-isolation test and the maintenance API reports online."
       ]
+    },
+    "service_lifecycle_fix": {
+      "date": "2026-09-24",
+      "status": "root-cause-identified-and-fixed-in-repo",
+      "observed": {
+        "systemd_state": "inactive (dead)",
+        "exit_status": "0/SUCCESS",
+        "stop_mode": "clean systemd stop",
+        "availability_retained": "offline",
+        "last_stage_hours": 0,
+        "last_stage_months": 0
+      },
+      "root_cause": "The maintenance API unit used Requires= and PartOf= against optolink-splitter.service. A later splitter restart propagated a clean stop to the API, which was not reliably active afterwards.",
+      "fix": {
+        "removed": [
+          "Requires=optolink-splitter.service",
+          "PartOf=optolink-splitter.service"
+        ],
+        "added_or_kept": [
+          "After=network-online.target optolink-splitter.service",
+          "Wants=network-online.target optolink-splitter.service",
+          "Restart=always"
+        ]
+      },
+      "conclusion": "The MQTT maintenance API must remain lifecycle-independent from transient splitter restarts; it can fail controller requests closed while the splitter is unavailable."
     }
   }
 }
