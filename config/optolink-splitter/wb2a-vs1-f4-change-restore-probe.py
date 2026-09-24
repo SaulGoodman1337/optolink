@@ -338,6 +338,7 @@ def run_probe(parent, vs1, services, opener, log) -> int:
                         if not p300_restored:
                             failures.append("P300 identity after F4 probe is not 20C2.")
                         elif baseline is not None:
+                            pace()
                             p300_value = p300_read_one(parent, p300_wire, TARGET_ADDR)
                             log(f"P300_POST_2306=0x{p300_value:02X} ({p300_value} C)")
                             p300_value_verified = p300_value == baseline
