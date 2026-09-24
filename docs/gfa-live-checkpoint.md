@@ -1,6 +1,6 @@
 # GFA live checkpoint - 2026-09-23
 
-**Current status: the self-triggered 37 C run succeeded end-to-end. It captured 50/50 clean P84/P87/P06/P09 rounds, verified exact 37 C readback and restore to 21 C, and strongly correlates P87 bit 1 (60->62) with release of the 57.6534% high-start modulation plateau. P84/P87 manufacturer semantics and the earliest ~4.8 s after the trigger remain unresolved.**
+**Current status: the self-triggered 37 C run succeeded end-to-end and strongly correlates P87 bit 1 (60->62) with release of the 57.6534% high-start modulation plateau. Static review found no P87 bit table in the inspected private archive or public Vitosoft-derived export. A narrower P87/P09 high-resolution probe is prepared to test temporal ordering while keeping the existing 150-ms pacing and guarded 37 C trigger/restore.**
 
 Read the [paced comparison and startup trace](gfa-paced-comparison.md) for the latest live result. The next bounded experiment is the [GFA status/startup probe](gfa-status-probe.md): P84/P12 every round, alternating P85/P86 and P87/P88, with P80 guarding every round. It records raw bits only; no flame/status semantics are assigned. The earlier [long-run FF investigation](gfa-cycle-ff-investigation.md) remains relevant to acquisition quality.
 
@@ -16,6 +16,14 @@ Evidence:
 - [Static variant/scaling definitions](../config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-evidence.json).
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
+
+## 0x. P87 static review and high-resolution follow-up prepared - 2026-09-24
+
+Static evidence remains limited to event 8211, `P87 GFA Status 3`, address `0x4057`, one byte, NoConversion. No enum or bit-definition table was recovered from the inspected private Vitosoft archive, and the public Vitosoft-derived export only corroborates the same generic event label. P87 bit 1 therefore remains unnamed.
+
+The prepared [P87/P09 high-resolution probe](gfa-p87-p09-hires.md) reuses the exact pinned v1.0.1 37 C trigger and exact-value restore. It samples two P87/P09 pairs between P80 guards and reverses pair order by block, while retaining the existing 150-ms minimum reply gap. Default live window is 35 s. No new write path exists.
+
+Machine evidence: [P87 static/hi-res preparation](../config/optolink-splitter/research/vitosoft/gfa-p87-static-and-hires-2026-09-24-evidence.json).
 
 ## 0. Successful self-triggered startup correlation - 2026-09-24
 
