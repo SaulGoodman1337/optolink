@@ -25,7 +25,7 @@ import sys
 import tempfile
 import time
 
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 ROOT = Path("/opt/optolink")
 UPSTREAM_REF = "c1ee204a1421447721603c5f21c6da7337fdac97"
 
@@ -135,9 +135,47 @@ def patch_adapter(text: str) -> str:
 
 
 def patch_requests(text: str) -> str:
-    if MARKERS["requests_util.py"] in text:
-        return text
     nl = newline_of(text)
+    durable_guard_marker = (
+        "Transient P80 transport failures keep the last validated identity."
+    )
+
+    # Upgrade an already patched v1.0.2 requests_util.py in place. Earlier
+    # versions cleared the P80 identity guard on any transient read failure,
+    # which could suppress P06/P09/P87 until the next NORMAL P80 poll.
+    if MARKERS["requests_util.py"] in text:
+        if durable_guard_marker in text:
+            return text
+
+        old_guard = nl.join([
+            "                if addr == 0x4050:",
+            "                    _community_gfa_p80_ok = (",
+            "                        retcode == 1 and len(data) == 1 and data[0] == 0x20",
+            "                    )",
+            "                    if retcode == 1 and not _community_gfa_p80_ok:",
+            "                        logger.warning(",
+            '                            "GFA P80 identity mismatch; suppressing productive GFA reads"',
+            "                        )",
+        ])
+        new_guard = nl.join([
+            "                if addr == 0x4050:",
+            "                    # Transient P80 transport failures keep the last validated identity.",
+            "                    # A successful non-0x20 P80 read still revokes the guard immediately.",
+            "                    if retcode == 1:",
+            "                        _community_gfa_p80_ok = (",
+            "                            len(data) == 1 and data[0] == 0x20",
+            "                        )",
+            "                        if not _community_gfa_p80_ok:",
+            "                            logger.warning(",
+            '                                "GFA P80 identity mismatch; suppressing productive GFA reads"',
+            "                            )",
+        ])
+        if old_guard not in text:
+            raise PatchError(
+                "requests_util.py is patched but does not match the supported "
+                "v1.0.2 guard layout"
+            )
+        return text.replace(old_guard, new_guard, 1)
 
     start = text.find(
         '        elif((cmnd in ["read", "r"]) or ispollitem):  # "read;0x0804;1;0.1;False"'
@@ -153,7 +191,7 @@ def patch_requests(text: str) -> str:
         "",
         '            # community-scripts: a poll-item scale/type beginning with "gfa:"',
         "            # selects read-only VS1 GFA_READ 0x6B instead of Virtual_READ 0xF7.",
-        '            # Example: ("NORMAL", "gfa_p06", 0x4006, 1, "gfa:30", False)',
+        '            # Example: ("FAST", "gfa_p06", 0x4006, 1, "gfa:30", False)',
         "            gfa_format = None",
         "            if ispollitem and numelms > 3 and isinstance(parts[3], str):",
         "                marker = str(parts[3])",
@@ -173,13 +211,16 @@ def patch_requests(text: str) -> str:
         "                else:",
         "                    retcode, addr, data = vs12_adapter.read_gfa_ext(addr, int(parts[2]), serViDev)",
         "                if addr == 0x4050:",
-        "                    _community_gfa_p80_ok = (",
-        "                        retcode == 1 and len(data) == 1 and data[0] == 0x20",
-        "                    )",
-        "                    if retcode == 1 and not _community_gfa_p80_ok:",
-        "                        logger.warning(",
-        "                            \"GFA P80 identity mismatch; suppressing productive GFA reads\"",
+        "                    # Transient P80 transport failures keep the last validated identity.",
+        "                    # A successful non-0x20 P80 read still revokes the guard immediately.",
+        "                    if retcode == 1:",
+        "                        _community_gfa_p80_ok = (",
+        "                            len(data) == 1 and data[0] == 0x20",
         "                        )",
+        "                        if not _community_gfa_p80_ok:",
+        "                            logger.warning(",
+        '                                "GFA P80 identity mismatch; suppressing productive GFA reads"',
+        "                            )",
         "                if retcode == 1:",
         "                    signd = utils.get_bool(parts[4]) if numelms > 4 else False",
         "                    val = get_value(data, gfa_format, signd)",
@@ -349,6 +390,47 @@ def self_test() -> int:
             self.assertIn('addr != 0x4050 and not gfa_p80_ok', out)
             self.assertIn('data[0] == 0x20', out)
 
+        def test_p80_transient_failure_keeps_identity(self):
+            src = (
+                '        elif((cmnd in ["read", "r"]) or ispollitem):  # "read;0x0804;1;0.1;False"\n'
+                '            OLD\n'
+                '        elif(cmnd in ["write", "w"]):\n'
+                '            WRITE\n'
+            )
+            out = patch_requests(src)
+            self.assertIn(
+                "Transient P80 transport failures keep the last validated identity.",
+                out,
+            )
+            self.assertIn("if retcode == 1:", out)
+            self.assertNotIn(
+                "retcode == 1 and len(data) == 1 and data[0] == 0x20",
+                out,
+            )
+
+        def test_p80_v102_upgrade(self):
+            src = (
+                'community-scripts: a poll-item scale/type beginning with "gfa:"\n'
+                '                if addr == 0x4050:\n'
+                '                    _community_gfa_p80_ok = (\n'
+                '                        retcode == 1 and len(data) == 1 and data[0] == 0x20\n'
+                '                    )\n'
+                '                    if retcode == 1 and not _community_gfa_p80_ok:\n'
+                '                        logger.warning(\n'
+                '                            "GFA P80 identity mismatch; suppressing productive GFA reads"\n'
+                '                        )\n'
+            )
+            out = patch_requests(src)
+            self.assertIn(
+                "Transient P80 transport failures keep the last validated identity.",
+                out,
+            )
+            self.assertNotIn(
+                "retcode == 1 and len(data) == 1 and data[0] == 0x20",
+                out,
+            )
+            self.assertEqual(patch_requests(out), out)
+
         def test_ff_quarantine_is_present(self):
             src = "def write_datapoint(addr:int, data:bytes, ser:serial.Serial) -> bool:\n    pass\n"
             out = patch_optolinkvs1(src)
@@ -375,7 +457,7 @@ def self_test() -> int:
         unittest.defaultTestLoader.loadTestsFromTestCase(Tests)
     )
     if result.wasSuccessful():
-        print("VS1_GFA_READONLY_PATCH_TESTS=7/7")
+        print("VS1_GFA_READONLY_PATCH_TESTS=9/9")
         return 0
     return 1
 
