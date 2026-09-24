@@ -199,6 +199,62 @@ The critical discriminator is whether the pump transition follows:
 - a later GG1/GFA burner-start state such as pre-purge, flame establishment or
   regulation release.
 
+## Direct runtime arbitration snapshot - 2026-09-24 22:26
+
+A guarded P300 read-only window captured a particularly useful active heating
+state:
+
+~~~text
+0x7663 = 03 1E
+0x0A3C = 32
+0x7660 = 03 32
+~~~
+
+The source-validated layouts make the speed relation explicit:
+
+~~~text
+A1/M1 runtime request  0x7663[1] = 0x1E = 30 %
+final pump command     0x0A3C    = 0x32 = 50 %
+internal pump runtime  0x7660[1] = 0x32 = 50 %
+~~~
+
+This is direct local evidence that the hidden controller logic can raise the A1
+runtime request before driving the physical internal pump. The transformation
+in this snapshot is exactly **30 % -> 50 %**.
+
+Existing local configuration evidence is:
+
+~~~text
+E7 / A1 minimum pump speed          = 30 %
+coding-plug GWG75 internal-pump min = 50 %
+~~~
+
+Therefore the simplest current model is:
+
+~~~text
+A1 request (bounded by E7 etc.) = 30 %
+                 |
+                 v
+internal-pump minimum clamp, leading candidate GWG75 = 50 %
+                 |
+                 v
+0x0A3C = 50 % -> 0x7660[1] = 50 %
+~~~
+
+This is stronger than the earlier general observation that `0x0A3C` may
+differ from `0x7663`: the numerical transformation now matches the known
+coding-plug minimum exactly.
+
+Evidence boundary: E7 and GWG75 were established in previous local reads, not
+re-read in this exact 22:26 window. Therefore **GWG75 is the leading
+source-consistent clamp explanation, not yet an isolated same-window causal
+proof**.
+
+The same P300 window also compared `KMBUS_RAM_READ 0x41` against
+`Virtual_READ 0x01`; both functions returned byte-identical values for all
+three runtime objects. Thus 0x41 does not expose an alternative hidden value at
+these addresses.
+
 ## Read-only comparison logger
 
 Repository helper:
