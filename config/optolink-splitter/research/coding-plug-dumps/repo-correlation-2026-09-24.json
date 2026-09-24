@@ -113,7 +113,31 @@
       "identifier_raw": "02 15",
       "identifier_gfa_sequence": "P107 P101",
       "identifier_gfa_raw": "02 15",
-      "identifier_exact_match": true
+      "identifier_exact_match": true,
+      "resolved_summary_layout": {
+        "byte0": {
+          "raw": "20",
+          "meaning": "coding-card type",
+          "gfa": "P80"
+        },
+        "byte1": {
+          "raw": "15",
+          "meaning": "coding-card device identification",
+          "gfa": "P101"
+        },
+        "byte2": {
+          "raw": "02",
+          "meaning": "GWG/main-regulation revision",
+          "gfa": "P107"
+        },
+        "byte3": {
+          "raw": "01",
+          "meaning": "GFA/fire-control revision",
+          "gfa": "P102"
+        }
+      },
+      "notation_2015_0201": "type+identification : GWG-revision+GFA-revision; not a calendar date",
+      "position_source": "exact VDensHO1 catalog, SoulSolistice/esphome_vitohome commit 066b7d35889c95e862ea6a7ba84377fe4eeafa78"
     }
   },
   "direct_flat_match_result": {
