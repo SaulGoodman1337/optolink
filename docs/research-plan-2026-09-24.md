@@ -61,9 +61,13 @@ A1 demand + operating mode + E6/E7/E8/E9 + K31 + 6C + GWG75/76 + other overrides
 - [ ] Keep legacy `0x571D` / `0x581D` closed: both returned invalid-address on the local controller.
 - [ ] Use natural passive observations only when they answer a specific formula question, e.g. whether an A1 request above the GWG75 50% floor is passed through to the internal command.
 - [ ] Keep the documented external-demand/K34 path separate: it can force the internal circulation pump ON but is not proven to request 100% and can affect boiler heat demand via 9B.
-- [x] Transfer the hidden-selector question to controller-firmware/MCU analysis. The exposed Vitosoft/host layer is considered exhausted for this question; do not probe unrelated virtual addresses.
+- [x] Transfer the hidden-selector algorithm itself to controller-firmware/MCU analysis. The focused host/decompilation layer exposed no `0x0A3C` / `0x7660` arbitration implementation.
+- [ ] Complete the newly isolated **installed-pump characterization** before MCU work: read-only K30 `0x5730`, K31 `0x5731`, K52 `0x7752`, E5-E9 `0x27E5..0x27E9`, internal-pump software index `0x0A54/4` and same-window `0x0A3C/0x7660/0x7663`. Use [internal-pump-k30-k31-read.md](internal-pump-k30-k31-read.md).
+- [ ] If K30=`02` ("drehzahlgeregelt mit Volumenstrom"), perform a targeted read-only search for internal-pump flow telemetry; do not assume the already-rejected Neptun `0x0C24` path applies to base VDensHO1.
+- [ ] If K30=`01`, deprioritize mandatory flow-sensor hunting and continue the hidden runtime arbitration as a controller-firmware problem.
+- [ ] Do not write K30/K31 during characterization; both are configuration objects and may be persistent.
 
-**Status: host/datapoint layer exhausted 2026-09-24.** The remaining selector upstream of `0x0A3C` is now a controller-firmware/MCU question. Passive natural observations remain useful only for validating formulas, not for discovering another guessed address.
+**Status: hidden runtime-selector algorithm remains a controller-firmware/MCU question, but installed-pump capability/role characterization is newly reopened.** Static v6 metadata now gives a bounded, source-backed read-only K30/K31/KM-BUS identity step; this is not a return to blind address probing.
 
 ## P0 - Complete GFA software identity
 

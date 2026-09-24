@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "source_snapshot": {
+    "repository": "SaulGoodman1337/Viessmann-Vitosoft-300-SID1",
+    "snapshot": "vitosoft-private-archive-20260924-143439",
+    "sha256": "3d31380d6dfabf8ede9e305b115e847fb0670511e253a4ed4e59feef2f7adfee"
+  },
+  "scope": "Static VDensHO1 internal-pump capability/configuration objects discovered after the FlowCalibration/host-selector negative result.",
+  "events": [
+    {
+      "event_id": 884,
+      "address": "0x5730",
+      "token": "K30_KennungIntPumpe",
+      "meaning_de": "(30) Kennung Interne Umwälzpumpe",
+      "fc_read": "Virtual_READ",
+      "fc_write": "Virtual_WRITE",
+      "block_length": 1,
+      "byte_position": 0,
+      "byte_length": 1,
+      "access_mode": "ReadWrite",
+      "linked_to_base_VDensHO1": true,
+      "values": {
+        "0": "0 stufig",
+        "1": "1 drehzahlgeregelt",
+        "2": "2 drehzahlgeregelt mit Volumenstrom"
+      }
+    },
+    {
+      "event_id": 885,
+      "address": "0x5730",
+      "token": "K30_KennungIntPumpeKM",
+      "meaning_de": "Interne Umwälzpumpe / KM-BUS participant view",
+      "linked_to_base_VDensHO1": true,
+      "values": {
+        "0": "nicht vorhanden",
+        "1": "vorhanden",
+        "2": "shared K30 value label: drehzahlgeregelt mit Volumenstrom"
+      }
+    },
+    {
+      "event_id": 886,
+      "address": "0x5731",
+      "token": "K31_DrehzahlIntPumpe",
+      "meaning_de": "(31) Solldrehzahl Interne Pumpe",
+      "fc_read": "Virtual_READ",
+      "fc_write": "Virtual_WRITE",
+      "block_length": 1,
+      "byte_position": 0,
+      "byte_length": 1,
+      "conversion": "NoConversion",
+      "access_mode": "ReadWrite",
+      "linked_to_base_VDensHO1": true,
+      "profile_visibility": "hidden when K30 / internal-pump ID is 0 stufig"
+    },
+    {
+      "event_id": 5292,
+      "address": "0x0A54",
+      "token": "SWIndex_IntPumpe",
+      "meaning_de": "Interne Pumpe Software-Index",
+      "fc_read": "Virtual_READ",
+      "fc_write": "undefined",
+      "block_length": 4,
+      "byte_position": 3,
+      "byte_length": 1,
+      "conversion": "NoConversion",
+      "access_mode": "Read",
+      "linked_to_base_VDensHO1": true
+    },
+    {
+      "event_id": 2894,
+      "address": "0x27E5",
+      "token": "KE5_KonfiKennung_D_PumpeA1M1_KM",
+      "meaning_de": "KM-BUS-Heizkreispumpe A1",
+      "fc_read": "Virtual_READ",
+      "fc_write": "Virtual_WRITE",
+      "block_length": 1,
+      "linked_to_base_VDensHO1": true
+    }
+  ],
+  "host_analysis": {
+    "flowcalibration_result": "negative for a new volatile WB2A runtime-pump override",
+    "focused_selector_search": "no host-side 0x0A3C/0x7660 arbitration algorithm found in the focused decompiled candidates",
+    "consequence": "The hidden runtime selector upstream of 0x0A3C remains controller-firmware/MCU territory, but K30/K31/0x0A54 can now characterize the installed internal-pump capability and role before firmware work."
+  },
+  "interpretation_boundary": [
+    "Do not write 0x5730 or 0x5731 during characterization; both are configuration objects and may be persistent.",
+    "K31 is not assumed to be a volatile runtime override.",
+    "K30=2 would prove that the controller configuration distinguishes an internal-pump mode with volume-flow capability; it would not by itself identify a readable volume-flow datapoint.",
+    "The Wilo/Grundfos 0x10B0/0x10C0 coding-plug blocks are diverter-valve motion profiles, not internal-circulation-pump speed controls."
+  ],
+  "next_live_reads": [
+    "0x5730/1 K30 internal-pump capability",
+    "0x5731/1 K31 configured internal-pump target",
+    "0x7752/1 hydraulic-separator sensor config",
+    "0x27E5/1 E5/KM-BUS A1 pump identification",
+    "0x27E6..0x27E9/1 A1 pump speed configuration",
+    "0x0A54/4 internal-pump software-index block",
+    "0x7660/2, 0x7663/2, 0x0A3C/1 optional same-window runtime correlation"
+  ]
+}
