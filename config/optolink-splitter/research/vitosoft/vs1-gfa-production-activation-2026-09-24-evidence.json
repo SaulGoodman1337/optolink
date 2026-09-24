@@ -52,5 +52,49 @@
       "confirm Party service remains active",
       "republish full HA discovery with a longer timeout and then force one state refresh"
     ]
-  }
+  },
+  "post_activation_verification": {
+    "timestamp_local": "2026-09-24T13:45+02:00",
+    "result": "PASS",
+    "settings": {
+      "vs1protocol": true,
+      "olbreath": 0.15,
+      "port_vitoconnect": null,
+      "mqtt_topic": "openv",
+      "mqtt_listen": "openv/cmnd"
+    },
+    "services": {
+      "optolink-splitter.service": "active/running",
+      "optolink-party-emulator.service": "active/running"
+    },
+    "splitter": {
+      "main_pid": 195972,
+      "journal_markers": [
+        "VS1/KW protocol initialized",
+        "enter main loop"
+      ],
+      "restart_or_error_markers_observed": false
+    },
+    "discovery": {
+      "retry_result": "PASS",
+      "published_entities": 294,
+      "log": "/root/ha-discovery-vs1-gfa-20260924-134544.log"
+    },
+    "fresh_gfa_mqtt": {
+      "p80_raw": "20",
+      "p06_rpm": 0,
+      "p09_percent": 0,
+      "p87_raw": "00",
+      "topics_seen": "4/4"
+    },
+    "conclusion": [
+      "Permanent VS1 is active with the validated 150 ms global olbreath.",
+      "Splitter and Party services are both active and stable.",
+      "The splitter initialized VS1/KW and entered the main loop without observed restart/error markers in the verification window.",
+      "Full Home Assistant discovery completed successfully with 294 entities.",
+      "All four production GFA topics delivered fresh non-retained MQTT values; P80 identity guard is satisfied with raw 20.",
+      "The permanent F7/F4/0x6B single-owner architecture is now verified in live production."
+    ]
+  },
+  "production_status": "VERIFIED_ACTIVE"
 }
