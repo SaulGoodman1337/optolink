@@ -38,6 +38,23 @@ same advisory lock:
 The lock file is provisioned as `0660 optolink:optolink`. A CLI action and
 an API action therefore cannot execute maintenance operations concurrently.
 
+## systemd lifecycle
+
+The maintenance API is intentionally **not** `PartOf=` and does not
+`Require=` the splitter service. It has only ordering/soft-start
+dependencies:
+
+```ini
+After=network-online.target optolink-splitter.service
+Wants=network-online.target optolink-splitter.service
+Restart=always
+```
+
+This is deliberate. The API communicates with the splitter through MQTT and
+must survive an independent `optolink-splitter.service` restart. Controller
+requests can fail closed while the splitter is unavailable, but the API
+process and its Home Assistant availability must remain alive.
+
 ## Service
 
 ```bash
