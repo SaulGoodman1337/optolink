@@ -48,7 +48,7 @@ import threading
 import time
 from typing import Any
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 ROOT = Path("/opt/optolink")
 SETTINGS = ROOT / "settings_ini.py"
 HA_POLL = ROOT / "homeassistant_poll_list.py"
@@ -63,6 +63,23 @@ TEMP_SETTINGS = {
     "mqtt_listen": None,
     "tcpip_port": None,
     "olbreath": 0.15,
+}
+UPSTREAM_REF = "c1ee204a1421447721603c5f21c6da7337fdac97"
+UPSTREAM_RUNTIME_BLOBS = {
+    "optolinkvs2_switch.py": "1fae36baae1c2ef264906c8eca76ef15c5152974",
+    "optolinkvs1.py": "cff6b4d8d52ca4ee1f79c310dd9377dba1a18270",
+    "optolinkvs2.py": "7d56f71b10d1bbb74ba2efb443bd16161aff71a8",
+    "vs12_adapter.py": "dfcd97cbe598bb71aafd5c1735e1fb4018b8be68",
+    "requests_util.py": "0e2b94547518bde504632579d5d7c4da45e56db7",
+    "c_polllist.py": "2502f9b7bf2b4bd2b218286e135b9694191f970b",
+    "c_settings_adapter.py": "a2d300d056a49b4bdfdbed81a93860405e478e29",
+    "mqtt_util.py": "c10850f560564936064178dda605ad821c5af13d",
+    "homeassistant_adapter.py": "d6b1e7b4e8446e23ea4f26c90cafc26c43e031c4",
+    "homeassistant_publish.py": "0e34f9f11d1be07de1e58b5baa71cfe62efb2851",
+    "utils.py": "ee10204b61bb1fd5a75d20c8b0901262096baf2e",
+    "c_tcpserver.py": "572eef3637ce39825bb73aa024b4a9050429e147",
+    "viessdata_util.py": "2d6f93be508ef944befe30e64ce7b7313f903203",
+    "viconn_util.py": "bf6f916b20ed66746b869d4ec660542304ec6d00",
 }
 ERROR_PATTERNS = (
     "Traceback (most recent call last)",
@@ -412,11 +429,48 @@ def load_effective_settings() -> dict[str, Any]:
                 pass
 
 
-def git_state() -> tuple[str, str, str]:
-    head = run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], timeout=10).stdout.strip()
-    origin = run(["git", "-C", str(ROOT), "rev-parse", "origin/main"], timeout=10).stdout.strip()
-    dirty = run(["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=no"], timeout=10).stdout.strip()
-    return head, origin, dirty
+def git_blob_sha(path: Path) -> str:
+    data = path.read_bytes()
+    header = f"blob {len(data)}\0".encode("ascii")
+    return hashlib.sha1(header + data).hexdigest()
+
+
+def verify_stock_runtime() -> tuple[str, str]:
+    """Verify installed runtime without requiring .git metadata.
+
+    Preferred mode is a clean Git checkout at origin/main. Migrated/legacy
+    installations without .git are accepted only when every critical runtime
+    Python file matches the pinned upstream Git blob manifest exactly.
+    """
+    git_dir = ROOT / ".git"
+    if git_dir.exists():
+        try:
+            head = run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], timeout=10).stdout.strip()
+            origin = run(["git", "-C", str(ROOT), "rev-parse", "origin/main"], timeout=10).stdout.strip()
+            dirty = run(["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=no"], timeout=10).stdout.strip()
+        except Exception as exc:
+            raise SmokeError("Git metadata exists but stock verification failed: " + str(exc)) from exc
+        if head != origin:
+            raise SmokeError(f"Tracked splitter checkout HEAD {head} != origin/main {origin}.")
+        if dirty:
+            raise SmokeError("Tracked splitter checkout has local modifications: " + dirty.replace("\n", " | "))
+        return "git-clean-origin-main", head
+
+    mismatches: list[str] = []
+    for rel, expected in UPSTREAM_RUNTIME_BLOBS.items():
+        path = ROOT / rel
+        if not path.is_file():
+            mismatches.append(f"{rel}:missing")
+            continue
+        actual = git_blob_sha(path)
+        if actual != expected:
+            mismatches.append(f"{rel}:{actual}!={expected}")
+    if mismatches:
+        raise SmokeError(
+            "No .git metadata and runtime hash-manifest mismatch against upstream "
+            + UPSTREAM_REF + ": " + " ; ".join(mismatches)
+        )
+    return "runtime-blob-manifest", UPSTREAM_REF
 
 
 def duration_arg(text: str) -> int:
@@ -485,6 +539,12 @@ def self_test() -> int:
             self.assertIn("OL Error do_poll_item", hits)
             self.assertTrue(flags["unexpected_restart"])
 
+        def test_git_blob_sha(self):
+            with tempfile.TemporaryDirectory() as td:
+                p = Path(td) / "x"
+                p.write_bytes(b"test\n")
+                self.assertEqual(git_blob_sha(p), "9daeafb9864cf43055ae93beb0afd6c7d144bfa4")
+
         def test_duration(self):
             self.assertEqual(duration_arg("30"), 30)
             for x in ("19", "61", "bad"):
@@ -493,7 +553,7 @@ def self_test() -> int:
 
     result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(Tests))
     if result.wasSuccessful():
-        print("LOCAL_STOCK_VS1_SMOKE_TESTS=9/9")
+        print("LOCAL_STOCK_VS1_SMOKE_TESTS=10/10")
         return 0
     return 1
 
@@ -513,8 +573,9 @@ def main() -> int:
             f"WB2A stock splitter VS1 smoke {VERSION}: plan only; no service/settings changes.\n"
             f"Live gate: {args.seconds}s stock splitter with vs1protocol=True, mqtt_listen=None, "
             "tcpip_port=None, olbreath=0.15; exact settings restore afterwards.\n"
-            "Requires clean tracked /opt/optolink checkout, no legacy poll_list.py, "
-            "homeassistant_poll_list.py present, port_vitoconnect=None. --execute required."
+            "Requires either a clean tracked /opt/optolink checkout or an exact pinned "
+            "upstream runtime-file manifest, no legacy poll_list.py, homeassistant_poll_list.py "
+            "present, port_vitoconnect=None. --execute required."
         )
         return 0
     if os.geteuid() != 0:
@@ -560,14 +621,13 @@ def main() -> int:
         if not HA_POLL.is_file():
             raise SmokeError("Missing /opt/optolink/homeassistant_poll_list.py.")
 
-        head, origin, dirty = git_state()
-        log(f"GIT_HEAD={head}")
-        log(f"GIT_ORIGIN_MAIN={origin}")
-        if head != origin:
-            raise SmokeError("Tracked splitter checkout is not at origin/main; stock-code gate refused.")
-        if dirty:
-            raise SmokeError("Tracked splitter checkout has local modifications; stock-code gate refused: " + dirty.replace("\n", " | "))
-        log("TRACKED_CHECKOUT=clean_origin_main")
+        stock_mode, stock_ref = verify_stock_runtime()
+        log(f"STOCK_VERIFY_MODE={stock_mode}")
+        log(f"STOCK_VERIFY_REF={stock_ref}")
+        if stock_mode == "git-clean-origin-main":
+            log("TRACKED_CHECKOUT=clean_origin_main")
+        else:
+            log(f"RUNTIME_BLOB_MANIFEST=match files={len(UPSTREAM_RUNTIME_BLOBS)}")
 
         effective = load_effective_settings()
         if effective.get("port_vitoconnect") is not None:
