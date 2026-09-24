@@ -1,6 +1,6 @@
 # WB2A GFA status/startup probe
 
-Status: **prepared and offline-tested; not yet executed on the appliance**.
+Status: **first live status run completed; it started already in P84=06, so the actual burner start was missed. A guarded 37 C trigger follow-up is prepared and offline-tested.**
 
 This helper follows the successful continuous startup capture documented in [GFA pacing comparison](gfa-paced-comparison.md). Its purpose is narrowly defined: observe raw GFA phase/status bytes around a normal startup without assigning undocumented semantics.
 
@@ -31,6 +31,27 @@ Do not transfer nearby definitions from other burner variants into this WB2A GFA
 - P84 raw values 00/02/04/05/06 remain raw states until a manufacturer enum or independent correlation establishes names.
 
 An ordinary P300 datapoint at 0x55DD is named `Flammensignal` in the wider event export. It is a separate future correlation candidate, not a simultaneous channel in this VS1-exclusive test.
+
+## First live status result - 2026-09-24
+
+The first 60-second status run completed cleanly: 49 accepted rounds, zero rejected rounds, zero reconnects, closing P80=20, verified P300 20C2 restoration and service restart.
+
+However, the capture began with P84 already at `06` and P84 stayed `06` for the entire run. It therefore did **not** capture the actual 00->02->04->05->06 startup sequence.
+
+Observed raw values:
+
+| Parameter | Observed values | Change |
+| --- | --- | --- |
+| P84 | `06` | none |
+| P12 | `00` | none |
+| P85 | `21` | none |
+| P86 | `0B` | none |
+| P87 | `60 -> 62` | **bit 1 changed 0 -> 1** |
+| P88 | `00` | none |
+
+The first observed P87=60 sample was at 09:25:13.167 +02:00. The first P87=62 sample was at 09:25:20.539 +02:00. Bits 5 and 6 remained set; only bit 1 changed. This is a useful timing candidate, but it is not assigned a functional meaning.
+
+[Machine-readable live evidence](../config/optolink-splitter/research/vitosoft/gfa-status-run-2026-09-24-evidence.json).
 
 ## Measurement design
 
@@ -117,26 +138,100 @@ The new tests cover fixed alternating banks, exact read framing, no write functi
 
 These are simulated tests; they do not establish the live status-byte semantics.
 
-## Recommended first live run
+## Triggered follow-up - capture the real start
 
-Use a **normal heat demand**, not an actuator test or direct burner/safety manipulation. As with the successful startup trace, start the helper before or just as the controller begins its normal firing sequence if practical.
+The next helper changes only the already-supported A1 normal-room/day setpoint, event 82 at `0x2306`, as a controlled demand stimulus.
 
-Run in the same LXC as root. Do not stop the splitter first and do not change `vs1protocol`.
+Helper: [`wb2a-gfa-triggered-status-probe.py`](../config/optolink-splitter/wb2a-gfa-triggered-status-probe.py), version 1.0.0.
+
+Implementation commit:
+
+```text
+374d9fc5df8f1daec04ebb50e580660b98c5377a
+```
+
+Git blob:
+
+```text
+315d9e7525855237c09225bc310e5e10bf76370b
+```
+
+SHA256:
+
+```text
+4fd17cbd259be55aaf4bb499e796d4101bd4da363f3f12d8846e27a5df4b3784
+```
+
+The published Git blob exactly matches the offline-tested local file. The helper recursively pins the unchanged status/pacing/quality/cycle/session/P80 chain.
+
+### Trigger sequence
+
+1. Require the splitter to be running; pause the active party emulator and splitter.
+2. Verify P300 identity 20C2.
+3. Read and retain the exact current A1 normal setpoint at `0x2306`.
+4. Read `0x55DC` and require raw zero so the burner is off before the stimulus.
+5. Require the original setpoint to be 3..36 C; if it is already 37, abort without writing.
+6. Confirm P80=20 twice.
+7. Return to P300 and re-read both mutable preconditions.
+8. Mark cleanup as required **before** the write, then write only `0x2306=37` and require exact readback.
+9. Switch immediately to VS1.
+10. Capture `P84/P87/P06/P09` every round, followed by P80=20.
+11. In cleanup, return to P300 and restore the exact pre-read `0x2306` value with readback verification before services restart.
+
+The focused four-channel set deliberately combines the new P87 candidate with the already validated startup observables:
+
+- P84 raw phase;
+- P87 raw status/bit positions;
+- P06 GFA-reported fan speed, x30 rpm;
+- P09 GFA modulation setpoint, x0.3922%.
+
+This gives roughly the same five-read round size as the clean paced startup capture while directly testing whether P87 bit 1 aligns with P84 transitions or the later release of the high-start plateau.
+
+### Write boundary
+
+The only parameter write address implemented by this helper is `0x2306`.
+
+Allowed setpoint writes are only:
+
+- temporary value 37 C; and
+- the exact original value captured before the trigger.
+
+There is no coding write, GFA_WRITE, PROCESS_WRITE, actuator test, gas-valve command or flame-safety write. A failed restore is a hard FAIL and is printed as `SETPOINT_RESTORED=NOT_VERIFIED` plus a `CRITICAL` error.
+
+The cleanup covers ordinary exceptions and SIGINT/SIGTERM/SIGHUP. It cannot guarantee restoration after SIGKILL, host power failure, USB removal or controller/hardware failure.
+
+### Offline verification
+
+The published live code was compiled and exercised through **168 tests**:
+
+```text
+143 inherited transport/status tests
+15 triggered-probe protocol/frame tests
+10 triggered-probe integration/cleanup tests
+```
+
+The new integration tests include burner-active refusal, already-37 refusal, mutable-precondition change, exact 37->original restoration, lost trigger response after the simulated physical write, interruption during VS1 capture, hard restore failure, fixed write address/value bounds, focused read-address bounds and inactive-party preservation.
+
+### First triggered live run
+
+Start with the boiler burner off and the normal day setpoint below 37 C. **Do not manually set 37 C first**; the helper does that itself.
+
+Run as root in the same LXC. Do not stop the splitter first and do not change `vs1protocol`.
 
 ```bash
 (
   set -euo pipefail
 
-  script=/root/wb2a-gfa-status-probe.py
+  script=/root/wb2a-gfa-triggered-status-probe.py
   tmp=$(mktemp)
   trap 'rm -f "$tmp"' EXIT
 
   curl --fail --show-error --location --retry 2 --connect-timeout 15 \
-    'https://raw.githubusercontent.com/SaulGoodman1337/optolink/1e76701d8395841a081a3bd6eca67d8ffcbc12af/config/optolink-splitter/wb2a-gfa-status-probe.py' \
+    'https://raw.githubusercontent.com/SaulGoodman1337/optolink/374d9fc5df8f1daec04ebb50e580660b98c5377a/config/optolink-splitter/wb2a-gfa-triggered-status-probe.py' \
     -o "$tmp"
 
   printf '%s  %s\n' \
-    '912de7276ed2a26330abbfb0d7c5778862d171fa5a179ab1b73043fdee9c59bc' \
+    '4fd17cbd259be55aaf4bb499e796d4101bd4da363f3f12d8846e27a5df4b3784' \
     "$tmp" | sha256sum -c -
 
   install -m 0700 "$tmp" "$script"
@@ -146,25 +241,21 @@ Run in the same LXC as root. Do not stop the splitter first and do not change `v
 )
 ```
 
-The pinned paced/quality/cycle/session/P80 helper files must remain unchanged in `/root`; loading stops before service/serial activity if a dependency hash differs.
+The pinned parent helper files must remain unchanged beside it in `/root`.
 
-Retain both paths printed as:
+Expected successful cleanup indicators include:
 
 ```text
-LOG=/root/wb2a-gfa-status-...
-JSONL=/root/wb2a-gfa-status-...
+ORIGINAL_DAY_SETPOINT=<previous value>
+TRIGGER_SETPOINT=37
+TRIGGER_VERIFIED=yes
+SETPOINT_RESTORED=yes
+P80_CONFIRMED=0x20 GFA
+P300_RESTORED=yes
+SPLITTER_RESTARTED=yes
+RESULT=PASS
 ```
 
-If the result is FAIL, do not blindly rerun. The accepted/rejected raw records remain useful for analysis.
+If `SETPOINT_RESTORED=NOT_VERIFIED` appears, verify/reset the day setpoint manually before doing anything else and do not blindly rerun.
 
-## What the next analysis will test
-
-The preceding startup capture observed P84 `00 -> 02 -> 04 -> 05 -> 06`, followed by a roughly 9.4-10.4 second delay before the high startup plateau began to fall. The new capture will ask:
-
-1. Does P12 change at, before or after those P84 transitions?
-2. Which P85-P88 bytes/bits change near 02/04/05/06?
-3. Does any bit transition remain stable through the later startup-hold release?
-4. Are the same changes present in idle versus firing states?
-5. Are any changes short enough that the alternating-bank cadence could miss them?
-
-A correlation is evidence for timing/association, not automatically a functional bit name. A second controlled observation or independent flame signal is required before promoting a candidate to a named Home Assistant entity.
+Retain the printed `LOG=` and `JSONL=` files. The next analysis will compare the exact 37 C trigger timestamp with P84, P87 bit 1, P06 fan speed and P09 modulation-setpoint transitions. A timing correlation is still not a vendor-defined bit name.
