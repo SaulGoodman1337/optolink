@@ -1,9 +1,7 @@
 [Unit]
 Description=Optolink guarded maintenance MQTT API
 After=network-online.target optolink-splitter.service
-Wants=network-online.target
-Requires=optolink-splitter.service
-PartOf=optolink-splitter.service
+Wants=network-online.target optolink-splitter.service
 
 [Service]
 Type=simple
@@ -12,7 +10,7 @@ Group=optolink
 WorkingDirectory=/opt/optolink
 Environment=PYTHONUNBUFFERED=1
 ExecStart=/usr/local/bin/optolink-maintenance-api
-Restart=on-failure
+Restart=always
 RestartSec=5
 NoNewPrivileges=true
 PrivateTmp=true
