@@ -63,7 +63,7 @@
     "not_proven": [
       "Official human-readable firmware notation such as 2.6 or 02.06.",
       "A marketing/release name corresponding to P81/P82.",
-      "Semantic decoding of appliance/GFA configuration byte 0x76."
+      "Complete, contradiction-free semantic decoding of P83 0x76; a partial source bit mapping exists but bit4 does not fit the retained description."
     ]
   },
   "related_identity": {
@@ -75,5 +75,18 @@
     "device_software_index": "0x00FB=0x03",
     "gfa_variant": "P80=0x20"
   },
-  "result": "PASS"
+  "result": "PASS",
+  "p83_static_followup": {
+    "source": "Collector-v6 all-translations-de.csv",
+    "source_description": "Gerätekonfiguration (FA0...7); bit-position text: b0=not(FA1), b1=FA5, b2=FA3, b3=FA0, b4=0, b5=FA2, b6=FA7, b7=FA6",
+    "local_raw": "0x76",
+    "local_set_bits": [
+      1,
+      2,
+      4,
+      5,
+      6
+    ],
+    "interpretation_boundary": "Partial source mapping recovered, but do not claim a complete semantic decode: the retained description labels bit4 as 0/reserved while local raw 0x76 has bit4 set."
+  }
 }
