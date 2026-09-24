@@ -1,6 +1,6 @@
 # WB2A / VDensHO1 time-program block format
 
-Status: **read path verified; full 8-byte write/readback/restore verified for one interval; multi-slot boundary tests pending**
+Status: **read path and complete four-slot 8-byte write/readback/restore verified; boundary tests pending**
 
 Scope:
 
