@@ -456,7 +456,7 @@ Do not treat the M-Bus Slave Click choice as a completed implementation yet.
 
 ### Maintenance configuration / reset via Home Assistant
 
-Status: **splitter verification complete / shared core + guarded CLI + MQTT API implemented / safe API behavior + shared lock live-verified / final bounded API write pending / future HA task pending**
+Status: **maintenance backend fully live-verified / Home Assistant integration next**
 
 A future Home Assistant dashboard session should add a compact **Service /
 Wartung** area that not only displays the verified maintenance diagnostics but,
@@ -535,9 +535,15 @@ The shared CLI/API lock is now live-verified. While the common
 the unprivileged MQTT API failed closed with a `busy` result. Normal CLI
 access resumed after release.
 
-Remaining API validation before Home Assistant integration:
+The final bounded MQTT API write is now live-verified. A guarded
+`set_months 0 -> 1 -> 0` sequence completed through the API, both writes were
+read back successfully, and only `0x756C` was re-baselined as expected.
+`0x7570`, `0x5721`, `0x5724`, `0x08A7` and `0x088A` remained
+unchanged.
 
-- one final bounded live API write with independent readback and restore.
+The maintenance backend is therefore complete for the currently verified
+scope. No further raw/backend write experiments are required before Home
+Assistant integration.
 
 ## WB2A reverse engineering: open items
 
