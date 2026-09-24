@@ -260,16 +260,35 @@ Observed result:
 - the same VS1/KW short-response timeout behavior occurred and remains
   diagnostic only; byte-exact readback confirmed persistence and restoration.
 
+### Four-interval / full eight-byte write test — PASS
+
+A third guarded probe on Heating M1 Sunday populated all four interval pairs:
+
+~~~text
+28 40 50 60 70 80 90 9D
+05:00-08:00, 10:00-12:00, 14:00-16:00, 18:00-19:50
+~~~
+
+Observed result:
+
+- exact test readback: `284050607080909D`;
+- all eight bytes were accepted as active schedule time values;
+- exact restore readback: `28A0FFFFFFFFFFFF`;
+- the restore therefore also proves that populated slots 2..4 can be cleared
+  back to `FF FF` by writing the complete day block;
+- the same VS1/KW short-response timeout behavior occurred, while byte-exact
+  readback confirmed both persistence and restoration.
+
+The core day-block structure is therefore hardware-confirmed end-to-end:
+four ordered start/end pairs in eight bytes, with unused pairs represented by
+`FF FF`.
+
 Remaining block-semantic tests before enabling Home Assistant writes:
 
-1. four active intervals to exercise all eight bytes as time values;
-2. restoring from that four-slot test back to the one-slot baseline will also
-   verify that previously populated slots 2..4 can be cleared back to
-   `FF FF`;
-3. `24:00` as an interval end;
-4. optionally verify an entirely empty day (`FF FF FF FF FF FF FF FF`) so
+1. `24:00` as an interval end;
+2. optionally verify an entirely empty day (`FF FF FF FF FF FF FF FF`) so
    the UI can safely represent "no switching interval";
-5. after those pass, validate the production MQTT/HA write path with strict
+3. after those pass, validate the production MQTT/HA write path with strict
    project-side validation and non-optimistic readback.
 
 
