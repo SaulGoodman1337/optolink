@@ -9,11 +9,11 @@
   },
   "helper": {
     "file": "config/optolink-splitter/wb2a-stock-vs1-smoke.py",
-    "version": "1.0.3",
-    "commit": "421b72c0578a31a4e67865385a59d1b04054e6f5",
-    "git_blob": "3a81d4f1d3c856a3d03b176f4d1ca11c63efd27f",
-    "sha256": "26d4435b69353794d704526a0a5204b858df0871c13d9409876ecd060a943145",
-    "embedded_logic_tests": "13/13",
+    "version": "1.0.4",
+    "commit": "3f78e114e9666780f39b82f5580e8820448c6ed7",
+    "git_blob": "53d96652c855c4bf892eeca3270a7c9afa0d20df",
+    "sha256": "02494962fc007059ab6fc5c917dfbedf66f88d89df6e868b5065e14134d4aa6e",
+    "embedded_logic_tests": "14/14 expected; includes exact porcelain leading-space regression",
     "default_seconds": 30,
     "duration_bounds_seconds": [
       20,
@@ -130,5 +130,13 @@
         "expected_git_blob": "b5173ee7a4e04e9ada50b0ed708d65accc10ca46"
       }
     }
+  },
+  "third_attempt": {
+    "timestamp_local": "2026-09-24T12:36:38+02:00",
+    "result": "FAIL_PRECONDITION",
+    "reason": "v1.0.3 used stdout.strip() on git status --porcelain; this removed the first line's leading status-column space and parsed homeassistant_publish.py as omeassistant_publish.py",
+    "device_or_settings_changes": false,
+    "services_changed": false,
+    "fix": "v1.0.4 preserves porcelain status columns with rstrip CR/LF only and adds a regression test for the exact first-line case"
   }
 }
