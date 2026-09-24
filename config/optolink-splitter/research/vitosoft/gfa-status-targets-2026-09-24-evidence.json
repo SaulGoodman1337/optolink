@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "purpose": "Select read-only GFA status targets for the next bounded startup correlation.",
+  "local_variant": {
+    "profile": "VDensHO1 / 20C2",
+    "P80": "0x20",
+    "branch": "GFA",
+    "hardware_confirmed": true
+  },
+  "local_gfa_targets": [
+    {
+      "parameter": "P12",
+      "event_id": 8181,
+      "address": "0x400C",
+      "source_label": "Digitaleingang mit Bit-Kodierung",
+      "representation": "Binary/NoConversion",
+      "semantics": "bit meanings unknown"
+    },
+    {
+      "parameter": "P84",
+      "event_id": 8208,
+      "address": "0x4054",
+      "source_label": "GFA Betriebsphase",
+      "semantics": "enum unknown"
+    },
+    {
+      "parameter": "P85",
+      "event_id": 8209,
+      "address": "0x4055",
+      "source_label": "GFA Status 1",
+      "semantics": "bit meanings unknown"
+    },
+    {
+      "parameter": "P86",
+      "event_id": 8210,
+      "address": "0x4056",
+      "source_label": "GFA Status 2",
+      "semantics": "bit meanings unknown"
+    },
+    {
+      "parameter": "P87",
+      "event_id": 8211,
+      "address": "0x4057",
+      "source_label": "GFA Status 3",
+      "semantics": "bit meanings unknown"
+    },
+    {
+      "parameter": "P88",
+      "event_id": 8212,
+      "address": "0x4058",
+      "source_label": "GFA Status 4",
+      "semantics": "bit meanings unknown"
+    },
+    {
+      "parameter": "P80",
+      "event_id": 8258,
+      "address": "0x4050",
+      "source_label": "variant selector",
+      "expected_raw": "20"
+    }
+  ],
+  "exclusions_and_variant_warnings": [
+    "Do not transfer common/SCOT/CES P89 bit labels b0=FA9,b1=FA11,b2=FA8 to the local GFA branch. The local GFA branch uses event 8260 at 0x4059 with a different meaning (60 Hz).",
+    "P13/P14/P15 ionization-related labels and P17 flame-formation-time exist in the wider VSKO union but are not members of the locally selected GFA group and are not enabled in this probe.",
+    "P84 raw 00/02/04/05/06 must not be assigned manufacturer phase names without an enum or independent correlation.",
+    "P12/P85-P88 are not called flame signals by the recovered local metadata."
+  ],
+  "public_corroboration": {
+    "repository": "MorrisonHB/Optolink_02",
+    "observed_commit": "ec77c6917909ae229b17a6104db4f81f9a31e263",
+    "files": [
+      "Optolink_02/Documentation/DP_VScotHO1_20_20251101_190112.txt",
+      "Optolink_02/PY-Quellcode/InsideViessmannVitosoft/events_export.csv"
+    ],
+    "result": "Confirms generic names P12 and P84-P88 but supplies no P84 enum or P85-P88/P12 bit table."
+  },
+  "preceding_startup_capture": {
+    "upload_name": "Eingefügter Text(20260924-065914).txt",
+    "sha256": "82ebdb19ac94f62b2f1f4ee2976c88be2c7630a561b501ab815bde0beb4cf137",
+    "result": "PASS",
+    "p84_sequence": [
+      "00",
+      "02",
+      "04",
+      "05",
+      "06"
+    ],
+    "key_lead": "P09 first leaves its startup plateau about 9.37 s after first P84=06; P06 first falls below 4410 rpm about 10.36 s after first P84=06. No independent flame channel was sampled."
+  },
+  "probe_design": {
+    "file": "config/optolink-splitter/wb2a-gfa-status-probe.py",
+    "version": "1.0.0",
+    "sha256": "912de7276ed2a26330abbfb0d7c5778862d171fa5a179ab1b73043fdee9c59bc",
+    "git_blob": "b863aefb16da180564baf3dc0468b25f2cf3b141",
+    "minimum_reply_gap_ms": 150,
+    "bank_A": [
+      "P84",
+      "P12",
+      "P85",
+      "P86"
+    ],
+    "bank_B": [
+      "P84",
+      "P12",
+      "P87",
+      "P88"
+    ],
+    "per_round_guard": "P80=0x20",
+    "writes": false,
+    "arbitrary_addresses": false,
+    "bit_semantics_assigned": false,
+    "offline_tests": 143
+  },
+  "next_live_question": "Which raw P12/P85-P88 bits change around P84 00->02->04->05->06 and around the later release of the startup plateau?"
+}
