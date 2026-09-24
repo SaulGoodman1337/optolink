@@ -55,15 +55,15 @@ A1 demand + operating mode + E6/E7/E8/E9 + K31 + 6C + GWG75/76 + other overrides
 
 **TODO:**
 
-- [ ] Treat `0x0A3C` as the verified final command shadow, not a writable target.
-- [ ] Search remaining host-side/protected code specifically for the selector between exposed configuration inputs and `0x0A3C`.
-- [ ] Prioritize the two protected FlowCalibration binary states and embedded resources; the normal deep string/member corpus did not expose a WB2A burner-dependent pump override.
+- [x] Treat `0x0A3C` as the verified final command shadow, not a writable target; live correlation with `0x7660[1]` is established.
+- [x] Search remaining host-side/protected code for the selector. Focused decompilation of `MobileClient.exe`, `ViessmannCommonObjects.dll`, `vsmControlLibrary.dll`, FlowCalibration and the hydraulic host path found no `0x0A3C`/`0x7660` selector or arbitration method.
+- [x] Analyze both protected FlowCalibration states and host integration. Result: the path is hydraulic calibration for VD3XX/Neptun and writes normal E6/E7/E9 configuration; it does not expose a new volatile WB2A pump override.
 - [ ] Keep legacy `0x571D` / `0x581D` closed: both returned invalid-address on the local controller.
 - [ ] Use natural passive observations only when they answer a specific formula question, e.g. whether an A1 request above the GWG75 50% floor is passed through to the internal command.
 - [ ] Keep the documented external-demand/K34 path separate: it can force the internal circulation pump ON but is not proven to request 100% and can affect boiler heat demand via 9B.
-- [ ] If protected host code yields no selector, move this question to actual controller-firmware/MCU analysis rather than probing unrelated virtual addresses.
+- [x] Transfer the hidden-selector question to controller-firmware/MCU analysis. The exposed Vitosoft/host layer is considered exhausted for this question; do not probe unrelated virtual addresses.
 
-**Completion criterion:** a source-backed selector/override path is found, or the workstream is explicitly transferred to controller-firmware analysis with the exposed datapoint layer considered exhausted.
+**Status: host/datapoint layer exhausted 2026-09-24.** The remaining selector upstream of `0x0A3C` is now a controller-firmware/MCU question. Passive natural observations remain useful only for validating formulas, not for discovering another guessed address.
 
 ## P0 - Complete GFA software identity
 
