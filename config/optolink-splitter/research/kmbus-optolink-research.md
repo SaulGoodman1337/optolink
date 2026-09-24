@@ -809,6 +809,77 @@ byte-identical and temporally aligned.
 Evidence:
 [vitosoft/kmbus-ram-correlation-2026-09-24-evidence.json](vitosoft/kmbus-ram-correlation-2026-09-24-evidence.json).
 
+## Live Phase B PASS - dynamic 0x41 mirror and 30 -> 50 pump arbitration
+
+A second guarded P300 window caught the pump path in a non-zero runtime state.
+
+Window:
+
+~~~text
+2026-09-24T22:26:31.578+02:00
+..
+2026-09-24T22:26:38.704+02:00
+~~~
+
+Again, all seven 0x01/0x41 pairs were byte-identical. The critical dynamic
+objects were:
+
+~~~text
+0x0A3C / 1
+  0x01 -> 32
+  0x41 -> 32
+
+0x7660 / 2
+  0x01 -> 03 32
+  0x41 -> 03 32
+
+0x7663 / 2
+  0x01 -> 03 1e
+  0x41 -> 03 1e
+~~~
+
+Using the already source-validated object layouts:
+
+- `0x7663[1] = 0x1E = 30 %`: A1 calculated/runtime pump request;
+- `0x7660[1] = 0x32 = 50 %`: actual internal-pump speed path;
+- `0x0A3C = 0x32 = 50 %`: final internal-pump command shadow.
+
+This closes the dynamic-mirror question for the sampled addresses:
+`KMBUS_RAM_READ 0x41` tracks changing non-zero state exactly like
+`Virtual_READ 0x01`.
+
+It also provides an independent high-value pump-arbitration observation:
+
+~~~text
+A1 request           30 %   0x7663[1] = 0x1E
+        |
+        v
+hidden arbitration / clamp
+        |
+        v
+final internal       50 %   0x0A3C    = 0x32
+physical internal    50 %   0x7660[1] = 0x32
+~~~
+
+The previously established configuration is E7=30 % and coding-plug
+GWG75/minimum internal-pump speed=50 %. Therefore the observed 30 -> 50 uplift
+is **exactly consistent with a GWG75 minimum clamp**. This run did not re-read
+E7/GWG75 in the same window, so record that as the leading explanation rather
+than a fully isolated causal proof.
+
+### Decision
+
+Further broad 0x41 probing is now deprioritized. Its sampled behavior is
+sufficiently characterized as an alternate/mirrored logical read path.
+
+The next read-only targets should be functions that Vitosoft demonstrably uses
+for distinct spaces:
+
+1. `0x31 XRAM_READ` - source-defined volatile timers/state;
+2. `0x43 KMBUS_EEPROM_READ` - only after reconstructing a complete prefixed
+   Vitosoft request;
+3. `0x55/0x5F/0x63` structured KBus reads after prefix/participant decoding.
+
 ## Research questions
 
 The project should answer these in order:
