@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "analysis_date": "2026-09-24",
+  "source": {
+    "file_name": "Eingefügter Text(20260924-060419).txt",
+    "sha256": "08007a9de4981ece10dedcb8f455e03951428450db7c512d866e0deb68706aa2",
+    "bytes": 11132,
+    "line_count": 148,
+    "scope": "User-supplied grep and tail excerpts of the existing device log, not a new live run or a complete raw-log upload."
+  },
+  "unique_ff_events": [
+    {
+      "parameter": "P06", "attempt": 142,
+      "tx_time": "2026-09-23T23:08:06.485+02:00",
+      "request_hex": "6b 40 06 01",
+      "rx_time": "2026-09-23T23:08:06.612+02:00",
+      "response_hex": "ff",
+      "tx_upload_line": 21, "rx_upload_line": 22,
+      "tx_to_rx_ms_from_printed_timestamps": 127.0,
+      "preceding_rx_to_tx_ms_from_printed_timestamps": 51.0,
+      "subsequent_same_session_P80": "20"
+    },
+    {
+      "parameter": "P84", "attempt": 222,
+      "tx_time": "2026-09-23T23:08:56.419+02:00",
+      "request_hex": "6b 40 54 01",
+      "rx_time": "2026-09-23T23:08:56.490+02:00",
+      "response_hex": "ff",
+      "tx_upload_line": 47, "rx_upload_line": 48,
+      "tx_to_rx_ms_from_printed_timestamps": 71.0,
+      "preceding_rx_to_tx_ms_from_printed_timestamps": 51.0,
+      "subsequent_same_session_P80": "20"
+    },
+    {
+      "parameter": "P80", "attempt": 464,
+      "tx_time": "2026-09-23T23:11:25.912+02:00",
+      "request_hex": "6b 40 50 01",
+      "rx_time": "2026-09-23T23:11:26.019+02:00",
+      "response_hex": "ff",
+      "tx_upload_line": 73, "rx_upload_line": 74,
+      "tx_to_rx_ms_from_printed_timestamps": 107.0,
+      "preceding_rx_to_tx_ms_from_printed_timestamps": 50.0,
+      "failure_log_time": "2026-09-23T23:11:26.069+02:00",
+      "next_tx_hex": "04",
+      "P300_recovery_verified": true
+    }
+  ],
+  "duplicate_excerpt_note": "The last FF is shown in both grep and tail output; it is one event, not a fourth FF.",
+  "last_partial_round": {
+    "attempt": 464,
+    "runtime_hex": {"P06": "00", "P09": "00", "P10": "00", "P84": "00"},
+    "P80": "ff",
+    "accepted_as_measurement": false
+  },
+  "interpretation": {
+    "ff_is_in_raw_receive_log": true,
+    "synthetic_json_timeout_placeholder": false,
+    "physical_origin_of_ff_established": false,
+    "persistent_desynchronization_after_first_two_events_established": false,
+    "reentry_after_ff_live_tested": false,
+    "claim_of_fixed_five_minute_timeout_supported": false,
+    "ff_universal_sentinel_semantics_proven": false
+  },
+  "quality_helper": {
+    "path": "config/optolink-splitter/wb2a-gfa-quality-logger.py",
+    "version": "1.1.0",
+    "commit": "567b21dd091f0b57468224d2731d4b436782fa36",
+    "git_blob": "38ff63338e8a3738c3ffa1152621fa5c793e1cbd",
+    "sha256": "bdd1d829ba2d1387c21ae99e02848755e7ad8045c0b3034ff7430eb555900910",
+    "max_reidentifications": 3,
+    "requires_p300_and_two_independent_p80_and_one_session_p80": true,
+    "runtime_ff_policy": "Quarantine entire round, retain raw bytes, no decoded measurement or backfill.",
+    "completed_with_gaps_exit_status": 2,
+    "offline_tests_passed": 109,
+    "offline_suite_breakdown": [23, 33, 33, 20],
+    "hardware_reentry_validation_pending": true
+  }
+}
