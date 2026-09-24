@@ -1,6 +1,6 @@
 # WB2A / VDensHO1 time-program block format
 
-Status: **read path verified on local hardware; block encoding verified; local write persistence test pending**
+Status: **read path verified; full 8-byte write/readback/restore verified for one interval; multi-slot boundary tests pending**
 
 Scope:
 
@@ -204,10 +204,51 @@ converter.
 
 ## Local write-verification gate
 
-Public OpenV definitions and Optolink-Splitter itself support eight-byte
-CycleTime writes, but this project still requires a write/readback/restore test
-on the exact local `VDensHO1 / 20C2 / SW03` appliance before enabling schedule
-writes in Home Assistant.
+### First full-block write test — PASS
+
+A guarded write/readback/restore test was completed on Heating M1 Sunday
+(`0x2030`).
+
+Original:
+
+~~~text
+28 A0 FF FF FF FF FF FF
+05:00-20:00
+~~~
+
+Temporary test:
+
+~~~text
+28 9D FF FF FF FF FF FF
+05:00-19:50
+~~~
+
+Observed result:
+
+- test block persisted exactly: `289DFFFFFFFFFFFF`;
+- original block was restored exactly: `28A0FFFFFFFFFFFF`;
+- both post-write reads returned normal read success code `1`;
+- therefore complete eight-byte schedule writes are confirmed to persist on
+  the exact local `VDensHO1 / 20C2 / SW03` appliance.
+
+The write command itself returned splitter response `255;0x2030;00` for both
+the test and restore. This is not a failed controller write in this case.
+Upstream VS1/KW `write_datapoint_ext()` waits for `wrlen` response bytes;
+for an eight-byte write this controller returned only a short `00` response,
+so the splitter eventually reports `0xFF = timeout` even though subsequent
+byte-exact reads prove that the write was applied. For guarded schedule writes,
+the post-write byte-exact readback is therefore the authoritative persistence
+criterion.
+
+Remaining block-semantic tests before enabling Home Assistant writes:
+
+1. two active intervals to verify slot 2;
+2. four active intervals to exercise all eight bytes as time values;
+3. shrink back to one interval to verify that removed slots become `FF FF`;
+4. `24:00` as an interval end;
+5. after those pass, validate the production MQTT/HA write path with strict
+   project-side validation and non-optimistic readback.
+
 
 A guarded helper is included:
 
@@ -242,7 +283,9 @@ Behavior:
 5. read it back byte-for-byte;
 6. restore the exact original bytes in a `finally` path;
 7. read the restored block back byte-for-byte;
-8. report PASS only if test persistence and restore both match.
+8. report PASS if test persistence and restore both match byte-for-byte; the
+   VS1/KW write transport return code is shown diagnostically but is not treated
+   as authoritative for an eight-byte schedule block.
 
 Choose a weekday other than today for the first test.
 
@@ -267,4 +310,4 @@ Once the local probe passes:
   - readback confirmation and visible error state;
   - no optimistic UI for controller writes.
 
-Until the local write gate passes, the dashboard remains read-only.
+Until the remaining multi-slot and boundary write tests pass, the dashboard remains read-only.
