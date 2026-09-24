@@ -135,6 +135,10 @@ function update_script() {
   chown root:root /usr/local/bin/wb2a-schedule-probe
   ln -sf /usr/local/bin/wb2a-schedule-probe /usr/bin/wb2a-schedule-probe
 
+  cs_repo_fetch tools/optolink-schedule-manager.py /usr/local/bin/optolink-schedule-manager
+  chmod 755 /usr/local/bin/optolink-schedule-manager
+  chown root:root /usr/local/bin/optolink-schedule-manager
+
   cs_repo_fetch config/optolink-splitter/wb2a-single-session-logger.py /usr/local/bin/wb2a-single-session-logger
   chmod 755 /usr/local/bin/wb2a-single-session-logger
   chown root:root /usr/local/bin/wb2a-single-session-logger
@@ -147,6 +151,11 @@ function update_script() {
   cs_repo_fetch config/optolink-splitter/optolink-party-emulator.service /etc/systemd/system/optolink-party-emulator.service
   chmod 644 /etc/systemd/system/optolink-party-emulator.service
   chown root:root /etc/systemd/system/optolink-party-emulator.service
+
+  cs_repo_fetch config/optolink-splitter/optolink-schedule-manager.service /etc/systemd/system/optolink-schedule-manager.service
+  chmod 644 /etc/systemd/system/optolink-schedule-manager.service
+  chown root:root /etc/systemd/system/optolink-schedule-manager.service
+
   systemctl daemon-reload
   systemctl enable optolink-party-emulator.service
 
@@ -179,6 +188,7 @@ echo -e "${INFO}${YW}Home Assistant poll list:${CL} ${GN}/opt/optolink/homeassis
 echo -e "${INFO}${YW}TCP endpoint (when enabled):${CL} ${BGN}${IP}:65234${CL}"
 echo -e "${INFO}${YW}Service status:${CL} ${GN}systemctl status optolink-splitter${CL}"
 echo -e "${INFO}${YW}Party emulation:${CL} ${GN}systemctl status optolink-party-emulator${CL}"
+echo -e "${INFO}${YW}Schedule manager:${CL} ${GN}systemctl status optolink-schedule-manager${CL}"
 echo -e "${INFO}${YW}Serial devices:${CL} ${GN}optolink-ports${CL}"
 echo -e "${INFO}${YW}VDensHO1 HA profile:${CL} ${GN}optolink-apply-vdensho1-ha-profile${CL}"
 echo -e "${INFO}${YW}Legacy rollback profile:${CL} ${GN}optolink-apply-vscotho1-profile${CL}"
