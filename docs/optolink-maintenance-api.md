@@ -60,6 +60,11 @@ Assuming the standard base topic `openv`:
 | `openv/maintenance/cmnd` | client -> API | no | JSON requests |
 | `openv/maintenance/result` | API -> client | no | per-request result |
 | `openv/maintenance/state` | API -> clients | yes | latest normalized maintenance state |
+| `openv/maintenance/status` | API -> clients | yes | latest API/staging action summary |
+| `openv/maintenance/stage/hours/set` | HA -> API | no | stage burner-hours target only; no controller write |
+| `openv/maintenance/stage/hours/state` | API -> HA | yes | staged burner-hours target |
+| `openv/maintenance/stage/months/set` | HA -> API | no | stage month target only; no controller write |
+| `openv/maintenance/stage/months/state` | API -> HA | yes | staged month target |
 | `openv/maintenance/availability` | API -> clients | yes | `online` / clean-shutdown `offline` |
 
 The base topic is derived from `settings.mqtt_topic`.
@@ -265,6 +270,32 @@ startup and after successful requests:
 
 `interval_reference_uint` remains a raw little-endian integer. It must not be
 presented as a verified Unix timestamp.
+
+## Home Assistant staging
+
+The production Home Assistant profile now discovers two configuration numbers:
+
+- `number.vitodens_200_wb2a_wartung_brennerstunden_sollwert`;
+- `number.vitodens_200_wb2a_wartung_zeitintervall_sollwert`.
+
+Changing either entity only updates the corresponding `maintenance/stage/*`
+topic. The API validates the staged range and republishes a retained stage
+state, but does not acquire the maintenance lock and does not access the
+controller.
+
+Actual controller changes are performed only when the dashboard explicitly
+publishes a JSON request to `maintenance/cmnd` with a fresh request ID and
+the appropriate confirmation flag.
+
+After successful API operations the API also mirrors the verified snapshot to
+the existing read-only Home Assistant maintenance topics so their displayed
+values update immediately rather than waiting for the RARE poll group.
+
+The dashboard also consumes:
+
+- `sensor.vitodens_200_wb2a_wartung_brenner_seit_referenz`;
+- `sensor.vitodens_200_wb2a_wartung_api_status`;
+- `binary_sensor.vitodens_200_wb2a_wartung_api_verfuegbar`.
 
 ## Home Assistant design rule
 
