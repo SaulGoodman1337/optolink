@@ -24,20 +24,35 @@
       "token": "K24_KonfiStatusWartung",
       "access": "read+write status enum in generated catalog",
       "block_length": 1,
-      "enum": {"0": "Grundzustand", "1": "Wartung"},
-      "caveat": "A separate Vitosoft write-only reset event exists at the same address. Do not write this address during the configuration probe."
+      "enum": {
+        "0": "Grundzustand",
+        "1": "Wartung"
+      },
+      "caveat": "A separate Vitosoft write-only reset event exists at the same address. Do not write this address during the configuration probe.",
+      "reset_event": {
+        "event_id": 867,
+        "token": "K24_KonfiStatusWartungFunktionReset",
+        "access": "write-only (Vitosoft Type 2)",
+        "status": "payload/effect not yet live-verified"
+      }
     },
     "0x756C": {
-      "meaning": "elapsed time since last maintenance",
+      "event_id": 3155,
+      "token": "LetzteIntervallWartung",
+      "access": "read-only (Vitosoft Type 1)",
       "block_length": 4,
-      "unit": "months",
-      "caveat": "A generated R/W reset-labelled event exists, but the exact write converter/payload semantics are not yet proven. Read only."
+      "conversion": "LastCheckInterval",
+      "interpretation": "custom reference-time storage; not a plain month counter",
+      "write_policy": "do not write"
     },
     "0x7570": {
-      "meaning": "burner runtime since last maintenance",
+      "event_id": 3153,
+      "token": "LetzteBrennerWartung",
+      "access": "read-only (Vitosoft Type 1)",
       "block_length": 4,
-      "unit": "h",
-      "caveat": "A generated R/W reset-labelled event exists, but the exact write converter/payload semantics are not yet proven. Read only."
+      "conversion": "LastBurnerCheck",
+      "interpretation": "custom reference storage; not proven as a plain hour counter",
+      "write_policy": "do not write"
     }
   },
   "known_local_baseline": {
@@ -53,14 +68,16 @@
       "target": "0x5723",
       "temporary_value": "24 months / raw 0x18",
       "required_sequence": "baseline reads -> write 24 -> readback and side-effect reads -> restore 0 -> final reads",
-      "stop_condition": "Do not proceed to phase B if 0x5724 becomes nonzero, either counter changes unexpectedly, write/readback fails, or restore-to-zero is not confirmed."
+      "stop_condition": "Do not proceed to phase B if 0x5724 becomes nonzero, either counter changes unexpectedly, write/readback fails, or restore-to-zero is not confirmed.",
+      "status": "completed"
     },
     {
       "phase": "B",
       "target": "0x5721",
       "temporary_value": "10000 h / raw 100 decimal / 0x64",
       "required_sequence": "baseline reads -> write raw 100 -> readback and side-effect reads -> restore raw 0 -> final reads",
-      "stop_condition": "Stop if maintenance status/counters change unexpectedly, write/readback fails, or restore-to-zero is not confirmed."
+      "stop_condition": "Do not run until 0x5724 reset behavior and 0x7570 LastBurnerCheck side effects are bounded.",
+      "status": "deferred"
     }
   ],
   "excluded_operations": [
@@ -70,5 +87,48 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "STATICALLY_READY_FOR_BOUNDED_0x5723_WRITE_CHANGE_RESTORE"
+  "current_status": "0x5723_WRITE_VERIFIED_0x756C_TIMESTAMP_REFERENCE_IDENTIFIED",
+  "live_results": {
+    "phase_A_0x5723": {
+      "status": "completed",
+      "baseline_raw": {
+        "0x5721": "00",
+        "0x5723": "00",
+        "0x5724": "00",
+        "0x756C": "00000000",
+        "0x7570": "00000000"
+      },
+      "temporary_setting_months": 24,
+      "temporary_readback_raw": "18",
+      "after_setting_raw": {
+        "0x5721": "00",
+        "0x5723": "18",
+        "0x5724": "00",
+        "0x756C": "717ab56a",
+        "0x7570": "00000000"
+      },
+      "restored_setting_months": 0,
+      "restored_readback_raw": "00",
+      "after_restore_raw": {
+        "0x5721": "00",
+        "0x5723": "00",
+        "0x5724": "00",
+        "0x756C": "7b7ab56a",
+        "0x7570": "00000000"
+      },
+      "interval_reference_decode": {
+        "first_little_endian_decimal": 1790278257,
+        "first_utc": "2026-09-24T19:30:57Z",
+        "second_little_endian_decimal": 1790278267,
+        "second_utc": "2026-09-24T19:31:07Z",
+        "delta_seconds": 10
+      },
+      "conclusions": [
+        "0x5723 is locally verified read/write for the source-backed 0..24 month range.",
+        "0x756C changed to a little-endian Unix-seconds reference timestamp on both setting changes.",
+        "0x756C is therefore not a plain elapsed-month integer.",
+        "0x5724 stayed at Grundzustand and 0x7570 stayed zero."
+      ]
+    }
+  }
 }
