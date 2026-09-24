@@ -18,9 +18,17 @@ P83          = 0x76  appliance/GFA configuration
 closing P80 = 0x20
 ```
 
-The GFA branch identity was therefore stable before and after the three reads. Vitosoft defines all three as one-byte `GFA_READ`, `NoConversion`, read-only values. The evidence supports separate raw version/revision values `2` and `6`; it does **not** yet prove an official display notation such as `2.6` or `02.06`. P83 remains an opaque configuration code `0x76` until a source-backed mapping is recovered.
+The GFA branch identity was therefore stable before and after the three reads. Vitosoft defines all three as one-byte `GFA_READ`, `NoConversion`, read-only values. The evidence supports separate raw version/revision values `2` and `6`; it does **not** yet prove an official display notation such as `2.6` or `02.06`. A later Collector-v6 translation search recovered a source description for P83 that maps several bit positions to FA0...FA7 configuration flags. The local raw `0x76` has bits 1,2,4,5,6 set. Full decoding is deliberately withheld because the retained source description itself marks bit 4 as `0`/reserved while the local byte has bit 4 set.
 
 Evidence: [P81-P83 live identity](../config/optolink-splitter/research/vitosoft/gfa-p81-p83-live-2026-09-24-evidence.json).
+
+## P84-P88 static semantics - Vitosoft boundary reached 2026-09-24
+
+A full Collector-v6 search plus exact SQL relation check established that P84-P88 are stored as raw read-only integers. Events 8208-8212 all use generic EventValueType `12927 = Allgemein_Int`, `EnumType=False`, `NoConversion`, one-byte `GFA_READ`. The installation contains no recovered value enum for P84 and no bit table for P85-P88.
+
+This closes repeated Vitosoft-static hunting for those meanings. Existing live facts remain valid: P84 progresses through raw `00/02/04/05/06`; P87 through `20/40/50/60/62`; and high-resolution timing places P87 bit 1 before P09 leaves the high-start plateau. Functional names remain unproven until independent live correlation or new GFA/firmware documentation supplies them.
+
+Evidence: [P84-P88 static semantic boundary](../config/optolink-splitter/research/vitosoft/gfa-p84-p88-static-semantics-2026-09-24-evidence.json).
 
 ## GFA coding-plug diagnostics P90/P100-P108 - PASS 2026-09-24
 
