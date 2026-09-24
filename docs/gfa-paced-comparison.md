@@ -1,6 +1,6 @@
 # GFA pacing comparison: measured baseline and 150-ms result
 
-Checkpoint: **2026-09-24, including the clean 08:46-08:47 60-second paced run**.
+Checkpoint: **2026-09-24, including the continuous 08:56-08:57 burner-start capture**.
 
 **The 150-ms spacing was achieved on hardware. Two FF replies occurred in 1130 measurement-round reads, versus four in 804 in the preceding approximately 51-ms run. This is a descriptive improvement, not proof of a timing cause or a fix.** Both new FFs were P80 replies. All four runtime channels remained zero throughout the supplied data.
 
@@ -9,6 +9,63 @@ The paced run ended with `RESULT=FAIL` after 288.915 seconds because its second 
 Both the baseline and paced raw-log/JSONL transcripts are already available in full. **Do not request the same files again. Do not raise retry counts, disable P80, or simply increase duration to obtain PASS.**
 
 Current next action: use the **unchanged** pinned paced helper for **one 60-second observation during naturally already-established burner operation**, with an independent observation of the appliance's flame display. This changes the diagnostic question from idle transport repetition to sustained nonzero runtime behavior. It is not a claim that FF has been solved, and not a full-start experiment.
+
+## 0. New decisive result: continuous burner-start trace in one VS1 session
+
+Input: `Eingefügter Text(20260924-065914).txt`, 178381 bytes, 908 lines, SHA256:
+
+```text
+82ebdb19ac94f62b2f1f4ee2976c88be2c7630a561b501ab815bde0beb4cf137
+```
+
+The user deliberately left the previous shutdown state and initiated a normal boiler demand before this run. The helper itself still issued **no burner command or parameter write**. During its 60-second observation the GFA data changed from a complete zero state into a coherent startup and modulation-down sequence.
+
+Result:
+
+```text
+49/49 accepted rounds
+0 rejected rounds
+0 FF replies in measurement rounds
+0 reconnections
+P80_CONFIRMED=0x20 GFA
+P300_RESTORED=yes
+SPLITTER_RESTARTED=yes
+RESULT=PASS
+```
+
+This closes the earlier question whether a persistent VS1 session can return meaningful nonzero runtime data: **yes, on this local WB2A it can.** It does not make the current helper a production HA acquisition design and it does not explain the intermittent FF replies seen in longer idle captures.
+
+### Observed raw phase sequence and startup progression
+
+P84 has no recovered manufacturer enum. Preserve the observed byte values only:
+
+| P84 raw | First observed | Context at that round |
+| --- | --- | --- |
+| `00` | 08:56:27.250 | P06/P09/P10 all zero |
+| `02` | 08:56:37.119 | commands still zero in that round |
+| `04` | 08:56:45.655 | about 4440 rpm, P09 57.6534%, P10 53.6% |
+| `05` | 08:56:46.766 | about 4410 rpm, P09 57.6534%, P10 53.6% |
+| `06` | 08:56:47.934 | about 4410 rpm, P09 57.6534%, P10 53.2% |
+
+Do **not** rename 02/04/05/06 as purge, ignition, flame recognition, stabilization or regulation without a recovered enum or independent flame correlation.
+
+Other milestones:
+
+- P09 first becomes nonzero at 08:56:37.895: raw `93` -> 57.6534%.
+- P10 first becomes nonzero at 08:56:38.104: raw `58` -> 35.2%.
+- P06 first becomes nonzero at 08:56:38.882: raw `16` -> 660 rpm.
+- P06 reaches 4500 rpm at 08:56:41.339, about **2.457 s** after the first nonzero fan-speed sample.
+- The first P09 decrease from the 57.6534% plateau occurs at 08:56:57.302, about **9.368 s after P84 first becomes 06**.
+- P06 first drops below the 4410-rpm plateau at 08:56:58.296, about **10.362 s after P84 first becomes 06**.
+- The last round at 08:57:26 has P06 2790 rpm, P09 34.9058%, P10 33.2%, P84 still 06.
+
+That 9.4-10.4 second interval after the 06 transition is the strongest live timing lead so far for the previously observed short startup hold. It is **not yet proof** that P84=06 is the flame-recognition boundary. No independent flame bit was polled in this logger.
+
+The continuous ramp also strongly supports P06 as a meaningful GFA-reported fan-speed channel: 0 -> 660 -> 2490 -> 4500 rpm, a high plateau around 4.4-4.5 krpm, then a gradual fall to 2790 rpm while P09 and P10 fall in parallel. This is still controller-reported data rather than independent tachometer calibration.
+
+The 150-ms pacing remained within 150.103..153.026 ms in this capture. Mean P06-to-P06 interval was 1226.573 ms and mean P06-to-P84 within-round span 734.349 ms. Channels are sequential, not simultaneous.
+
+[Machine-readable startup evidence](../config/optolink-splitter/research/vitosoft/gfa-startup-run-2026-09-24-evidence.json) preserves exact timestamps, milestones, timing and interpretation limits.
 
 ## 0. Follow-up 60-second paced run: transport PASS, runtime still zero
 
