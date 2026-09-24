@@ -11,8 +11,8 @@
   },
   "patch": {
     "file": "tools/optolink-apply-vs1-gfa-readonly-patch.py",
-    "version": "1.0.0",
-    "commit": "63c7421d434b186ded82012b6612bb545d2bfc78",
+    "version": "1.0.1",
+    "commit": "f0b21020134d9e334869594f4fb6ebdd7f1f3144",
     "upstream_ref": "c1ee204a1421447721603c5f21c6da7337fdac97",
     "base_blobs": {
       "optolinkvs1.py": "cff6b4d8d52ca4ee1f79c310dd9377dba1a18270",
@@ -25,7 +25,8 @@
       "Adds vs12_adapter.read_gfa_ext(); in VS2 mode it returns unsupported 0xAF and never switches protocols implicitly.",
       "Adds poll marker gfa:<format>, e.g. gfa:30 or gfa:0.3922.",
       "Adds explicit read-only command gfaread;<addr>;1;[format];[signed].",
-      "Does not add any GFA_WRITE, PROCESS_WRITE, coding, actuator or safety write path."
+      "Does not add any GFA_WRITE, PROCESS_WRITE, coding, actuator or safety write path.",
+      "Quarantines one-byte 0xFF GFA replies as acquisition failure so they are not published as physical values such as P06=7650 rpm."
     ],
     "intended_initial_targets": [
       {
@@ -56,11 +57,38 @@
         "format": "gfa:raw",
         "meaning": "GFA Status 3 raw; bit semantics unresolved"
       }
-    ]
+    ],
+    "git_blob": "bff01f8f172083b0340b3f729ce306463576b198",
+    "sha256": "39880226b471e157b20d2527847c7a7bc2d062abb1f19d9153ee42514253f6ea",
+    "self_tests": "6/6"
   },
   "production_policy": {
     "enable_persistent_vs1_now": false,
     "reason": "VS1 F4 Virtual_WRITE remains unvalidated while current HA profile contains writable entities.",
     "next_gate": "Apply patch in a controlled staging run with write ingress disabled and temporary GFA poll items, then validate P80/P06/P09/P87 publication before any permanent profile/updater activation."
+  },
+  "check_only_live": {
+    "result": "PASS",
+    "helper_version": "1.0.0",
+    "self_tests": "5/5",
+    "runtime_state": {
+      "optolinkvs1.py": "base",
+      "vs12_adapter.py": "base",
+      "requests_util.py": "base"
+    },
+    "modifications_applied": false
+  },
+  "staging_smoke": {
+    "file": "config/optolink-splitter/wb2a-vs1-gfa-poll-smoke.py",
+    "version": "1.0.0",
+    "commit": "216d9780323a422a9546a08c1e97ae662b65f39d",
+    "git_blob": "45022ed39d6da8e795287c5f5ea4af2a71f02b16",
+    "sha256": "1f6f67316a41cd633133052f2e875b23ceaf492520cc7cc5e5de54420e82e064",
+    "design": [
+      "Uses a temporary poll_list.py override with eight interleaved items: four ordinary F7 reads and four GFA 0x6B reads.",
+      "Disables MQTT/TCP write ingress and stops Party for the bounded test.",
+      "Validates P300/F7 identity 20c2, P80=20, numeric P06/P09, raw non-FF P87, stable MainPID, VS1 initialization/main loop, and no quarantined FF samples.",
+      "Restores runtime source files to their exact base blobs, removes the temporary poll override, restores settings, confirms VS2/300, and restores Party state."
+    ]
   }
 }
