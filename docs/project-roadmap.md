@@ -456,7 +456,7 @@ Do not treat the M-Bus Slave Click choice as a completed implementation yet.
 
 ### Maintenance configuration / reset via Home Assistant
 
-Status: **maintenance backend + HA staging + MQTT Discovery + Wartung render live-verified / HA interaction test pending**
+Status: **maintenance backend + HA staging + MQTT Discovery + Wartung render + API lifecycle live-verified / HA interaction test pending**
 
 A future Home Assistant dashboard session should add a compact **Service /
 Wartung** area that not only displays the verified maintenance diagnostics but,
@@ -578,6 +578,9 @@ The first UI interaction attempt then exposed an API lifecycle defect:
 `PartOf=optolink-splitter.service` caused the maintenance API to be stopped
 cleanly when the splitter restarted. The unit is now decoupled from propagated
 stop/restart and configured with `Restart=always`.
+
+The lifecycle fix is now live-verified: an independent splitter restart leaves
+the maintenance API active and its MQTT availability remains `online`.
 
 ## WB2A reverse engineering: open items
 
