@@ -55,7 +55,8 @@ Do not remove the Optolink files from the old `community-scripts` repository unt
 - [GFA measured 150-ms pacing result - 2026-09-24](docs/gfa-paced-comparison.md) - 2 FF replies in 1130 measurement-round reads versus 4 in 804 at the earlier spacing; descriptive improvement, not a fix. Final abort was due to insufficient re-entry time; P300/services restored. Next: unchanged helper, one 60-second naturally established firing observation. Read before older GFA next-action sections.
 - [GFA quality-aware logger and FF checkpoint - 2026-09-24](docs/gfa-quality-logger.md) - original quality/re-entry implementation and prior raw-FF analysis; the newer measured result above supersedes its pending-hardware-test wording.
 - [Vitosoft all-devices cross-profile analysis - 2026-09-24](config/optolink-splitter/research/vitosoft/all-devices-2026-09-24.md) - 399-profile relation graph, exact VDens/VPend/VScot alias, orphan events, WILO/EEPROM linkage limits; derived metadata only.
-- [Collector research checkpoint - 2026-09-23](docs/collector-research-checkpoint.md) - current cross-topic results and next actions; read before older collector-related roadmap entries.
+- [Current WB2A research plan and TODOs - 2026-09-24](docs/research-plan-2026-09-24.md) - authoritative current execution queue, priorities, completion criteria and evidence discipline.
+- [Collector research checkpoint - 2026-09-23](docs/collector-research-checkpoint.md) - historical cross-topic checkpoint; retained for evidence, but its old next-action wording is superseded by the current research plan.
 - [Private archive analysis and evidence](config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-analysis.md) - verified archive/SQL coverage, variant-specific GFA map, corrected firmware and pump assumptions; derived information only.
 - [Project roadmap](docs/project-roadmap.md)
 - [Repository cleanup plan](docs/repository-cleanup-plan.md)

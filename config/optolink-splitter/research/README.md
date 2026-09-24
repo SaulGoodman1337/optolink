@@ -1,6 +1,20 @@
 # WB2A / VDensHO1 research notes
 
-## Current checkpoint — 2026-09-23
+## Current checkpoint — 2026-09-24
+
+The authoritative current execution queue is [../../../docs/research-plan-2026-09-24.md](../../../docs/research-plan-2026-09-24.md). Historical sections below remain evidence and may contain superseded "next task" wording.
+
+Current corrections that must be preserved:
+
+- P06 / `0x4006` is now the hardware-correlated controller-reported blower speed, scaled by 30 rpm/LSB.
+- Permanent VS1 + structured read-only GFA polling is verified active in production.
+- Current production timing is global 25 ms, GFA first attempt 25 ms, one FF retry at 150 ms.
+- Main-regulation software bytes `0x778C/0x778D` were measured as `01/03` (raw pair `0x0103`).
+- Collector v6 `20260924-143439` completed Deep/SQL/All-Devices/Tool-Dumps and is the preferred private source snapshot.
+- Missing device-profile linkage is not a capability proof; `0x0A3C` is the known counterexample.
+- SQL firmware-update tables are fully exported and empty; do not reopen that as an unfinished SQL task.
+
+## Historical checkpoint — 2026-09-23
 
 The current reverse-engineering state is:
 
@@ -18,8 +32,7 @@ The current reverse-engineering state is:
   - final heating modulation around **33 %**
 - `0x55D3` bytes 6/7 are **not blower rpm**; they are separate GG1/GFA
   runtime-state bytes
-- the **real blower-speed datapoint is still open and is an explicit next
-  research task**
+- the historical blower-speed gap is now closed: P06 / `0x4006` is the canonical controller-reported blower-speed source
 - observed GG1/GFA state progression:
   `01/00/00 -> 01/08/20 -> 09/0c/40 -> 09/0f/50 -> 29/0b/60 -> 21/0b/60 -> 21/0b/62`
 - byte 7 bit `0x02` appears about 10 s after flame detection, roughly 2.4 s
@@ -117,21 +130,15 @@ Detailed source extraction:
 
 ## Current open research tasks
 
-The central cross-chat backlog is maintained in
-[../../../docs/project-roadmap.md](../../../docs/project-roadmap.md).
+Use [../../../docs/research-plan-2026-09-24.md](../../../docs/research-plan-2026-09-24.md) as the authoritative current backlog.
 
-For WB2A reverse engineering, the main open items are:
+Highest-priority open items are now:
 
-1. **Find the real blower-speed datapoint.**
-   The old `0x55D3[6:7]` rpm interpretation must not be reused.
-2. Resolve the remaining `0x55E0 byte14` bitfield semantics, especially the
-   additional bits present in `0x43`.
-3. Measure a complete uninterrupted OPT ramp and compare its exact timing with
-   the coding-plug 240 s startup-optimization parameter.
-4. Continue investigation of the approximately 12 s post-flame transition and
-   the related GG1/GFA runtime-state bits.
-5. Validate the newly added RKR-derived Home Assistant entities over normal
-   operation rather than only controlled test cycles.
+1. complete the read-only internal-pump arbitration map with `0x0A3A/0x0A3B/0x0A3C/0x7660/0x7663`;
+2. read GFA P81/P82/P83 and preserve their raw software/configuration bytes;
+3. continue the side-labelled physical coding-plug campaign and correlate GWG plus GFA P90/P100-P108 views;
+4. inspect the two protected FlowCalibration binary states and embedded resources offline;
+5. pursue actual firmware architecture through concrete MCU/memory/service evidence rather than repeated SQL/update searches.
 
 ## Files
 

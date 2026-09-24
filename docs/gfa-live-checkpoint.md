@@ -1,10 +1,10 @@
-# GFA live checkpoint - 2026-09-23
+# GFA live checkpoint - 2026-09-24
 
-**Current status: the stock-splitter permanent-VS1 read gate has passed. On the exact VDensHO1 / 20C2 appliance, the current splitter runtime plus the two intentional VDensHO1 profile patches stayed on one MainPID for 60 seconds, initialized VS1/KW, published all 212 enabled cycle-0 HA topics, showed no internal restart, restored settings byte-for-byte and re-established VS2/300 afterward. The next bounded step is a read-only structured GFA_READ 0x6B integration under the same single serial owner; VS1 writes remain unvalidated.**
+**Current status: permanent VS1 plus structured read-only GFA access is VERIFIED ACTIVE on the VDensHO1 / 20C2 production splitter. P80/P06/P09/P87 are published through the single serial owner; P06 is the canonical blower-RPM source. Production timing is global 25 ms, GFA first attempt 25 ms, one raw-FF retry at 150 ms, then quarantine/failure. The current research queue is in [research-plan-2026-09-24.md](research-plan-2026-09-24.md).**
 
-Read the [P87/P09 high-resolution correlation](gfa-p87-p09-hires.md) for the latest completed live timing result. The next bounded experiment is the [mixed VS1 Virtual/GFA compatibility probe](vs1-mixed-gfa-integration.md): stable Virtual_READ values are compared P300 -> VS1 F7 -> P300 while P80/P06/P09/P87 GFA_READs are interleaved in the same VS1 session. It is read-only and does not change production settings. The earlier [long-run FF investigation](gfa-cycle-ff-investigation.md) remains relevant to acquisition quality.
+Historical experiment sections below are retained as evidence. Their old "next step" wording is superseded when it conflicts with the verified production status above and the current research plan.
 
-A firing snapshot previously decoded P06 as 4110 rpm. The new continuous trace now independently supports the channel with a coherent 0->660->2490->4500 rpm startup and subsequent ramp down to 2790 rpm. The older isolated P06=FF conversion to 7650 rpm remains invalid as a physical event. Permanent Home Assistant integration remains unverified.
+A firing snapshot decoded P06 as 4110 rpm; the continuous trace independently supports the channel with a coherent 0->660->2490->4500 rpm startup and subsequent ramp down to 2790 rpm. Permanent Home Assistant integration is now verified active. The older isolated P06=FF conversion to 7650 rpm remains invalid as a physical event.
 
 Evidence:
 

@@ -357,15 +357,14 @@ Read-only GFA targets already supported by exact VDensHO1 metadata include:
 | Address | Meaning | Scaling |
 | --- | --- | --- |
 | `0x4006` | P06 actual blower speed | raw × 30 rpm |
-| `0x4009` | P09 blower speed setpoint | raw × 30 rpm |
+| `0x4009` | P09 **local GFA-branch modulation setpoint** | raw × 0.3922 % |
 | `0x400A` | P10 blower PWM setpoint | raw × 0.4 % |
 | `0x4011` | P17 flame formation time | raw / 10 s |
 | `0x4050..0x4053` | GFA identity/version/configuration | raw/metadata-specific |
 | `0x4054` | P84 GFA phase | raw enum/state |
 | `0x4055..0x4058` | GFA status objects | raw state |
 
-A future live prober must remain read-only, take exclusive ownership of the
-serial port, stop the normal splitter service before switching to VS1, restore
+Historical standalone live probers remained read-only and took exclusive serial ownership. The production splitter now has a verified single-owner structured GFA_READ path. New identity reads should use that proven read-only transport where practical. Any standalone probe must still restore
 VS2/P300 in a `finally` path, then restart the service. Do not issue
 `GFA_WRITE` while investigating blower speed or burner state.
 

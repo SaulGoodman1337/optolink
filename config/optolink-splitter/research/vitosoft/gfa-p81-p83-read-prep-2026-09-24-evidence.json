@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "scope": "Read-only preparation for completing local GFA software identity; no live command executed by this evidence file.",
+  "source": {
+    "repository": "SaulGoodman1337/optolink",
+    "private_archive_evidence": "config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-evidence.json",
+    "preferred_private_snapshot": "vitosoft-private-archive-20260924-143439",
+    "preferred_private_snapshot_sha256": "3d31380d6dfabf8ede9e305b115e847fb0670511e253a4ed4e59feef2f7adfee",
+    "v6_all_devices_reproduction": "byte-identical to v5 for all 16 persisted all-devices files"
+  },
+  "local_variant_guard": {
+    "selector_event_id": 8258,
+    "parameter": "P80",
+    "address": "0x4050",
+    "measured_raw": "0x20",
+    "selected_branch": "GFA",
+    "branch_group_id": 18659
+  },
+  "common_access": {
+    "fc_read": "GFA_READ",
+    "fc_write": "undefined",
+    "access_mode": "Read",
+    "block_length": 1,
+    "byte_position": 0,
+    "byte_length": 1
+  },
+  "targets": [
+    {
+      "event_id": 8205,
+      "parameter": "P81",
+      "address": "0x4051",
+      "meaning": "Burner-controller software version",
+      "conversion": "NoConversion"
+    },
+    {
+      "event_id": 8206,
+      "parameter": "P82",
+      "address": "0x4052",
+      "meaning": "Burner-controller software revision",
+      "conversion": "NoConversion"
+    },
+    {
+      "event_id": 8207,
+      "parameter": "P83",
+      "address": "0x4053",
+      "meaning": "Appliance/GFA configuration",
+      "conversion": "NoConversion"
+    }
+  ],
+  "interpretation_rules": [
+    "Preserve each returned byte as raw hex and decimal before assigning version notation.",
+    "Do not infer an official firmware release name unless a separate source provides the mapping.",
+    "Keep GFA P81/P82 identity separate from main-regulation 0x778C/0x778D raw pair 0x0103.",
+    "P83 is configuration metadata, not a firmware image or write target.",
+    "Use the already hardware-validated read-only GFA transport with the P80=0x20 guard."
+  ],
+  "current_status": "STATICALLY_READY_FOR_BOUNDED_READ_ONLY_LIVE_READ"
+}
