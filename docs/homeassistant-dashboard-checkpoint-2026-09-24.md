@@ -497,6 +497,16 @@ Recommended implementation order:
 Implementation rule remains: **one view at a time**, with desktop/mobile visual
 verification before using the pattern on the next view.
 
+## Final maintenance handoff
+
+The complete 2026-09-24 maintenance/backend/Home Assistant handoff is recorded
+in [maintenance-ha-completion-2026-09-24.md](maintenance-ha-completion-2026-09-24.md).
+
+The maintenance path is fully live-verified for the current scope. The only
+maintenance-specific cleanup for the next session is to verify that the
+intentionally retained `100 h` staged burner target has been returned to
+`0 h`; this is a UI draft only and is not the controller configuration.
+
 ## 7. Next implementation-session checklist
 
 - [ ] Apply deterministic color handling to the three Diagnose short-history cards.
@@ -513,7 +523,7 @@ verification before using the pattern on the next view.
 - [x] Live-verify that Wartung staging does not write the controller.
 - [x] Live-verify all new Wartung MQTT Discovery entities and stage/state topics.
 - [x] Live-verify the corrected Wartung layout and entity rendering.
-- [ ] Live-verify HA interaction: staging from the Number controls, confirmation dialogs, Apply action and displayed post-action readback.
+- [x] Live-verify HA interaction: staging from the Number controls, confirmed month Apply, displayed readback and HA restore to 0.
 - [x] Run `wb2a-schedule-probe snapshot` and preserve the 21 raw day blocks.
 - [x] Verify 0/1/2/4 interval writes, slot clearing, 24:00 and byte-exact restore.
 - [x] Implement guarded schedule-manager writes and the full Zeitprogramme editor.
