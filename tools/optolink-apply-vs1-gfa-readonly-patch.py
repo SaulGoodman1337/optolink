@@ -6,7 +6,8 @@ The patch adds only:
 - optolinkvs1.read_gfa_ext() using VS1 function 0x6B;
 - vs12_adapter.read_gfa_ext();
 - requests_util support for poll scale/type markers "gfa:<format>";
-- explicit read-only command: gfaread;<addr>;1;[format];[signed].
+- explicit read-only command: gfaread;<addr>;1;[format];[signed];
+- a GFA-only minimum inter-request gap and one retry for quarantined raw 0xFF.
 
 No GFA_WRITE, PROCESS_WRITE, coding write, actuator command, gas-valve command,
 or other new write path is added.
@@ -25,7 +26,7 @@ import sys
 import tempfile
 import time
 
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 ROOT = Path("/opt/optolink")
 UPSTREAM_REF = "c1ee204a1421447721603c5f21c6da7337fdac97"
 
@@ -75,20 +76,31 @@ def write_preserve(path: Path, text: str) -> None:
 
 
 def patch_optolinkvs1(text: str) -> str:
-    if MARKERS["optolinkvs1.py"] in text:
-        return text
     nl = newline_of(text)
-    marker = f"def write_datapoint(addr:int, data:bytes, ser:serial.Serial) -> bool:{nl}"
-    if marker not in text:
+    write_marker = f"def write_datapoint(addr:int, data:bytes, ser:serial.Serial) -> bool:{nl}"
+    if write_marker not in text:
         raise PatchError("optolinkvs1.py insertion marker not found")
+
+    retry_marker = "community-scripts: GFA-only pacing and FF single retry"
+    if retry_marker in text:
+        return text
+
     block = nl.join([
         "# community-scripts: read-only GFA_READ 0x6B",
-        "def read_gfa_ext(addr:int, rdlen:int, ser:serial.Serial) -> tuple[int, int, bytearray]:",
-        "    # Locally validated GFA targets P80/P06/P09/P87 are one byte.",
-        "    # Refuse other lengths until they have their own hardware evidence.",
-        "    if rdlen != 1:",
-        "        return 0xFD, addr, bytearray()",
+        "# community-scripts: GFA-only pacing and FF single retry",
+        "GFA_MIN_GAP_SECONDS = 0.15",
         "",
+        "def _wait_gfa_min_gap() -> None:",
+        "    # receive_resp_telegr() updates last_comm after every successful VS1",
+        "    # response. Keep only direct GFA_READ requests at the conservative",
+        "    # hardware-validated spacing while ordinary F7/F4 can run faster.",
+        "    remaining = (last_comm + GFA_MIN_GAP_SECONDS) - time.monotonic()",
+        "    if remaining > 0:",
+        "        time.sleep(remaining)",
+        "",
+        "",
+        "def _read_gfa_once(addr:int, rdlen:int, ser:serial.Serial) -> tuple[int, int, bytearray]:",
+        "    _wait_gfa_min_gap()",
         "    outbuff = bytearray([0x6B, (addr >> 8) & 0xFF, addr & 0xFF, rdlen])",
         "",
         "    if sync_elapsed():",
@@ -98,21 +110,51 @@ def patch_optolinkvs1(text: str) -> str:
         "",
         "    ser.reset_input_buffer()",
         "    ser.write(outbuff)",
-        "    retcode, retaddr, data = receive_resp_telegr(rdlen, addr, ser)",
+        "    return receive_resp_telegr(rdlen, addr, ser)",
         "",
-        "    # Earlier long-run GFA captures showed isolated 0xFF acquisitions",
-        "    # that must not become physical values (for example P06 => 7650 rpm).",
-        "    # Polling publishes only retcode 0x01, so quarantine FF as a failed",
-        "    # acquisition with no data payload.",
+        "",
+        "def read_gfa_ext(addr:int, rdlen:int, ser:serial.Serial) -> tuple[int, int, bytearray]:",
+        "    # Locally validated GFA targets P80/P06/P09/P87 are one byte.",
+        "    # Refuse other lengths until they have their own hardware evidence.",
+        "    if rdlen != 1:",
+        "        return 0xFD, addr, bytearray()",
+        "",
+        "    retcode, retaddr, data = _read_gfa_once(addr, rdlen, ser)",
+        "",
+        "    # A raw 0xFF has repeatedly appeared as an isolated acquisition",
+        "    # artifact at shorter global olbreath values. Never publish it as a",
+        "    # physical value. Retry exactly once after the same GFA-only gap.",
         "    if retcode == 0x01 and len(data) == 1 and data[0] == 0xFF:",
-        "        logger.warning(f\"GFA_READ 0x{addr:04X} returned FF; quarantined\")",
-        "        return 0xFF, retaddr, bytearray()",
+        "        logger.warning(",
+        "            f\"GFA_READ 0x{addr:04X} returned FF; retrying once after \"",
+        "            f\"{GFA_MIN_GAP_SECONDS:.3f}s GFA gap\"",
+        "        )",
+        "        retrycode, retryaddr, retrydata = _read_gfa_once(addr, rdlen, ser)",
+        "        if retrycode == 0x01 and len(retrydata) == 1 and retrydata[0] != 0xFF:",
+        "            logger.info(f\"GFA_READ 0x{addr:04X} recovered on FF retry\")",
+        "            return retrycode, retryaddr, retrydata",
+        "        if retrycode == 0x01 and len(retrydata) == 1 and retrydata[0] == 0xFF:",
+        "            logger.warning(f\"GFA_READ 0x{addr:04X} returned FF; quarantined after retry\")",
+        "            return 0xFF, retryaddr, bytearray()",
+        "        logger.warning(",
+        "            f\"GFA_READ 0x{addr:04X} retry failed with retcode 0x{retrycode:02X}; quarantined\"",
+        "        )",
+        "        return retrycode, retryaddr, bytearray()",
         "",
         "    return retcode, retaddr, data",
         "",
         "",
     ])
-    return text.replace(marker, block + marker, 1)
+
+    if MARKERS["optolinkvs1.py"] in text:
+        # Upgrade any earlier community GFA block in place.
+        start = text.find("# community-scripts: read-only GFA_READ 0x6B")
+        end = text.find(write_marker, start)
+        if start < 0 or end < 0:
+            raise PatchError("existing optolinkvs1.py GFA block markers not found")
+        return text[:start] + block + text[end:]
+
+    return text.replace(write_marker, block + write_marker, 1)
 
 
 def patch_adapter(text: str) -> str:
@@ -435,8 +477,31 @@ def self_test() -> int:
             src = "def write_datapoint(addr:int, data:bytes, ser:serial.Serial) -> bool:\n    pass\n"
             out = patch_optolinkvs1(src)
             self.assertIn("data[0] == 0xFF", out)
-            self.assertIn("returned FF; quarantined", out)
-            self.assertIn("return 0xFF, retaddr, bytearray()", out)
+            self.assertIn("retrying once", out)
+            self.assertIn("quarantined after retry", out)
+            self.assertIn("return 0xFF, retryaddr, bytearray()", out)
+
+        def test_gfa_only_pacing_and_retry_are_present(self):
+            src = "def write_datapoint(addr:int, data:bytes, ser:serial.Serial) -> bool:\n    pass\n"
+            out = patch_optolinkvs1(src)
+            self.assertIn("GFA_MIN_GAP_SECONDS = 0.15", out)
+            self.assertIn("def _wait_gfa_min_gap()", out)
+            self.assertIn("def _read_gfa_once", out)
+            self.assertIn("recovered on FF retry", out)
+
+        def test_v103_gfa_block_upgrades_in_place(self):
+            src = (
+                "# community-scripts: read-only GFA_READ 0x6B\n"
+                "def read_gfa_ext(addr:int, rdlen:int, ser:serial.Serial) -> tuple[int, int, bytearray]:\n"
+                "    return 0xFF, addr, bytearray()\n"
+                "\n"
+                "def write_datapoint(addr:int, data:bytes, ser:serial.Serial) -> bool:\n"
+                "    pass\n"
+            )
+            out = patch_optolinkvs1(src)
+            self.assertIn("community-scripts: GFA-only pacing and FF single retry", out)
+            self.assertEqual(out.count("def read_gfa_ext("), 1)
+            self.assertEqual(patch_optolinkvs1(out), out)
 
         def test_patch_contains_no_new_write_function(self):
             sample = (
@@ -457,7 +522,7 @@ def self_test() -> int:
         unittest.defaultTestLoader.loadTestsFromTestCase(Tests)
     )
     if result.wasSuccessful():
-        print("VS1_GFA_READONLY_PATCH_TESTS=9/9")
+        print("VS1_GFA_READONLY_PATCH_TESTS=11/11")
         return 0
     return 1
 
