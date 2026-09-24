@@ -48,7 +48,7 @@ import threading
 import time
 from typing import Any
 
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 ROOT = Path("/opt/optolink")
 SETTINGS = ROOT / "settings_ini.py"
 HA_POLL = ROOT / "homeassistant_poll_list.py"
@@ -73,13 +73,17 @@ UPSTREAM_RUNTIME_BLOBS = {
     "requests_util.py": "0e2b94547518bde504632579d5d7c4da45e56db7",
     "c_polllist.py": "2502f9b7bf2b4bd2b218286e135b9694191f970b",
     "c_settings_adapter.py": "a2d300d056a49b4bdfdbed81a93860405e478e29",
-    "mqtt_util.py": "c10850f560564936064178dda605ad821c5af13d",
     "homeassistant_adapter.py": "d6b1e7b4e8446e23ea4f26c90cafc26c43e031c4",
-    "homeassistant_publish.py": "0e34f9f11d1be07de1e58b5baa71cfe62efb2851",
     "utils.py": "ee10204b61bb1fd5a75d20c8b0901262096baf2e",
     "c_tcpserver.py": "572eef3637ce39825bb73aa024b4a9050429e147",
     "viessdata_util.py": "2d6f93be508ef944befe30e64ce7b7313f903203",
     "viconn_util.py": "bf6f916b20ed66746b869d4ec660542304ec6d00",
+}
+PROFILE_PATCH_BLOBS = {
+    # Exact results of tools/optolink-apply-vdensho1-ha-profile.sh applied to
+    # upstream commit c1ee204a1421447721603c5f21c6da7337fdac97.
+    "homeassistant_publish.py": "49107392ee71af629e6af8eafec337852d6340aa",
+    "mqtt_util.py": "b5173ee7a4e04e9ada50b0ed708d65accc10ca46",
 }
 ERROR_PATTERNS = (
     "Traceback (most recent call last)",
@@ -439,13 +443,38 @@ def git_safe_cmd(*args: str) -> list[str]:
     return ["git", "-c", f"safe.directory={ROOT}", "-C", str(ROOT), *args]
 
 
-def verify_stock_runtime() -> tuple[str, str]:
-    """Verify installed runtime without requiring .git metadata.
+def parse_porcelain_paths(text: str) -> list[str]:
+    paths: list[str] = []
+    for raw in text.splitlines():
+        if not raw:
+            continue
+        if len(raw) < 4:
+            raise SmokeError("Unexpected git status --porcelain line: " + raw)
+        path = raw[3:]
+        if " -> " in path:
+            raise SmokeError("Renamed tracked runtime file is not allowed: " + raw)
+        paths.append(path)
+    return paths
 
-    Preferred mode is a clean Git checkout at origin/main. Migrated/legacy
-    installations without .git are accepted only when every critical runtime
-    Python file matches the pinned upstream Git blob manifest exactly.
-    """
+
+def verify_profile_patch_blobs() -> None:
+    mismatches: list[str] = []
+    for rel, expected in PROFILE_PATCH_BLOBS.items():
+        path = ROOT / rel
+        if not path.is_file():
+            mismatches.append(f"{rel}:missing")
+            continue
+        actual = git_blob_sha(path)
+        if actual != expected:
+            mismatches.append(f"{rel}:{actual}!={expected}")
+    if mismatches:
+        raise SmokeError(
+            "VDensHO1 profile runtime patch mismatch: " + " ; ".join(mismatches)
+        )
+
+
+def verify_stock_runtime() -> tuple[str, str]:
+    """Verify pinned upstream runtime plus the two intentional VDensHO1 patches."""
     git_dir = ROOT / ".git"
     if git_dir.exists():
         try:
@@ -456,12 +485,20 @@ def verify_stock_runtime() -> tuple[str, str]:
             raise SmokeError("Git metadata exists but stock verification failed: " + str(exc)) from exc
         if head != origin:
             raise SmokeError(f"Tracked splitter checkout HEAD {head} != origin/main {origin}.")
-        if dirty:
-            raise SmokeError("Tracked splitter checkout has local modifications: " + dirty.replace("\n", " | "))
-        return "git-clean-origin-main", head
+        dirty_paths = sorted(parse_porcelain_paths(dirty))
+        expected_dirty = sorted(PROFILE_PATCH_BLOBS)
+        if dirty_paths != expected_dirty:
+            raise SmokeError(
+                "Tracked runtime modifications differ from the exact VDensHO1 profile patch set: "
+                f"got={dirty_paths!r} expected={expected_dirty!r}"
+            )
+        verify_profile_patch_blobs()
+        return "git-origin-main-plus-vdensho1-profile-patches", head
 
     mismatches: list[str] = []
-    for rel, expected in UPSTREAM_RUNTIME_BLOBS.items():
+    expected_manifest = dict(UPSTREAM_RUNTIME_BLOBS)
+    expected_manifest.update(PROFILE_PATCH_BLOBS)
+    for rel, expected in expected_manifest.items():
         path = ROOT / rel
         if not path.is_file():
             mismatches.append(f"{rel}:missing")
@@ -471,10 +508,10 @@ def verify_stock_runtime() -> tuple[str, str]:
             mismatches.append(f"{rel}:{actual}!={expected}")
     if mismatches:
         raise SmokeError(
-            "No .git metadata and runtime hash-manifest mismatch against upstream "
-            + UPSTREAM_REF + ": " + " ; ".join(mismatches)
+            "No .git metadata and runtime hash-manifest mismatch against pinned "
+            "upstream plus VDensHO1 profile patches: " + " ; ".join(mismatches)
         )
-    return "runtime-blob-manifest", UPSTREAM_REF
+    return "runtime-blob-manifest-plus-vdensho1-profile-patches", UPSTREAM_REF
 
 
 def duration_arg(text: str) -> int:
@@ -555,6 +592,17 @@ def self_test() -> int:
             self.assertIn("safe.directory=/opt/optolink", cmd)
             self.assertEqual(cmd[-2:], ["rev-parse", "HEAD"])
 
+        def test_parse_porcelain_expected_profile_patches(self):
+            text = " M homeassistant_publish.py\n M mqtt_util.py\n"
+            self.assertEqual(
+                sorted(parse_porcelain_paths(text)),
+                ["homeassistant_publish.py", "mqtt_util.py"],
+            )
+
+        def test_parse_porcelain_rejects_rename(self):
+            with self.assertRaises(SmokeError):
+                parse_porcelain_paths("R  a.py -> b.py\n")
+
         def test_duration(self):
             self.assertEqual(duration_arg("30"), 30)
             for x in ("19", "61", "bad"):
@@ -563,7 +611,7 @@ def self_test() -> int:
 
     result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(Tests))
     if result.wasSuccessful():
-        print("LOCAL_STOCK_VS1_SMOKE_TESTS=11/11")
+        print("LOCAL_STOCK_VS1_SMOKE_TESTS=13/13")
         return 0
     return 1
 
@@ -634,10 +682,11 @@ def main() -> int:
         stock_mode, stock_ref = verify_stock_runtime()
         log(f"STOCK_VERIFY_MODE={stock_mode}")
         log(f"STOCK_VERIFY_REF={stock_ref}")
-        if stock_mode == "git-clean-origin-main":
-            log("TRACKED_CHECKOUT=clean_origin_main")
+        if stock_mode == "git-origin-main-plus-vdensho1-profile-patches":
+            log("TRACKED_CHECKOUT=origin_main_plus_exact_vdensho1_profile_patches")
+            log("PROFILE_PATCH_BLOBS=match files=2")
         else:
-            log(f"RUNTIME_BLOB_MANIFEST=match files={len(UPSTREAM_RUNTIME_BLOBS)}")
+            log(f"RUNTIME_BLOB_MANIFEST=match files={len(UPSTREAM_RUNTIME_BLOBS) + len(PROFILE_PATCH_BLOBS)}")
 
         effective = load_effective_settings()
         if effective.get("port_vitoconnect") is not None:
