@@ -972,6 +972,60 @@ Evidence:
 Decision: expand only to the remaining exact Vitosoft-defined 0x43 block
 shapes sharing the same prefix; no blind EEPROM sweep.
 
+## Bounded 0x43 source-map result - 13/13 success, EEPROM semantics not proven
+
+The complete bounded set of exact GWG_BT2 source-defined 0x43 block shapes
+sharing `PrefixRead=030000000101` was executed locally. All **13/13**
+requests returned normal successful 0x43 responses, and the production
+VS1/Party state was restored cleanly. The 0x0001/1 result `88` was repeated
+three times identically.
+
+However, the returned bytes expose an important anomaly:
+
+~~~text
+0x0001/1   -> 88
+0x000A/5   -> 4000000000
+0x000F/8   -> 1f00000000000000
+
+0x0064/2   -> 5497
+0x006A/6   -> 549854985498
+0x0070/7   -> 54985498549854
+0x0078/5   -> 5498549854
+0x0078/8   -> 5498549854985498
+0x0083/4   -> 97549754
+0x0091/1   -> 97
+0x00A0/10  -> 54985498549854985498
+0x00AA/10  -> 54985498549854985498
+0x00B4/10  -> 54985498549854985498
+~~~
+
+The same-address 0x0078 length variants are especially diagnostic:
+`0x0078/5` is exactly the first five bytes of `0x0078/8`, and both are a
+repetition/truncation of the two-byte word `54 98`. The three distinct
+source fault blocks 0x00A0, 0x00AA and 0x00B4 also returned the exact same
+10-byte repeated-word payload.
+
+This reproduces the structural pattern already seen in older prefix-less 0x43
+experiments. Therefore:
+
+- a successful 0x43 response is **not sufficient evidence of literal EEPROM
+  contents**;
+- the low blocks 0x0001/0x000A/0x000F remain interesting because they do not
+  follow the repeated-word pattern;
+- the source GWG_BT2/LGM27 meanings must not be assigned to the local bytes;
+- the earlier wording that PrefixRead was already hardware-proven to alter
+  routing was too strong. The local controller accepts the frame carrying the
+  six extra bytes, but the next experiment must compare the **same address**
+  with and without those bytes.
+
+Evidence:
+[vitosoft/kmbus-eeprom-map-live-2026-09-24-evidence.json](vitosoft/kmbus-eeprom-map-live-2026-09-24-evidence.json).
+
+A guarded PrefixRead A/B discriminator is prepared as
+`wb2a-kmbus-prefix-ab-probe`. It uses P-N-P ordering (prefixed, no-prefix,
+prefixed) on only four fixed source-derived targets:
+`0x0001/1`, `0x000A/5`, `0x0078/8`, `0x00A0/10`.
+
 ## Research questions
 
 The project should answer these in order:
