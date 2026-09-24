@@ -38,7 +38,7 @@ import tempfile
 import time
 from typing import Any
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 ROOT = Path("/opt/optolink")
 SETTINGS = ROOT / "settings_ini.py"
 SPLITTER = "optolink-splitter.service"
@@ -131,11 +131,16 @@ def parse_raw_read(payload: str, expected_addr: int) -> int:
 
     addr_text = parts[1].strip().lower()
     try:
-        addr = int(addr_text, 16) if not addr_text.startswith("0x") else int(addr_text, 16)
+        if addr_text.startswith("0x"):
+            candidates = [int(addr_text, 16)]
+        else:
+            candidates = [int(addr_text, 16), int(addr_text, 10)]
     except ValueError as exc:
         raise GateError("invalid response address: " + payload) from exc
-    if addr != expected_addr:
-        raise GateError(f"response address 0x{addr:04X} != 0x{expected_addr:04X}")
+    if expected_addr not in candidates:
+        raise GateError(
+            f"response address {addr_text!r} does not resolve to 0x{expected_addr:04X}"
+        )
 
     raw = parts[2].strip().lower()
     if raw.startswith("0x"):
@@ -237,6 +242,7 @@ def self_test() -> int:
         def test_parse_read(self):
             self.assertEqual(parse_raw_read("1;0x2306;15", 0x2306), 0x15)
             self.assertEqual(parse_raw_read("1;2306;16", 0x2306), 0x16)
+            self.assertEqual(parse_raw_read("1;8966;15", 0x2306), 0x15)
 
         def test_parse_retcode(self):
             self.assertEqual(parse_retcode("1;0x2306;00"), 1)
@@ -342,6 +348,8 @@ def main() -> int:
     restore_verified = False
     fallback_used = False
     temp_started = False
+    settings_restored = False
+    normal_splitter_restored = False
     failures: list[str] = []
 
     previous_handlers = {}
@@ -536,29 +544,41 @@ def main() -> int:
                 log("RESTORED_SETTINGS_SHA256=" + restored_sha)
                 if restored_sha != original_sha:
                     raise GateError("settings restore SHA mismatch")
+                settings_restored = True
                 log("SETTINGS_RESTORED=yes")
             except Exception as exc:
                 failures.append("settings restore: " + str(exc))
 
-            restore_epoch = time.time()
-            try:
-                log("Restoring normal splitter")
-                stock.run(["systemctl", "start", SPLITTER], timeout=15)
-                deadline = time.monotonic() + 5.0
-                while time.monotonic() < deadline and not stock.unit_running(stock.systemctl_show(SPLITTER)):
-                    time.sleep(0.1)
-                if not stock.unit_running(stock.systemctl_show(SPLITTER)):
-                    raise GateError("normal splitter did not return active/running")
-                ok, _ = stock.wait_for_journal_marker(
-                    "VS2/300 protocol initialized", restore_epoch, timeout_s=10.0
+            safe_to_restart = settings_restored and (
+                (not target_attempted) or restore_verified
+            )
+            if safe_to_restart:
+                restore_epoch = time.time()
+                try:
+                    log("Restoring normal splitter")
+                    stock.run(["systemctl", "start", SPLITTER], timeout=15)
+                    deadline = time.monotonic() + 5.0
+                    while time.monotonic() < deadline and not stock.unit_running(stock.systemctl_show(SPLITTER)):
+                        time.sleep(0.1)
+                    if not stock.unit_running(stock.systemctl_show(SPLITTER)):
+                        raise GateError("normal splitter did not return active/running")
+                    ok, _ = stock.wait_for_journal_marker(
+                        "VS2/300 protocol initialized", restore_epoch, timeout_s=10.0
+                    )
+                    log("RESTORED_BASELINE_PROTOCOL=" + ("VS2/300" if ok else "NOT_CONFIRMED"))
+                    if not ok:
+                        failures.append("normal splitter did not re-establish VS2/300")
+                    else:
+                        normal_splitter_restored = True
+                except Exception as exc:
+                    failures.append("normal splitter restore: " + str(exc))
+            else:
+                log("FAIL_CLOSED_SPLITTER_STOPPED=yes")
+                failures.append(
+                    "splitter left stopped because baseline/settings restoration was not verified"
                 )
-                log("RESTORED_BASELINE_PROTOCOL=" + ("VS2/300" if ok else "NOT_CONFIRMED"))
-                if not ok:
-                    failures.append("normal splitter did not re-establish VS2/300")
-            except Exception as exc:
-                failures.append("normal splitter restore: " + str(exc))
 
-            if party_running:
+            if party_running and normal_splitter_restored:
                 try:
                     log("Restoring " + PARTY)
                     stock.run(["systemctl", "start", PARTY], timeout=15)
@@ -568,6 +588,8 @@ def main() -> int:
                     log("PARTY_RESTORED=yes")
                 except Exception as exc:
                     failures.append("party restore: " + str(exc))
+            elif party_running:
+                log("FAIL_CLOSED_PARTY_STOPPED=yes")
 
             if target_attempted and not restore_verified:
                 failures.append("original 0x2306 baseline was not verified restored")
@@ -592,8 +614,9 @@ def main() -> int:
             result_ok = (
                 target_verified
                 and restore_verified
+                and settings_restored
+                and normal_splitter_restored
                 and not failures
-                and stock.unit_running(stock.systemctl_show(SPLITTER))
             )
             log("RESULT=" + ("PASS" if result_ok else "FAIL"))
             for failure in failures:
@@ -604,8 +627,9 @@ def main() -> int:
     return 0 if (
         target_verified
         and restore_verified
+        and settings_restored
+        and normal_splitter_restored
         and not failures
-        and stock.unit_running(stock.systemctl_show(SPLITTER))
     ) else 1
 
 
