@@ -74,7 +74,7 @@
     "normal_cadence_seconds": "approximately 20-30 s",
     "goal": "Eliminate periodic 15-20 s FAST latency spikes before any olbreath reduction."
   },
-  "next_step": "Test olbreath=0.10 with the same 180-second passive cadence observer and compare latency plus journal communication errors; only then consider 0.05.",
+  "next_step": "Test olbreath=0.05 with the same 180-second passive cadence observer and automatic rollback to 0.10 on any communication error; if clean, perform a longer soak including a burner start before making 0.05 permanent in the profile helper.",
   "first_live_apply_attempt": {
     "timestamp_local": "2026-09-24T14:17:06+02:00",
     "result": "ABORTED_BEFORE_SCHEDULER_APPLY",
@@ -235,6 +235,94 @@
       "All measured FAST signals, including P06/P09/P87, have a stable approximately 4.7 second median cadence at olbreath=0.15.",
       "NORMAL group cadence is approximately 24 seconds, matching five FAST cycles.",
       "This measurement is the baseline for controlled olbreath reduction."
+    ]
+  },
+  "cadence_test_olbreath_010": {
+    "timestamp_local": "2026-09-24T14:35+02:00",
+    "duration_seconds": 180,
+    "result": "PASS",
+    "passive_only": true,
+    "mqtt_no_redundant": false,
+    "olbreath_seconds": 0.1,
+    "poll_interval": 0,
+    "once_complete_before_measurement": true,
+    "communication_errors_since_restart": 0,
+    "measurements": {
+      "kesseltemperatur": {
+        "group": "FAST",
+        "messages": 51,
+        "min_s": 3.141,
+        "median_s": 3.541,
+        "p95_s": 3.768,
+        "max_s": 3.83,
+        "last": "34.3"
+      },
+      "brenner_modulationsgrad": {
+        "group": "FAST",
+        "messages": 51,
+        "min_s": 3.167,
+        "median_s": 3.542,
+        "p95_s": 3.744,
+        "max_s": 3.832,
+        "last": "0.0"
+      },
+      "geblaesedrehzahl_gfa_p06": {
+        "group": "FAST",
+        "messages": 52,
+        "min_s": 3.227,
+        "median_s": 3.508,
+        "p95_s": 3.72,
+        "max_s": 3.8,
+        "last": "0"
+      },
+      "gfa_modulationssollwert_p09": {
+        "group": "FAST",
+        "messages": 51,
+        "min_s": 3.246,
+        "median_s": 3.514,
+        "p95_s": 3.721,
+        "max_s": 3.807,
+        "last": "0.0"
+      },
+      "gfa_status3_p87": {
+        "group": "FAST",
+        "messages": 51,
+        "min_s": 3.265,
+        "median_s": 3.496,
+        "p95_s": 3.725,
+        "max_s": 3.816,
+        "last": "00"
+      },
+      "aussentemperatur": {
+        "group": "NORMAL",
+        "messages": 10,
+        "min_s": 16.405,
+        "median_s": 17.517,
+        "p95_s": 18.191,
+        "max_s": 18.244,
+        "last": "19.6"
+      },
+      "gfa_p80_typ": {
+        "group": "NORMAL",
+        "phase": 4,
+        "messages": 10,
+        "min_s": 16.456,
+        "median_s": 17.598,
+        "p95_s": 18.226,
+        "max_s": 18.355,
+        "last": "20"
+      }
+    },
+    "comparison_to_015": {
+      "p06_median_improvement_percent": 25.71,
+      "kesseltemperatur_median_improvement_percent": 25.66,
+      "aussentemperatur_median_improvement_percent": 26.86
+    },
+    "conclusion": [
+      "100 ms olbreath passed the 180 s controlled cadence/error gate.",
+      "FAST cadence improved from about 4.7 s to about 3.5 s with no observed communication errors.",
+      "NORMAL cadence improved from about 24 s to about 17.5 s, consistent with five FAST cycles.",
+      "Proceed to a separate 50 ms test before choosing the permanent production value."
     ]
   }
 }
