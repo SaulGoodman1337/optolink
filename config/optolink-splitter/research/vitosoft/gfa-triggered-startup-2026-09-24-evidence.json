@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "source": {
+    "upload_name": "Eingefügter Text(20260924-084636).txt",
+    "sha256": "61fa75e4b256dde5706088f1d6e00f682080d83c08870e49a278bf7168b7e337",
+    "lines": 1004,
+    "bytes": 196251,
+    "log": "/root/wb2a-gfa-triggered-status-20260924-104150-190537.log",
+    "jsonl": "/root/wb2a-gfa-triggered-status-20260924-104150-190537.jsonl"
+  },
+  "helper": {
+    "file": "config/optolink-splitter/wb2a-gfa-triggered-status-probe.py",
+    "version": "1.0.1",
+    "commit": "8259cd5f3c07c4d46939e17e7bc87dc47378717f",
+    "sha256": "6d5810e1595ba6e464452dcd927259e9bade8f550a92b492fd40c2a27972604b"
+  },
+  "trigger": {
+    "address": "0x2306",
+    "original_c": 21,
+    "temporary_c": 37,
+    "trigger_time": "2026-09-24T10:42:03.480+02:00",
+    "trigger_readback_verified": true,
+    "pre_modulation_0x55dc_raw": 0,
+    "trigger_to_first_same_session_P80_s": 4.352,
+    "trigger_to_first_P84_sample_s": 4.793
+  },
+  "acquisition": {
+    "result": "PASS",
+    "observation_complete": true,
+    "accepted_rounds": 50,
+    "rejected_rounds": 0,
+    "reconnections": 0,
+    "p80_values_all": [
+      "20",
+      "20",
+      "20",
+      "20"
+    ],
+    "p300_restored": true,
+    "splitter_restarted": true,
+    "party_restarted": true,
+    "ff_seen": false
+  },
+  "observed_startup": {
+    "P84_first_states": [
+      {
+        "raw": "02",
+        "first_rx": "2026-09-24T10:42:08.273+02:00",
+        "seconds_after_trigger": 4.793
+      },
+      {
+        "raw": "05",
+        "first_rx": "2026-09-24T10:42:15.451+02:00",
+        "seconds_after_trigger": 11.971
+      },
+      {
+        "raw": "06",
+        "first_rx": "2026-09-24T10:42:16.657+02:00",
+        "seconds_after_trigger": 13.177
+      }
+    ],
+    "P84_note": "P84=04 was not sampled in this run. The previous continuous startup run observed 02->04->05->06; with ~1.2 s P84 cadence, a short 04 state can be missed.",
+    "P87_first_states": [
+      {
+        "raw": "20",
+        "set_bits": [
+          5
+        ],
+        "first_rx": "2026-09-24T10:42:08.554+02:00",
+        "seconds_after_trigger": 5.074
+      },
+      {
+        "raw": "40",
+        "set_bits": [
+          6
+        ],
+        "first_rx": "2026-09-24T10:42:14.456+02:00",
+        "seconds_after_trigger": 10.976
+      },
+      {
+        "raw": "50",
+        "set_bits": [
+          4,
+          6
+        ],
+        "first_rx": "2026-09-24T10:42:15.658+02:00",
+        "seconds_after_trigger": 12.178
+      },
+      {
+        "raw": "60",
+        "set_bits": [
+          5,
+          6
+        ],
+        "first_rx": "2026-09-24T10:42:16.939+02:00",
+        "seconds_after_trigger": 13.459
+      },
+      {
+        "raw": "62",
+        "set_bits": [
+          1,
+          5,
+          6
+        ],
+        "first_rx": "2026-09-24T10:42:26.805+02:00",
+        "seconds_after_trigger": 23.325
+      }
+    ],
+    "fan": {
+      "first_sample_rpm": 2490,
+      "first_sample_rx": "2026-09-24T10:42:08.765+02:00",
+      "reaches_4500_rx": "2026-09-24T10:42:11.162+02:00",
+      "peak_sample_rpm": 4590,
+      "peak_sample_rx": "2026-09-24T10:42:12.238+02:00",
+      "long_hold_around_rpm": 4410,
+      "first_sustained_drop_after_p87_62_rpm": 4320,
+      "first_sustained_drop_after_p87_62_rx": "2026-09-24T10:42:29.455+02:00"
+    },
+    "modulation": {
+      "startup_plateau_raw": "93",
+      "startup_plateau_pct": 57.6534,
+      "first_lower_raw": "91",
+      "first_lower_pct": 56.869,
+      "last_plateau_sample_rx": "2026-09-24T10:42:26.019+02:00",
+      "first_lower_sample_rx": "2026-09-24T10:42:27.302+02:00"
+    }
+  },
+  "key_correlation": {
+    "first_P84_06_rx": "2026-09-24T10:42:16.657+02:00",
+    "first_P87_60_rx": "2026-09-24T10:42:16.939+02:00",
+    "first_P87_62_rx": "2026-09-24T10:42:26.805+02:00",
+    "first_P09_below_plateau_rx": "2026-09-24T10:42:27.302+02:00",
+    "P84_06_to_first_P87_62_s": 10.148,
+    "P87_60_to_first_P87_62_s": 9.866,
+    "observed_P87_62_to_first_P09_drop_s": 0.497,
+    "bracketing": {
+      "P87_60_to_62_true_transition_window": [
+        "2026-09-24T10:42:25.522+02:00",
+        "2026-09-24T10:42:26.805+02:00"
+      ],
+      "P09_plateau_release_true_transition_window": [
+        "2026-09-24T10:42:26.019+02:00",
+        "2026-09-24T10:42:27.302+02:00"
+      ],
+      "overlap_window": [
+        "2026-09-24T10:42:26.019+02:00",
+        "2026-09-24T10:42:26.805+02:00"
+      ],
+      "interpretation": "The underlying transitions are correlated within one sequential acquisition round. Observed sample order is P87 bit1 set then P09 lower, but the true transition windows overlap, so strict causal ordering is not established."
+    },
+    "interpretation": "P87 bit 1 is now a strong candidate for the release/end marker of the high-start modulation plateau, not a proven manufacturer-defined flame or stabilization bit."
+  },
+  "restore": {
+    "restore_time": "2026-09-24T10:43:15.559+02:00",
+    "restored_c": 21,
+    "readback_verified": true,
+    "post_restore_modulation_0x55dc_raw": 33,
+    "post_restore_note": "Burner was still active immediately after restore; restoring the day setpoint does not imply immediate flame-off."
+  },
+  "limitations": [
+    "The 37 C trigger to first P84 sample latency was 4.793 s, so the earliest startup state(s) were already missed.",
+    "P84=04 was not sampled in this run.",
+    "P84 and P87 semantics remain unnamed; no independent flame bit was polled.",
+    "P84/P87/P06/P09 are sequential samples, not simultaneous."
+  ]
+}
