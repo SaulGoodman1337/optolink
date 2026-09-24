@@ -17,6 +17,56 @@ Evidence:
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
 
+## 0xxxxxxxxxxx. Permanent VS1 + GFA production verification PASS - 2026-09-24
+
+The post-activation production verification is complete.
+
+Live settings:
+
+```text
+vs1protocol=True
+olbreath=0.15
+port_vitoconnect=None
+mqtt_topic=openv
+mqtt_listen=openv/cmnd
+```
+
+Both services are active/running:
+
+```text
+optolink-splitter.service
+optolink-party-emulator.service
+```
+
+The permanent splitter journal showed:
+
+```text
+VS1/KW protocol initialized
+enter main loop
+```
+
+with no restart/error marker in the verification window.
+
+The full Home Assistant discovery retry completed successfully:
+
+```text
+294 entities published successfully
+```
+
+Fresh GFA MQTT values after a forced poll:
+
+```text
+P80=20
+P06=0
+P09=0.0
+P87=00
+GFA_TOPICS_SEEN=4/4
+```
+
+P80 therefore satisfies the production identity guard and all four GFA topics are live through the persistent single-owner VS1 splitter path.
+
+**Production status: VERIFIED ACTIVE.**
+
 ## 0xxxxxxxxxx. Permanent VS1 + read-only GFA production activation - 2026-09-24
 
 Production activation was executed with the validated VDensHO1 helper.
