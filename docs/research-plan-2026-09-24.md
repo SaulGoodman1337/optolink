@@ -158,6 +158,17 @@ The previous E7 100->99->100 test proved mutation/readback/restore, not RAM-only
 - [ ] Do not implement per-burner-cycle E7 rewriting without independent storage/endurance evidence.
 - [ ] If persistence is revisited, design a bounded reboot/power-cycle test with exact baseline/restore and no repeated cycling.
 
+## P2 - LON/HCC input-object classification
+
+**New hardware result:** `0xA403 nviHCC1 FlowSetpt` is readable and returned 20.00 °C while the internal A1 flow target `0x2544` was 0.0 °C in the same observation window. It is therefore a distinct object, not a simple mirror.
+
+**TODO:**
+
+- [ ] Read `0xA401/A403` together with local A1 setpoints and `0xA441/A443` as absent-M2 controls.
+- [ ] Read `0xA3C0 nviDHWC Setpt` together with local DHW target `0x6500`.
+- [ ] If these `nvi*` objects remain at default values instead of tracking local controller targets, classify them as inactive/external LON input-side variables and do not add them to normal HA polling.
+- [x] Do not interpret `0xA403=20.00 °C` as an actual physical flow target without correlation; the same-window mismatch to `0x2544` disproves that shortcut.
+
 ## P2 - KM-BUS / Vitotrol
 
 **TODO:**
@@ -195,7 +206,7 @@ Production-profile audit completed:
 - `0x0816` exhaust-gas temperature is already polled at NORMAL cadence and can be used in dashboards without additional Optolink traffic.
 - `0x5527`, `0xA305`, `0x0883`, primary sensor-status bytes, circulation-pump state, K12 and several KM diagnostics are also already present.
 - `0x081A` is intentionally not promoted as a physical temperature because the associated local sensor-status evidence marks that path invalid/open/reference-state.
-- genuine not-yet-integrated high-value candidates now start with `0x8853` burner type, `0xA403` HCC1 FlowSetpt and selected KM-BUS participant software-index/error blocks.
+- first read-later batch completed: `0x8853=02` hardware-confirms a modulating burner; `0xA403=D007` decodes to 20.00 °C while same-window `0x2544=0.0 °C`, proving A403 is not a direct mirror of the internal A1 flow target; `0x0A4C=00000000` is consistent with E5=0/no separate A1 KM-BUS pump; KM error objects `0x0A31/32/34/36` and `0x6550` all returned `00`.
 
 These are **later read-only verification items**. Never add a duplicate poll for an address already present in the production profile.
 
