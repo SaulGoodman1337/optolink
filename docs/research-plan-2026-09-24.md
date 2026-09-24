@@ -71,13 +71,13 @@ The read transport is already production-verified. The missing identity fields a
 
 **TODO:**
 
-- [ ] Read P81 / `0x4051` - FA software version.
-- [ ] Read P82 / `0x4052` - FA software revision.
-- [ ] Read P83 / `0x4053` - appliance/GFA configuration.
-- [ ] Record raw bytes before assigning human-readable version notation.
-- [ ] Correlate P81-P83 with P80=`0x20`, main-regulation `0x0103`, device software index `0x00FB=03` and coding-card identity `0x7656`.
+- [x] Read P81 / `0x4051` - FA software version: raw `0x02`.
+- [x] Read P82 / `0x4052` - FA software revision: raw `0x06`.
+- [x] Read P83 / `0x4053` - appliance/GFA configuration: raw `0x76`.
+- [x] Record raw bytes before assigning human-readable version notation. No source-backed formatting rule for `02/06` has been recovered yet.
+- [x] Correlate P81-P83 with P80=`0x20`, main-regulation `0x0103` and device software index `0x00FB=03`; coding-card/GFA correlation continues with P90/P100-P108.
 
-**Completion criterion:** one provenance-preserving evidence record with raw P80-P83 values and no inferred release name unless a source provides the mapping.
+**Status: completed 2026-09-24.** Hardware evidence: `P80=20`, `P81=02`, `P82=06`, `P83=76`, closing `P80=20`. Preserve P81/P82 as separate raw version/revision bytes until an official display mapping is found.
 
 ## P1 - Coding-plug physical/software correlation
 
@@ -115,7 +115,7 @@ The current Vitosoft installation contains no authenticated WB2A firmware image 
 
 **TODO:**
 
-- [ ] Finish software identity first: P81-P83.
+- [x] Finish software identity first: P81-P83 read successfully as raw `02/06/76` under P80=`20`.
 - [ ] Identify the main-regulation MCU, burner/GFA MCU, external flash/EEPROM devices and accessible service/debug headers from board evidence.
 - [ ] Keep regulation firmware, GFA firmware and coding-plug EEPROM as separate storage domains.
 - [ ] Investigate only concrete service/readout paths backed by a function, method, board interface or known protocol.
@@ -158,7 +158,7 @@ The previous E7 100->99->100 test proved mutation/readback/restore, not RAM-only
 
 - [ ] Keep P06 as the canonical blower RPM entity.
 - [ ] Keep P87 raw/unnamed in the UI.
-- [ ] Add new P81-P83 identity fields only after their raw reads are captured and labels are source-backed.
+- [ ] Optionally add P81-P83 as low-frequency/ONCE diagnostic entities; raw reads are now captured and labels are source-backed, but human-readable P81/P82 formatting and P83 decoding remain unresolved.
 - [ ] Build the planned pump-process visualization once the `0x0A3A/0x0A3C/0x7663/0x7660` arbitration map is verified.
 - [ ] Preserve unresolved diagnostic values as diagnostics rather than presenting inferred semantics as facts.
 
