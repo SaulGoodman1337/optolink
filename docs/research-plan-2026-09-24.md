@@ -89,6 +89,7 @@ The read transport is already production-verified. The missing identity fields a
 - [ ] Capture both EEPROMs of one spare three times each and compare repeatability.
 - [ ] Capture both EEPROMs of the second spare where practical.
 - [ ] Capture the active coding plug last, preserving its identity/revision and keeping the boiler unpowered/disconnected from the plug during bench reads.
+- [ ] Close the software-side date encoding first with the read-only `0x1020[2:5]` vs P103-P105 correlation in [coding-plug-date-correlation-read.md](coding-plug-date-correlation-read.md).
 - [ ] Immediately before or after the active-plug bench session, snapshot `0x1010`, `0x1020`, `0x1030..0x10C0`, `0x7656`.
 - [x] P90/P100-P108 read-only snapshot completed; see [gfa-coding-plug-p90-p108-read.md](gfa-coding-plug-p90-p108-read.md) and the linked live evidence.
 - [ ] Compare semantic field vectors, complement pairs, mirror records and checksums. Initial exact-byte scan is complete: the saved spare-chip1 images do not contain the live GFA vector contiguously; mirrored single-byte candidates are documented separately.
