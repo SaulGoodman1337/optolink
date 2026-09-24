@@ -485,11 +485,15 @@ Recommended implementation order:
      setpoints.
 5. **Zeitprogramme**
    - complete daily 8-byte block semantics are hardware-verified;
-   - guarded schedule-manager write/readback/restore path is implemented;
+   - guarded schedule-manager write/readback/restore path is implemented and live-verified;
    - 21 non-optimistic HA text editors are exposed through MQTT discovery;
-   - the dashboard is now a three-lane weekly cockpit with 24 h bars,
+   - the first HA edit was independently read back from the controller;
+   - the dashboard is a three-lane weekly cockpit with 24 h bars,
      active-now indication and tap-to-edit weekday rows;
-   - first live Home Assistant editor write after deployment is still pending.
+   - the latest visual pass adds a real 00/06/12/18/24 axis, now marker,
+     compact rows and stronger current-day/active-window highlighting;
+   - circulation remains visible by user request even though its seven days
+     are intentionally configured empty on this installation.
 6. **Graphen**
    - make the existing ApexCharts page visually consistent;
    - remove graphs that merely duplicate contextual graphs elsewhere.
@@ -527,6 +531,14 @@ intentionally retained `100 h` staged burner target has been returned to
 - [x] Run `wb2a-schedule-probe snapshot` and preserve the 21 raw day blocks.
 - [x] Verify 0/1/2/4 interval writes, slot clearing, 24:00 and byte-exact restore.
 - [x] Implement guarded schedule-manager writes and the full Zeitprogramme editor.
-- [ ] Live-test one Home Assistant weekday edit and verify status/readback presentation.
+- [x] Live-test one Home Assistant weekday edit and verify independent controller readback.
 - [ ] Verify all changed cards on desktop and mobile.
 - [ ] Only after Diagnose is stable, start the **Pumpen** page redesign.
+
+### Zeitprogramme handoff
+
+The complete controller/write-path/dashboard handoff is documented in
+`docs/zeitprogramme-ha-handoff-2026-09-24.md`. The next session should begin
+with a live render check of commit `2ca471b8`, then continue with spacing,
+mobile verification and copy/apply convenience operations. Keep the
+circulation lane visible for now.
