@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "source": {
+    "upload_name": "Eingefügter Text(20260924-072842).txt",
+    "sha256": "27023a1126238b57f1c51ea950413b2512006aa6e8ca39c6a23110ac5a4351ae",
+    "transcript_named_log": "/root/wb2a-gfa-status-20260924-092500-188178.log",
+    "transcript_named_jsonl": "/root/wb2a-gfa-status-20260924-092500-188178.jsonl"
+  },
+  "helper": {
+    "file": "config/optolink-splitter/wb2a-gfa-status-probe.py",
+    "version": "1.0.0",
+    "sha256": "912de7276ed2a26330abbfb0d7c5778862d171fa5a179ab1b73043fdee9c59bc"
+  },
+  "acquisition": {
+    "result": "PASS",
+    "accepted_rounds": 49,
+    "rejected_rounds": 0,
+    "reconnections": 0,
+    "P80_closing": "20",
+    "P300_restored": "20c2",
+    "splitter_restarted": true,
+    "party_restarted": true,
+    "capture_started_already_in_phase_raw": "06",
+    "actual_startup_captured": false
+  },
+  "observed_values": {
+    "P84": {
+      "address": "0x4054",
+      "distinct_raw": [
+        "06"
+      ],
+      "interpretation": "raw operating phase only; enum unknown"
+    },
+    "P12": {
+      "address": "0x400C",
+      "distinct_raw": [
+        "00"
+      ],
+      "set_bits": []
+    },
+    "P85": {
+      "address": "0x4055",
+      "distinct_raw": [
+        "21"
+      ],
+      "set_bits": [
+        0,
+        5
+      ]
+    },
+    "P86": {
+      "address": "0x4056",
+      "distinct_raw": [
+        "0B"
+      ],
+      "set_bits": [
+        0,
+        1,
+        3
+      ]
+    },
+    "P88": {
+      "address": "0x4058",
+      "distinct_raw": [
+        "00"
+      ],
+      "set_bits": []
+    },
+    "P87": {
+      "address": "0x4057",
+      "sequence": [
+        "60",
+        "62"
+      ],
+      "first_observed_60": "2026-09-24T09:25:13.167+02:00",
+      "first_observed_62": "2026-09-24T09:25:20.539+02:00",
+      "change": "bit 1 changed 0 -> 1; bits 5 and 6 remained set",
+      "semantics": "unknown"
+    }
+  },
+  "interpretation": [
+    "The run began after the burner had already reached P84 raw 06, so it cannot identify which status bits mark ignition/flame recognition.",
+    "P87 bit 1 is a timing candidate because it changed once from 0x60 to 0x62 while P84 remained 0x06.",
+    "The change is not assigned a functional name because P06/P09 and an independent flame channel were not sampled in this run."
+  ],
+  "next_probe": {
+    "file": "config/optolink-splitter/wb2a-gfa-triggered-status-probe.py",
+    "implementation_commit": "374d9fc5df8f1daec04ebb50e580660b98c5377a",
+    "git_blob": "315d9e7525855237c09225bc310e5e10bf76370b",
+    "sha256": "4fd17cbd259be55aaf4bb499e796d4101bd4da363f3f12d8846e27a5df4b3784",
+    "temporary_trigger": "A1 normal-room/day setpoint 0x2306 -> 37 C",
+    "restoration": "exact pre-read 0x2306 value with readback verification",
+    "precondition": "0x55DC must be 0 immediately before trigger",
+    "focus": [
+      "P84",
+      "P87",
+      "P06",
+      "P09"
+    ],
+    "purpose": "Capture the controller-driven burner start and correlate P87 bit 1 with phase, fan RPM and modulation plateau."
+  }
+}
