@@ -236,6 +236,111 @@ button_card_templates:
         - white-space: normal
         - overflow-wrap: anywhere
 
+
+  diag_history_system:
+    section_mode: true
+    show_icon: true
+    show_name: true
+    show_state: true
+    show_units: false
+    show_ripple: true
+    tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
+    styles:
+      card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
+        - border-left: '3px solid #ef5350'
+        - box-shadow: none
+        - padding: 8px 10px
+        - min-height: 58px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: >-
+            "i n" "i s"
+        - grid-template-columns: 26px 1fr
+        - grid-template-rows: min-content min-content
+        - column-gap: 8px
+      img_cell:
+        - width: 24px
+        - height: 24px
+        - align-self: start
+        - justify-self: center
+      icon:
+        - width: 19px
+        - color: '#ef5350'
+      name:
+        - justify-self: start
+        - align-self: end
+        - color: '#ef5350'
+        - font-size: 10px
+        - font-weight: 600
+        - line-height: 1.1
+      state:
+        - justify-self: start
+        - align-self: start
+        - color: var(--primary-text-color)
+        - font-size: 11px
+        - font-weight: 500
+        - line-height: 1.25
+        - white-space: normal
+        - text-align: left
+        - overflow-wrap: anywhere
+
+  diag_history_gfa:
+    section_mode: true
+    show_icon: true
+    show_name: true
+    show_state: true
+    show_units: false
+    show_ripple: true
+    tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
+    styles:
+      card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
+        - border-left: '3px solid #7e57c2'
+        - box-shadow: none
+        - padding: 7px 8px
+        - min-height: 52px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: >-
+            "i n" "i s"
+        - grid-template-columns: 23px 1fr
+        - grid-template-rows: min-content min-content
+        - column-gap: 6px
+      img_cell:
+        - width: 21px
+        - height: 21px
+        - align-self: start
+        - justify-self: center
+      icon:
+        - width: 17px
+        - color: '#7e57c2'
+      name:
+        - justify-self: start
+        - align-self: end
+        - color: '#7e57c2'
+        - font-size: 9px
+        - font-weight: 600
+        - line-height: 1.1
+      state:
+        - justify-self: start
+        - align-self: start
+        - color: var(--primary-text-color)
+        - font-size: 10px
+        - font-weight: 500
+        - line-height: 1.2
+        - white-space: normal
+        - text-align: left
+        - overflow-wrap: anywhere
+
   diag_group2:
     section_mode: true
     show_icon: false
@@ -3500,39 +3605,240 @@ views:
         cards:
           - type: heading
             heading: Fehlerhistorien
-            heading_style: subtitle
+            heading_style: title
             icon: mdi:history
-          - type: markdown
-            content: |
-              | # | Systemfehler | GFA 01–10 | GFA 11–20 |
-              |---:|---|---|---|
-              | 01 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_01_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_01') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_11') }} |
-              | 02 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_02_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_02') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_12') }} |
-              | 03 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_03_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_03') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_13') }} |
-              | 04 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_04_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_04') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_14') }} |
-              | 05 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_05_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_05') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_15') }} |
-              | 06 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_06_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_06') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_16') }} |
-              | 07 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_07_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_07') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_17') }} |
-              | 08 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_08_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_08') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_18') }} |
-              | 09 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_09_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_09') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_19') }} |
-              | 10 | {{ states('sensor.vitodens_200_wb2a_fehlerhistorie_10_anzeige') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_10') }} | {{ states('sensor.vitodens_200_wb2a_gfa_fehlerhistorie_20') }} |
-            card_mod:
-              style: |
-                ha-card {
-                  font-size: 12px;
-                }
-                ha-markdown {
-                  padding: 6px 10px !important;
-                }
-                table {
-                  width: 100%;
-                }
-                th, td {
-                  padding: 3px 8px !important;
-                  vertical-align: middle;
-                }
+
+          - type: heading
+            heading: Systemfehler
+            heading_style: subtitle
+            icon: mdi:alert-circle-outline
+            badges:
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus
+                name: Aktueller Status
+                show_state: true
+                show_icon: true
+          - type: custom:button-card
+            template: diag_history_system
+            entity: sensor.vitodens_200_wb2a_fehlerhistorie_01_anzeige
+            name: 01 · System
+            icon: mdi:alert-circle-outline
             grid_options:
-              columns: full
+              columns: 6
+          - type: custom:button-card
+            template: diag_history_system
+            entity: sensor.vitodens_200_wb2a_fehlerhistorie_02_anzeige
+            name: 02 · System
+            icon: mdi:alert-circle-outline
+            grid_options:
+              columns: 6
+          - type: custom:button-card
+            template: diag_history_system
+            entity: sensor.vitodens_200_wb2a_fehlerhistorie_03_anzeige
+            name: 03 · System
+            icon: mdi:alert-circle-outline
+            grid_options:
+              columns: 6
+          - type: custom:button-card
+            template: diag_history_system
+            entity: sensor.vitodens_200_wb2a_fehlerhistorie_04_anzeige
+            name: 04 · System
+            icon: mdi:alert-circle-outline
+            grid_options:
+              columns: 6
+          - type: custom:button-card
+            template: diag_history_system
+            entity: sensor.vitodens_200_wb2a_fehlerhistorie_05_anzeige
+            name: 05 · System
+            icon: mdi:alert-circle-outline
+            grid_options:
+              columns: 6
+          - type: custom:button-card
+            template: diag_history_system
+            entity: sensor.vitodens_200_wb2a_fehlerhistorie_06_anzeige
+            name: 06 · System
+            icon: mdi:alert-circle-outline
+            grid_options:
+              columns: 6
+          - type: custom:button-card
+            template: diag_history_system
+            entity: sensor.vitodens_200_wb2a_fehlerhistorie_07_anzeige
+            name: 07 · System
+            icon: mdi:alert-circle-outline
+            grid_options:
+              columns: 6
+          - type: custom:button-card
+            template: diag_history_system
+            entity: sensor.vitodens_200_wb2a_fehlerhistorie_08_anzeige
+            name: 08 · System
+            icon: mdi:alert-circle-outline
+            grid_options:
+              columns: 6
+          - type: custom:button-card
+            template: diag_history_system
+            entity: sensor.vitodens_200_wb2a_fehlerhistorie_09_anzeige
+            name: 09 · System
+            icon: mdi:alert-circle-outline
+            grid_options:
+              columns: 6
+          - type: custom:button-card
+            template: diag_history_system
+            entity: sensor.vitodens_200_wb2a_fehlerhistorie_10_anzeige
+            name: 10 · System
+            icon: mdi:alert-circle-outline
+            grid_options:
+              columns: 6
+
+          - type: heading
+            heading: GFA-Archiv
+            heading_style: subtitle
+            icon: mdi:chip
+            badges:
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_gfa_kennung_anzeige
+                name: GFA
+                show_state: true
+                show_icon: false
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_01
+            name: GFA 01
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_02
+            name: GFA 02
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_03
+            name: GFA 03
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_04
+            name: GFA 04
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_05
+            name: GFA 05
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_06
+            name: GFA 06
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_07
+            name: GFA 07
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_08
+            name: GFA 08
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_09
+            name: GFA 09
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_10
+            name: GFA 10
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_11
+            name: GFA 11
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_12
+            name: GFA 12
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_13
+            name: GFA 13
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_14
+            name: GFA 14
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_15
+            name: GFA 15
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_16
+            name: GFA 16
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_17
+            name: GFA 17
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_18
+            name: GFA 18
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_19
+            name: GFA 19
+            icon: mdi:history
+            grid_options:
+              columns: 3
+          - type: custom:button-card
+            template: diag_history_gfa
+            entity: sensor.vitodens_200_wb2a_gfa_fehlerhistorie_20
+            name: GFA 20
+            icon: mdi:history
+            grid_options:
+              columns: 3
 
       - type: grid
         column_span: 2
