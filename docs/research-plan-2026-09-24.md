@@ -190,12 +190,19 @@ Current evidence:
   repeated two-byte `54 98` pattern. This is not a validated EEPROM dump.
   Low blocks `0x0001=88`, `0x000A=4000000000`,
   `0x000F=1f00000000000000` remain structurally distinct.
-- [x] Run same-session P-N-P PrefixRead discriminator. Clean effect at
-  `0x0001/1`: `88 -> 87 -> 88`; no effect at `0x000A/5`;
-  `0x0078/8` and `0x00A0/10` remain dynamic/inconclusive.
-- [~] Re-run only `0x0001/1` with a **fresh P300 session per trial** and a
-  balanced deterministic P/N order to remove session carry-over and sequence
-  bias before assigning stronger PrefixRead semantics.
+- [x] Run same-session P-N-P PrefixRead discriminator. Initial
+  `0x0001/1 = 88 -> 87 -> 88` candidate effect observed, while higher blocks
+  remained dynamic.
+- [x] Re-run `0x0001/1` with a **fresh P300 session per trial** and balanced
+  order `PNNPNPPN`. Result: prefixed and no-prefix distributions are exactly
+  equal (`81 x3, 87 x1` each). Classification:
+  **NO_ISOLATED_PREFIX_EFFECT**. Earlier routing claim withdrawn.
+- [ ] Recover the actual Vitosoft host binding from
+  `ecnEventType.PrefixRead/PrefixWrite` into the VS2 request serializer.
+  Public source only proves metadata presence plus a generic optional-Data
+  field; the mapping between them is not yet recovered.
+- [ ] Pause further live 0x43 address expansion until that serialization path
+  is established.
 - [ ] Reconstruct one real Vitosoft-defined 0x43 request including prefix before
   considering another local EEPROM-style read.
 - [ ] Keep all work read-only; no broad blind sweep and no KBUS/KMBUS writes.
