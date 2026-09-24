@@ -136,7 +136,7 @@ Highest-priority open items are now:
 
 1. investigate the hidden selector upstream of the already validated `0x0A3C ~= 0x7660[1]`; `0x0A3A/0x0A3B` have already been tested and are no longer priority discriminators;
 2. read GFA P81/P82/P83 and preserve their raw software/configuration bytes;
-3. continue the side-labelled physical coding-plug campaign and correlate GWG plus GFA P90/P100-P108 views;
+3. continue the side-labelled physical coding-plug campaign: P90/P100-P108 are now live-captured; the next decisive step is both EEPROM sides of one spare with explicit f01/ST vs f02/Microchip labels;
 4. inspect the two protected FlowCalibration binary states and embedded resources offline;
 5. pursue actual firmware architecture through concrete MCU/memory/service evidence rather than repeated SQL/update searches.
 
