@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "event": "permanent VS1 + read-only GFA production activation",
+  "source_log": "user-supplied activation transcript at 2026-09-24 13:42 local",
+  "validated_upstream_ref": "c1ee204a1421447721603c5f21c6da7337fdac97",
+  "profile_helper": {
+    "revision": "2026-09-24-r5-vs1-gfa",
+    "source_commit": "c7769562887b4e2faa5d96b5d5a6b8936f3d00f3"
+  },
+  "gfa_runtime_patch": {
+    "self_tests": "7/7",
+    "result": "PASS",
+    "patched_files": [
+      "optolinkvs1.py",
+      "vs12_adapter.py",
+      "requests_util.py"
+    ],
+    "runtime_blobs": {
+      "optolinkvs1.py": "04646df49ea69ba0484eef5807d6583540f243ef",
+      "vs12_adapter.py": "82461ad5e61c015d311c9eb1413551c9e49035d8",
+      "requests_util.py": "8f858efb3952b85d8082ce877b4afdaf344e12cc"
+    }
+  },
+  "activation": {
+    "permanent_vs1_timing_enabled": true,
+    "discovery_dry_run": "PASS",
+    "splitter_restart": "performed",
+    "party_emulator": "active"
+  },
+  "discovery": {
+    "mqtt_connected": true,
+    "lwt_online": true,
+    "new_gfa_entities_published": [
+      "gfa_p80_typ",
+      "geblaesedrehzahl_gfa_p06",
+      "gfa_modulationssollwert_p09",
+      "gfa_status3_p87"
+    ],
+    "complete_publish": "TIMEOUT",
+    "timeout_seconds": 45,
+    "last_observed_publish": "Zirkulation Zeitprogramm Freitag",
+    "interpretation": "The transport/profile activation succeeded. Discovery publication alone exceeded the non-fatal 45 s wrapper timeout; the profile helper explicitly left Optolink active."
+  },
+  "follow_up": {
+    "helper_timeout_fix_commit": "fb59dd137656001efe071d31350a058cd5d4ed9b",
+    "new_timeout_seconds": 120,
+    "immediate_verification_needed": [
+      "confirm settings vs1protocol=True and olbreath=0.15",
+      "confirm splitter journal shows VS1/KW protocol initialized without restart/error loop",
+      "capture fresh MQTT values for P80/P06/P09/P87",
+      "confirm Party service remains active",
+      "republish full HA discovery with a longer timeout and then force one state refresh"
+    ]
+  }
+}
