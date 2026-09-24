@@ -1397,42 +1397,52 @@ poll_list = {
                 {
                     "name": "fehlerhistorie_01_anzeige",
                     "state_topic": "{mqtt_base}/fehlerhistorie_01",
+                    "value_template": "{% set v = value | trim | upper %}{% set c = v[0:2] %}{% set m = {'B7':'Kesselcodierkarte falsch/fehlerhaft','F9':'Fehler Gebläse - Drehzahl nicht erreicht','BC':'Fehler Fernbedienung HK1','BD':'Fehler Fernbedienung HK2'} %}{{ c }}{% if c in m %} · {{ m[c] }}{% endif %}{% if v | length == 18 and v[2:18] != 'FFFFFFFFFFFFFFFF' %} · {{ v[2:6] }}-{{ v[6:8] }}-{{ v[8:10] }} {{ v[12:14] }}:{{ v[14:16] }}:{{ v[16:18] }}{% endif %}",
                 },
                 {
                     "name": "fehlerhistorie_02_anzeige",
                     "state_topic": "{mqtt_base}/fehlerhistorie_02",
+                    "value_template": "{% set v = value | trim | upper %}{% set c = v[0:2] %}{% set m = {'B7':'Kesselcodierkarte falsch/fehlerhaft','F9':'Fehler Gebläse - Drehzahl nicht erreicht','BC':'Fehler Fernbedienung HK1','BD':'Fehler Fernbedienung HK2'} %}{{ c }}{% if c in m %} · {{ m[c] }}{% endif %}{% if v | length == 18 and v[2:18] != 'FFFFFFFFFFFFFFFF' %} · {{ v[2:6] }}-{{ v[6:8] }}-{{ v[8:10] }} {{ v[12:14] }}:{{ v[14:16] }}:{{ v[16:18] }}{% endif %}",
                 },
                 {
                     "name": "fehlerhistorie_03_anzeige",
                     "state_topic": "{mqtt_base}/fehlerhistorie_03",
+                    "value_template": "{% set v = value | trim | upper %}{% set c = v[0:2] %}{% set m = {'B7':'Kesselcodierkarte falsch/fehlerhaft','F9':'Fehler Gebläse - Drehzahl nicht erreicht','BC':'Fehler Fernbedienung HK1','BD':'Fehler Fernbedienung HK2'} %}{{ c }}{% if c in m %} · {{ m[c] }}{% endif %}{% if v | length == 18 and v[2:18] != 'FFFFFFFFFFFFFFFF' %} · {{ v[2:6] }}-{{ v[6:8] }}-{{ v[8:10] }} {{ v[12:14] }}:{{ v[14:16] }}:{{ v[16:18] }}{% endif %}",
                 },
                 {
                     "name": "fehlerhistorie_04_anzeige",
                     "state_topic": "{mqtt_base}/fehlerhistorie_04",
+                    "value_template": "{% set v = value | trim | upper %}{% set c = v[0:2] %}{% set m = {'B7':'Kesselcodierkarte falsch/fehlerhaft','F9':'Fehler Gebläse - Drehzahl nicht erreicht','BC':'Fehler Fernbedienung HK1','BD':'Fehler Fernbedienung HK2'} %}{{ c }}{% if c in m %} · {{ m[c] }}{% endif %}{% if v | length == 18 and v[2:18] != 'FFFFFFFFFFFFFFFF' %} · {{ v[2:6] }}-{{ v[6:8] }}-{{ v[8:10] }} {{ v[12:14] }}:{{ v[14:16] }}:{{ v[16:18] }}{% endif %}",
                 },
                 {
                     "name": "fehlerhistorie_05_anzeige",
                     "state_topic": "{mqtt_base}/fehlerhistorie_05",
+                    "value_template": "{% set v = value | trim | upper %}{% set c = v[0:2] %}{% set m = {'B7':'Kesselcodierkarte falsch/fehlerhaft','F9':'Fehler Gebläse - Drehzahl nicht erreicht','BC':'Fehler Fernbedienung HK1','BD':'Fehler Fernbedienung HK2'} %}{{ c }}{% if c in m %} · {{ m[c] }}{% endif %}{% if v | length == 18 and v[2:18] != 'FFFFFFFFFFFFFFFF' %} · {{ v[2:6] }}-{{ v[6:8] }}-{{ v[8:10] }} {{ v[12:14] }}:{{ v[14:16] }}:{{ v[16:18] }}{% endif %}",
                 },
                 {
                     "name": "fehlerhistorie_06_anzeige",
                     "state_topic": "{mqtt_base}/fehlerhistorie_06",
+                    "value_template": "{% set v = value | trim | upper %}{% set c = v[0:2] %}{% set m = {'B7':'Kesselcodierkarte falsch/fehlerhaft','F9':'Fehler Gebläse - Drehzahl nicht erreicht','BC':'Fehler Fernbedienung HK1','BD':'Fehler Fernbedienung HK2'} %}{{ c }}{% if c in m %} · {{ m[c] }}{% endif %}{% if v | length == 18 and v[2:18] != 'FFFFFFFFFFFFFFFF' %} · {{ v[2:6] }}-{{ v[6:8] }}-{{ v[8:10] }} {{ v[12:14] }}:{{ v[14:16] }}:{{ v[16:18] }}{% endif %}",
                 },
                 {
                     "name": "fehlerhistorie_07_anzeige",
                     "state_topic": "{mqtt_base}/fehlerhistorie_07",
+                    "value_template": "{% set v = value | trim | upper %}{% set c = v[0:2] %}{% set m = {'B7':'Kesselcodierkarte falsch/fehlerhaft','F9':'Fehler Gebläse - Drehzahl nicht erreicht','BC':'Fehler Fernbedienung HK1','BD':'Fehler Fernbedienung HK2'} %}{{ c }}{% if c in m %} · {{ m[c] }}{% endif %}{% if v | length == 18 and v[2:18] != 'FFFFFFFFFFFFFFFF' %} · {{ v[2:6] }}-{{ v[6:8] }}-{{ v[8:10] }} {{ v[12:14] }}:{{ v[14:16] }}:{{ v[16:18] }}{% endif %}",
                 },
                 {
                     "name": "fehlerhistorie_08_anzeige",
                     "state_topic": "{mqtt_base}/fehlerhistorie_08",
+                    "value_template": "{% set v = value | trim | upper %}{% set c = v[0:2] %}{% set m = {'B7':'Kesselcodierkarte falsch/fehlerhaft','F9':'Fehler Gebläse - Drehzahl nicht erreicht','BC':'Fehler Fernbedienung HK1','BD':'Fehler Fernbedienung HK2'} %}{{ c }}{% if c in m %} · {{ m[c] }}{% endif %}{% if v | length == 18 and v[2:18] != 'FFFFFFFFFFFFFFFF' %} · {{ v[2:6] }}-{{ v[6:8] }}-{{ v[8:10] }} {{ v[12:14] }}:{{ v[14:16] }}:{{ v[16:18] }}{% endif %}",
                 },
                 {
                     "name": "fehlerhistorie_09_anzeige",
                     "state_topic": "{mqtt_base}/fehlerhistorie_09",
+                    "value_template": "{% set v = value | trim | upper %}{% set c = v[0:2] %}{% set m = {'B7':'Kesselcodierkarte falsch/fehlerhaft','F9':'Fehler Gebläse - Drehzahl nicht erreicht','BC':'Fehler Fernbedienung HK1','BD':'Fehler Fernbedienung HK2'} %}{{ c }}{% if c in m %} · {{ m[c] }}{% endif %}{% if v | length == 18 and v[2:18] != 'FFFFFFFFFFFFFFFF' %} · {{ v[2:6] }}-{{ v[6:8] }}-{{ v[8:10] }} {{ v[12:14] }}:{{ v[14:16] }}:{{ v[16:18] }}{% endif %}",
                 },
                 {
                     "name": "fehlerhistorie_10_anzeige",
                     "state_topic": "{mqtt_base}/fehlerhistorie_10",
+                    "value_template": "{% set v = value | trim | upper %}{% set c = v[0:2] %}{% set m = {'B7':'Kesselcodierkarte falsch/fehlerhaft','F9':'Fehler Gebläse - Drehzahl nicht erreicht','BC':'Fehler Fernbedienung HK1','BD':'Fehler Fernbedienung HK2'} %}{{ c }}{% if c in m %} · {{ m[c] }}{% endif %}{% if v | length == 18 and v[2:18] != 'FFFFFFFFFFFFFFFF' %} · {{ v[2:6] }}-{{ v[6:8] }}-{{ v[8:10] }} {{ v[12:14] }}:{{ v[14:16] }}:{{ v[16:18] }}{% endif %}",
                 },
                 {
                     "name": "heizkreis_m1_zeitprogramm_montag_anzeige",
