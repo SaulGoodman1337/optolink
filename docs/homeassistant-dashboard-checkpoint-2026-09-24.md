@@ -264,10 +264,11 @@ All five reads succeeded with their source-backed block lengths.
 
 Follow-up splitter testing then verified `0x5723` as read/write. Setting it
 temporarily to 24 months produced raw `0x18` and restoring it to zero produced
-raw `0x00`. Both writes caused `0x756C` to be replaced with the current
-little-endian Unix-seconds timestamp; the two captured reference values were
-exactly ten seconds apart. Therefore `0x756C` is **not** a plain elapsed-month
-counter. The source conversion is `LastCheckInterval`.
+raw `0x00`. Both writes caused `0x756C` to be replaced with a new
+32-bit reference value; the two captured values were exactly ten counts apart
+over a ten-second test interval. Therefore `0x756C` is **not** a plain
+elapsed-month counter. The source conversion is `LastCheckInterval`, whose
+exact wall-clock conversion remains unresolved.
 
 The original Vitosoft event inventory confirms that `0x756C` and
 `0x7570` are read-only Type-1 events.
@@ -279,8 +280,7 @@ Follow-up splitter tests completed the missing semantics:
 - `0x5723` is locally verified R/W for 0..24 months;
 - maintenance reset is locally verified as `0x5724 = 1` followed by
   `0x5724 = 0`;
-- that reset updates `0x756C` to the current little-endian Unix-seconds
-  reference timestamp;
+- that reset updates the `0x756C` LastCheckInterval reference;
 - that reset updates `0x7570` to the current burner-runtime-seconds baseline;
 - burner runtime since maintenance is therefore
   `(current 0x08A7 - stored 0x7570) / 3600`;
