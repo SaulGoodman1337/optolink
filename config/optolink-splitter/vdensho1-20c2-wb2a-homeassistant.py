@@ -1768,7 +1768,7 @@ poll_list = {
             "domain": "text",
             "icon": "mdi:calendar-edit",
             "mode": "text",
-            "min": 0,
+            "min": 4,
             "max": 64,
             "optimistic": False,
             "value_template": "{% set ns = namespace(items=[]) %}{% for slot in value.split(',') %}{% set s = slot | trim %}{% if s and 'na' not in s | lower %}{% set ns.items = ns.items + [s] %}{% endif %}{% endfor %}{{ ns.items | join(',') if ns.items | length else 'none' }}",
