@@ -74,7 +74,7 @@
     "normal_cadence_seconds": "approximately 20-30 s",
     "goal": "Eliminate periodic 15-20 s FAST latency spikes before any olbreath reduction."
   },
-  "next_step": "Apply and observe one or more burner cycles. If stable with no FF quarantine, OL errors or restarts, test olbreath 0.10 as a separate controlled change.",
+  "next_step": "Measure natural MQTT inter-arrival intervals for FAST and NORMAL entities under olbreath=0.15; only then test lower olbreath as a separate controlled change.",
   "first_live_apply_attempt": {
     "timestamp_local": "2026-09-24T14:17:06+02:00",
     "result": "ABORTED_BEFORE_SCHEDULER_APPLY",
@@ -103,5 +103,51 @@
     "interpretation": "0.15 s is an experimental conservative margin inherited from successful mixed VS1/F7/6B hardware probes, not a recovered Viessmann protocol minimum.",
     "upstream_function_comment": "give vitotronic some time between comms to do other things",
     "next_policy": "Keep 0.15 during scheduler validation; if stable, test 0.10 then 0.05 as separate controlled changes."
+  },
+  "live_apply_success": {
+    "timestamp_local": "2026-09-24T14:22:49+02:00",
+    "result": "PASS",
+    "profile_helper_revision": "2026-09-24-r7-phased-poll",
+    "gfa_patcher_self_tests": "9/9",
+    "scheduler_self_tests": "4/4",
+    "gfa_runtime": {
+      "state_before_apply": "already patched",
+      "patched_files": [],
+      "result": "PASS",
+      "blobs": {
+        "optolinkvs1.py": "04646df49ea69ba0484eef5807d6583540f243ef",
+        "vs12_adapter.py": "82461ad5e61c015d311c9eb1413551c9e49035d8",
+        "requests_util.py": "03c3fd5336ae332078f960975ecf5188c2996dd2"
+      }
+    },
+    "scheduler_runtime": {
+      "state_before_apply": {
+        "c_polllist.py": "base",
+        "optolinkvs2_switch.py": "base"
+      },
+      "patched_files": [
+        "c_polllist.py",
+        "optolinkvs2_switch.py"
+      ],
+      "result": "PASS",
+      "blobs": {
+        "c_polllist.py": "f42ad5be08ea26c6947f97d346c7c11adb40c364",
+        "optolinkvs2_switch.py": "f63cb2a59b4df45cb0884bc5be2f96497ddff180"
+      }
+    },
+    "post_apply": {
+      "permanent_vs1_timing_enabled": true,
+      "discovery_dry_run": "PASS",
+      "splitter_restart": "performed",
+      "party_emulator": "active",
+      "discovery_entities_published": 294,
+      "mqtt_state_refresh": "triggered",
+      "profile_active": "/opt/optolink/homeassistant_poll_list.py"
+    },
+    "conclusion": [
+      "The phased poll scheduler is now live on the production splitter.",
+      "The optimized VDensHO1 profile is active and Home Assistant discovery completed successfully.",
+      "The next measurement must be passive MQTT cadence observation without forcepoll, before changing olbreath."
+    ]
   }
 }
