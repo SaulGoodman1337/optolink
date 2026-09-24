@@ -581,6 +581,41 @@ The strongest current statement is therefore:
 The next experiment must reset P300 between every `0x0001/1` sample and use
 a balanced deterministic P/N order.
 
+## Fresh-session correction: PrefixRead effect not reproduced
+
+The stronger isolated-session experiment tested only `0x0001/1`, opening a
+new P300 session before every request. Balanced order:
+
+~~~text
+P N N P N P P N
+~~~
+
+Observed:
+
+~~~text
+P: 81, 81, 81, 87
+N: 87, 81, 81, 81
+~~~
+
+The distributions are exactly identical. Therefore the prior same-session
+`88 -> 87 -> 88` sequence was a confounded dynamic/session-state observation,
+not a reproducible PrefixRead effect.
+
+This changes the protocol conclusion materially:
+
+- do **not** claim that `PrefixRead=030000000101` is locally proven routing;
+- do **not** treat `0x0001` as a static EEPROM identity byte;
+- do **not** expand the address map while the vendor field serialization is
+  unresolved.
+
+Public source inspection supports only a weaker relationship:
+`ecnEventType.PrefixRead` exists as metadata, and the generic VS2 builder can
+append optional request Data after BlockSize. No recovered Vitosoft call path
+yet proves that PrefixRead is passed into that Data field.
+
+The next task is offline host-implementation recovery, not another live address
+probe.
+
 ### 3. 0x31 XRAM_READ - high conceptual value, local applicability unknown
 
 The 12 definitions are now fully enumerated. They expose volatile objects such
