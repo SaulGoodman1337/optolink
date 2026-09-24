@@ -159,9 +159,12 @@ Current evidence:
   232 virtual KBus reads by participant/device family; structural prefix
   distributions are already extracted.
 - [~] Build a bounded `Virtual_READ` vs. `0x41` correlation matrix for known
-  objects. **Runbook and evidence template are prepared; first live run is next.**
-  Targets: `0x00F8`, `0x0A3C`, `0x7660`, `0x7663`, `0x5730`,
-  `0x0A54`, `0x27A0`. See
+  objects. First live run completed at 22:01, but **the positive 0x41 control
+  timed out**, so no memory-map classification is valid yet. All ordinary
+  Virtual_READ controls succeeded. Diagnose generic `request` transport /
+  response filtering first, then repeat the same target set:
+  `0x00F8`, `0x0A3C`, `0x7660`, `0x7663`, `0x5730`, `0x0A54`,
+  `0x27A0`. See
   [kmbus-ram-correlation-probe.md](kmbus-ram-correlation-probe.md).
 - [ ] Reconstruct one real Vitosoft-defined 0x43 request including prefix before
   considering another local EEPROM-style read.
