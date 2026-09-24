@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "scope": "Cross-source reconstruction of the four-byte coding-card summary at 0x7656.",
+  "local_hardware": {
+    "address": "0x7656",
+    "raw": "20 15 02 01",
+    "related_gfa": {
+      "P80_type": "20",
+      "P101_identity_1": "15",
+      "P107_FA40_identity": "02",
+      "P102_identity_2": "01"
+    },
+    "exact_reconstruction": "P80 | P101 | P107 | P102 = 20 15 02 01"
+  },
+  "exact_vdensho1_catalog_corroboration": {
+    "repository": "SoulSolistice/esphome_vitohome",
+    "commit": "066b7d35889c95e862ea6a7ba84377fe4eeafa78",
+    "path": "example/catalogs/vdensho1.yaml",
+    "fields": [
+      {
+        "id": "KS_Karte_GWG_Typ",
+        "address": "0x7656",
+        "length": 1,
+        "byte_offset": 0,
+        "offset_basis": "implicit: one-byte read at base address, no byte_offset"
+      },
+      {
+        "id": "KS_Karte_GWG_Kennung",
+        "address": "0x7656",
+        "length": 4,
+        "byte_offset": 1
+      },
+      {
+        "id": "KS_Karte_GWG_Rev_R",
+        "address": "0x7656",
+        "length": 4,
+        "byte_offset": 2
+      },
+      {
+        "id": "KS_Karte_GWG_Rev_F",
+        "address": "0x7656",
+        "length": 4,
+        "byte_offset": 3
+      }
+    ]
+  },
+  "resolved_layout": [
+    {"byte": 0, "raw": "20", "meaning": "coding-card type", "gfa_match": "P80"},
+    {"byte": 1, "raw": "15", "meaning": "coding-card device identification", "gfa_match": "P101"},
+    {"byte": 2, "raw": "02", "meaning": "GWG/main-regulation revision", "gfa_match": "P107"},
+    {"byte": 3, "raw": "01", "meaning": "GFA/fire-control revision", "gfa_match": "P102"}
+  ],
+  "notation": {
+    "raw_grouping": "20 15 : 02 01",
+    "displayed_project_notation": "2015:0201",
+    "interpretation": "type+device-identification : GWG-revision+GFA-revision",
+    "calendar_date": false
+  },
+  "remaining_validation": "The private Collector-v6 all-events.csv contains byte_position fields and can later provide same-source confirmation without rerunning the collector.",
+  "result": "LAYOUT_RESOLVED_WITH_INDEPENDENT_EXACT_VDENSHO1_CORROBORATION"
+}
