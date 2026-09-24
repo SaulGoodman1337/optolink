@@ -126,7 +126,16 @@ def encode_time(value, allow_24=False):
 
 def parse_schedule(payload):
     value = str(payload).strip()
-    if value.lower() in ("", "none", "leer", "empty", "aus"):
+
+    # Safety rule: an empty MQTT/text payload must never be destructive.
+    # Clearing a complete boiler day requires the explicit token "none".
+    if not value:
+        raise ValueError(
+            "Leere Eingabe wird aus Sicherheitsgründen abgelehnt; "
+            "zum Leeren eines Tages explizit 'none' verwenden"
+        )
+
+    if value.lower() == "none":
         return []
 
     value = value.replace("–", "-").replace("—", "-")
@@ -276,6 +285,13 @@ class ScheduleManager:
             raise RuntimeError("MQTT-Verbindung fehlgeschlagen")
 
         self.client.on_message = self.on_message
+
+        # Schedule command topics must never carry retained commands. A stale
+        # retained payload would otherwise be replayed when this service
+        # reconnects. Clear them before subscribing to the command topics.
+        for topic in self.command_map:
+            self.client.publish(topic, "", retain=True).wait_for_publish()
+
         subscriptions = [(settings.mqtt_respond, 0)]
         subscriptions.extend((topic, 0) for topic in self.command_map)
         self.client.subscribe(subscriptions)
@@ -304,6 +320,18 @@ class ScheduleManager:
 
         target = self.command_map.get(message.topic)
         if target is not None:
+            if getattr(message, "retain", False):
+                log(
+                    "WARNING: ignoring retained schedule command on "
+                    f"{message.topic}: {payload!r}"
+                )
+                return
+            if not payload:
+                log(
+                    "WARNING: ignoring empty schedule command on "
+                    f"{message.topic}"
+                )
+                return
             self.actions.put((target[0], target[1], payload))
 
     def publish_status(
