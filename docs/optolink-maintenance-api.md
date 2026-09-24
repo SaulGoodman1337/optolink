@@ -87,6 +87,10 @@ request ID replays the cached result instead of executing the controller action
 again. This prevents accidental duplicate writes from repeated MQTT delivery
 or client retries.
 
+The command topic must never be used as retained state. The service explicitly
+ignores MQTT messages whose retained flag is set, so an old write/reset request
+cannot be replayed merely because the API service restarts or resubscribes.
+
 ## Actions
 
 ### status
