@@ -34,6 +34,7 @@ Default: plan only. --self-test: offline tests. --execute: live bounded run.
 from __future__ import annotations
 
 import argparse
+import ast
 import datetime as dt
 import fcntl
 import hashlib
@@ -45,7 +46,7 @@ import sys
 import time
 import types
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 PARENT_NAME = "wb2a-gfa-triggered-status-probe.py"
 PARENT_SHA256 = "6d5810e1595ba6e464452dcd927259e9bade8f550a92b492fd40c2a27972604b"
 
@@ -62,6 +63,58 @@ VIRTUAL = {
     D3: ("status_55d3", D3_LEN),
     DD: ("flame_55dd", DD_LEN),
 }
+
+
+def read_production_port(path: Path, ProbeError) -> str:
+    """Parse the production serial settings without importing or modifying them.
+
+    This correlation helper is specifically for the current permanent-VS1
+    production architecture. The legacy parent chain still requires
+    vs1protocol=False in its own standalone entrypoint, so this child performs
+    its own narrow settings validation instead of weakening that historical
+    helper.
+    """
+    names = {"port_optolink", "port_vitoconnect", "vs1protocol"}
+    values = {}
+    tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+
+    for node in ast.walk(tree):
+        targets = []
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+        elif isinstance(node, (ast.AnnAssign, ast.AugAssign)):
+            targets = [node.target]
+        if any(isinstance(t, ast.Name) and t.id in names for t in targets):
+            if node not in tree.body or not isinstance(node, ast.Assign):
+                raise ProbeError(
+                    "Conditional/annotated/augmented production port settings are unsupported."
+                )
+
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id in names:
+                if target.id in values:
+                    raise ProbeError("Ambiguous duplicate setting: " + target.id)
+                try:
+                    values[target.id] = ast.literal_eval(node.value)
+                except (ValueError, TypeError) as exc:
+                    raise ProbeError("Setting is not a literal: " + target.id) from exc
+
+    if values.get("vs1protocol") is not True:
+        raise ProbeError(
+            "This production correlation probe requires explicit vs1protocol = True; "
+            "settings are never modified."
+        )
+    if "port_vitoconnect" not in values or values["port_vitoconnect"] is not None:
+        raise ProbeError(
+            "Require port_vitoconnect = None so no second configured serial owner exists."
+        )
+    port = values.get("port_optolink")
+    if not isinstance(port, str) or not port.startswith("/dev/"):
+        raise ProbeError("Require a literal local /dev/ port_optolink path.")
+    return port
 
 
 def load_parent():
@@ -329,6 +382,7 @@ def make_runtime(trigger):
 
 
 def self_test() -> int:
+    import tempfile
     import unittest
 
     class Tests(unittest.TestCase):
@@ -365,6 +419,50 @@ def self_test() -> int:
             with self.assertRaises(ValueError):
                 flame_decode_55dd(b"\x00\x00")
 
+        def test_production_vs1_settings_accepted(self):
+            parent = load_parent()
+            status, base, _wire, _run = make_runtime(parent)
+            with tempfile.TemporaryDirectory() as root:
+                path = Path(root) / "settings.py"
+                path.write_text(
+                    "port_optolink = '/dev/ttyUSB0'\n"
+                    "port_vitoconnect = None\n"
+                    "vs1protocol = True\n",
+                    encoding="utf-8",
+                )
+                self.assertEqual(
+                    read_production_port(path, status.ProbeError),
+                    "/dev/ttyUSB0",
+                )
+
+        def test_legacy_false_mode_rejected_by_production_child(self):
+            parent = load_parent()
+            status, base, _wire, _run = make_runtime(parent)
+            with tempfile.TemporaryDirectory() as root:
+                path = Path(root) / "settings.py"
+                path.write_text(
+                    "port_optolink = '/dev/ttyUSB0'\n"
+                    "port_vitoconnect = None\n"
+                    "vs1protocol = False\n",
+                    encoding="utf-8",
+                )
+                with self.assertRaises(status.ProbeError):
+                    read_production_port(path, status.ProbeError)
+
+        def test_second_serial_owner_rejected(self):
+            parent = load_parent()
+            status, base, _wire, _run = make_runtime(parent)
+            with tempfile.TemporaryDirectory() as root:
+                path = Path(root) / "settings.py"
+                path.write_text(
+                    "port_optolink = '/dev/ttyUSB0'\n"
+                    "port_vitoconnect = '/dev/ttyUSB1'\n"
+                    "vs1protocol = True\n",
+                    encoding="utf-8",
+                )
+                with self.assertRaises(status.ProbeError):
+                    read_production_port(path, status.ProbeError)
+
     result = unittest.TextTestRunner(verbosity=2).run(
         unittest.defaultTestLoader.loadTestsFromTestCase(Tests)
     )
@@ -375,7 +473,7 @@ def self_test() -> int:
     if parent.self_test() != 0:
         return 1
     make_runtime(parent)
-    print("LOCAL_FLAME_TESTS=6/6; PINNED_TRIGGER_PARENT_TESTS=PASS")
+    print("LOCAL_FLAME_TESTS=9/9; PINNED_TRIGGER_PARENT_TESTS=PASS")
     return 0
 
 
@@ -418,7 +516,7 @@ def main() -> int:
     try:
         import serial
 
-        port = base.read_settings(base.SETTINGS)
+        port = read_production_port(base.SETTINGS, status.ProbeError)
         if not stat.S_ISCHR(os.stat(port).st_mode):
             raise status.ProbeError("Configured port is not a character device.")
 
@@ -439,7 +537,7 @@ def main() -> int:
         )
         cap(
             f"Configured port: {port}; capture={args.seconds}s; "
-            "mixed persistent VS1 F7/6B."
+            "production vs1protocol=True; mixed persistent VS1 F7/6B; settings unmodified."
         )
         cap(
             "Inherited ONLY PARAMETER WRITE: A1 normal setpoint 0x2306 -> 37 C "
