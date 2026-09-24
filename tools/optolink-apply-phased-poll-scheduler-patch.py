@@ -25,7 +25,7 @@ import sys
 import tempfile
 import time
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 ROOT = Path("/opt/optolink")
 
 BASE_BLOBS = {
@@ -422,8 +422,8 @@ def do_poll_item(poll_data, ser, item_index=None):
         item = poll_list.items[list_index]
         item_cycle = poll_list.cycle_groups[item[0]]
 
-        if(item_index is None) and ((item_cycle < 0) or ((item_cycle > 0) and (poll_cycle % item_cycle != 0)) or ((item_cycle == 0) and (poll_cycle != 0))):
-            pass
+            if(item_index is None) and ((item_cycle < 0) or ((item_cycle > 0) and (poll_cycle % item_cycle != 0)) or ((item_cycle == 0) and (poll_cycle != 0))):
+                pass
 
 def main():
     global mod_mqtt
