@@ -441,8 +441,8 @@ The dashboard uses each text entity as both the displayed verified state and
 the edit target. Tapping a weekday opens the native Home Assistant more-info
 editor for that day.
 
-Current integration status: **implemented in repository; first live HA write
-through the schedule manager still needs verification after deployment.**
+Current integration status: **live-verified end-to-end through Home Assistant,
+MQTT, the guarded schedule manager and independent controller readback.**
 
 ## Home Assistant implications after PASS
 
@@ -465,4 +465,9 @@ Once the local probe passes:
   - readback confirmation and visible error state;
   - no optimistic UI for controller writes.
 
-The controller block gate is complete. Home Assistant editing is enabled only through the guarded schedule manager; the first live HA-path write/readback still needs to be observed after deployment.
+The controller block gate and first live Home Assistant write/readback are complete. Further work is now dashboard UX, multi-day convenience operations and visual verification.
+
+## Detailed handoff
+
+The complete schedule/Home Assistant handoff for this session is recorded in
+`docs/zeitprogramme-ha-handoff-2026-09-24.md`.
