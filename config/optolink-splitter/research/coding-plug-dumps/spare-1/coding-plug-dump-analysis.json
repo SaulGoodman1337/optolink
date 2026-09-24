@@ -1,0 +1,118 @@
+{
+  "format": 1,
+  "purpose": "read-only WB2A coding-plug dump comparison",
+  "known_patterns": {
+    "coding_card_identity_2015_0201": "20 15 02 01",
+    "part_number_ascii_7833971": "37 38 33 33 39 37 31",
+    "part_number_bcd_78_33_97_1f": "78 33 97 1f",
+    "part_number_bcd_07_83_39_71": "07 83 39 71"
+  },
+  "dumps": [
+    {
+      "path": "Kodierstecker_chip1_read1.bin",
+      "size": 512,
+      "sha256": "3dd583723661ea765f4e57405628def121bf78f1bc7d09dc1dfb51fec362f386",
+      "byte_entropy": 2.658068,
+      "unique_byte_values": 48,
+      "longest_ff_run": 255,
+      "longest_00_run": 52,
+      "printable_ascii_strings": [
+        {"offset": 33, "length": 4, "text": "M22,"},
+        {"offset": 115, "length": 4, "text": "M22,"}
+      ],
+      "known_pattern_hits": {
+        "coding_card_identity_2015_0201": [],
+        "part_number_ascii_7833971": [],
+        "part_number_bcd_78_33_97_1f": [],
+        "part_number_bcd_07_83_39_71": []
+      }
+    },
+    {
+      "path": "Kodierstecker_chip1_read2.bin",
+      "size": 512,
+      "sha256": "3dd583723661ea765f4e57405628def121bf78f1bc7d09dc1dfb51fec362f386",
+      "byte_entropy": 2.658068,
+      "unique_byte_values": 48,
+      "longest_ff_run": 255,
+      "longest_00_run": 52,
+      "printable_ascii_strings": [
+        {"offset": 33, "length": 4, "text": "M22,"},
+        {"offset": 115, "length": 4, "text": "M22,"}
+      ],
+      "known_pattern_hits": {
+        "coding_card_identity_2015_0201": [],
+        "part_number_ascii_7833971": [],
+        "part_number_bcd_78_33_97_1f": [],
+        "part_number_bcd_07_83_39_71": []
+      }
+    },
+    {
+      "path": "Kodierstecker_chip1_read3.bin",
+      "size": 512,
+      "sha256": "3dd583723661ea765f4e57405628def121bf78f1bc7d09dc1dfb51fec362f386",
+      "byte_entropy": 2.658068,
+      "unique_byte_values": 48,
+      "longest_ff_run": 255,
+      "longest_00_run": 52,
+      "printable_ascii_strings": [
+        {"offset": 33, "length": 4, "text": "M22,"},
+        {"offset": 115, "length": 4, "text": "M22,"}
+      ],
+      "known_pattern_hits": {
+        "coding_card_identity_2015_0201": [],
+        "part_number_ascii_7833971": [],
+        "part_number_bcd_78_33_97_1f": [],
+        "part_number_bcd_07_83_39_71": []
+      }
+    }
+  ],
+  "pairwise_comparisons": [
+    {
+      "a": "Kodierstecker_chip1_read1.bin",
+      "b": "Kodierstecker_chip1_read2.bin",
+      "identical": true,
+      "common_length": 512,
+      "size_a": 512,
+      "size_b": 512,
+      "differing_bytes_total": 0,
+      "differing_bits_in_common_range": 0,
+      "size_difference_bytes": 0,
+      "first_differences": []
+    },
+    {
+      "a": "Kodierstecker_chip1_read1.bin",
+      "b": "Kodierstecker_chip1_read3.bin",
+      "identical": true,
+      "common_length": 512,
+      "size_a": 512,
+      "size_b": 512,
+      "differing_bytes_total": 0,
+      "differing_bits_in_common_range": 0,
+      "size_difference_bytes": 0,
+      "first_differences": []
+    },
+    {
+      "a": "Kodierstecker_chip1_read2.bin",
+      "b": "Kodierstecker_chip1_read3.bin",
+      "identical": true,
+      "common_length": 512,
+      "size_a": 512,
+      "size_b": 512,
+      "differing_bytes_total": 0,
+      "differing_bits_in_common_range": 0,
+      "size_difference_bytes": 0,
+      "first_differences": []
+    }
+  ],
+  "multi_dump_consensus": {
+    "common_length": 512,
+    "stable_offsets": 512,
+    "differing_offsets_total": 0,
+    "first_differing_offsets": []
+  },
+  "contexts": {
+    "Kodierstecker_chip1_read1.bin": {},
+    "Kodierstecker_chip1_read2.bin": {},
+    "Kodierstecker_chip1_read3.bin": {}
+  }
+}

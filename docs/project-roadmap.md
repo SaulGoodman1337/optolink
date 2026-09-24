@@ -719,7 +719,29 @@ Execution task:
 
 ### Coding-plug read/write and external dumping
 
-Status: **open / research only**
+Status: **active / read-only physical dump campaign started**
+
+Physical bench update (2026-09-24):
+
+- hardware identified and working: CH341A + SOIC8 clip, CH341PAR, AsProgrammer,
+  24C04 selection;
+- the photographed coding-plug PCB carries two 24C04 EEPROM packages;
+- first sample is **spare-1**, explicitly not the coding plug currently
+  installed in the boiler;
+- spare-1/chip1 was read three times at 512 bytes; all three captures are
+  byte-for-byte identical with SHA256
+  `3dd583723661ea765f4e57405628def121bf78f1bc7d09dc1dfb51fec362f386`;
+- initial analysis finds a 71-byte exact duplicated region
+  `0x014..0x05A -> 0x066..0x0AC`, but no current installed-plug
+  `7833971 / 2015:0201` identity pattern and no exact copy of the known
+  `0x1030..0x1090` objects;
+- spare-1 identity/revision is not yet confirmed, so no cross-plug conclusion
+  may be drawn from those absent patterns;
+- raw files and the analyzer JSON are now versioned under
+  `config/optolink-splitter/research/coding-plug-dumps/spare-1/`;
+- next comparison set: capture the second spare and then the active plug, and
+  include **both physical 24C04 packages** per plug if possible.
+
 
 Determine whether the Kesselcodierstecker can be read or modified beyond the
 currently verified read-only structured Optolink objects.

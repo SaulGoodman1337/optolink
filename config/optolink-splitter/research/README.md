@@ -46,6 +46,25 @@ The current reverse-engineering state is:
 - `A395.b2` is a separate approximately 60 s post-fire state and is not the
   240 s restart-inhibition timer
 
+## Physical coding-plug dump campaign — 2026-09-24
+
+The external read-only path is now proven on the bench with a CH341A/SOIC8
+clip and AsProgrammer in 24C04 mode.
+
+The first capture is **spare-1 / chip1**, not the plug currently installed in
+the boiler. Three independent 512-byte reads are identical with SHA256
+`3dd583723661ea765f4e57405628def121bf78f1bc7d09dc1dfb51fec362f386`.
+
+The representative image contains a 71-byte exact repeated region at
+`0x014..0x05A` and `0x066..0x0AC`. It does not contain the current
+installed-plug 7833971/2015:0201 search patterns or exact copies of the known
+`0x1030..0x1090` objects. Because spare-1's exact identity is still
+unrecorded and only one of the two 24C04 packages has been captured, this is
+an observation rather than a storage-format conclusion.
+
+Detailed capture registry and raw-file locations:
+[coding-plug-physical-dumps.md](coding-plug-physical-dumps.md).
+
 ## Vitosoft production join — 2026-09-23
 
 The complete production Vitosoft data set for the local controller family is
