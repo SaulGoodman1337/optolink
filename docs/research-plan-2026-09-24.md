@@ -160,17 +160,14 @@ Current evidence:
 - [ ] Continue semantic clustering of the 850 transparent, 500 EEPROM_LT and
   232 virtual KBus reads by participant/device family; structural prefix
   distributions are already extracted.
-- [~] Build a bounded P300 `Virtual_READ` vs. `0x41`
-  correlation matrix for known objects. The 22:01/22:08 live attempts are
-  **invalid as semantic tests** because production had already been switched
-  permanently to VS1/KW for F7 + GFA 6B/P06 operation. Generic VS2/P300
-  `request` is intentionally unavailable in that mode, and P300 raw frames
-  cannot be injected into an active VS1 session as a protocol switch. Next:
-  perform the same target set only inside a bounded temporary P300 maintenance
-  window with the VS1 serial owner stopped, then restore and verify permanent
-  VS1/GFA production. Targets: `0x00F8`, `0x0A3C`, `0x7660`,
-  `0x7663`, `0x5730`, `0x0A54`, `0x27A0`. See
-  [kmbus-ram-correlation-probe.md](kmbus-ram-correlation-probe.md).
+- [x] Complete the first bounded P300 `Virtual_READ` vs. `0x41`
+  correlation matrix in a temporary P300 maintenance window. Result:
+  **7/7 IDENTICAL**, including non-zero static values at `0x5730` and
+  `0x0A54`; the wire trace confirms a genuine 0x41 response rather than
+  client-side rewriting. Permanent VS1/KW + Party were restored successfully.
+- [ ] Repeat only the dynamic pump objects `0x0A3C`, `0x7660`,
+  `0x7663` during a naturally non-zero heating/DHW/pump state to verify
+  dynamic equality and timing.
 - [ ] Reconstruct one real Vitosoft-defined 0x43 request including prefix before
   considering another local EEPROM-style read.
 - [ ] Keep all work read-only; no broad blind sweep and no KBUS/KMBUS writes.
