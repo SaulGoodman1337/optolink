@@ -1,6 +1,6 @@
 # WB2A stock splitter permanent-VS1 smoke gate
 
-Status: **prepared; first live attempt stopped safely at preflight because the migrated installation has no `.git` metadata. v1.0.1 now supports exact runtime-file hash verification as a fallback. Live VS1 execution still pending.**
+Status: **prepared; first live attempt stopped safely at preflight because the migrated installation has no `.git` metadata. v1.0.2 now supports exact runtime-file hash verification as a fallback. Live VS1 execution still pending.**
 
 This is the final read-path gate before adding production GFA polling to the splitter.
 
@@ -27,34 +27,34 @@ config/optolink-splitter/wb2a-stock-vs1-smoke.py
 Version:
 
 ```text
-1.0.1
+1.0.2
 ```
 
 Pinned commit:
 
 ```text
-cd0d02b93cc24f901e6799a822b48c02dfb12025
+1a58ddef9306b704a6921b03939df1a6febf6f30
 ```
 
 Git blob:
 
 ```text
-d521182fb32570800733a71ce77633faee16ae05
+abdc8c0be377926e60659a5c52452b48d9ee2f03
 ```
 
 SHA256:
 
 ```text
-9ba6821e066e6c4217117929c99d11f233ff62bd0a55f92b4628e8a9622dcef6
+6aa2394d5d93121fefd6718ba625b1d63ed19e41d5418da961c8ca8e32edf732
 ```
 
-The helper's ten embedded offline logic tests cover settings patching, missing-setting refusal, literal setting parsing, poll-topic extraction, disabled groups, MQTT topic formatting/collision detection, journal success/error classification, Git-blob hashing and duration bounds.
+The helper's eleven embedded offline logic tests cover settings patching, missing-setting refusal, literal setting parsing, poll-topic extraction, disabled groups, MQTT topic formatting/collision detection, journal success/error classification, Git-blob hashing and duration bounds.
 
 ## Stock-code requirement
 
-The first live attempt on 2026-09-24 stopped safely before any settings/service change because the migrated `/opt/optolink` installation does not contain Git metadata. The v1.0.0 gate required `git rev-parse HEAD` and therefore exited with code 128. No device command, temporary settings write or service stop occurred in that attempt.
+The first live attempt on 2026-09-24 stopped safely before any settings/service change because `git rev-parse HEAD` exited with code 128. That exit code alone does not distinguish a missing `.git` directory from Git's `safe.directory` ownership protection. v1.0.2 handles both cases: if `.git` exists, Git is invoked with a per-process `safe.directory=/opt/optolink`; if `.git` is absent, the exact 14-file runtime blob manifest is used. No device command, temporary settings write or service stop occurred in the failed preflight.
 
-v1.0.1 accepts either of two strict stock-source verification modes:
+v1.0.2 accepts either of two strict stock-source verification modes:
 
 1. **Git mode:** `/opt/optolink` is a Git checkout, HEAD equals local `origin/main`, and no tracked files are modified.
 2. **Migrated-install fallback:** if `.git` is absent, 14 critical runtime Python files must match exact Git-blob IDs from upstream commit `c1ee204a1421447721603c5f21c6da7337fdac97`. These include the main splitter, VS1/VS2 transports, request/poll/settings/MQTT/HA modules and supporting runtime helpers. Any missing or differing file aborts before changes.
