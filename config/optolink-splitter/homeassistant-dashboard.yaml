@@ -694,6 +694,40 @@ button_card_templates:
 
 
 
+  schedule_axis:
+    section_mode: true
+    show_icon: false
+    show_name: false
+    show_state: false
+    show_ripple: false
+    tap_action:
+      action: none
+    styles:
+      card:
+        - background: transparent
+        - border: none
+        - box-shadow: none
+        - padding: 0 9px 1px
+        - min-height: 18px
+      grid:
+        - grid-template-areas: '"scale"'
+        - grid-template-columns: 1fr
+        - grid-template-rows: min-content
+      custom_fields:
+        scale:
+          - width: 100%
+    custom_fields:
+      scale: |
+        [[[
+          return `
+            <div style="display:flex;justify-content:space-between;align-items:center;
+                        width:100%;font-size:9px;line-height:1;
+                        color:var(--secondary-text-color);">
+              <span>00</span><span>06</span><span>12</span><span>18</span><span>24</span>
+            </div>
+          `;
+        ]]]
+
   schedule_day_row:
     section_mode: true
     show_icon: false
@@ -710,7 +744,13 @@ button_card_templates:
     styles:
       card:
         - border-radius: 12px
-        - border: 1px solid var(--divider-color)
+        - border: |
+            [[[
+              const today = (new Date().getDay() + 6) % 7;
+              return today === Number(variables.day_index)
+                ? `1px solid color-mix(in srgb, ${variables.accent} 48%, var(--divider-color))`
+                : '1px solid var(--divider-color)';
+            ]]]
         - box-shadow: |
             [[[
               const today = (new Date().getDay() + 6) % 7;
@@ -718,18 +758,25 @@ button_card_templates:
                 ? `inset 3px 0 0 ${variables.accent}`
                 : 'none';
             ]]]
-        - padding: 8px 10px
-        - background: var(--ha-card-background, var(--card-background-color))
+        - padding: 6px 9px 7px
+        - min-height: 70px
+        - background: |
+            [[[
+              const today = (new Date().getDay() + 6) % 7;
+              return today === Number(variables.day_index)
+                ? `color-mix(in srgb, ${variables.accent} 5%, var(--ha-card-background, var(--card-background-color)))`
+                : 'var(--ha-card-background, var(--card-background-color))';
+            ]]]
       grid:
         - grid-template-areas: >-
             "n status" "times times" "timeline timeline"
         - grid-template-columns: 1fr auto
         - grid-template-rows: min-content min-content min-content
-        - row-gap: 6px
+        - row-gap: 4px
       name:
         - justify-self: start
         - align-self: center
-        - font-size: 12px
+        - font-size: 11px
         - font-weight: 700
         - color: var(--primary-text-color)
       custom_fields:
@@ -739,6 +786,7 @@ button_card_templates:
         times:
           - justify-self: stretch
           - overflow: hidden
+          - min-height: 18px
         timeline:
           - justify-self: stretch
           - width: 100%
@@ -764,7 +812,10 @@ button_card_templates:
           const now = d.getHours() * 60 + d.getMinutes();
           const active = intervals.find(x => now >= x[0] && now < x[1]);
           if (active) {
-            return `<span style="font-size:9px;font-weight:700;color:${variables.accent};">AKTIV · bis ${active[2]}</span>`;
+            return `<span style="font-size:9px;font-weight:800;color:${variables.accent};">AKTIV · bis ${active[2]}</span>`;
+          }
+          if (lower === 'none') {
+            return '<span style="font-size:9px;font-weight:700;color:var(--secondary-text-color);">HEUTE · AUS</span>';
           }
           return '<span style="font-size:9px;font-weight:700;color:var(--secondary-text-color);">HEUTE</span>';
         ]]]
@@ -773,21 +824,29 @@ button_card_templates:
           const raw = String(entity?.state ?? '').trim();
           const lower = raw.toLowerCase();
           if (!raw || ['unknown','unavailable'].includes(lower)) {
-            return '<span style="font-size:11px;color:var(--secondary-text-color);">keine Daten</span>';
+            return '<span style="font-size:10px;color:var(--secondary-text-color);">keine Daten</span>';
           }
           if (lower === 'none') {
-            return '<span style="font-size:11px;color:var(--secondary-text-color);">keine Schaltzeit</span>';
+            return '<span style="font-size:10px;color:var(--secondary-text-color);">Keine Schaltzeit</span>';
           }
           const parts = raw.split(',').map(x => x.trim()).filter(Boolean);
           return parts.map(p =>
-            `<span style="display:inline-block;margin:1px 4px 1px 0;padding:2px 7px;border-radius:999px;border:1px solid color-mix(in srgb, ${variables.accent} 32%, var(--divider-color));background:color-mix(in srgb, ${variables.accent} 10%, transparent);font-size:10px;font-weight:650;white-space:nowrap;">${p.replace('-', '–')}</span>`
+            `<span style="display:inline-block;margin:0 4px 0 0;padding:1px 6px;
+                         border-radius:999px;
+                         border:1px solid color-mix(in srgb, ${variables.accent} 34%, var(--divider-color));
+                         background:color-mix(in srgb, ${variables.accent} 9%, transparent);
+                         font-size:9px;font-weight:700;white-space:nowrap;">${p.replace('-', '–')}</span>`
           ).join('');
         ]]]
       timeline: |
         [[[
           const raw = String(entity?.state ?? '').trim();
           const lower = raw.toLowerCase();
+          const d = new Date();
+          const today = (d.getDay() + 6) % 7;
+          const now = d.getHours() * 60 + d.getMinutes();
           const spans = [];
+
           if (raw && !['unknown','unavailable','none'].includes(lower)) {
             for (const part of raw.split(',')) {
               const p = part.trim();
@@ -797,10 +856,38 @@ button_card_templates:
               const end = Number(m[3]) * 60 + Number(m[4]);
               const left = Math.max(0, Math.min(100, start / 1440 * 100));
               const width = Math.max(0, Math.min(100 - left, (end - start) / 1440 * 100));
-              spans.push(`<span style="position:absolute;left:${left}%;width:${width}%;top:0;bottom:0;border-radius:999px;background:${variables.accent};"></span>`);
+              const active = today === Number(variables.day_index) && now >= start && now < end;
+              spans.push(
+                `<span style="position:absolute;left:${left}%;width:${width}%;top:0;bottom:0;
+                              border-radius:999px;background:${variables.accent};
+                              opacity:${active ? '1' : '0.88'};
+                              box-shadow:${active ? `0 0 7px ${variables.accent}` : 'none'};"></span>`
+              );
             }
           }
-          return `<div style="position:relative;width:100%;height:7px;border-radius:999px;background:color-mix(in srgb, var(--divider-color) 75%, transparent);overflow:hidden;">${spans.join('')}</div>`;
+
+          const ticks = [25,50,75].map(x =>
+            `<span style="position:absolute;left:${x}%;top:0;bottom:0;width:1px;
+                          background:color-mix(in srgb, var(--primary-text-color) 14%, transparent);"></span>`
+          ).join('');
+
+          let marker = '';
+          if (today === Number(variables.day_index)) {
+            const left = Math.max(0, Math.min(100, now / 1440 * 100));
+            marker = `
+              <span style="position:absolute;left:${left}%;top:-2px;bottom:-2px;width:2px;
+                           transform:translateX(-1px);background:var(--primary-text-color);
+                           border-radius:2px;opacity:.9;z-index:4;"></span>
+            `;
+          }
+
+          return `
+            <div style="position:relative;width:100%;height:8px;border-radius:999px;
+                        background:color-mix(in srgb, var(--divider-color) 72%, transparent);
+                        overflow:visible;">
+              ${ticks}${spans.join('')}${marker}
+            </div>
+          `;
         ]]]
 
 views:
@@ -5029,7 +5116,7 @@ views:
           - type: custom:mushroom-template-card
             entity: sensor.vitodens_200_wb2a_zeitprogramm_schreibstatus
             primary: >-
-              Zeitprogramm-Schreibpfad · {{ states(entity) }}
+              Schreibstatus · {{ states(entity) }}
             secondary: >-
               {% set s = states(entity) %}
               {% set msg = state_attr(entity, 'message') %}
@@ -5043,7 +5130,7 @@ views:
               {% elif s == 'Schreibt …' and p and d %}
                 {{ p }} · {{ d }} · {{ z }}
               {% else %}
-                Strikte Validierung · vollständiger 8-Byte-Write · Readback-Verifikation
+                Validiert · vollständiger Tagesblock · Readback
               {% endif %}
             icon: >-
               {% set s = states(entity) %}
@@ -5064,11 +5151,10 @@ views:
               columns: 6
 
           - type: custom:mushroom-template-card
-            primary: Bearbeitung
+            primary: Bearbeiten
             secondary: >-
-              Tag antippen → Zeitprogramm bearbeiten. Bis zu 4 Fenster im
-              10-Minuten-Raster, z. B. 05:00-08:00,16:00-22:00.
-              24:00 ist als Endzeit erlaubt; "none" leert den Tag.
+              Tag antippen · max. 4 Fenster · 10-Min-Raster ·
+              24:00 als Endzeit · "none" = leer
             icon: mdi:calendar-edit
             icon_color: purple
             multiline_secondary: true
@@ -5158,22 +5244,8 @@ views:
             heading: Heizung
             heading_style: title
             icon: mdi:radiator
-          - type: markdown
-            content: |
-              <div style="display:grid;grid-template-columns:repeat(5,1fr);font-size:9px;color:var(--secondary-text-color);padding:0 4px;">
-                <span>00</span><span style="text-align:center">06</span><span style="text-align:center">12</span><span style="text-align:center">18</span><span style="text-align:right">24</span>
-              </div>
-            card_mod:
-              style: |
-                ha-card {
-                  background: transparent;
-                  border: none;
-                  box-shadow: none;
-                  margin-bottom: -8px;
-                }
-                ha-markdown {
-                  padding: 0 5px !important;
-                }
+          - type: custom:button-card
+            template: schedule_axis
             grid_options:
               columns: full
           - type: custom:button-card
@@ -5246,22 +5318,8 @@ views:
             heading: Warmwasser
             heading_style: title
             icon: mdi:water-thermometer
-          - type: markdown
-            content: |
-              <div style="display:grid;grid-template-columns:repeat(5,1fr);font-size:9px;color:var(--secondary-text-color);padding:0 4px;">
-                <span>00</span><span style="text-align:center">06</span><span style="text-align:center">12</span><span style="text-align:center">18</span><span style="text-align:right">24</span>
-              </div>
-            card_mod:
-              style: |
-                ha-card {
-                  background: transparent;
-                  border: none;
-                  box-shadow: none;
-                  margin-bottom: -8px;
-                }
-                ha-markdown {
-                  padding: 0 5px !important;
-                }
+          - type: custom:button-card
+            template: schedule_axis
             grid_options:
               columns: full
           - type: custom:button-card
@@ -5334,22 +5392,8 @@ views:
             heading: Zirkulation
             heading_style: title
             icon: mdi:pump
-          - type: markdown
-            content: |
-              <div style="display:grid;grid-template-columns:repeat(5,1fr);font-size:9px;color:var(--secondary-text-color);padding:0 4px;">
-                <span>00</span><span style="text-align:center">06</span><span style="text-align:center">12</span><span style="text-align:center">18</span><span style="text-align:right">24</span>
-              </div>
-            card_mod:
-              style: |
-                ha-card {
-                  background: transparent;
-                  border: none;
-                  box-shadow: none;
-                  margin-bottom: -8px;
-                }
-                ha-markdown {
-                  padding: 0 5px !important;
-                }
+          - type: custom:button-card
+            template: schedule_axis
             grid_options:
               columns: full
           - type: custom:button-card
