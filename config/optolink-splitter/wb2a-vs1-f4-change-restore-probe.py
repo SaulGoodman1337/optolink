@@ -36,7 +36,7 @@ import sys
 import time
 import types
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 ROOT = Path("/opt/optolink")
 PARENT_NAME = "wb2a-gfa-p80-probe.py"
 PARENT_SHA256 = "6de883c422a09c821b342d12e5bb71dd3d518d8115ec2495bdfb202f5a7f50cb"
@@ -137,10 +137,18 @@ def target_for(baseline: int) -> int:
 
 
 def p300_read_one(parent, wire, address: int) -> int:
-    # P300 Virtual_READ frame: 41 05 00 01 addr_hi addr_lo 01 checksum
-    body = bytes((0x41, 0x05, 0x00, 0x01, address >> 8, address & 0xFF, 0x01))
+    # Fixed post-restore allowlist: ordinary day setpoint 0x2306/1 only.
+    if address != TARGET_ADDR:
+        raise parent.ProbeError(f"P300 post-restore address blocked: 0x{address:04X}")
+
+    body = bytes((0x41, 0x05, 0x00, 0x01, 0x23, 0x06, 0x01))
     frame = body + bytes((sum(body[1:]) & 0xFF,))
-    wire.send(frame)
+    if frame != bytes.fromhex("41 05 00 01 23 06 01 30"):
+        raise parent.ProbeError("Internal fixed P300 2306 frame mismatch.")
+
+    wire.log("TX " + frame.hex(" "))
+    if wire.port.write(frame) != len(frame):
+        raise parent.ProbeError("Partial P300 2306 request write.")
     if wire.exact(1) != b"\x06":
         raise parent.ProbeError("P300 post-restore read was not acknowledged.")
     header = wire.exact(2)
@@ -153,12 +161,15 @@ def p300_read_one(parent, wire, address: int) -> int:
         raise parent.ProbeError("P300 post-restore checksum mismatch.")
     if response[2] != 0x01 or (response[3] & 0x1F) != 0x01:
         raise parent.ProbeError("P300 post-restore response is not successful Virtual_READ.")
-    if int.from_bytes(response[4:6], "big") != address or response[6] != 1:
+    if int.from_bytes(response[4:6], "big") != TARGET_ADDR or response[6] != 1:
         raise parent.ProbeError("P300 post-restore address/length mismatch.")
     data = response[7:-1]
     if len(data) != 1:
         raise parent.ProbeError("P300 post-restore payload length mismatch.")
-    wire.send(b"\x06")
+
+    wire.log("TX 06")
+    if wire.port.write(b"\x06") != 1:
+        raise parent.ProbeError("Partial P300 post-restore ACK write.")
     return data[0]
 
 
@@ -205,11 +216,16 @@ def self_test() -> int:
         def test_ident(self):
             self.assertEqual(read_ident(FakeVS1(), object()), b"\x20\xC2")
 
+        def test_fixed_p300_2306_frame(self):
+            body = bytes((0x41, 0x05, 0x00, 0x01, 0x23, 0x06, 0x01))
+            frame = body + bytes((sum(body[1:]) & 0xFF,))
+            self.assertEqual(frame.hex(), "4105000123060130")
+
     result = unittest.TextTestRunner(verbosity=2).run(
         unittest.defaultTestLoader.loadTestsFromTestCase(Tests)
     )
     if result.wasSuccessful():
-        print("VS1_F4_CHANGE_RESTORE_TESTS=5/5")
+        print("VS1_F4_CHANGE_RESTORE_TESTS=6/6")
         return 0
     return 1
 
