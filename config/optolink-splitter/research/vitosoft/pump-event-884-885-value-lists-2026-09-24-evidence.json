@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "source_snapshot": "vitosoft-private-archive-20260924-143439",
+  "source_sha256": "3d31380d6dfabf8ede9e305b115e847fb0670511e253a4ed4e59feef2f7adfee",
+  "address": "0x5730",
+  "events": [
+    {
+      "event_id": 884,
+      "token": "K30_KennungIntPumpe~0x5730",
+      "name_de": "(30) Kennung Interne Umwälzpumpe",
+      "fc_read": "Virtual_READ",
+      "fc_write": "Virtual_WRITE",
+      "conversion": "NoConversion",
+      "block_length": 1,
+      "byte_position": 0,
+      "value_list": {
+        "0": "0 stufig",
+        "1": "1 drehzahlgeregelt",
+        "2": "2 drehzahlgeregelt mit Volumenstrom"
+      }
+    },
+    {
+      "event_id": 885,
+      "token": "K30_KennungIntPumpeKM~0x5730",
+      "name_de": "Interne Umwälzpumpe",
+      "fc_read": "Virtual_READ",
+      "fc_write": "Virtual_WRITE",
+      "conversion": "NoConversion",
+      "block_length": 1,
+      "byte_position": 0,
+      "value_list": {
+        "0": "nicht vorhanden",
+        "1": "vorhanden",
+        "2": "2 drehzahlgeregelt mit Volumenstrom"
+      }
+    }
+  ],
+  "local_raw": "0x01",
+  "conclusions": [
+    "The same raw byte is presented through two different Vitosoft value lists.",
+    "Raw 0x01 means speed-controlled in event 884 and present in event 885.",
+    "Neither event maps raw 0x01 to Wilo.",
+    "The WB2A service short-query manufacturer display none/Wilo/Grundfos is a separate presentation."
+  ]
+}
