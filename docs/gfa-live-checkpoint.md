@@ -22,6 +22,29 @@ The GFA branch identity was therefore stable before and after the three reads. V
 
 Evidence: [P81-P83 live identity](../config/optolink-splitter/research/vitosoft/gfa-p81-p83-live-2026-09-24-evidence.json).
 
+## GFA coding-plug diagnostics P90/P100-P108 - PASS 2026-09-24
+
+The local GFA branch was guarded by P80=`20` before and after a complete read-only coding-plug diagnostic sequence. Same-window regulation values were `0x1010 = 7833971` and `0x7656 = 20 15 02 01`.
+
+```text
+P90  = 00
+P100 = 63  -> 99 * 0.3922 = 38.8278 %
+P101 = 15
+P102 = 01
+P103 = 14
+P104 = 0C
+P105 = 04
+P106 = D6
+P107 = 02
+P108 = 00
+```
+
+The values `15`, `01` and `02` also occur in the regulation-side coding-card summary `20 15 02 01`, providing direct cross-domain correlation. Exact field assignment remains open because retained public metadata does not prove the `0x7656` member byte positions. P103-P105 are source-labelled day/month/year but the raw-to-calendar representation is not yet resolved; P106 remains a CRC diagnostic byte with unknown algorithm.
+
+Byte-for-byte comparison with both saved spare-chip1 EEPROM images found no contiguous live GFA vector. Several individual live values do occur at corresponding offsets inside the duplicated 82-byte physical record, creating candidate locations for the next side-labelled EEPROM campaign.
+
+Evidence: [P90-P108 live coding-plug correlation](../config/optolink-splitter/research/vitosoft/gfa-coding-plug-p90-p108-live-2026-09-24-evidence.json).
+
 Evidence:
 
 - [Continuous startup trace](../config/optolink-splitter/research/vitosoft/gfa-startup-run-2026-09-24-evidence.json).

@@ -90,8 +90,8 @@ The read transport is already production-verified. The missing identity fields a
 - [ ] Capture both EEPROMs of the second spare where practical.
 - [ ] Capture the active coding plug last, preserving its identity/revision and keeping the boiler unpowered/disconnected from the plug during bench reads.
 - [ ] Immediately before or after the active-plug bench session, snapshot `0x1010`, `0x1020`, `0x1030..0x10C0`, `0x7656`.
-- [ ] Through read-only GFA access, snapshot P90 and P100-P108 using [gfa-coding-plug-p90-p108-read.md](gfa-coding-plug-p90-p108-read.md), including same-window `0x1010` and `0x7656` baselines.
-- [ ] Compare semantic field vectors, complement pairs, mirror records and checksums; do not require controller-visible blocks to appear as literal flat byte sequences in EEPROM.
+- [x] P90/P100-P108 read-only snapshot completed; see [gfa-coding-plug-p90-p108-read.md](gfa-coding-plug-p90-p108-read.md) and the linked live evidence.
+- [ ] Compare semantic field vectors, complement pairs, mirror records and checksums. Initial exact-byte scan is complete: the saved spare-chip1 images do not contain the live GFA vector contiguously; mirrored single-byte candidates are documented separately.
 - [ ] Keep the hypothesis "one EEPROM may serve GWG/regulation and the other GFA/fire-control" explicitly unproven until side-specific evidence supports it.
 
 **Completion criterion:** side-labelled repeatable dumps plus a documented correlation matrix showing confirmed, rejected and still-unknown mappings.

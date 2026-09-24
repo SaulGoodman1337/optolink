@@ -489,6 +489,46 @@ When bench access is resumed, the highest-value sequence is:
 A machine-readable summary of this correlation is stored as
 `coding-plug-dumps/repo-correlation-2026-09-24.json`.
 
+## Live GFA coding-plug vector correlation - 2026-09-24
+
+The installed `7833971 / 2015:0201` plug now has a same-window read-only software correlation across the normal regulation and GFA domains:
+
+```text
+0x1010 = ASCII 7833971
+0x7656 = 20 15 02 01
+
+P90..P108 raw vector:
+00 63 15 01 14 0C 04 D6 02 00
+```
+
+Detailed field values:
+
+- P90 = `00` (FA type / FA42);
+- P100 = `63` = 99 raw = **38.8278 %** using the source-defined factor 0.3922;
+- P101 = `15`;
+- P102 = `01`;
+- P103/P104/P105 = `14 / 0C / 04`, source-labelled day/month/year but calendar encoding still unresolved;
+- P106 = `D6` CRC diagnostic;
+- P107/P108 = `02 / 00`.
+
+The values `15`, `01` and `02` also occur in the four-byte regulation-side summary `20 15 02 01`. This is the first direct live evidence that the regulation/coding-card summary and GFA coding-plug namespace share identity/revision material. Exact subfield correspondence remains open because the retained public extraction does not prove the byte positions of the four `0x7656` source fields.
+
+Both existing spare-chip1 binaries were scanned byte-for-byte for the full GFA vector and for the distinctive multi-byte fragments `63 15 01 14 0C 04 D6 02 00`, `15 01`, `14 0C 04`, `20 12 04`, and `D6 02 00`. There were **no exact contiguous hits** in either image.
+
+Therefore a simple flat copy of the active GFA diagnostic block is not present in the two current spare-chip1 captures. This strengthens the need to read both physical EEPROM sides with explicit f01/f02 labels before assigning domains.
+
+A second-pass single-byte scan found a more specific pattern inside the exact duplicated 82-byte logical record. The following active GFA raw values occur at corresponding offsets in **both** mirror copies and in both spare-chip1 images:
+
+```text
+P107 raw 02 : 0x003 <-> 0x05D
+P102 raw 01 : 0x01B <-> 0x06D
+P104 raw 0C : 0x01D <-> 0x06F
+P100 raw 63 : 0x02B <-> 0x07D
+               0x046 <-> 0x098
+```
+
+By contrast, active `P101=15`, `P103=14` and `P106=D6` do not occur anywhere in either spare-chip1 image. The mirrored matches are **candidate correlations only**: a shared byte value is not enough to assign a field. However, the pattern is compatible with a physical record that contains shared model parameters while identity/date/CRC material is plug-specific, transformed, or stored on the other EEPROM.
+
 ## Repository files
 
 Raw captures are stored unchanged under:
