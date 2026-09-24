@@ -1,6 +1,6 @@
 # WB2A mixed VS1 Virtual/GFA compatibility probe
 
-Status: **prepared, read-only, live execution pending.**
+Status: **live PASS on 2026-09-24. Mixed F7 Virtual_READ and 6B GFA_READ traffic works in one persistent VS1 session on the exact VDensHO1 / 20C2 appliance under the tested 150-ms pacing.**
 
 ## Why this test exists
 
@@ -92,17 +92,74 @@ The pinned `/root/wb2a-gfa-p80-probe.py` must remain unchanged beside it.
 
 A PASS tail includes `STABLE_VALUES_MATCH=yes`, `P300_RESTORED=yes`, `SPLITTER_RESTARTED=yes`, and `RESULT=PASS`. If the test fails, do not switch production to VS1 and do not blindly rerun; inspect the log first.
 
+## Live result - 2026-09-24
+
+Source upload: `Eingefügter Text(20260924-093231).txt`, 13727 bytes, 230 lines, SHA256:
+
+```text
+0927a0038b5f33c7aa56f501740806fc76f51158789c88d60d652e9e95ae6c54
+```
+
+The live run passed end-to-end:
+
+- all 8 new helper tests passed;
+- all 23 pinned P80/recovery tests passed;
+- P300 baseline identity was `20C2`;
+- VS1 first F7 read of `00F8/2` returned `20C2`;
+- all seven selected stable values matched byte-for-byte across P300-before, VS1/F7 and P300-after;
+- two in-session P80 guards both returned `0x20`;
+- no `0xFF` occurred;
+- P300 was restored;
+- splitter and previously active party service were restarted;
+- final result was `PASS`.
+
+Stable comparison:
+
+| Datapoint | P300 before | VS1 F7 | P300 after |
+| --- | --- | --- | --- |
+| `00F8/2` device ID | `20c2` | `20c2` | `20c2` |
+| `00FB/1` device SW index | `03` | `03` | `03` |
+| `2306/1` day setpoint | `15` | `15` | `15` |
+| `2323/1` operating mode | `02` | `02` | `02` |
+| `6300/1` DHW setpoint | `37` | `37` | `37` |
+| `6773/1` circulation interval | `00` | `00` | `00` |
+| `778C/2` controller SW raw | `0103` | `0103` | `0103` |
+
+GFA samples inside the same VS1 session:
+
+```text
+P80 = 20,20
+P06 = 00
+P09 = 93
+P87 = 20
+```
+
+The host log shows 150-151 ms from each VS1 reply to the next request during the mixed block, excluding the final cleanup EOT. This confirms the intended pacing was actually achieved.
+
+The isolated runtime tuple `P06=00 / P09=93 / P87=20` has no independent flame/state reference in this test and must not be assigned a burner-phase semantic.
+
+This PASS establishes the protocol primitive needed for a one-owner VS1 architecture. It does **not** yet prove:
+
+- the complete production poll list in permanent VS1 mode;
+- Home Assistant discovery/freshness over a sustained splitter run;
+- Virtual_WRITE behavior in permanent VS1;
+- long-duration FF rate;
+- production recovery behavior.
+
+Machine-readable result: [mixed VS1 live evidence](../config/optolink-splitter/research/vitosoft/vs1-mixed-compat-run-2026-09-24-evidence.json).
+
 ## Production direction after a PASS
 
-A PASS would justify a staged implementation, not an immediate production flip:
+The PASS justifies a staged implementation, but still not an immediate production flip. The next gate is a guarded run of the **stock splitter itself** in permanent VS1 mode using the existing production Virtual_READ poll list, with write ingress disabled for the test:
 
-1. keep one serial owner: the splitter;
-2. run it permanently in VS1/KW mode;
-3. retain existing HA Virtual_READ/WRITE traffic through F7/F4;
-4. add a narrow structured `gfaread` / `read_gfa_ext()` path for 6B;
-5. place P06/P09/P87/P80 in a conservative diagnostic poll group;
-6. publish them through the existing MQTT/Home Assistant path;
-7. retain FF quarantine/plausibility handling for direct GFA values.
+1. first validate the stock splitter + existing HA read poll list in permanent VS1 mode;
+2. keep one serial owner: the splitter;
+3. run it permanently in VS1/KW mode;
+4. retain existing HA Virtual_READ/WRITE traffic through F7/F4;
+5. add a narrow structured `gfaread` / `read_gfa_ext()` path for 6B;
+6. place P06/P09/P87/P80 in a conservative diagnostic poll group;
+7. publish them through the existing MQTT/Home Assistant path;
+8. retain FF quarantine/plausibility handling for direct GFA values.
 
 This is preferable to periodic service stops and P300<->VS1 switching.
 
