@@ -191,21 +191,22 @@ See [Optolink maintenance MQTT API](optolink-maintenance-api.md) for the
 request/response schema, retained state topic, request-ID deduplication and
 Home Assistant integration rules.
 
-## Future Home Assistant use
+## Home Assistant integration
 
-The Home Assistant/dashboard workstream may build controls on top of this
-verified contract, but should preserve the same constraints:
+The Home Assistant maintenance path is implemented and live-verified on top of
+the shared guarded core. It preserves the same constraints as the CLI:
 
-- bounded numeric control for `0x5721` with explicit warning that a real
+- staged numeric control for `0x5721`, with explicit warning that a real
   threshold change can re-baseline `0x7570`;
-- bounded numeric control for `0x5723` with explicit warning that changing it
+- staged numeric control for `0x5723`, with explicit warning that changing it
   re-baselines the `LastCheckInterval` reference;
 - protected maintenance-reset action;
 - no direct write access to `0x756C` or `0x7570`;
-- no reuse of the maintenance reset as a burner-fault reset.
+- no reuse of the maintenance reset as a burner-fault reset;
+- Home Assistant never constructs raw `w;0x....` controller writes.
 
-The CLI's `--json` mode is intended to make a future wrapper/service easier
-without requiring Home Assistant to construct raw `w;0x....` requests.
+The complete 2026-09-24 end-to-end verification is summarized in
+[maintenance-ha-completion-2026-09-24.md](maintenance-ha-completion-2026-09-24.md).
 
 ## Live CLI verification status
 
