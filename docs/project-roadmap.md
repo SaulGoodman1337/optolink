@@ -16,58 +16,29 @@ verified fault-history alias decoding problem, currently unused but already
 polled HA values, source-backed maintenance candidates, and the agreed order
 for redesigning the remaining dashboard views.
 
-## Priority: next session
+## Priority: next session - 2026-09-25
 
-### Handoff for the next chat — Home Assistant dashboard
+Use the end-of-day handoff first:
 
-The next chat should return to the Home Assistant dashboard first. The private
-Vitosoft collector can continue independently and may later contribute new
-diagnostic metadata, but the dashboard work does **not** need to wait for it.
+[`docs/maintenance-ha-completion-2026-09-24.md`](maintenance-ha-completion-2026-09-24.md)
 
-Current dashboard checkpoint:
+The maintenance backend and Home Assistant maintenance path are complete for
+the currently verified scope. Do not resume raw maintenance research unless a
+new concrete behavior requires it.
 
-- the compact popup-driven diagnostics redesign is already present in
-  `config/optolink-splitter/homeassistant-dashboard.yaml`;
-- Mushroom chips currently summarize flame, modulation, RKR, takt lock,
-  restart release, start phase, regulation, OPT and GFA-lock state;
-- detailed sensor, RKR/CFDM/GFA, fault-history, device/software and coding-plug
-  information is moved into browser_mod popups;
-- a dedicated weekly time-program view for heating, DHW and circulation has
-  been added;
-- the A5/A6 explanation has been revised, but wording and visual clarity still
-  need live verification;
-- fault-history decoding currently includes the hardware/source-supported
-  mappings B7, F9, BC and BD;
-- the previous false blower-rpm interpretation from `0x55D3[6:7]` must not
-  reappear.
+Start the next session in this order:
 
-First dashboard actions in the new chat:
+1. verify/reset the retained staged burner-hours target to `0 h`;
+2. finish small Wartung UI polish (clearer top badges, better numeric controls,
+   better display of very small runtime-since-reference values);
+3. live-test one guarded Home Assistant **Zeitprogramme** weekday edit and
+   verify manager status/readback;
+4. cold-load-test Diagnose and finish the remaining deterministic color issue;
+5. review the already-polled additional values for useful dashboard promotion;
+6. continue dashboard modernization one page at a time.
 
-1. inspect the current YAML rather than reconstructing the dashboard from
-   memory;
-2. visually verify the compact diagnostics view and browser_mod popup syntax in
-   Home Assistant;
-3. verify the dedicated time-program tab and remove any remaining duplicate
-   schedule presentation from diagnostics;
-4. review labels, explanatory text and grouping for RKR/OPT/restart inhibition,
-   burner/GFA state, pumps, faults, software identity and coding plug;
-5. verify all entity IDs used by the redesigned cards against the production
-   Home Assistant profile before treating them as working;
-6. improve the A5/A6 explanation around the actual distinction:
-   A5 is the heating-circuit-pump switching boundary, while A6 is the fixed
-   summer/winter heating shutdown threshold affecting the whole heating mode;
-7. keep unresolved/raw research values visually separated from verified
-   operator-facing values.
-
-Collector interaction with the dashboard:
-
-- collector results may later expose exact GFA phase/fan values, firmware
-  identity or additional software/update metadata;
-- do not add those values to the normal dashboard merely because a string or
-  address exists in Vitosoft;
-- promote them only after access method, scaling and semantics are supported;
-- the already recovered VSKO/GFA access mechanism is a separate read-only
-  research path and is not required for the dashboard redesign itself.
+The private Vitosoft collector and KBus/Vitotrol work remain independent
+research tracks and do not block the dashboard work.
 
 ### 1. Restructure the Home Assistant diagnostics page
 
