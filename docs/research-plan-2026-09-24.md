@@ -158,13 +158,16 @@ Current evidence:
 - [ ] Continue semantic clustering of the 850 transparent, 500 EEPROM_LT and
   232 virtual KBus reads by participant/device family; structural prefix
   distributions are already extracted.
-- [~] Build a bounded `Virtual_READ` vs. `0x41` correlation matrix for known
-  objects. First live run completed at 22:01, but **the positive 0x41 control
-  timed out**, so no memory-map classification is valid yet. All ordinary
-  Virtual_READ controls succeeded. Diagnose generic `request` transport /
-  response filtering first, then repeat the same target set:
-  `0x00F8`, `0x0A3C`, `0x7660`, `0x7663`, `0x5730`, `0x0A54`,
-  `0x27A0`. See
+- [~] Build a bounded P300 `Virtual_READ` vs. `0x41`
+  correlation matrix for known objects. The 22:01/22:08 live attempts are
+  **invalid as semantic tests** because production had already been switched
+  permanently to VS1/KW for F7 + GFA 6B/P06 operation. Generic VS2/P300
+  `request` is intentionally unavailable in that mode, and P300 raw frames
+  cannot be injected into an active VS1 session as a protocol switch. Next:
+  perform the same target set only inside a bounded temporary P300 maintenance
+  window with the VS1 serial owner stopped, then restore and verify permanent
+  VS1/GFA production. Targets: `0x00F8`, `0x0A3C`, `0x7660`,
+  `0x7663`, `0x5730`, `0x0A54`, `0x27A0`. See
   [kmbus-ram-correlation-probe.md](kmbus-ram-correlation-probe.md).
 - [ ] Reconstruct one real Vitosoft-defined 0x43 request including prefix before
   considering another local EEPROM-style read.
