@@ -461,12 +461,14 @@ Splitter verification is now complete for the maintenance control path:
   that changing 0 -> nonzero re-baselines `0x7570`;
 - `0x5723`: local R/W verified, 0..24 months, tested at 0 and 24 months;
 - `0x5724`: local state transition and maintenance-reset sequence
-  `1 -> 0` verified;
-- `0x756C`: read-only LastCheckInterval 32-bit reference; writes/resets
-  re-baseline it, but the exact Vitosoft wall-clock conversion remains
-  unresolved;
+  `1 -> 0` verified end-to-end through the guarded CLI;
+- `0x756C`: read-only LastCheckInterval 32-bit reference; `0x5723` writes
+  and the maintenance reset re-baseline it, but the exact Vitosoft wall-clock
+  conversion remains unresolved;
 - `0x7570`: read-only LastBurnerCheck baseline, verified against the
-  current total burner-runtime counter `0x08A7`;
+  current total burner-runtime counter `0x08A7`; changing `0x5721` can
+  re-baseline it, while the `0x5724` reset effect is conditional rather than
+  guaranteed;
 - `0x08A7` and `0x088A` remain unchanged by the maintenance reset.
 
 The Home Assistant implementation remains deliberately deferred to the
