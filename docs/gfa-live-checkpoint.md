@@ -17,6 +17,30 @@ Evidence:
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
 
+## 0xxxxxxx. Stock VS1 F4 idempotent transport PASS - 2026-09-24
+
+The stock upstream VS1 write implementation has now passed a bounded hardware transport test on ordinary setpoint `0x2306`.
+
+Observed:
+
+```text
+VS1_IDENTITY=20c2
+BASELINE_2306=0x15 (21 C)
+F4_IDEMPOTENT_WRITE addr=0x2306 value=0x15
+F4_RESPONSE ret=0x01 addr=0x2306 data=00
+READBACK_2306=0x15 (21 C)
+FINAL_VS1_2306=0x15
+P300_RESTORED=yes
+SPLITTER_RESTARTED=yes
+RESULT=PASS
+```
+
+Important response semantic: the F4 response payload was `00`, not an echo of the requested `15`. Effective value confirmation therefore relies on the following F7 readback, not on the response payload.
+
+This proves F4 transport acceptance and same-value readback, but not yet actual state mutation. The next gate is a bounded one-degree `0x2306` change with exact F4 restore plus F7 and P300 post-verification.
+
+Evidence: [idempotent F4 gate](../config/optolink-splitter/research/vitosoft/vs1-f4-idempotent-prep-2026-09-24-evidence.json).
+
 ## 0xxxxxx. Stock splitter permanent-VS1 read gate PASS - 2026-09-24
 
 The completed 60-second gate passed:
