@@ -175,5 +175,17 @@
       "installer_commit": "6c2855deafff9c3016c76b02f776651b068dbc4f"
     },
     "policy": "Updater now installs /etc/systemd/system/optolink-splitter.service, daemon-reloads and enables it; installer consumes the same versioned unit file."
+  },
+  "service_unit_repair_live": {
+    "timestamp_local": "2026-09-24T12:46:32+02:00",
+    "result": "PASS",
+    "unit": "optolink-splitter.service",
+    "load_state": "loaded",
+    "enable_state": "enabled",
+    "active_state": "active (running)",
+    "main_pid": 193694,
+    "exec": "/opt/optolink/venv/bin/python /opt/optolink/optolinkvs2_switch.py",
+    "observed_runtime": "P300 polling traffic present in journal immediately after repair",
+    "note": "The shown 40-line journal tail contained live RX traffic but not the earlier protocol-init line; the upcoming smoke helper performs its own protocol-init checks."
   }
 }
