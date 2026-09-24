@@ -355,6 +355,29 @@ controller-side mirror/alternate access mode. If it diverges at those objects,
 then F8 may be a special/common structure and other regions may expose a more
 specific KM-BUS memory domain.
 
+### Conditional M16C memory-map discriminator
+
+If the **local** board later confirms the same M30624FGP/M16C/62P family as the
+online comparison board, Renesas' documented 256-KiB memory map becomes a
+strong discriminator:
+
+```text
+0x00000..0x003FF  SFR / peripheral registers
+0x00400..0x053FF  20-KiB internal RAM
+0x0F000..0x0FFFF  4-KiB data flash
+0xC0000..0xFFFFF  256-KiB program flash
+```
+
+The already verified `0x41 / 0x00F8` result lies in what would be the M16C
+**SFR region**, not its internal RAM, yet it returns the Viessmann controller
+identity. Therefore, **if the local CPU is really this M16C variant, a simple
+1:1 interpretation of the 0x41 address as raw CPU RAM is very unlikely**.
+`KMBUS_RAM_READ` would then be better understood as a logical
+controller/KM-BUS RAM address space, mirror or gateway view.
+
+Primary memory-map source: Renesas M16C/62P Group datasheet, section 3
+(Memory).
+
 ## 0x43 KMBUS_EEPROM_READ: why the prefix matters
 
 The local controller accepts prefix-less 0x43, but its F8 behavior is not a
