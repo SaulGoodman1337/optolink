@@ -517,6 +517,40 @@ and the fault-history blocks `0x00A0/10`, `0x00AA/10`, `0x00B4/10`.
 Those are the justified next read-only targets; do not infer a contiguous
 EEPROM map beyond them.
 
+## 0x43 source-map follow-up: success does not equal EEPROM semantics
+
+The bounded follow-up tested all 13 exact GWG_BT2 address/length shapes using
+the six-byte source PrefixRead. Every request returned a normal 0x43 response,
+but most higher-address blocks collapse to the same repeated two-byte pattern:
+
+~~~text
+0x0078/5  = 54 98 54 98 54
+0x0078/8  = 54 98 54 98 54 98 54 98
+
+0x00A0/10 = 54 98 54 98 54 98 54 98 54 98
+0x00AA/10 = 54 98 54 98 54 98 54 98 54 98
+0x00B4/10 = 54 98 54 98 54 98 54 98 54 98
+~~~
+
+This is structurally the same phenomenon as the earlier prefix-less F8 test.
+It makes a literal EEPROM interpretation implausible for those returned blocks.
+
+Three low blocks remain structurally different:
+
+~~~text
+0x0001/1 = 88        (3 immediate repeats stable)
+0x000A/5 = 40 00 00 00 00
+0x000F/8 = 1F 00 00 00 00 00 00 00
+~~~
+
+The critical next protocol question is therefore not "what do the bytes mean?"
+but first: **does PrefixRead change the transaction at all on the local 20C2?**
+
+The acceptance of a frame containing six extra bytes is not enough to prove
+that those bytes are consumed as a selector. A same-address P-N-P comparison is
+required. The prepared helper compares prefixed -> no-prefix -> prefixed at
+0x0001, 0x000A, 0x0078 and 0x00A0.
+
 ### 3. 0x31 XRAM_READ - high conceptual value, local applicability unknown
 
 The 12 definitions are now fully enumerated. They expose volatile objects such
