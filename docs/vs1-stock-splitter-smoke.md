@@ -1,6 +1,6 @@
 # WB2A stock splitter permanent-VS1 smoke gate
 
-Status: **prepared; first live attempt stopped safely at preflight because the migrated installation has no `.git` metadata. v1.0.3 now supports exact runtime-file hash verification as a fallback. Live VS1 execution still pending.**
+Status: **PASS on hardware. The current splitter runtime, full 212-topic HA cycle-0 read path, MQTT publication and permanent VS1 session all completed successfully for 60 seconds, followed by byte-exact settings restore and confirmed return to VS2/300.**
 
 This is the final read-path gate before adding production GFA polling to the splitter.
 
@@ -130,6 +130,52 @@ Cleanup succeeded:
 The old `RESTORED_BASELINE_PROTOCOL=NOT_CONFIRMED` was a verification-timing weakness, not evidence that the restored splitter was unusable. v1.0.6 waits up to 10 seconds for the VS2/300 initialization marker and performs that check before restarting Party.
 
 v1.0.6 also increases the smoke window to **60 seconds**. With 212 expected topics and `olbreath=0.15`, the breath delay alone gives a 31.8-second lower bound before serial response and MQTT overhead, so 30 seconds was not a sound complete-cycle gate.
+
+## Successful live run - 2026-09-24
+
+The first complete live VS1 smoke run passed:
+
+```text
+STOCK_VERIFY_MODE=git-origin-main-plus-vdensho1-profile-patches
+PROFILE_PATCH_BLOBS=match files=2
+EXPECTED_CYCLE0_MQTT_TOPICS=212
+MQTT_SUBSCRIBED_BASE=openv/#
+VS1_MAINPID=194040
+JOURNAL_VS1_INITIALIZED=yes
+JOURNAL_MAIN_LOOP=yes
+JOURNAL_UNEXPECTED_RESTART=no
+MQTT_EXPECTED=212
+MQTT_SEEN=212
+MQTT_MISSING=0
+SETTINGS_RESTORED=yes
+SERVICE_RESTORED=optolink-splitter.service running
+RESTORED_BASELINE_PROTOCOL=VS2/300
+BACKUP_REMOVED=yes
+RESULT=PASS
+```
+
+Runtime window: 60 seconds.
+
+Settings integrity:
+
+```text
+original SHA256  afb2beeddbdde21b6bbfdf0a66ec3be0f77998a7c1f50c32d7386d5eefe9ea05
+temporary SHA256 1de56b47c4b4ade262ea31c9b9069a029ddf6241f28804d77047b8ce3a78a033
+restored SHA256  afb2beeddbdde21b6bbfdf0a66ec3be0f77998a7c1f50c32d7386d5eefe9ea05
+```
+
+This establishes the bounded production **read** path in permanent VS1 mode on this exact VDensHO1 / 20C2 appliance:
+
+- the stock splitter plus the two intentional VDensHO1 profile patches remained on one stable MainPID;
+- VS1/KW initialized and entered the main loop;
+- every one of the 212 enabled cycle-0 HA poll topics was freshly published;
+- no internal restart was observed;
+- the original settings were restored byte-for-byte;
+- the normal VS2/300 baseline initialized again afterward.
+
+The result does not yet validate VS1 Virtual_WRITE, production GFA polling, long-duration FF rate or catastrophic-interruption recovery.
+
+The next implementation step is therefore a **read-only structured GFA_READ 0x6B path** under the splitter's existing single VS1 serial owner.
 
 ## Temporary settings
 
@@ -262,7 +308,7 @@ The MQTT capture contains topic names and observed values, but no MQTT credentia
 
 ## PASS meaning
 
-A PASS would establish that the current **unmodified upstream splitter**, current HA read poll list and MQTT read-publication path operate successfully during a bounded permanent-VS1 run on this appliance.
+The PASS establishes that the current upstream splitter runtime plus the two intentional VDensHO1 profile patches, current HA read poll list and MQTT read-publication path operate successfully during a bounded permanent-VS1 run on this appliance.
 
 A PASS still does not validate:
 
