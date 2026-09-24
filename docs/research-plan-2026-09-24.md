@@ -67,7 +67,9 @@ A1 demand + operating mode + E6/E7/E8/E9 + K31 + 6C + GWG75/76 + other overrides
 - [x] K30=`01` confirmed; continue the hidden runtime arbitration as a controller-firmware/MCU problem rather than a flow-sensor discovery problem.
 - [x] Characterization completed read-only; no K30/K31 write was performed.
 
-**Status: installed-pump characterization completed 2026-09-24.** The local controller identifies a speed-controlled internal pump (`K30=01`) without the K30=2 volume-flow capability flag, no hydraulic-separator sensor (`K52=0`), and software index `01`. The hidden selector upstream of `0x0A3C` remains a controller-firmware/MCU question.\n\n**Open configuration delta:** current `E9=100%` differs from the earlier documented hardware baseline `E9=50%`. Do not write it; verify provenance/readback before treating 100% as the intended baseline.
+**Status: installed-pump characterization completed 2026-09-24.** The local controller identifies a speed-controlled internal pump (`K30=01`) without the K30=2 volume-flow capability flag, no hydraulic-separator sensor (`K52=0`), and software index `01`. The hidden selector upstream of `0x0A3C` remains a controller-firmware/MCU question.
+
+**Open configuration delta:** current `E9=100%` differs from the earlier documented hardware baseline `E9=50%`. Do not write it; verify provenance/readback before treating 100% as the intended baseline.
 
 ## P0 - Complete GFA software identity
 
