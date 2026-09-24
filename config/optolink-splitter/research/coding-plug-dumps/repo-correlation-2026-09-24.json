@@ -84,7 +84,26 @@
       "0x4066": "P102 VI coding-plug identity 2",
       "0x4067..0x4069": "P103..P105 coding-plug day/month/year",
       "0x406A": "P106 VI coding-plug CRC diagnostic",
-      "0x406B..0x406C": "P107..P108 FA40/FA41 identity"
+      "0x406B..0x406C": "P107..P108 FA40/FA41 identity",
+      "live_active": {
+        "p80_guard": "20 before and after",
+        "raw_vector_p90_p100_p108": "00 63 15 01 14 0c 04 d6 02 00",
+        "fields": {
+          "P90": "00",
+          "P100": "63",
+          "P101": "15",
+          "P102": "01",
+          "P103": "14",
+          "P104": "0c",
+          "P105": "04",
+          "P106": "d6",
+          "P107": "02",
+          "P108": "00"
+        },
+        "p100_converted_percent": 38.8278,
+        "date_encoding_status": "unresolved: direct byte values 20/12/4 vs BCD-style 14/12/04",
+        "crc_status": "diagnostic byte d6; algorithm unresolved"
+      }
     }
   },
   "direct_flat_match_result": {
@@ -92,7 +111,11 @@
     "raw_20_15_02_01_present": false,
     "exact_active_1030_to_1090_blocks_present": false,
     "exact_active_10c0_present": false,
-    "interpretation": "No direct flat mapping demonstrated. This does not disprove a physical mapping because sample identity/side are unknown and controller-visible objects may be transformed/protected."
+    "interpretation": "No direct flat mapping demonstrated. This does not disprove a physical mapping because sample identity/side are unknown and controller-visible objects may be transformed/protected.",
+    "active_gfa_vector": "00 63 15 01 14 0c 04 d6 02 00",
+    "active_gfa_vector_present_in_spare1_chip1": false,
+    "active_gfa_vector_present_in_spare2_chip1": false,
+    "key_gfa_subsequences_present": false
   },
   "hypotheses": [
     {
@@ -118,14 +141,20 @@
       "confidence": "uncertain",
       "statement": "The 0x100 upper-block differences may be intentional data or an addressing/read-path peculiarity.",
       "basis": "Differences begin exactly at the 24C04 256-byte boundary and bench connection issues were observed later."
+    },
+    {
+      "id": "H5",
+      "confidence": "strong",
+      "statement": "The regulation-side 0x7656 summary and GFA coding-plug diagnostics share identity/revision byte values.",
+      "basis": "Live 0x7656 is 20 15 02 01; GFA P101=15, P102=01 and P107=02 in the same operating configuration. Exact 0x7656 byte-field positions remain unresolved."
     }
   ],
   "next_read_only_targets": [
+    "Capture both EEPROM sides of one spare with explicit f01/ST and f02/Microchip labels, three repeatable reads per side.",
     "Label future EEPROM captures explicitly f01/ST or f02/Microchip.",
     "Capture both EEPROM sides of one spare three times each.",
     "Capture active plug only after the spare-side matrix is understood.",
     "Snapshot active 0x1010, 0x1020, 0x1030..0x10C0 and 0x7656.",
-    "Snapshot GFA P90 and P100..P108 using the already recovered read-only GFA path.",
     "Compare normalized semantic fields and integrity/complement patterns, not only full raw P300 blocks."
   ]
 }
