@@ -392,6 +392,12 @@ visually separated with a warning accent, and the safety information no longer
 overlaps the action area. Entity states are visible and coherent with the
 verified backend state.
 
+A subsequent frontend interaction attempt exposed a maintenance API lifecycle
+issue rather than a dashboard bug: the API had been cleanly stopped by systemd
+after a splitter restart because its unit used `PartOf=` / `Requires=`
+against `optolink-splitter.service`. The API unit is now deliberately
+independent of splitter stop/restart propagation and uses `Restart=always`.
+
 ## 5. Diagnose view completion plan
 
 Before propagating the visual design to other pages, finish Diagnose in this
