@@ -165,9 +165,16 @@ Current evidence:
   **7/7 IDENTICAL**, including non-zero static values at `0x5730` and
   `0x0A54`; the wire trace confirms a genuine 0x41 response rather than
   client-side rewriting. Permanent VS1/KW + Party were restored successfully.
-- [ ] Repeat only the dynamic pump objects `0x0A3C`, `0x7660`,
-  `0x7663` during a naturally non-zero heating/DHW/pump state to verify
-  dynamic equality and timing.
+- [x] Repeat the dynamic pump objects `0x0A3C`, `0x7660`,
+  `0x7663` during a non-zero pump state. Result:
+  `0x7663=03 1E` (A1 request 30 %), `0x0A3C=32` (final 50 %),
+  `0x7660=03 32` (internal pump 50 %); 0x01 and 0x41 were byte-identical
+  on all three. Dynamic mirror proven.
+- [ ] Treat the observed A1 30 % -> internal 50 % uplift as strong evidence
+  for the previously established GWG75=50 % internal-pump minimum clamp;
+  optionally close causality with a same-window E7 + 0x1070 read.
+- [ ] Deprioritize broad 0x41 probing and move to source-derived distinct
+  read spaces, starting with `XRAM_READ 0x31`.
 - [ ] Reconstruct one real Vitosoft-defined 0x43 request including prefix before
   considering another local EEPROM-style read.
 - [ ] Keep all work read-only; no broad blind sweep and no KBUS/KMBUS writes.
