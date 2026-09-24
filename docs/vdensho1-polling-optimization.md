@@ -161,3 +161,33 @@ The phased scheduler is therefore active in production while `olbreath`
 remains at the conservative 0.15 s baseline. The next step is observation of
 actual FAST/NORMAL cadence and communication error rate before any timing
 reduction.
+
+
+## Live 150 ms cadence baseline
+
+A passive 180-second MQTT observation was recorded with
+`mqtt_no_redundant=False`, `poll_interval=0` and `olbreath=0.15`.
+
+Measured FAST cadence:
+
+| Datapoint | Median | P95 | Max |
+|---|---:|---:|---:|
+| Kesseltemperatur | 4.763 s | 4.974 s | 5.045 s |
+| Brenner Modulationsgrad | 4.745 s | 4.975 s | 5.031 s |
+| GFA P06 blower RPM | 4.722 s | 4.958 s | 5.094 s |
+| GFA P09 modulation setpoint | 4.732 s | 4.945 s | 5.101 s |
+| GFA P87 raw status | 4.713 s | 4.945 s | 4.967 s |
+
+Measured NORMAL cadence:
+
+| Datapoint | Median | P95 | Max |
+|---|---:|---:|---:|
+| Außentemperatur | 23.949 s | 24.354 s | 24.461 s |
+| GFA P80 identity | 23.972 s | 24.401 s | 24.515 s |
+
+This validates the phased scheduler design: FAST values no longer show the
+previous 15-20 second latency spikes, and NORMAL cadence is approximately five
+FAST cycles as configured.
+
+The next controlled experiment is `olbreath=0.10` with the identical passive
+observer and journal-error check. The 150 ms run is the comparison baseline.
