@@ -48,14 +48,14 @@ import threading
 import time
 from typing import Any
 
-VERSION = "1.0.5"
+VERSION = "1.0.6"
 ROOT = Path("/opt/optolink")
 SETTINGS = ROOT / "settings_ini.py"
 HA_POLL = ROOT / "homeassistant_poll_list.py"
 LEGACY_POLL = ROOT / "poll_list.py"
 SPLITTER = "optolink-splitter.service"
 PARTY = "optolink-party-emulator.service"
-DEFAULT_SECONDS = 30
+DEFAULT_SECONDS = 60
 MIN_SECONDS = 20
 MAX_SECONDS = 60
 TEMP_SETTINGS = {
@@ -275,6 +275,7 @@ class MqttCapture:
         self.connected = threading.Event()
         self.subscribed = threading.Event()
         self.client = None
+        self.callback_error: str | None = None
 
     def start(self):
         try:
@@ -315,14 +316,27 @@ class MqttCapture:
             client.tls_insecure_set(skip)
 
         def on_connect(c, userdata, flags, reason_code, properties=None):
-            if int(reason_code) != 0:
-                self.log(f"MQTT_SUB_CONNECT_ERROR={reason_code}")
-                return
-            self.connected.set()
-            c.subscribe(str(self.settings["mqtt_topic"]).rstrip("/") + "/#", qos=0)
+            try:
+                if mqtt_reason_failed(reason_code):
+                    self.callback_error = f"MQTT connect rejected: {reason_code}"
+                    self.log(f"MQTT_SUB_CONNECT_ERROR={reason_code}")
+                    return
+                self.connected.set()
+                c.subscribe(str(self.settings["mqtt_topic"]).rstrip("/") + "/#", qos=0)
+            except Exception as exc:
+                self.callback_error = "MQTT on_connect callback failed: " + str(exc)
+                self.log("MQTT_SUB_CALLBACK_ERROR=" + self.callback_error)
 
         def on_subscribe(c, userdata, mid, reason_codes=None, properties=None):
-            self.subscribed.set()
+            try:
+                if subscription_failed(reason_codes):
+                    self.callback_error = f"MQTT subscription rejected: {reason_codes}"
+                    self.log("MQTT_SUBSCRIBE_ERROR=" + self.callback_error)
+                    return
+                self.subscribed.set()
+            except Exception as exc:
+                self.callback_error = "MQTT on_subscribe callback failed: " + str(exc)
+                self.log("MQTT_SUB_CALLBACK_ERROR=" + self.callback_error)
 
         def on_message(c, userdata, msg):
             if msg.retain:
@@ -344,11 +358,13 @@ class MqttCapture:
         client.loop_start()
         self.client = client
         if not self.connected.wait(5):
+            error = self.callback_error or "MQTT validation subscriber did not connect within 5 seconds."
             self.stop()
-            raise SmokeError("MQTT validation subscriber did not connect within 5 seconds.")
+            raise SmokeError(error)
         if not self.subscribed.wait(5):
+            error = self.callback_error or "MQTT validation subscriber did not subscribe within 5 seconds."
             self.stop()
-            raise SmokeError("MQTT validation subscriber did not subscribe within 5 seconds.")
+            raise SmokeError(error)
         time.sleep(0.25)
         self.clear()
         self.log(f"MQTT_SUBSCRIBED_BASE={str(self.settings['mqtt_topic']).rstrip('/')}/#")
@@ -522,6 +538,41 @@ def verify_stock_runtime() -> tuple[str, str]:
     return "runtime-blob-manifest-plus-vdensho1-profile-patches", UPSTREAM_REF
 
 
+def mqtt_reason_failed(reason_code: Any) -> bool:
+    """Handle Paho v2 ReasonCode objects and older integer-style codes."""
+    marker = getattr(reason_code, "is_failure", None)
+    if marker is not None:
+        return bool(marker)
+    value = getattr(reason_code, "value", reason_code)
+    try:
+        return int(value) != 0
+    except (TypeError, ValueError):
+        # Unknown callback object: fail closed rather than claiming success.
+        return True
+
+
+def subscription_failed(reason_codes: Any) -> bool:
+    if reason_codes is None:
+        return False
+    try:
+        codes = list(reason_codes)
+    except TypeError:
+        codes = [reason_codes]
+    return any(mqtt_reason_failed(code) for code in codes)
+
+
+def wait_for_journal_marker(marker: str, since_epoch: float, timeout_s: float = 10.0) -> tuple[bool, str]:
+    deadline = time.monotonic() + timeout_s
+    last = ""
+    while time.monotonic() < deadline:
+        last = journal_since(max(0.0, since_epoch - 0.25))
+        if marker in last:
+            return True, last
+        time.sleep(0.5)
+    last = journal_since(max(0.0, since_epoch - 0.25))
+    return marker in last, last
+
+
 def duration_arg(text: str) -> int:
     try:
         value = int(text)
@@ -622,15 +673,37 @@ def self_test() -> int:
             with self.assertRaises(SmokeError):
                 parse_porcelain_paths("R  a.py -> b.py\n")
 
+        def test_mqtt_reason_code_v2_object(self):
+            class Good:
+                is_failure = False
+                value = 0
+            class Bad:
+                is_failure = True
+                value = 135
+            self.assertFalse(mqtt_reason_failed(Good()))
+            self.assertTrue(mqtt_reason_failed(Bad()))
+
+        def test_mqtt_reason_code_integer_fallback(self):
+            self.assertFalse(mqtt_reason_failed(0))
+            self.assertTrue(mqtt_reason_failed(5))
+
+        def test_subscription_reason_codes(self):
+            class Good:
+                is_failure = False
+            class Bad:
+                is_failure = True
+            self.assertFalse(subscription_failed([Good()]))
+            self.assertTrue(subscription_failed([Good(), Bad()]))
+
         def test_duration(self):
-            self.assertEqual(duration_arg("30"), 30)
+            self.assertEqual(duration_arg("60"), 60)
             for x in ("19", "61", "bad"):
                 with self.assertRaises(argparse.ArgumentTypeError):
                     duration_arg(x)
 
     result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(Tests))
     if result.wasSuccessful():
-        print("LOCAL_STOCK_VS1_SMOKE_TESTS=14/14")
+        print("LOCAL_STOCK_VS1_SMOKE_TESTS=17/17")
         return 0
     return 1
 
@@ -857,16 +930,30 @@ def main() -> int:
                     failures.append("CRITICAL: settings_ini.py restore failed: " + str(exc))
                     log(failures[-1])
 
+            restore_start_epoch = 0.0
             if splitter_was_running:
                 try:
                     log("Restoring running state: " + SPLITTER)
+                    restore_start_epoch = time.time()
                     run(["systemctl", "start", SPLITTER], timeout=15)
-                    time.sleep(1.0)
+                    deadline = time.monotonic() + 5.0
+                    while time.monotonic() < deadline and not unit_running(systemctl_show(SPLITTER)):
+                        time.sleep(0.25)
                     if not unit_running(systemctl_show(SPLITTER)):
                         raise SmokeError("restored splitter is not active/running")
                     log("SERVICE_RESTORED=" + SPLITTER + " running")
                 except Exception as exc:
                     failures.append("Restart failed: " + SPLITTER + ": " + str(exc))
+
+            if splitter_was_running and restored and restore_start_epoch:
+                restored_vs2, restored_journal = wait_for_journal_marker(
+                    "VS2/300 protocol initialized",
+                    restore_start_epoch,
+                    timeout_s=10.0,
+                )
+                log("RESTORED_BASELINE_PROTOCOL=" + ("VS2/300" if restored_vs2 else "NOT_CONFIRMED"))
+                if not restored_vs2:
+                    failures.append("Restored splitter did not log VS2/300 protocol initialized within 10-second verification window.")
 
             if party_was_running:
                 try:
@@ -887,13 +974,6 @@ def main() -> int:
                     log("BACKUP_REMOVE_WARNING=" + str(exc))
             elif backup.exists():
                 log(f"BACKUP_RETAINED={backup}")
-
-            if splitter_was_running and restored:
-                restored_journal = journal_since(time.time() - 5)
-                restored_vs2 = "VS2/300 protocol initialized" in restored_journal
-                log("RESTORED_BASELINE_PROTOCOL=" + ("VS2/300" if restored_vs2 else "NOT_CONFIRMED"))
-                if not restored_vs2:
-                    failures.append("Restored splitter did not log VS2/300 protocol initialized within verification window.")
         finally:
             for sig, handler in previous_handlers.items():
                 try:
