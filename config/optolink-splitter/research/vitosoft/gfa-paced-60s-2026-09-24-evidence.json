@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "source": {
+    "upload_name": "Eingefügter Text(20260924-065045).txt",
+    "size_bytes": 163260,
+    "line_count": 908,
+    "sha256": "09656062d76931b89cb6bcab9eefd65710ec57c38e8acf16ad116dcb324615e7",
+    "combined_files": [
+      "wb2a-gfa-paced-20260924-084613-187025.log",
+      "wb2a-gfa-paced-20260924-084613-187025.jsonl"
+    ]
+  },
+  "experiment": {
+    "helper": "wb2a-gfa-paced-probe.py",
+    "version": "1.0.0",
+    "minimum_reply_gap_ms": 150,
+    "seconds_requested": 60
+  },
+  "result": {
+    "result": "PASS",
+    "observation_complete": true,
+    "observation_elapsed_s": 60.040163,
+    "attempted_rounds": 49,
+    "accepted_rounds": 49,
+    "rejected_rounds": 0,
+    "reconnections_attempted": 0,
+    "reconnections_succeeded": 0,
+    "segments": 1,
+    "continuous_session": true,
+    "nonzero_rounds": 0,
+    "phase_changes": 0,
+    "P80_confirmed": true,
+    "P300_restored": true,
+    "splitter_restarted": true,
+    "errors": []
+  },
+  "raw_histogram": {
+    "P06": {
+      "00": 49
+    },
+    "P09": {
+      "00": 49
+    },
+    "P10": {
+      "00": 49
+    },
+    "P84": {
+      "00": 49
+    },
+    "P80": {
+      "20": 49
+    }
+  },
+  "measurement_round_reads": 245,
+  "ff_replies_in_measurement_rounds": 0,
+  "timing": {
+    "party_emulator_stop": "2026-09-24T08:46:13.385+02:00",
+    "observation_start": "2026-09-24T08:46:24.181+02:00",
+    "first_P06_rx": "2026-09-24T08:46:24.564+02:00",
+    "party_stop_to_observation_start_s": 10.796,
+    "party_stop_to_first_P06_s": 11.179,
+    "reply_to_next_request_gap_ms": {
+      "min": 150.094,
+      "mean": 150.28880816326532,
+      "max": 156.628
+    },
+    "P06_to_P84_span_ms": {
+      "min": 626.605,
+      "mean": 733.9319387755102,
+      "max": 792.393
+    }
+  },
+  "interpretation": {
+    "sustained_nonzero_GFA_runtime_verified": false,
+    "burner_physical_state_logged": false,
+    "flame_polled": false,
+    "key_ambiguity": "The capture is a clean continuous transport PASS but all runtime channels are zero. The appliance flame display state during the observation was not included in the uploaded transcript. Pausing the party emulator may alter an externally maintained heat request.",
+    "next_decision": "Ask whether the appliance flame display remained active throughout the 60-second observation. If it extinguished before/near observation start, do not treat this as a failed GFA runtime read. If it remained visibly active, investigate why persistent-session GFA runtime reads are zero despite the earlier independently synchronized firing snapshot."
+  }
+}
