@@ -275,14 +275,16 @@ The original Vitosoft event inventory confirms that `0x756C` and
 
 Follow-up splitter tests completed the missing semantics:
 
-- `0x5721` is locally verified R/W; raw `0x64` = 10000 h and restore to
-  `0x00` succeeded without changing the maintenance references;
+- `0x5721` is locally verified R/W; a later live CLI test showed that
+  changing it from 0 h to a nonzero threshold re-baselines `0x7570` to the
+  current burner-runtime counter; the observed nonzero -> 0 restore did not
+  re-baseline it again;
 - `0x5723` is locally verified R/W for 0..24 months;
 - maintenance reset is locally verified as `0x5724 = 1` followed by
   `0x5724 = 0`;
 - that reset updates the `0x756C` LastCheckInterval reference;
 - that reset updates `0x7570` to the current burner-runtime-seconds baseline;
-- burner runtime since maintenance is therefore
+- burner runtime since the current maintenance reference is therefore
   `(current 0x08A7 - stored 0x7570) / 3600`;
 - total burner runtime `0x08A7` and burner starts `0x088A` remained
   unchanged during the maintenance reset.
