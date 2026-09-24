@@ -87,7 +87,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "MAINTENANCE_READ_WRITE_RESET_CAPABILITIES_LOCALLY_VERIFIED",
+  "current_status": "MAINTENANCE_BACKEND_LIVE_NOOP_GUARDS_VERIFIED",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -266,5 +266,27 @@
       "subject": "0x756C LastCheckInterval wall-clock interpretation",
       "finding": "Earlier notes called the little-endian value a Unix timestamp. Live CLI output exposed a wall-clock mismatch, and public Vitosoft reverse-engineering documentation lists LastCheckInterval as a special converter whose algorithm is not implemented. Keep the field raw until the converter is reconstructed."
     }
-  ]
+  ],
+  "cli_validation": {
+    "noop_guards": {
+      "date": "2026-09-24",
+      "status": "live-verified",
+      "set_hours_zero": {
+        "command": "optolink-maintenance --verbose set-hours 0",
+        "current_raw": "00",
+        "result": "NO-OP",
+        "write_observed": false,
+        "note": "Only reads were issued; no WRITE 0x5721 occurred."
+      },
+      "set_months_zero": {
+        "command": "optolink-maintenance --verbose set-months 0",
+        "current_raw": "00",
+        "result": "NO-OP",
+        "write_observed": false,
+        "interval_reference_before": "107cb56a",
+        "interval_reference_after": "107cb56a",
+        "note": "Only reads were issued; no WRITE 0x5723 occurred and the LastCheckInterval reference was preserved."
+      }
+    }
+  }
 }
