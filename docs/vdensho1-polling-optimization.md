@@ -265,3 +265,42 @@ is sufficient to reject 50 ms as the current production setting. The fastest
 clean tested value remains 100 ms. A longer 100 ms soak including a burner
 cycle should be completed before optionally exploring an intermediate 75 ms
 setting.
+
+
+## 30 minute 100 ms soak
+
+A 30-minute passive soak was run at `olbreath=0.10`.
+
+Measured FAST cadence remained fast and tightly grouped:
+
+| Datapoint | Median | P95 | Max |
+|---|---:|---:|---:|
+| Kesseltemperatur | 3.399 s | 3.577 s | 6.774 s |
+| Brenner Modulationsgrad | 3.393 s | 3.603 s | 6.821 s |
+| GFA P06 blower RPM | 3.413 s | 3.584 s | 6.769 s |
+| GFA P09 modulation setpoint | 3.414 s | 3.576 s | 6.769 s |
+| GFA P87 raw status | 3.419 s | 3.599 s | 6.775 s |
+
+NORMAL cadence was about 17.0-17.1 s median.
+
+However, at 14:55:38 the journal recorded:
+
+```text
+GFA_READ 0x4057 returned FF; quarantined
+OL Error do_poll_item 17, Addr 4057, RetCode 255, Data ?
+```
+
+This is a different GFA address from the earlier 50 ms failure
+(`P09 / 0x4009`) and shows the same transport symptom. The roughly 6.77 s
+maximum FAST interval is consistent with one missed approximately 3.4 s cycle.
+
+Result: **FAIL for production use at 100 ms**.
+
+The 100 ms short test was therefore not long enough to establish stability.
+The repeated FF pattern at shorter reply-to-next-request spacing strengthens
+the timing-margin hypothesis, but it does not yet prove that `olbreath` is
+the sole cause. A long 150 ms baseline is required before drawing that stronger
+conclusion.
+
+Current conservative production target remains 150 ms. If a long 150 ms soak
+is clean, 125 ms may be tested as an optional intermediate value.
