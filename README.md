@@ -56,6 +56,7 @@ Do not remove the Optolink files from the old `community-scripts` repository unt
 - [GFA quality-aware logger and FF checkpoint - 2026-09-24](docs/gfa-quality-logger.md) - original quality/re-entry implementation and prior raw-FF analysis; the newer measured result above supersedes its pending-hardware-test wording.
 - [Vitosoft all-devices cross-profile analysis - 2026-09-24](config/optolink-splitter/research/vitosoft/all-devices-2026-09-24.md) - 399-profile relation graph, exact VDens/VPend/VScot alias, orphan events, WILO/EEPROM linkage limits; derived metadata only.
 - [Current WB2A research plan and TODOs - 2026-09-24](docs/research-plan-2026-09-24.md) - authoritative current execution queue, priorities, completion criteria and evidence discipline.
+- [PCB research: 7424735 / VBC130 comparison board](config/optolink-splitter/research/regulation-board-7424735-pcb-research.md) - online comparison-board analysis, likely M16C/62P M30624FGPFP MCU, X15/X10/KM-BUS follow-up, and explicit WB2A/GG1 identity boundary; tracked in issue #25.
 - [Collector research checkpoint - 2026-09-23](docs/collector-research-checkpoint.md) - historical cross-topic checkpoint; retained for evidence, but its old next-action wording is superseded by the current research plan.
 - [Private archive analysis and evidence](config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-analysis.md) - verified archive/SQL coverage, variant-specific GFA map, corrected firmware and pump assumptions; derived information only.
 - [Project roadmap](docs/project-roadmap.md)
