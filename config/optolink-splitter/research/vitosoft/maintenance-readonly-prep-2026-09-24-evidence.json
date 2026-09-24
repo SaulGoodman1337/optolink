@@ -53,20 +53,22 @@
       "vitosoft_name": "vergangene Zeit seit letzter Wartung",
       "token": "LetzteIntervallWartung",
       "block_length": 4,
-      "conversion": "NoConversion",
-      "unit": "months",
+      "conversion": "LastCheckInterval",
+      "unit": "custom Vitosoft conversion",
       "read_only_probe": "r;0x756C;4;raw;False",
-      "production_status": "locally read-verified; approved for read-only diagnostic exposure"
+      "production_status": "readable; raw/reference semantics only",
+      "interpretation": "Live follow-up proved little-endian Unix-seconds reference timestamp behavior after 0x5723 changes; raw value is not elapsed months."
     },
     {
       "address": "0x7570",
       "vitosoft_name": "Betriebsstunden Brenner seit letzter Wartung",
       "token": "LetzteBrennerWartung",
       "block_length": 4,
-      "conversion": "NoConversion",
-      "unit": "h",
+      "conversion": "LastBurnerCheck",
+      "unit": "custom Vitosoft conversion",
       "read_only_probe": "r;0x7570;4;raw;False",
-      "production_status": "locally read-verified; approved for read-only diagnostic exposure"
+      "production_status": "readable; raw/reference semantics only",
+      "interpretation": "Raw 4-byte reference storage; direct elapsed-hour interpretation is not source-backed."
     }
   ],
   "probe_command": "for spec in '0x5721 1' '0x5723 1' '0x5724 1' '0x756C 4' '0x7570 4'; do set -- $spec; echo === $1 len$2 ===; /usr/local/bin/optolink-debug request \"r;$1;$2;raw;False\"; echo; done",
@@ -77,7 +79,7 @@
     "Do not add productive polling until local reads are successful and values are plausible for this exact appliance.",
     "Keep these service values separate from burner fault unlock/reset semantics."
   ],
-  "current_status": "LIVE_READ_VERIFIED_READ_ONLY_PRODUCTION_EXPOSURE_APPROVED",
+  "current_status": "LIVE_READ_VERIFIED_CUSTOM_CONVERSION_REQUIRED_FOR_0x756C_0x7570",
   "live_validation": {
     "date": "2026-09-24",
     "appliance": "Vitodens 200-W WB2A / VDensHO1 / 20C2 / SW03",
@@ -119,7 +121,8 @@
       "No write or reset command was issued.",
       "The observed zero configuration at 0x5721 and 0x5723 means no nonzero maintenance threshold/interval is currently configured; do not reinterpret this as proof of a historical maintenance event.",
       "0x5724=0 is source-defined Grundzustand, not an active maintenance status.",
-      "The two 4-byte counters are zero locally; zero is endian-independent, so this capture alone cannot distinguish endian interpretation for future nonzero values. Production should use the splitter's established unsigned integer decoding convention and retain raw evidence if a future nonzero value appears."
+      "The two 4-byte counters are zero locally; zero is endian-independent, so this capture alone cannot distinguish endian interpretation for future nonzero values. Production should use the splitter's established unsigned integer decoding convention and retain raw evidence if a future nonzero value appears.",
+      "Follow-up testing corrected the initial plain-counter assumption: 0x756C uses custom LastCheckInterval reference-time semantics and 0x7570 uses custom LastBurnerCheck semantics."
     ]
   }
 }
