@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "prerequisite": {
+    "permanent_vs1_read_path": "PASS",
+    "mixed_f7_gfa_splitter_poll": "PASS",
+    "direct_f4_idempotent": "PASS",
+    "direct_f4_change_restore": "PASS"
+  },
+  "direct_f4_change_restore_result": {
+    "target": "0x2306",
+    "sequence": "21 C -> 22 C -> 21 C",
+    "change_f4_reply": "00",
+    "restore_f4_reply": "00",
+    "f7_change_verified": true,
+    "f7_restore_verified": true,
+    "p300_post_restore_verified": true,
+    "evidence_commit": "068eb90db8f1985df6db4c421be7a7cc4922e3a5"
+  },
+  "writable_profile_audit": {
+    "conclusion": "All currently exposed Optolink-backed writable controls in the live VDensHO1 HA profile resolve to one-byte datapoints.",
+    "direct": [
+      "0x2306/1",
+      "0x2307/1",
+      "0x2308/1",
+      "0x6300/1",
+      "0x2323/1",
+      "0x6773/1"
+    ],
+    "service_config": "Existing /set controls map to already-polled one-byte 0x27xx/0x57xx/0x67xx datapoints.",
+    "party_emulator": [
+      "0x2306/1",
+      "0x2323/1"
+    ],
+    "schedules": "8-byte weekly programs remain read-only.",
+    "caveat": "Transport width is covered; semantic behavior of every source-documented service coding is not thereby proven."
+  },
+  "final_integration_gate": {
+    "file": "config/optolink-splitter/wb2a-vs1-splitter-write-gate.py",
+    "version": "1.0.1",
+    "commit": "fa38b2a466826469610de58417008d591f42d3d3",
+    "git_blob": "53af2a2d7992a8d2ace40d971bb78bf8e5f40ba2",
+    "sha256": "61aee99070436e4979aa7a5f32af6605a68bd8d34e32769a6d43dba9026b127d",
+    "purpose": "Exercise the real running splitter write route under temporary permanent VS1 using MQTT /set, with an isolated temporary MQTT namespace.",
+    "route": "mqtt_util.handle_set_topic -> cmnd_queue -> requests_util.response_to_request -> vs12_adapter.write_datapoint_ext -> stock optolinkvs1 F4",
+    "write_target": "0x2306 only, +/-1 C, exact baseline restore",
+    "isolation": [
+      "Temporary unique mqtt_topic/mqtt_listen/mqtt_respond namespace prevents existing HA entities from targeting the test splitter.",
+      "tcpip_port=None.",
+      "Party stopped if active.",
+      "Normal source tree remains unmodified."
+    ],
+    "cleanup": [
+      "Production /set restore is attempted first.",
+      "If not verified, up to two cleanup attempts occur through the running splitter.",
+      "If still not verified, the temporary splitter is stopped and a direct stock VS1/F4 fallback restores the known baseline.",
+      "Original settings must be byte-exactly restored.",
+      "If baseline or settings restoration cannot be verified, splitter and Party are left stopped fail-closed and the settings backup is retained.",
+      "On normal success the splitter must re-establish VS2/300 before Party is restored."
+    ]
+  }
+}
