@@ -164,6 +164,22 @@ After changes:
 systemctl restart optolink-splitter
 ```
 
+## Guarded maintenance CLI
+
+For the verified WB2A / VDensHO1 maintenance interface, the update routine
+installs:
+
+```bash
+optolink-maintenance status
+```
+
+The helper provides bounded/readback-verified commands for the maintenance
+burner-hours threshold, maintenance month interval and the verified maintenance
+reset sequence. It deliberately does not expose generic raw writes.
+
+See [Optolink maintenance CLI](optolink-maintenance.md) for the verified
+datapoint contract, confirmation requirements and examples.
+
 ## Service management
 
 ```bash
