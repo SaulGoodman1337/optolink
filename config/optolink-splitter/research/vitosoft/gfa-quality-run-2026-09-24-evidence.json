@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "source": {
+    "upload_name": "Eingefügter Text(20260924-062018).txt",
+    "bytes": 489573,
+    "lines": 2901,
+    "sha256": "a976eaac07fa52ea1b1911412e011be51a3cd59705a7d81dd5fe3a25569d431f",
+    "scope": "Complete pasted concatenation of raw text log and JSONL; not a direct connection to the appliance.",
+    "log_name": "wb2a-gfa-quality-20260924-081721-186325.log",
+    "jsonl_name": "wb2a-gfa-quality-20260924-081721-186325.jsonl"
+  },
+  "helper": {
+    "name": "wb2a-gfa-quality-logger.py",
+    "version": "1.1.0",
+    "implementation_commit": "567b21dd091f0b57468224d2731d4b436782fa36",
+    "expected_sha256": "bdd1d829ba2d1387c21ae99e02848755e7ad8045c0b3034ff7430eb555900910",
+    "limit": "Upload starts at cat of the output files; it does not contain this run's download/hash or self-test transcript. Version and dependency hashes are recorded in the log/metadata."
+  },
+  "validation": {
+    "json_objects_parsed": 171,
+    "record_kinds": {"metadata": 1, "observation_start": 1, "round": 158, "rejected_round": 4, "reidentification_start": 3, "reidentification_complete": 3, "summary": 1},
+    "accepted_round_sequence": "1..158",
+    "all_attempt_sequence": "1..162, including four rejected attempts",
+    "console_rounds_match_json": true,
+    "all_accepted_runtime_raw_values_zero": true,
+    "all_accepted_P80_guards_20": true,
+    "accepted_runtime_values": 632,
+    "accepted_rounds_by_segment": {"1": 11, "2": 103, "3": 22, "4": 22},
+    "accepted_has_ff_or_nonzero_conversion": false,
+    "all_rejected_decoded_are_null": true
+  },
+  "ff_events": [
+    {"attempt": 12, "segment": 1, "parameter": "P84", "address": "0x4054", "request_hex": "6b 40 54 01", "raw_hex": "ff", "rx_time": "2026-09-24T08:17:39.284+02:00", "rx_elapsed_s": 7.447403, "reply_latency_ms": 49.316, "previous_reply_to_tx_gap_ms": 51.101, "source_log_lines": [223, 227], "source_json_line": 2744},
+    {"attempt": 116, "segment": 2, "parameter": "P10", "address": "0x400a", "request_hex": "6b 40 0a 01", "raw_hex": "ff", "rx_time": "2026-09-24T08:18:54.099+02:00", "rx_elapsed_s": 82.262390, "reply_latency_ms": 95.607, "previous_reply_to_tx_gap_ms": 50.767, "source_log_lines": [1911, 1915], "source_json_line": 2850},
+    {"attempt": 139, "segment": 3, "parameter": "P10", "address": "0x400a", "request_hex": "6b 40 0a 01", "raw_hex": "ff", "rx_time": "2026-09-24T08:19:18.975+02:00", "rx_elapsed_s": 107.138354, "reply_latency_ms": 47.085, "previous_reply_to_tx_gap_ms": 50.339, "source_log_lines": [2303, 2307], "source_json_line": 2875},
+    {"attempt": 162, "segment": 4, "parameter": "P84", "address": "0x4054", "request_hex": "6b 40 54 01", "raw_hex": "ff", "rx_time": "2026-09-24T08:19:43.974+02:00", "rx_elapsed_s": 132.137693, "reply_latency_ms": 196.625, "previous_reply_to_tx_gap_ms": 50.799, "source_log_lines": [2698, 2703], "source_json_line": 2899}
+  ],
+  "reidentifications": [
+    {"number": 1, "new_segment": 2, "duration_s": 10.886413, "gap_from_last_confirmed_s": 11.371095, "P300_identity": "20c2", "independent_P80": ["20", "20"], "session_P80": "20"},
+    {"number": 2, "new_segment": 3, "duration_s": 10.950023, "gap_from_last_confirmed_s": 11.336470, "P300_identity": "20c2", "independent_P80": ["20", "20"], "session_P80": "20"},
+    {"number": 3, "new_segment": 4, "duration_s": 10.887411, "gap_from_last_confirmed_s": 11.254067, "P300_identity": "20c2", "independent_P80": ["20", "20"], "session_P80": "20"}
+  ],
+  "timing": {
+    "observation_start": "2026-09-24T08:17:31.837+02:00",
+    "failure_log_time": "2026-09-24T08:19:44.025+02:00",
+    "p06_intervals_same_segment_only_ms": {"min": 563.862, "mean": 617.564, "max": 720.265, "n": 154},
+    "p06_to_p84_spans_ms": {"min": 318.576, "mean": 369.690, "max": 508.348, "n": 158},
+    "accepted_runtime_reply_latency_ms": {"min": 53.911, "mean": 72.459, "max": 158.264, "n": 632},
+    "ff_receive_intervals_s": [74.814987, 24.875964, 24.999339],
+    "periodic_25_second_timer_proven": false,
+    "periodicity_limit": "Only four events, with gaps and changed coverage after each rejection; timing resemblance is a lead, not a proven device timer."
+  },
+  "recovery": {
+    "p300_identity": "20c2",
+    "p300_verified_time": "2026-09-24T08:19:46.089+02:00",
+    "splitter_running_time": "2026-09-24T08:19:48.172+02:00",
+    "party_running_time": "2026-09-24T08:19:50.245+02:00",
+    "splitter_stop_to_running_s": 147.121,
+    "ha_freshness_confirmed_for_this_run": false
+  },
+  "original_summary": {
+    "kind": "summary", "version": "1.1.0", "result": "FAIL",
+    "last_confirmed_elapsed_s": 131.61532,
+    "failure_elapsed_s": 132.1885017749737,
+    "attempted_rounds": 162, "rejected_rounds": 4,
+    "reconnections_attempted": 3, "reconnections_succeeded": 3,
+    "segments": 4, "continuous_session": false,
+    "quality_policy": "FF quarantined; other data not independently verified",
+    "observation_complete": false, "seconds_requested": 300,
+    "observation_elapsed_s": 132.188506, "rounds_confirmed": 158,
+    "nonzero_rounds": 0, "phase_changes": 0, "P80_confirmed": false,
+    "P300_restored": true, "splitter_restarted": true,
+    "services_restarted": ["optolink-party-emulator.service", "optolink-splitter.service"],
+    "errors": ["Maximum three re-identification attempts reached; stopping."],
+    "full_burner_cycle_verified": false, "flame_polled": false
+  },
+  "interpretation": {
+    "quality_and_reentry_policy_exercised_on_hardware": true,
+    "ff_root_cause_resolved": false,
+    "fourth_reidentification_attempted": false,
+    "P80_confirmed_false_means": "Overall completion/closing identity not established after abort; this run has no observed FF or mismatching P80 response.",
+    "next_experiment": "Bounded 150-ms reply-to-next-read spacing comparison, with existing FF quarantine, identity checks and three-reidentification cap unchanged.",
+    "vendor_150ms_requirement_proven": false,
+    "no_new_hardware_request_performed_by_assistant": true
+  }
+}
