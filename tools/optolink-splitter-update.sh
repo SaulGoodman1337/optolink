@@ -106,6 +106,9 @@ else
 fi
 
 chown -R optolink:optolink "$APP_DIR"
+touch "$APP_DIR/.maintenance.lock"
+chown optolink:optolink "$APP_DIR/.maintenance.lock"
+chmod 660 "$APP_DIR/.maintenance.lock"
 
 info "Configuring guarded maintenance MQTT API"
 if runuser -u optolink -- "$APP_DIR/venv/bin/python" - <<'PY_MAINT_API'
