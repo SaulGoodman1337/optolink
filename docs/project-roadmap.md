@@ -164,6 +164,23 @@ Main file:
 The old schedule cards should be removed from the diagnostics page once the
 dedicated tab is in place.
 
+### 2a. Pumpen dashboard refinement
+
+Status: **current redesign accepted provisionally / revisit later**
+
+The Pumpen page has been converted to the Diagnose-inspired cockpit style and
+is usable in live Home Assistant. Keep the current implementation for now.
+
+Deferred redesign TODO:
+
+- revisit the overall visual concept later;
+- improve hierarchy, spacing, density and color balance;
+- simplify the presentation where possible without losing direct controls;
+- keep logical M1 request, A1 output and internal boiler-pump runtime
+  semantically separate unless further controller evidence supports a stronger
+  relationship;
+- use the current page as a baseline, not as the final design reference.
+
 ### 2b. Apply the new diagnostic cockpit style to the other Home Assistant dashboards
 
 Status: **TODO / visual direction approved in live dashboard**
