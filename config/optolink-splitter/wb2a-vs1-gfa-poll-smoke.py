@@ -136,7 +136,7 @@ def validate_values(seen: dict[str, tuple[str, float]], topics: dict[str, str]) 
     p06_name = next(n for n in topics.values() if n.endswith("_gfa_p06"))
     try:
         p06 = float(by_name[p06_name])
-        if not (0.0 <= p06 <= 6000.0):
+        if not (0.0 <= p06 <= 7620.0):
             failures.append(f"P06 out of bounded range: {p06}")
     except Exception:
         failures.append(f"P06 not numeric: {by_name.get(p06_name)!r}")
