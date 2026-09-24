@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "evidence_level": "hardware_observation",
+  "scope": "Bounded read-only GFA software-identity read through the production splitter MQTT command path.",
+  "transport": {
+    "command": "gfaread",
+    "function": "GFA_READ / VS1 0x6B",
+    "write_performed": false,
+    "service_stop_required": false,
+    "protocol_switch_required": false
+  },
+  "variant_guard": {
+    "opening": {
+      "address": "0x4050",
+      "parameter": "P80",
+      "response": "1;0x4050;20",
+      "raw_hex": "0x20"
+    },
+    "closing": {
+      "address": "0x4050",
+      "parameter": "P80",
+      "response": "1;0x4050;20",
+      "raw_hex": "0x20"
+    },
+    "result": "PASS_GFA_BRANCH_0x20"
+  },
+  "measurements": [
+    {
+      "parameter": "P81",
+      "address": "0x4051",
+      "meaning": "FA software version",
+      "response": "1;0x4051;02",
+      "raw_hex": "0x02",
+      "raw_decimal": 2,
+      "conversion": "NoConversion"
+    },
+    {
+      "parameter": "P82",
+      "address": "0x4052",
+      "meaning": "FA software revision",
+      "response": "1;0x4052;06",
+      "raw_hex": "0x06",
+      "raw_decimal": 6,
+      "conversion": "NoConversion"
+    },
+    {
+      "parameter": "P83",
+      "address": "0x4053",
+      "meaning": "appliance/GFA configuration",
+      "response": "1;0x4053;76",
+      "raw_hex": "0x76",
+      "raw_decimal": 118,
+      "conversion": "NoConversion"
+    }
+  ],
+  "interpretation": {
+    "proven": [
+      "P81, P82 and P83 are readable on the local VDensHO1/20C2 appliance through the guarded production GFA_READ path.",
+      "P81 raw value is 0x02, P82 raw value is 0x06 and P83 raw value is 0x76.",
+      "The local GFA branch remained P80=0x20 before and after the read sequence."
+    ],
+    "not_proven": [
+      "Official human-readable firmware notation such as 2.6 or 02.06.",
+      "A marketing/release name corresponding to P81/P82.",
+      "Semantic decoding of appliance/GFA configuration byte 0x76."
+    ]
+  },
+  "related_identity": {
+    "main_regulation_raw_pair": "0x0103",
+    "main_regulation_bytes": [
+      "0x778C=0x01",
+      "0x778D=0x03"
+    ],
+    "device_software_index": "0x00FB=0x03",
+    "gfa_variant": "P80=0x20"
+  },
+  "result": "PASS"
+}
