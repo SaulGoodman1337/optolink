@@ -317,9 +317,10 @@ Wartung** section around these entities. The intended end state is to allow the
 maintenance interval and burner-runtime threshold to be configured from Home
 Assistant, with a separately protected maintenance-reset action.
 
-The splitter workstream has now verified the real controller write/reset paths
-and the guarded CLI. Home Assistant implementation remains intentionally
-deferred to a dedicated dashboard session.
+The splitter workstream has now verified the complete controller write/reset
+path, shared maintenance core, guarded CLI and MQTT API. The first guarded
+Home Assistant maintenance implementation is now present in the repository and
+awaits live frontend verification.
 
 The HA implementation must preserve these verified constraints:
 
@@ -349,6 +350,25 @@ invalid local hardware, including:
 
 Topology/presence values may still be shown as identity information when they
 are useful, but they must not be presented as live physical measurements.
+
+### Wartung view implementation
+
+Status: **implemented in repository / live frontend verification pending**
+
+The new `Wartung` dashboard view uses the guarded maintenance MQTT API rather
+than raw Optolink writes. Two discovered MQTT Number entities are staging
+controls only; changing them updates API stage topics and never touches the
+controller.
+
+Separate button-card actions publish confirmed JSON requests with unique
+request IDs for:
+
+- applying the burner-hours threshold;
+- applying the month interval;
+- executing the protected maintenance reset.
+
+The page shows current controller values separately from staged values and
+states the verified reference side effects before confirmation.
 
 ## 5. Diagnose view completion plan
 
@@ -457,7 +477,8 @@ verification before using the pattern on the next view.
       state belong in the top-level Diagnose view.
 - [ ] Design the logical-pump -> A1 output -> internal-pump chain.
 - [x] Read-only verify maintenance/service candidates and add read-only diagnostic entities.
-- [ ] Add editable Service / Wartung controls in HA using the verified splitter semantics.
+- [x] Add editable Service / Wartung controls in HA using staged MQTT numbers and confirmed API actions.
+- [ ] Live-verify the new Wartung view: staging must not write; Apply/Reset confirmations and displayed readbacks must match the controller.
 - [x] Run `wb2a-schedule-probe snapshot` and preserve the 21 raw day blocks.
 - [x] Verify 0/1/2/4 interval writes, slot clearing, 24:00 and byte-exact restore.
 - [x] Implement guarded schedule-manager writes and the full Zeitprogramme editor.
