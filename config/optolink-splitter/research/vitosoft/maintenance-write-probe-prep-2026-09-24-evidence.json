@@ -88,7 +88,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "MAINTENANCE_HA_APPLY_MONTHS_LIVE_VERIFIED_RESTORE_PENDING",
+  "current_status": "MAINTENANCE_HA_FULL_END_TO_END_LIVE_VERIFIED",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -719,6 +719,17 @@
         "The read-only current interval updated to 1 month after the guarded API write/readback path.",
         "The independently staged 100 h burner-hours value remained staged only; the actual burner-hours threshold stayed at 0 h.",
         "The HA API status reported OK after the action."
+      ]
+    },
+    "home_assistant_restore_months": {
+      "date": "2026-09-24",
+      "status": "live-verified",
+      "action": "restore maintenance interval from 1 month to 0 months through Home Assistant",
+      "result": "success",
+      "conclusions": [
+        "The Home Assistant restore path is live-verified.",
+        "The month interval was returned to 0 through the same staged + confirmed guarded API path.",
+        "The full HA -> MQTT API -> shared core -> splitter -> readback -> HA display loop is now verified."
       ]
     }
   }
