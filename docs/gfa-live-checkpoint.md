@@ -1,6 +1,6 @@
 # GFA live checkpoint - 2026-09-23
 
-**Current status: P80, snapshots, same-session access and a continuous 60-second burner-start trace are hardware-confirmed. The first self-triggered status attempt exposed and corrected the WB2A Virtual_WRITE response format: a successful write reply acknowledges the written byte count without echoing the value. No GFA startup samples were collected in that failed attempt. Trigger helper v1.0.1 now passes 168/168 offline tests; manual 0x2306/0x55DC baseline verification is required before rerun.**
+**Current status: the self-triggered 37 C run succeeded end-to-end. It captured 50/50 clean P84/P87/P06/P09 rounds, verified exact 37 C readback and restore to 21 C, and strongly correlates P87 bit 1 (60->62) with release of the 57.6534% high-start modulation plateau. P84/P87 manufacturer semantics and the earliest ~4.8 s after the trigger remain unresolved.**
 
 Read the [paced comparison and startup trace](gfa-paced-comparison.md) for the latest live result. The next bounded experiment is the [GFA status/startup probe](gfa-status-probe.md): P84/P12 every round, alternating P85/P86 and P87/P88, with P80 guarding every round. It records raw bits only; no flame/status semantics are assigned. The earlier [long-run FF investigation](gfa-cycle-ff-investigation.md) remains relevant to acquisition quality.
 
@@ -16,6 +16,20 @@ Evidence:
 - [Static variant/scaling definitions](../config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-evidence.json).
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
+
+## 0. Successful self-triggered startup correlation - 2026-09-24
+
+Trigger helper v1.0.1 read the original A1 normal setpoint as 21 C and `0x55DC=0`, wrote only `0x2306=37`, verified 37 by Virtual_READ, and then captured 50 clean GFA rounds. Cleanup restored and read back 21 C; P300 20C2 and both services were restored. Result PASS, zero rejected rounds/reconnects/FF.
+
+The capture begins 4.793 s after the 37 C trigger at P84=02. It observes P87 `20->40->50->60->62`, P84 `02->05->06`, fan rise through 2490->3900->4500->4590 rpm and the subsequent high-start hold.
+
+The key new correlation is P87 `60->62`: bit 1 is first observed set at 10:42:26.805. P09 is first observed below its raw-93 / 57.6534% plateau at 10:42:27.302. Their true transition windows overlap within the same sequential acquisition round, so causal order is not proven, but bit 1 is now a strong candidate marker for the release/end of the high-start plateau. It must not yet be named "flame stabilized" or "regulation enabled".
+
+First P84=06 to first P87=62: 10.148 s. First P87=60 to first P87=62: 9.866 s. This reproduces the previously observed short startup hold.
+
+At restore, `0x2306=21` was read back successfully, but immediate `0x55DC=0x21` showed the burner still active. A restored room setpoint therefore does not imply immediate burner shutdown.
+
+Evidence: [successful triggered startup](../config/optolink-splitter/research/vitosoft/gfa-triggered-startup-2026-09-24-evidence.json). Detailed analysis: [GFA status/startup probe](gfa-status-probe.md).
 
 ## 0a. Triggered-status attempt - write ACK parser corrected, 2026-09-24
 
