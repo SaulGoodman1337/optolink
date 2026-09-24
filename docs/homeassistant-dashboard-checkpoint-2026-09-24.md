@@ -353,7 +353,7 @@ are useful, but they must not be presented as live physical measurements.
 
 ### Wartung view implementation
 
-Status: **staging isolation + MQTT Discovery + corrected Wartung frontend render live-verified / HA interaction test pending**
+Status: **backend + staging + Discovery + frontend + API lifecycle live-verified / HA interaction test pending**
 
 The new `Wartung` dashboard view uses the guarded maintenance MQTT API rather
 than raw Optolink writes. Two discovered MQTT Number entities are staging
@@ -397,6 +397,10 @@ issue rather than a dashboard bug: the API had been cleanly stopped by systemd
 after a splitter restart because its unit used `PartOf=` / `Requires=`
 against `optolink-splitter.service`. The API unit is now deliberately
 independent of splitter stop/restart propagation and uses `Restart=always`.
+
+The corrected lifecycle was then live-tested: restarting only
+`optolink-splitter.service` left `optolink-maintenance-api.service` active,
+and retained `maintenance/availability` remained `online`.
 
 ## 5. Diagnose view completion plan
 
