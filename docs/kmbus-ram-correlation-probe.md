@@ -148,6 +148,94 @@ address space. Source-derived selectors/functions become the next priority.
 Preserve the exact address/length/output. That would be direct evidence of a
 hidden read namespace.
 
+## Transport diagnostic after first live run
+
+The first live run could not reach the comparison phase because all generic
+`request;...` calls timed out, including the positive 0x41 control.
+
+A follow-up control established:
+
+~~~text
+service: active
+
+r;0x00F8;8;raw;False
+-> 1;0xf8;20c2000300000103
+
+request;0x01;0x00F8;8;;0x00
+-> timeout
+
+request;0x41;0x00F8;8;;0x00
+-> timeout
+~~~
+
+This is especially diagnostic because the current upstream splitter source
+constructs **byte-identical VS2 telegrams** for these two requests:
+
+~~~text
+ordinary Virtual_READ 0x00F8/8
+generic request fct=0x01 addr=0x00F8 len=8 protid=0 data=""
+    -> 41 05 00 01 00 F8 08 06
+~~~
+
+Therefore the controller cannot explain the difference if the generic
+`do_request()` branch is actually reached. The live command-dispatch/source
+version must be checked first.
+
+### Read-only dispatcher/raw diagnostic
+
+~~~bash
+DBG=/usr/local/bin/optolink-debug
+
+echo "========== LIVE MODULE =========="
+/opt/optolink/venv/bin/python - <<'PY'
+import inspect
+import requests_util
+print("module:", requests_util.__file__)
+src = inspect.getsource(requests_util.response_to_request)
+print("has request/req branch:", '["request", "req"]' in src or "['request', 'req']" in src)
+print("--- matching lines ---")
+for i, line in enumerate(src.splitlines(), 1):
+    if "request" in line.lower() or "unknown command" in line.lower():
+        print(f"{i:03d}: {line}")
+PY
+
+echo
+echo "========== SOURCE GREP =========="
+grep -n -A12 -B5 'cmnd in.*request' /opt/optolink/requests_util.py || true
+grep -n 'unknown command received' /opt/optolink/requests_util.py || true
+
+echo
+echo "========== BYTE-IDENTICAL RAW VIRTUAL_READ =========="
+"$DBG" request "raw;4105000100F80806" --timeout 10
+
+echo
+echo "========== RAW KMBUS_RAM_READ 0x41 =========="
+"$DBG" request "raw;4105004100F80846" --timeout 12
+
+echo
+echo "========== REQUEST WARNINGS =========="
+journalctl -u optolink-splitter.service --since "5 minutes ago" --no-pager \
+  | grep -Ei 'unknown command|request|timeout|nack|error' \
+  | tail -n 100 || true
+~~~
+
+The second raw frame is the same no-write 0x41 read request encoded directly:
+
+~~~text
+41 05 00 41 00 F8 08 46
+~~~
+
+where `46` is the modulo-256 VS2 checksum.
+
+Interpretation:
+
+- raw 0x01 succeeds + raw 0x41 succeeds -> live controller path is fine;
+  generic `request` dispatcher/version is the problem;
+- raw 0x01 succeeds + raw 0x41 fails -> generic dispatcher is not the only
+  issue; re-evaluate current 0x41 controller state/transport;
+- live module lacks `request/req` branch -> deployed splitter is older or
+  otherwise different from the source version previously analyzed.
+
 ## Follow-up phases
 
 Only after this first matrix:
