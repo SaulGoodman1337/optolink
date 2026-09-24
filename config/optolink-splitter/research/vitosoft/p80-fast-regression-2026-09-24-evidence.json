@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "issue": "Tracked production profile regressed P80 cadence from FAST back to NORMAL.",
+  "root_cause": {
+    "intended_commit": "7775b4f412e6e8ed41cef981b7aa7f159b515e55",
+    "later_commit": "ee783069077ffd690c6411b0f12de3e0cffc2b72",
+    "detail": "Polling rebalance changed P80 together with other cadence changes, undoing the earlier latency fix."
+  },
+  "impact": "A transient GFA transport failure could leave productive GFA reads suppressed until a later successful P80 poll; NORMAL cadence increases worst-case guard recovery latency.",
+  "fix": {
+    "file": "config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py",
+    "change": "gfa_p80_typ cadence NORMAL -> FAST",
+    "semantics": "read-only GFA P80 identity polling only; no new write path"
+  },
+  "related_guard": "requests_util keeps last validated P80=0x20 across transient transport failures and revokes it only on a successful non-0x20 read."
+}
