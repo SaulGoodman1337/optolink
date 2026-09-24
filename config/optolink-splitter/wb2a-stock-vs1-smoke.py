@@ -48,7 +48,7 @@ import threading
 import time
 from typing import Any
 
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 ROOT = Path("/opt/optolink")
 SETTINGS = ROOT / "settings_ini.py"
 HA_POLL = ROOT / "homeassistant_poll_list.py"
@@ -435,6 +435,10 @@ def git_blob_sha(path: Path) -> str:
     return hashlib.sha1(header + data).hexdigest()
 
 
+def git_safe_cmd(*args: str) -> list[str]:
+    return ["git", "-c", f"safe.directory={ROOT}", "-C", str(ROOT), *args]
+
+
 def verify_stock_runtime() -> tuple[str, str]:
     """Verify installed runtime without requiring .git metadata.
 
@@ -445,9 +449,9 @@ def verify_stock_runtime() -> tuple[str, str]:
     git_dir = ROOT / ".git"
     if git_dir.exists():
         try:
-            head = run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], timeout=10).stdout.strip()
-            origin = run(["git", "-C", str(ROOT), "rev-parse", "origin/main"], timeout=10).stdout.strip()
-            dirty = run(["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=no"], timeout=10).stdout.strip()
+            head = run(git_safe_cmd("rev-parse", "HEAD"), timeout=10).stdout.strip()
+            origin = run(git_safe_cmd("rev-parse", "origin/main"), timeout=10).stdout.strip()
+            dirty = run(git_safe_cmd("status", "--porcelain", "--untracked-files=no"), timeout=10).stdout.strip()
         except Exception as exc:
             raise SmokeError("Git metadata exists but stock verification failed: " + str(exc)) from exc
         if head != origin:
@@ -545,6 +549,12 @@ def self_test() -> int:
                 p.write_bytes(b"test\n")
                 self.assertEqual(git_blob_sha(p), "9daeafb9864cf43055ae93beb0afd6c7d144bfa4")
 
+        def test_git_safe_cmd(self):
+            cmd = git_safe_cmd("rev-parse", "HEAD")
+            self.assertEqual(cmd[0], "git")
+            self.assertIn("safe.directory=/opt/optolink", cmd)
+            self.assertEqual(cmd[-2:], ["rev-parse", "HEAD"])
+
         def test_duration(self):
             self.assertEqual(duration_arg("30"), 30)
             for x in ("19", "61", "bad"):
@@ -553,7 +563,7 @@ def self_test() -> int:
 
     result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(Tests))
     if result.wasSuccessful():
-        print("LOCAL_STOCK_VS1_SMOKE_TESTS=10/10")
+        print("LOCAL_STOCK_VS1_SMOKE_TESTS=11/11")
         return 0
     return 1
 
