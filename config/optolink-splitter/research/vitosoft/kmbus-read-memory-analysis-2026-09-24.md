@@ -185,11 +185,135 @@ The v6 All-Devices extractor preserves, for every event:
 - value and option lists;
 - mapping type.
 
-The detailed files are inside the private v6 release archive, while normal Git
-currently contains only small normalized summaries. The important next
-offline-analysis task is to extract a **small publishable read-function slice**
-from `all-events.csv` / `all-lowlevel-access.csv` for all KMBUS/KBUS/XRAM
-rows.
+A targeted extractor has now been run against the verified v6 release asset.
+The derived slice contains **2,055 read-event rows** and is committed in the
+private source repository under:
+
+```text
+collector-output/20260924-143439/kmbus-read-slice/
+  kmbus-read-events.csv
+  kmbus-read-summary.json
+  kmbus-read-summary.md
+```
+
+The extraction is reproducible through
+`collector/tools/extract-kmbus-read-slice.py` and the dedicated GitHub Actions
+workflow `.github/workflows/kmbus-read-slice.yml`. No new Vitosoft collection
+was required.
+
+### Exact prefix and profile structure from the targeted slice
+
+| Function | Events | Prefix shape | Main semantic clue |
+| --- | ---: | --- | --- |
+| `KMBUS_RAM_READ` | 0 | none in metadata | low-level function exists and works locally despite zero catalog rows |
+| `KMBUS_EEPROM_READ` | 91 | 90x 6-byte `030000000101`, 1x empty | persistent parameters / identity in subordinate legacy control units |
+| `XRAM_READ` | 12 | empty | volatile runtime objects: external demand/lockout, timers, water pressure |
+| `Virtual_MBUS` | 254 | mostly 2 bytes; some 3/4 bytes | actual external M-Bus meter integrations, not Viessmann KM-BUS |
+| `KBUS_DATAELEMENT_READ` | 7 | empty | compact legacy data-element access |
+| `KBUS_TRANSPARENT_READ` | 850 | **2 bytes on all 850** | strongly structured participant/channel selector space |
+| `KBUS_EEPROM_LT_READ` | 500 | empty | legacy KBus EEPROM/logical-table address space |
+| `KBUS_MEMBERLIST_READ` | 1 | empty | legacy participant-list operation |
+| `KBUS_VIRTUAL_READ` | 232 | 227x 2 bytes, 5x empty | participant virtual-data tunnel |
+| `KBUS_DIRECT_READ` | 11 | 10x empty, 1x 1 byte | direct legacy channel access |
+| `KBUS_INDIRECT_READ` | 97 | 96x 1 byte, 1x empty | prefix is explicitly the participant number in the Vitosoft event names |
+
+This makes `PrefixRead` operationally important rather than descriptive
+metadata. In particular, the `KBUS_INDIRECT_READ` rows prove the pattern
+directly:
+
+```text
+Teilnehmer 07 Datenpunkt 6
+  PrefixRead = 07
+  Address    = 0x01E8
+  BlockLen   = 2
+
+Teilnehmer 08 Datenpunkt 1
+  PrefixRead = 08
+  Address    = 0x0200
+  BlockLen   = 2
+
+Teilnehmer 09 ...
+  PrefixRead = 09
+
+Teilnehmer 10 ...
+  PrefixRead = 0A
+
+Teilnehmer 11 ...
+  PrefixRead = 0B
+```
+
+Thus at least in the indirect family a prefix byte is plainly a routing/target
+selector for the KBus participant. This substantially strengthens the working
+mapping of Vitosoft `PrefixRead` to the optional data bytes carried by the
+generic VS2 request.
+
+### KMBUS_EEPROM_READ is semantically a subordinate-device EEPROM path
+
+The 90 rows using `030000000101` are not generic main-controller flash
+objects. The current export names them as parameters stored in an **LGM27
+burner-control unit**, for example:
+
+- `0x0001`: `Kennung (Prog1)`;
+- `0x000A`: device number and parameter-set fields;
+- `0x000F`: gas modulation values for low/partial/full/ignition load;
+- `0x0064`: minimum burner pause;
+- `0x006A`: minimum/maximum/emergency/frost-protection temperature data;
+- `0x0070`: comfort/frost/DHW limit values;
+- `0x0078`: burner switching differentials and flue-gas thresholds;
+- `0x0083`: minimum runtime, controller delay and pump run-on timing.
+
+This is strong evidence that `KMBUS_EEPROM_READ` is intended to route through
+the controller to **persistent memory of a subordinate bus participant**. It is
+therefore not evidence for main-regulation program-flash access and not evidence
+for the boiler coding-plug EEPROM.
+
+The single no-prefix exception is event **2190** at `0x0310`,
+`Geräteidentifikation Schalterblock`, block length 4, in DEKATEL/VCOM
+profiles. It is a different legacy use case and does not invalidate the
+six-byte-prefix pattern of the LGM27 group.
+
+### XRAM_READ really is used for volatile runtime state
+
+All 12 XRAM definitions belong to GWG-family profiles. They include:
+
+| Address | Meaning |
+| --- | --- |
+| `0x0000` | external operating-mode change/request |
+| `0x0000` | external blocking |
+| `0x003A` | run-on timer + raw value |
+| `0x003D` | 1-minute timer + raw value |
+| `0x0040` | 7-minute timer + raw value |
+| `0x0042` | 13-minute timer + raw value |
+| `0x0088` | water pressure + raw value |
+
+This is important conceptually: Vitosoft really does use a dedicated RAM-like
+access space for **live transient state and timers** on some controller
+families. That strongly supports pursuing analogous read-only memory views for
+hidden WB2A runtime logic, while still not proving that local function 0x41 is
+literal CPU RAM.
+
+### Virtual_MBUS is a separate M-Bus workstream
+
+The 254 `Virtual_MBUS` rows are overwhelmingly linked to real meter profiles
+such as Calec, Engelmann/Senso, Techem, Viterra, ABB, Siemens and Kamstrup.
+Therefore `Virtual_MBUS` should be treated as **external metering M-Bus**, not
+as another spelling of Viessmann KM-BUS. It is not currently a promising route
+to the WB2A regulation firmware.
+
+### Transparent / virtual / indirect KBus reads expose a structured gateway model
+
+The targeted slice shows:
+
+- all **850** `KBUS_TRANSPARENT_READ` rows have exactly a **2-byte prefix**;
+- **227/232** `KBUS_VIRTUAL_READ` rows have a **2-byte prefix**;
+- **96/97** `KBUS_INDIRECT_READ` rows have a **1-byte prefix**, with event
+  names proving that byte to be the participant number;
+- the indirect address grid advances in regular 8-byte steps for participant
+  datapoint slots.
+
+The combined evidence supports a model in which the main regulation/gateway
+routes requests using explicit target/channel selectors. It does **not** yet
+show that `KBUS_TRANSPARENT_READ` transports arbitrary raw physical frames.
 
 ## 0x41 KMBUS_RAM_READ: local evidence and interpretation
 
@@ -333,12 +457,16 @@ Potentially useful for:
 
 Do not equate it with the boiler coding-plug EEPROM. No such link is proven.
 
-### 3. 0x31 XRAM_READ - high metadata value, local applicability unknown
+### 3. 0x31 XRAM_READ - high conceptual value, local applicability unknown
 
-Vitosoft contains 12 definitions across 20 profiles. Before sending 0x31 on the
-WB2A, enumerate those definitions and inspect their names, addresses, prefixes,
-lengths and device families. If they clearly describe controller RAM-like state,
-they can give us concrete safe selectors.
+The 12 definitions are now fully enumerated. They expose volatile objects such
+as run-on/1-minute/7-minute/13-minute timers, external demand/blocking and water
+pressure in GWG-family devices. This strongly confirms the usefulness of
+RAM-like spaces for hidden runtime state.
+
+They are **not linked to VDensHO1**, so do not send 0x31 blindly on the WB2A.
+Use the source semantics as architectural evidence and prioritize the already
+verified local 0x41 path first.
 
 ### 4. 0x55 KBUS_TRANSPARENT_READ - very high protocol value
 
@@ -374,9 +502,9 @@ how KBus participant virtual data is selected.
 The small, structured sets are valuable for understanding the difference
 between direct channel access, indexed access and data-element access.
 
-## Required offline extraction from the v6 archive
+## Completed targeted extraction from the v6 archive
 
-Create a derived, non-proprietary table containing only the following functions:
+The derived, non-proprietary slice now contains the following functions:
 
 ```text
 KMBUS_EEPROM_READ
@@ -411,20 +539,18 @@ access_mode
 description
 ```
 
-Then produce these aggregates:
+Completed aggregates include:
 
-1. unique `PrefixRead` values per function and count;
-2. prefix length distribution;
+1. unique `PrefixRead` values and counts per function;
+2. prefix-length distribution;
 3. device/profile distribution;
-4. address range and repeated-address aliases;
-5. events where the same semantic name/address appears under more than one read
-   function;
-6. events whose profile is close to VDensHO1;
-7. likely identity/version/configuration objects suitable as safe correlation
-   anchors.
+4. address inventories;
+5. the complete 12-row XRAM set;
+6. the single exceptional no-prefix KMBUS EEPROM row.
 
-This is the most valuable next Vitosoft step. It uses data already captured in
-v6; **no new full collector run is needed**.
+Further semantic clustering of the 850 transparent, 500 EEPROM_LT and 232
+virtual rows remains useful, but the first extraction gate is complete. No new
+full Collector run is needed.
 
 ## Proposed local read-only sequence after the source slice is complete
 
