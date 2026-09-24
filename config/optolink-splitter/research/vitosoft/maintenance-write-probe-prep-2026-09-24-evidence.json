@@ -88,7 +88,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "MAINTENANCE_MQTT_API_SAFE_BEHAVIOR_LIVE_VERIFIED_LOCK_TEST_PENDING",
+  "current_status": "MAINTENANCE_MQTT_API_LOCK_LIVE_VERIFIED_FINAL_WRITE_TEST_PENDING",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -509,6 +509,36 @@
         "0x08A7": "154cce03",
         "0x088A": "d46f0700"
       }
+    },
+    "shared_lock": {
+      "date": "2026-09-24",
+      "status": "live-verified",
+      "lock_path": "/opt/optolink/.maintenance.lock",
+      "cli_result": {
+        "code": "busy",
+        "message": "maintenance interface busy"
+      },
+      "api_result": {
+        "ok": false,
+        "code": "busy",
+        "error": "maintenance interface busy",
+        "lock_path": "/opt/optolink/.maintenance.lock"
+      },
+      "after_release": {
+        "cli_status_ok": true,
+        "hours_threshold_raw": "00",
+        "interval_raw": "00",
+        "maintenance_state_raw": "00",
+        "interval_reference_raw": "c988b56a",
+        "burner_reference_raw": "134cce03",
+        "burner_total_raw": "154cce03",
+        "burner_starts_raw": "d46f0700"
+      },
+      "conclusions": [
+        "The root CLI and unprivileged MQTT API contend on the same advisory lock.",
+        "Both frontends fail closed with a busy error while the lock is held.",
+        "Normal CLI access resumes immediately after the lock is released."
+      ]
     }
   }
 }
