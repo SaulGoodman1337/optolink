@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "issue": {
+    "observation": [
+      "Outdoor temperature normally appeared about every 7 s.",
+      "A later interval was about 17 s.",
+      "GFA P06 had previously shown occasional 1-2 minute visibility delays."
+    ],
+    "diagnosis": [
+      "The upstream scheduler executes all members of a due poll group in one cycle, producing periodic latency spikes for FAST items when NORMAL/SLOW/RARE groups coincide.",
+      "The old profile had approximately 32 FAST, 21 NORMAL, 36 SLOW and 55 RARE serial transactions before byte-bit reuse.",
+      "ONCE was tied to poll_cycle==0 and upstream forcepoll/reloadpoll reset poll_cycle, so startup-only items could be replayed.",
+      "The separate P80 guard issue is fixed in GFA patch helper v1.0.3: transient P80 transport failures no longer erase a previously validated P80=20 identity."
+    ]
+  },
+  "scheduler_patch": {
+    "file": "tools/optolink-apply-phased-poll-scheduler-patch.py",
+    "commit": "3856d5afa1c652ee8383f72214ae0c49dfea3574",
+    "behavior": [
+      "Initial process-start cycle still seeds a complete snapshot.",
+      "Recurring groups are assigned deterministic per-transaction phases.",
+      "Completed ONCE is disabled for the remainder of the process lifetime.",
+      "forcepoll refreshes recurring groups but not completed ONCE.",
+      "reloadpoll preserves completed-ONCE state.",
+      "Explicit forced datapoint readbacks remain unchanged."
+    ]
+  },
+  "optimized_profile": {
+    "commit": "ee783069077ffd690c6411b0f12de3e0cffc2b72",
+    "poll_interval": 0,
+    "groups": {
+      "ONCE": 0,
+      "FAST": 1,
+      "NORMAL": 5,
+      "DIAG": 15,
+      "SLOW": 150,
+      "RARE": 900,
+      "DISABLED": -1
+    },
+    "logical_items": {
+      "FAST": 21,
+      "NORMAL": 19,
+      "DIAG": 10,
+      "SLOW": 12,
+      "RARE": 34,
+      "ONCE": 119
+    },
+    "approximate_serial_transactions": {
+      "FAST": 20,
+      "NORMAL": 19,
+      "DIAG": 9,
+      "SLOW": 12,
+      "RARE": 34,
+      "ONCE": 74
+    },
+    "policy": [
+      "Core burner/pump/GFA process signals remain FAST.",
+      "Outdoor temperature and ordinary user setpoints move to NORMAL.",
+      "Internal BLR/CFDM values move to DIAG.",
+      "Sensor/EEPROM health moves to SLOW.",
+      "Static service/coding values and read-only weekly programs move to ONCE.",
+      "Counters and error histories remain RARE."
+    ]
+  },
+  "deployment": {
+    "helper_commit": "38ee1a07a00978ebb20219c095f9a0f4b5496dc4",
+    "updater_safe": true,
+    "olbreath_change": false,
+    "retained_olbreath_seconds": 0.15
+  },
+  "expected_live_result": {
+    "fast_cadence_seconds": "approximately 4-6 s at olbreath=0.15",
+    "normal_cadence_seconds": "approximately 20-30 s",
+    "goal": "Eliminate periodic 15-20 s FAST latency spikes before any olbreath reduction."
+  },
+  "next_step": "Apply and observe one or more burner cycles. If stable with no FF quarantine, OL errors or restarts, test olbreath 0.10 as a separate controlled change."
+}
