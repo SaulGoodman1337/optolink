@@ -193,9 +193,12 @@ The previous E7 100->99->100 test proved mutation/readback/restore, not RAM-only
 
 - [x] Read `0xA401/A403` together with local A1 setpoints and `0xA441/A443` as absent-M2 controls. Result: all four HCC `nvi*` objects are `20.00 °C`; A1 local values differ and M2 is absent. Strong evidence for inactive/default external LON inputs.
 - [x] Read `0xA3C0 nviDHWC Setpt` with current/effective DHW target `0x6500`. Result: `A3C0=50.00 °C`, `0x6500=5.0 °C`; they are not the same runtime target.
-- [ ] Read `0x2321 ExternRTSolltemperaturA1M1` vs `A401` and configured DHW target `0x6300` vs `A3C0` to close the remaining mapping questions.
+- [x] Read `0x2321 ExternRTSolltemperaturA1M1` vs `A401` and configured DHW target `0x6300` vs `A3C0`. Result: `0x2321=0 °C`, `A401=20.00 °C`; `0x6300=45 °C`, `0x6500=5.0 °C`, `A3C0=50.00 °C`. Direct-mirror hypotheses are rejected.
 - [x] Do not add HCC `nvi*` objects to normal HA polling; current evidence supports them as external/default LON input-side variables.
 - [x] Do not interpret `0xA403=20.00 °C` as an actual physical flow target without correlation; the same-window mismatch to `0x2544` disproves that shortcut.
+- [x] Resolve HCC fallback semantics from the Viessmann LON handbook: HCC `nviHCCxSpaceSet` and `nviHCCxFlowTSet` use 20 °C as the documented fallback when their LON value is unavailable, and are not authoritative in the normal internal-control modes.
+- [x] Resolve DHWC authority semantics from the Viessmann LON handbook: `nviDHWCSetpt` is only used when DHWC ApplicMode selects the LON DHW path; otherwise the internal DHW control remains authoritative.
+- [ ] Final read-only LON closure: read `0xA400` HCC1 ApplicMode, `0xA440` HCC2 ApplicMode and `0xA3C2` DHWC ApplicMode. Do not write any of them.
 
 ## P2 - KM-BUS / Vitotrol
 

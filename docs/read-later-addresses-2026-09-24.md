@@ -80,23 +80,40 @@ These exact-profile datapoints are still not in the production HA poll definitio
 | B | `0x0A5C` | 4 bytes | remote-control A1 software-index block | byte 3 SW index |
 | B | `0x0A60` | 4 bytes | remote-control M2 software-index block | byte 3 SW index |
 
-### Suggested next bounded read-later batch
+### Viessmann LON protocol resolution
 
-The HCC classification is now largely settled: `A401/A403/A441/A443` all read 20.00 °C, including the absent M2 path. The next batch only closes the two remaining mapping questions:
+The Viessmann LON handbook now provides the missing protocol semantics:
 
-```bash
-echo "=== External A1 room-setpoint mapping ==="
-/usr/local/bin/optolink-debug request "r;0x2321;1;raw;False"
-/usr/local/bin/optolink-debug request "r;0xA401;2;raw;False"
+- `nviHCCxSpaceSet` has a documented 20 C fallback if no fresh network value is received.
+- `nviHCCxFlowTSet` likewise uses 20 C as fallback in its applicable LON mode.
+- In normal internal/default HCC operation these LON setpoints are not authoritative; internal controller settings apply.
+- `nviDHWCSetpt` becomes authoritative only when the DHWC ApplicMode selects the external LON DHW path.
 
-echo
-echo "=== Configured vs current vs LON DHW target ==="
-/usr/local/bin/optolink-debug request "r;0x6300;1;raw;False"
-/usr/local/bin/optolink-debug request "r;0x6500;2;raw;False"
-/usr/local/bin/optolink-debug request "r;0xA3C0;2;raw;False"
+Local hardware follow-up:
+
+```text
+0x2306 = 21 C      normal A1 room target
+0x2321 =  0 C      explicit external A1 room target
+A401   = 20.00 C   nviHCC1 SpaceSetpt
+
+0x6300 = 45 C      configured DHW target
+0x6500 =  5.0 C    current/effective DHW target in this idle window
+A3C0   = 50.00 C   nviDHWC Setpt
 ```
 
-No writes are involved. Current evidence already strongly classifies the HCC1/HCC2 `nvi*` objects as network-input-side/default values. The remaining questions are whether `A401` maps to the explicit external-room-setpoint object `0x2321` and whether `A3C0` mirrors the configured user DHW setpoint `0x6300` rather than the current/effective `0x6500`.
+Therefore neither A401 nor A3C0 is a direct mirror of the corresponding local controller target.
+### Suggested next bounded read-later batch
+
+The direct-mirror questions are now closed. The final LON check is only the current applicability/authority mode:
+
+```bash
+echo "=== LON ApplicMode closure ==="
+/usr/local/bin/optolink-debug request "r;0xA400;1;raw;False"
+/usr/local/bin/optolink-debug request "r;0xA440;1;raw;False"
+/usr/local/bin/optolink-debug request "r;0xA3C2;1;raw;False"
+```
+
+No writes are involved. The exact catalog exposes these as HCC1, HCC2 and DHWC LON ApplicMode objects. A result representing AUTO/NUL/internal control closes the local LON-setpoint path as inactive. Preserve raw bytes because catalog and handbook terminology differ slightly for 0x00 versus 0xFF, while both non-overriding states leave the corresponding nvi setpoint non-authoritative.
 
 ### Live HCC/DHWC classification result
 
@@ -116,7 +133,7 @@ No writes are involved. Current evidence already strongly classifies the HCC1/HC
 
 Because the absent M2 HCC objects carry the same 20.00 °C as the A1 HCC objects, the HCC `nvi*` values are strongly consistent with inactive/default LON inputs rather than live internal controller targets.
 
-The DHW case is different: 50.00 °C is plausible as a configured user setpoint. Compare `A3C0` next with `0x6300` before classifying it as default or synchronized.
+Follow-up disproved a direct DHW mirror as well: configured `0x6300=45 °C`, current/effective `0x6500=5.0 °C`, while `A3C0=50.00 °C`. Per the Viessmann LON semantics, A3C0 is only authoritative when DHWC ApplicMode explicitly selects the external LON DHW setpoint path.
 
 Machine evidence: [lon-input-classification-2026-09-24-evidence.json](../config/optolink-splitter/research/vitosoft/lon-input-classification-2026-09-24-evidence.json).
 
