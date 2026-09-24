@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "evidence_level": "hardware_observation",
+  "scope": "Bounded source-derived KMBUS_EEPROM_READ 0x43 block-map probe on local WB2A / VDensHO1 / 20C2.",
+  "source_file": "user-uploaded wb2a-kmbus-eeprom-map probe transcript",
+  "live_run": {
+    "started_at": "2026-09-24T22:51:33.404+02:00",
+    "ended_at": "2026-09-24T22:51:40.897+02:00",
+    "log": "/root/wb2a-kmbus-eeprom-map-20260924-225133-205444.log",
+    "prefix_read": "030000000101",
+    "p300_identity_control": "PASS: 0x00F8/8 -> 20c2000300000103",
+    "id_repeat": ["88", "88", "88"],
+    "id_repeat_stable": true,
+    "blocks": [
+      {"address":"0x0001","length":1,"data":"88"},
+      {"address":"0x000A","length":5,"data":"4000000000"},
+      {"address":"0x000F","length":8,"data":"1f00000000000000"},
+      {"address":"0x0064","length":2,"data":"5497"},
+      {"address":"0x006A","length":6,"data":"549854985498"},
+      {"address":"0x0070","length":7,"data":"54985498549854"},
+      {"address":"0x0078","length":5,"data":"5498549854"},
+      {"address":"0x0078","length":8,"data":"5498549854985498"},
+      {"address":"0x0083","length":4,"data":"97549754"},
+      {"address":"0x0091","length":1,"data":"97"},
+      {"address":"0x00A0","length":10,"data":"54985498549854985498"},
+      {"address":"0x00AA","length":10,"data":"54985498549854985498"},
+      {"address":"0x00B4","length":10,"data":"54985498549854985498"}
+    ],
+    "success_count":"13/13",
+    "error_count":"0/13",
+    "services_restored":true,
+    "vs1_restored":true,
+    "execution_result":"PASS"
+  },
+  "strong_observations": [
+    "All 13 exact source-derived address/length shapes returned normal successful 0x43 responses.",
+    "0x0001/1 returned 0x88 identically in three immediate repeats.",
+    "0x0078/5 returned 5498549854 and 0x0078/8 returned 5498549854985498; the shorter result is exactly the prefix of the longer result and both are repetitions/truncations of the same two-byte word 5498.",
+    "0x006A/6 and 0x0070/7 also show the same 5498 repeated/truncated pattern.",
+    "0x00A0/10, 0x00AA/10 and 0x00B4/10 all returned the exact same 10-byte payload 54985498549854985498 despite representing three distinct source blocks.",
+    "Odd-address 0x0083/4 returned 97549754 and 0x0091/1 returned 97, which is consistent with a phase-shifted two-byte-pattern hypothesis, but that mechanism is not yet proven.",
+    "Low blocks 0x0001, 0x000A and 0x000F do not follow the 5498 repetition pattern and remain candidates for a distinct/stable region."
+  ],
+  "interpretation_boundary": [
+    "A successful 0x43 response does not by itself prove that the returned bytes are literal EEPROM contents.",
+    "The repeated two-byte pattern reproduces the same structural pathology previously observed in prefix-less 0x43/F8 reads. Therefore the 13/13 success must not be described as a validated EEPROM dump.",
+    "The current experiment proves that frames carrying PrefixRead=030000000101 are accepted. It does not yet prove that the controller actually uses those six bytes as a routing selector, because no same-address prefixed-vs-prefixless A/B control has been performed.",
+    "The GWG_BT2/LGM27 source semantics must not be assigned to local WB2A data unless separately correlated."
+  ],
+  "next_step": [
+    "Perform same-address P-N-P comparisons (prefixed, no-prefix, prefixed) on a very small fixed set: 0x0001/1, 0x000A/5, 0x0078/8, 0x00A0/10.",
+    "Use the P-N-P pattern to distinguish real PrefixRead routing from ignored/irrelevant extra bytes while controlling for the known dynamic two-byte result.",
+    "Only if PrefixRead has a reproducible effect should the 0x43 path be interpreted as routed subordinate EEPROM access."
+  ]
+}
