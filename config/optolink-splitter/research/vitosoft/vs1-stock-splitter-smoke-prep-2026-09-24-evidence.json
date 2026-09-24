@@ -217,5 +217,52 @@
     "mqtt": "Uses ReasonCode.is_failure for Paho callback API v2, with integer/value fallback for older callback styles; subscription reason codes are checked as well.",
     "restore": "After restoring the splitter, waits up to 10 seconds for the VS2/300 protocol initialization journal marker before declaring restore verification failure. Baseline protocol is verified before Party is restarted.",
     "duration": "Default live window increased from 30 to 60 seconds. With 212 expected cycle-0 topics and olbreath=0.15, the breath delay alone gives a 31.8-second lower bound before serial/MQTT overhead."
+  },
+  "successful_live_run": {
+    "timestamp_local": "2026-09-24T12:52:47+02:00",
+    "result": "PASS",
+    "duration_seconds": 60,
+    "helper_version": "1.0.6",
+    "preflight": {
+      "stock_verify_mode": "git-origin-main-plus-vdensho1-profile-patches",
+      "stock_verify_ref": "c1ee204a1421447721603c5f21c6da7337fdac97",
+      "profile_patch_blobs_match": 2,
+      "expected_cycle0_mqtt_topics": 212
+    },
+    "temporary_runtime": {
+      "vs1protocol": true,
+      "mqtt_listen": null,
+      "tcpip_port": null,
+      "olbreath": 0.15,
+      "main_pid": 194040
+    },
+    "journal": {
+      "vs1_initialized": true,
+      "main_loop": true,
+      "unexpected_restart": false
+    },
+    "mqtt": {
+      "expected": 212,
+      "seen": 212,
+      "missing": 0,
+      "base": "openv/#"
+    },
+    "restore": {
+      "original_settings_sha256": "afb2beeddbdde21b6bbfdf0a66ec3be0f77998a7c1f50c32d7386d5eefe9ea05",
+      "temporary_settings_sha256": "1de56b47c4b4ade262ea31c9b9069a029ddf6241f28804d77047b8ce3a78a033",
+      "restored_settings_sha256": "afb2beeddbdde21b6bbfdf0a66ec3be0f77998a7c1f50c32d7386d5eefe9ea05",
+      "settings_restored_byte_exact": true,
+      "splitter_restored_running": true,
+      "baseline_protocol_restored": "VS2/300",
+      "backup_removed_after_verified_restore": true
+    },
+    "conclusion": [
+      "The current unmodified upstream splitter runtime plus the two intentional VDensHO1 profile patches can run the full existing HA read poll list in permanent VS1 mode on this exact VDensHO1/20C2 appliance.",
+      "All 212 enabled cycle-0 MQTT topics were freshly published during the bounded 60-second run.",
+      "No internal splitter restart was observed and the main PID remained stable for the test window.",
+      "The original settings were restored byte-for-byte and the normal VS2/300 baseline was re-established.",
+      "This validates the production read path in permanent VS1 mode; it still does not validate VS1 Virtual_WRITE, production GFA polling, or long-duration FF behavior."
+    ],
+    "next_step": "Add a narrow read-only structured GFA_READ 0x6B path under the splitter's existing single VS1 serial owner and stage P80/P06/P09/P87 as diagnostic poll items."
   }
 }
