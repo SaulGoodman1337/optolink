@@ -62,4 +62,8 @@ jobs:
         run: |
           grep -q '^User=optolink$' config/optolink-splitter/optolink-maintenance-api.service
           grep -q '^Group=optolink$' config/optolink-splitter/optolink-maintenance-api.service
-          grep -q '^ExecStart=/usr/local/bin/optolink-maintenance-api$' config/optolink-splitter/optolink-maintenance-api.service
+          grep -q '^ExecStart=/usr/local/bin/optolink-maintenance-api config/optolink-splitter/optolink-maintenance-api.service
+          grep -q '^Wants=network-online.target optolink-splitter.service config/optolink-splitter/optolink-maintenance-api.service
+          grep -q '^Restart=always config/optolink-splitter/optolink-maintenance-api.service
+          ! grep -q '^PartOf=' config/optolink-splitter/optolink-maintenance-api.service
+          ! grep -q '^Requires=optolink-splitter.service config/optolink-splitter/optolink-maintenance-api.service
