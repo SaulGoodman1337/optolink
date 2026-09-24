@@ -141,7 +141,7 @@ poll_list = {
             "enabled_by_default": True,
             "icon": "mdi:identifier",
             "poll": [
-                ("NORMAL", "gfa_p80_typ", 0x4050, 1, "gfa:raw", False),
+                ("FAST", "gfa_p80_typ", 0x4050, 1, "gfa:raw", False),
             ],
         },
         {
