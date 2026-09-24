@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "p87_semantics": {
+    "exact_local_target": {
+      "event_id": 8211,
+      "parameter": "P87",
+      "address": "0x4057",
+      "label": "GFA Status 3",
+      "length_bytes": 1,
+      "conversion": "NoConversion"
+    },
+    "direct_bit_definition_found": false,
+    "nearby_metadata_note": "P89 has explicit b0/b1/b2 labels in the same Vitosoft-derived export, while P87 remains generically named. This supports treating the missing P87 bit map as genuinely unresolved in the available metadata.",
+    "live_ordering_evidence": "config/optolink-splitter/research/vitosoft/gfa-p87-p09-hires-run-2026-09-24-evidence.json",
+    "external_context": [
+      {
+        "source": "Viessmann Climate Solutions Community, Viessmann Customer-Care response",
+        "url": "https://community.viessmann.de/t5/Sonstige-Produkte/VSKO-Fehler-4-und-132/td-p/120882",
+        "statement": "VSKO 61/189 correspond to E8: ionization current during a 10-second start phase is outside the valid range; VSKO code 5 is flame loss during stabilization time."
+      },
+      {
+        "source": "Vitodens 200 WB2A service instruction / ionization-current section",
+        "url": "https://www.manualslib.de/manual/13800/Viessmann-Vitodens-200.html?page=26",
+        "statement": "Minimum ionization current is expected already when the flame forms, approximately 2-3 seconds after the gas combination valve opens."
+      }
+    ],
+    "interpretation": "The measured P87 bit-1 transition precedes P09 plateau release and occurs on the approximately 10-second post-start timescale. Combined with the service/VSKO context, this is more compatible with a marker/precursor near the end of a supervised start or stabilization interval than with first flame recognition.",
+    "prohibited_overclaim": [
+      "Do not name P87 bit 1 as flame detected.",
+      "Do not name P87 bit 1 as flame stabilized.",
+      "Do not name P87 bit 1 as regulation enabled.",
+      "Do not claim P87 bit 1 causes P09 plateau release."
+    ]
+  },
+  "upstream_integration_analysis": {
+    "repository": "philippoo66/optolink-splitter",
+    "inspected_main_commit": "c1ee204a1421447721603c5f21c6da7337fdac97",
+    "splitter_version_in_source": "1.11.5.0",
+    "findings": [
+      "The splitter can initialize permanently as VS1/KW when settings.vs1protocol is true.",
+      "Normal read/write datapoint APIs map to VS1 F7 Virtual_READ and F4 Virtual_WRITE in that mode.",
+      "The main loop serializes poll-list, MQTT, and TCP work through one Optolink serial owner.",
+      "VS1 keepalive uses a Virtual_READ of 0x00F8 when idle for roughly 0.5 seconds.",
+      "Function-code metadata knows GFA_READ 0x6B, but the structured generic request path raises NotImplementedError in VS1 mode.",
+      "optolinkvs1.py currently exposes structured Virtual_READ/Virtual_WRITE only; no structured GFA_READ helper is present."
+    ],
+    "production_direction": "If hardware compatibility is confirmed, prefer one permanent VS1 serial owner and add a narrow structured GFA_READ path to the splitter rather than repeatedly switching P300<->VS1 or running a second direct-serial process.",
+    "updater_constraint": "The local updater hard-resets /opt/optolink to upstream origin/main. Any local production patch must therefore be reapplied/pinned atomically by the installer/updater or be accepted upstream."
+  },
+  "next_hardware_probe": {
+    "file": "config/optolink-splitter/wb2a-vs1-mixed-compat-probe.py",
+    "version": "1.0.0",
+    "commit": "2b7b5cff88dd732ea062b70873bca1873fcfad5a",
+    "git_blob": "dab9f3e5134c7706e269b7a111e2f715c8fda225",
+    "sha256": "0e2bc4cc59e54d6c189d31545436328194f515cb9acb7a2b4d1807102ec5bb69",
+    "parent_p80_sha256": "6de883c422a09c821b342d12e5bb71dd3d518d8115ec2495bdfb202f5a7f50cb",
+    "writes": false,
+    "stable_virtual_reads": [
+      "0x00F8/2 device identity",
+      "0x00FB/1 device software index",
+      "0x2306/1 A1 normal/day setpoint",
+      "0x2323/1 operating mode",
+      "0x6300/1 DHW setpoint",
+      "0x6773/1 circulation interval",
+      "0x778C/2 controller software raw pair"
+    ],
+    "mixed_vs1_reads": [
+      "F7 stable Virtual_READ values",
+      "6B P80 0x4050",
+      "6B P06 0x4006",
+      "6B P09 0x4009",
+      "6B P87 0x4057"
+    ],
+    "pass_criteria": [
+      "P300 baseline identity is 20C2.",
+      "VS1 F7 00F8 identity is 20C2.",
+      "Every stable value exactly matches P300 baseline, VS1 F7, and P300 post-check.",
+      "Two same-session P80 guards both equal 0x20.",
+      "No GFA sample returns 0xFF.",
+      "P300 post-check and service restoration succeed."
+    ],
+    "test_note": "Published helper embeds 8 new frame/allowlist tests and recursively runs 23 pinned P80 tests. The runtime logic was additionally exercised pre-publication with 8 build-harness mixed-session integration scenarios."
+  }
+}
