@@ -3,7 +3,7 @@ set -euo pipefail
 
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
-HELPER_REV="2026-09-24-r6-phased-poll"
+HELPER_REV="2026-09-24-r7-phased-poll"
 APP_DIR="/opt/optolink"
 VALIDATED_UPSTREAM_REF="c1ee204a1421447721603c5f21c6da7337fdac97"
 
@@ -79,6 +79,13 @@ python3 -m py_compile "$gfa_patcher_tmp"
 cs_repo_fetch tools/optolink-apply-phased-poll-scheduler-patch.py "$poll_patcher_tmp"
 python3 -m py_compile "$poll_patcher_tmp"
 
+# Run every patcher's pure self-test before touching the installed profile or
+# runtime tree. A broken test fixture must never leave a half-staged deploy.
+echo "Preflighting VS1/GFA and phased scheduler patchers..."
+"$APP_DIR/venv/bin/python" "$gfa_patcher_tmp" --self-test
+"$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --self-test
+echo "Patcher preflight OK."
+
 cp "$tmp" "$APP_DIR/profiles/$PROFILE_NAME"
 
 cp -a "$APP_DIR/settings_ini.py" "$APP_DIR/settings_ini.py.bak-$STAMP"
@@ -115,12 +122,18 @@ rollback_profile() {
 cp "$tmp" "$APP_DIR/homeassistant_poll_list.py"
 
 echo "Applying validated read-only VS1 GFA runtime integration..."
-"$APP_DIR/venv/bin/python" "$gfa_patcher_tmp" --self-test
-"$APP_DIR/venv/bin/python" "$gfa_patcher_tmp" --apply
+if ! "$APP_DIR/venv/bin/python" "$gfa_patcher_tmp" --apply; then
+  echo "VS1/GFA runtime integration failed." >&2
+  rollback_profile
+  exit 1
+fi
 
 echo "Applying phased poll scheduler..."
-"$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --self-test
-"$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --apply
+if ! "$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --apply; then
+  echo "Phased poll scheduler integration failed." >&2
+  rollback_profile
+  exit 1
+fi
 
 echo "Enabling validated permanent VS1 timing..."
 python3 - "$APP_DIR/settings_ini.py" <<'PY'
