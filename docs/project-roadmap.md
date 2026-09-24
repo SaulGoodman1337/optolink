@@ -2,11 +2,9 @@
 
 Current working backlog for the Optolink / Home Assistant / WB2A project.
 
-Last reviewed: 2026-09-23
+Last reviewed: 2026-09-24
 
-The purpose of this file is to keep open work from the different project chats
-in one place. Detailed experimental evidence remains in the device/coding-plug
-research documents; this file contains tasks and next actions.
+The purpose of this file is to keep cross-project work in one place. For WB2A reverse-engineering execution order, completion criteria and research TODOs, use [research-plan-2026-09-24.md](research-plan-2026-09-24.md). Historical roadmap sections below are retained for context and may contain superseded next-step text.
 
 ## Priority: next session
 
@@ -566,7 +564,7 @@ Detailed plan:
 
 ### Vitosoft SQL: device software-update tables
 
-Status: **open / high priority**
+Status: **completed negative result / do not repeat without a new source**
 
 The deep Vitosoft collector exposed a separate device-software-update data
 model in addition to Vitosoft's own PC application updater. Before any further
@@ -634,9 +632,7 @@ Collector support is now prepared:
 - automatic `AttachDbFilename` / MDF attach is intentionally not performed,
   because attaching a database changes SQL Server state.
 
-Next execution task: run the private collector on the Vitosoft Windows system,
-store the resulting raw/private bundle outside the public repository, then
-inspect the SQL priority exports for VDensHO1 / 20C2.
+Completion update: the private collector has been run through v6. Both priority update tables were exported successfully and contain zero rows. There is no local WB2A update entry to inspect further in these same tables.
 
 Desired outcome:
 
@@ -651,7 +647,7 @@ Detailed firmware context:
 
 ### Private full Vitosoft archival collector
 
-Status: **v4 hardened collector prepared / fresh full run pending**
+Status: **v6 full run successful, verified and privately archived**
 
 A second, intentionally comprehensive collector now exists for material that
 should later live in a **private** research repository:
@@ -708,14 +704,7 @@ Current collector checkpoint (2026-09-23):
   next execution is a completely fresh full collector run rather than a
   resume.
 
-Execution task:
-
-1. run the current private collector from a fresh output directory;
-2. retain the original output and SHA256 manifest unchanged;
-3. inspect prerequisite report, self-test/tool-dump results, Deep output and
-   SQL priority exports before drawing new conclusions;
-4. create/use a private Git repository with Git LFS for raw binaries/databases;
-5. import only derived conclusions/hashes/scripts back into the public repo.
+Current result: Collector v6 `20260924-143439` completed Deep, SQL, All-Devices and Tool-Dumps successfully; 15,249/15,249 manifest files were hash-verified and the private release asset was fresh-download verified. No generic full rerun is planned. Future collection should be targeted only at a newly identified gap.
 
 ### Coding-plug read/write and external dumping
 
