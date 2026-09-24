@@ -66,6 +66,7 @@ ct/                         Proxmox LXC entrypoints
 install/                    In-container installers
 tools/                      Update, profile, debug and emulator helpers
 config/optolink-splitter/   Profiles, Home Assistant config and research
+apps/optolink-web/          Optolink-Web application
 docs/                       User documentation
 json/                       Helper metadata
 ```
