@@ -94,6 +94,12 @@ chmod 755 /usr/local/bin/optolink-apply-vdensho1-ha-profile
 cs_repo_fetch tools/optolink-apply-vscotho1-profile.sh /usr/local/bin/optolink-apply-vscotho1-profile
 chmod 755 /usr/local/bin/optolink-apply-vscotho1-profile
 
+# Guarded maintenance write/reset interface. Restrict execution to root/group.
+cs_repo_fetch tools/optolink-maintenance.py /usr/local/bin/optolink-maintenance
+chmod 750 /usr/local/bin/optolink-maintenance
+chown root:root /usr/local/bin/optolink-maintenance
+ln -sf /usr/local/bin/optolink-maintenance /usr/bin/optolink-maintenance
+
 cs_repo_fetch tools/optolink-party-emulator.py /usr/local/bin/optolink-party-emulator
 chmod 755 /usr/local/bin/optolink-party-emulator
 chown root:root /usr/local/bin/optolink-party-emulator
