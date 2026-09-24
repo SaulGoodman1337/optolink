@@ -75,13 +75,32 @@ class MaintenanceApi:
         self.command_topic = f"{self.base_topic}/maintenance/cmnd"
         self.result_topic = f"{self.base_topic}/maintenance/result"
         self.state_topic = f"{self.base_topic}/maintenance/state"
+        self.status_topic = f"{self.base_topic}/maintenance/status"
         self.availability_topic = f"{self.base_topic}/maintenance/availability"
+        self.stage_hours_set_topic = (
+            f"{self.base_topic}/maintenance/stage/hours/set"
+        )
+        self.stage_hours_state_topic = (
+            f"{self.base_topic}/maintenance/stage/hours/state"
+        )
+        self.stage_months_set_topic = (
+            f"{self.base_topic}/maintenance/stage/months/set"
+        )
+        self.stage_months_state_topic = (
+            f"{self.base_topic}/maintenance/stage/months/state"
+        )
 
         self.client = None
-        self.actions: queue.Queue[str] = queue.Queue(maxsize=QUEUE_SIZE)
+        self.actions: queue.Queue[tuple[str, str]] = queue.Queue(
+            maxsize=QUEUE_SIZE
+        )
         self.stop_event = threading.Event()
         self.recent_ids: deque[str] = deque()
         self.recent_results: dict[str, dict[str, Any]] = {}
+        self.staged_hours: int | None = None
+        self.staged_months: int | None = None
+        self.stage_hours_dirty = False
+        self.stage_months_dirty = False
 
     def connect(self) -> None:
         self.client = connect_mqtt(retries=10, delay=3)
@@ -89,28 +108,41 @@ class MaintenanceApi:
             raise RuntimeError("MQTT connection failed")
 
         self.client.on_message = self.on_message
-        self.client.subscribe(self.command_topic)
+        self.client.subscribe(
+            [
+                (self.command_topic, 0),
+                (self.stage_hours_set_topic, 0),
+                (self.stage_months_set_topic, 0),
+            ]
+        )
         time.sleep(0.5)
         self.client.publish(self.availability_topic, "online", retain=True)
         log(
             f"listening on {self.command_topic}; "
+            f"stage-hours={self.stage_hours_set_topic}; "
+            f"stage-months={self.stage_months_set_topic}; "
             f"result={self.result_topic}; state={self.state_topic}"
         )
 
     def on_message(self, client, userdata, message) -> None:  # noqa: ANN001
-        if message.topic != self.command_topic:
+        topic_to_kind = {
+            self.command_topic: "request",
+            self.stage_hours_set_topic: "stage_hours",
+            self.stage_months_set_topic: "stage_months",
+        }
+        kind = topic_to_kind.get(message.topic)
+        if kind is None:
             return
 
-        # Commands are transactional events, never state. Refuse retained
-        # commands so a broker cannot replay an old write/reset after service
-        # restart or resubscription.
+        # Commands and staging changes are events, never retained state.
+        # Retained stage *state* is published on separate state topics.
         if getattr(message, "retain", False):
-            log("WARNING: ignoring retained maintenance command")
+            log(f"WARNING: ignoring retained maintenance event on {message.topic}")
             return
 
         raw = message.payload.decode(errors="replace")
         try:
-            self.actions.put_nowait(raw)
+            self.actions.put_nowait((kind, raw))
         except queue.Full:
             log("WARNING: maintenance request queue is full; dropping request")
 
@@ -129,6 +161,125 @@ class MaintenanceApi:
             json.dumps(result, sort_keys=True, separators=(",", ":")),
             retain=False,
         )
+
+    def publish_operation_status(
+        self,
+        state: str,
+        *,
+        action: str | None = None,
+        request_id: str | None = None,
+        code: str | None = None,
+        error: str | None = None,
+        changed: bool | None = None,
+        staged_value: int | None = None,
+    ) -> None:
+        payload: dict[str, Any] = {
+            "api_version": API_VERSION,
+            "state": state,
+            "updated_at": utc_now(),
+        }
+        if action is not None:
+            payload["action"] = action
+        if request_id is not None:
+            payload["request_id"] = request_id
+        if code is not None:
+            payload["code"] = code
+        if error is not None:
+            payload["error"] = error
+        if changed is not None:
+            payload["changed"] = changed
+        if staged_value is not None:
+            payload["staged_value"] = staged_value
+
+        self.client.publish(
+            self.status_topic,
+            json.dumps(payload, sort_keys=True, separators=(",", ":")),
+            retain=True,
+        )
+
+    def publish_stage_states(self) -> None:
+        if self.staged_hours is not None:
+            self.client.publish(
+                self.stage_hours_state_topic,
+                str(self.staged_hours),
+                retain=True,
+            )
+        if self.staged_months is not None:
+            self.client.publish(
+                self.stage_months_state_topic,
+                str(self.staged_months),
+                retain=True,
+            )
+
+    def sync_stage_from_status(
+        self,
+        status: dict[str, Any],
+        *,
+        force_hours: bool = False,
+        force_months: bool = False,
+    ) -> None:
+        if force_hours or not self.stage_hours_dirty:
+            self.staged_hours = int(status["hours_threshold"]["hours"])
+            self.stage_hours_dirty = False
+
+        if force_months or not self.stage_months_dirty:
+            self.staged_months = int(status["interval"]["months"])
+            self.stage_months_dirty = False
+
+        self.publish_stage_states()
+
+    def handle_stage(self, kind: str, raw: str) -> None:
+        try:
+            text = raw.strip()
+            if not re.fullmatch(r"-?[0-9]+", text):
+                raise MaintenanceError(
+                    "staged value must be an integer",
+                    code="invalid_stage_value",
+                )
+            value = int(text, 10)
+
+            if kind == "stage_hours":
+                if value < 0 or value > 10000 or value % 100 != 0:
+                    raise MaintenanceError(
+                        "staged burner-hours value must be 0..10000 "
+                        "in exact 100 h steps",
+                        code="invalid_hours",
+                    )
+                self.staged_hours = value
+                self.stage_hours_dirty = True
+                action = "stage_hours"
+            elif kind == "stage_months":
+                if value < 0 or value > 24:
+                    raise MaintenanceError(
+                        "staged maintenance interval must be 0..24 months",
+                        code="invalid_months",
+                    )
+                self.staged_months = value
+                self.stage_months_dirty = True
+                action = "stage_months"
+            else:
+                raise MaintenanceError(
+                    f"unsupported stage kind: {kind}",
+                    code="unsupported_action",
+                )
+
+            self.publish_stage_states()
+            self.publish_operation_status(
+                "staged",
+                action=action,
+                staged_value=value,
+            )
+            log(f"{action} value={value}")
+
+        except MaintenanceError as exc:
+            self.publish_stage_states()
+            self.publish_operation_status(
+                "error",
+                action=kind,
+                code=exc.code,
+                error=str(exc),
+            )
+            log(f"{kind} ERROR code={exc.code}: {exc}")
 
     def publish_state(self, status: dict[str, Any]) -> None:
         since = status["burner_since_reference"]["hours"]
@@ -296,9 +447,24 @@ class MaintenanceApi:
             status = executed.get("status")
             if status:
                 self.publish_state(status)
+                self.sync_stage_from_status(
+                    status,
+                    force_hours=action == "set_hours",
+                    force_months=action == "set_months",
+                )
+
+            changed = None
+            if isinstance(executed.get("data"), dict):
+                changed = executed["data"].get("changed")
 
             self.cache_result(request_id, result)
             self.publish_result(result)
+            self.publish_operation_status(
+                "ok",
+                action=action,
+                request_id=request_id,
+                changed=changed,
+            )
             log(f"request_id={request_id} action={action} OK")
 
         except MaintenanceError as exc:
@@ -316,6 +482,13 @@ class MaintenanceApi:
             if request_id is not None:
                 self.cache_result(request_id, result)
             self.publish_result(result)
+            self.publish_operation_status(
+                "error",
+                action=action,
+                request_id=request_id,
+                code=exc.code,
+                error=str(exc),
+            )
             log(
                 f"request_id={request_id or '-'} action={action or '-'} "
                 f"ERROR code={exc.code}: {exc}"
@@ -335,6 +508,13 @@ class MaintenanceApi:
             if request_id is not None:
                 self.cache_result(request_id, result)
             self.publish_result(result)
+            self.publish_operation_status(
+                "error",
+                action=action,
+                request_id=request_id,
+                code="internal_error",
+                error=str(exc),
+            )
             log(
                 f"request_id={request_id or '-'} action={action or '-'} "
                 f"INTERNAL ERROR: {exc}"
@@ -344,8 +524,20 @@ class MaintenanceApi:
         try:
             status = get_status(quiet=True)
             self.publish_state(status)
-            log("published initial maintenance state")
+            self.sync_stage_from_status(
+                status,
+                force_hours=True,
+                force_months=True,
+            )
+            self.publish_operation_status("ready")
+            log("published initial maintenance state and staging values")
         except Exception as exc:  # noqa: BLE001
+            self.publish_operation_status(
+                "error",
+                action="initial_status",
+                code="initial_status_failed",
+                error=str(exc),
+            )
             log(f"WARNING: initial maintenance status failed: {exc}")
 
     def run(self) -> None:
@@ -355,10 +547,16 @@ class MaintenanceApi:
         try:
             while not self.stop_event.is_set():
                 try:
-                    raw = self.actions.get(timeout=0.5)
+                    kind, raw = self.actions.get(timeout=0.5)
                 except queue.Empty:
                     continue
-                self.handle_raw_request(raw)
+
+                if kind == "request":
+                    self.handle_raw_request(raw)
+                elif kind in {"stage_hours", "stage_months"}:
+                    self.handle_stage(kind, raw)
+                else:
+                    log(f"WARNING: ignoring unknown queued action kind={kind}")
         finally:
             if self.client is not None:
                 try:
