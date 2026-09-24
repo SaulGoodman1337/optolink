@@ -57,7 +57,7 @@
       "unit": "custom Vitosoft conversion",
       "read_only_probe": "r;0x756C;4;raw;False",
       "production_status": "readable; raw/reference semantics only",
-      "interpretation": "Live follow-up proved little-endian Unix-seconds reference timestamp behavior after 0x5723 changes; raw value is not elapsed months."
+      "interpretation": "Live follow-up proved a seconds-like 32-bit LastCheckInterval reference that is re-baselined by maintenance-interval writes. Exact wall-clock conversion remains unresolved; do not label it as a Unix timestamp."
     },
     {
       "address": "0x7570",
@@ -122,7 +122,8 @@
       "The observed zero configuration at 0x5721 and 0x5723 means no nonzero maintenance threshold/interval is currently configured; do not reinterpret this as proof of a historical maintenance event.",
       "0x5724=0 is source-defined Grundzustand, not an active maintenance status.",
       "The two 4-byte counters are zero locally; zero is endian-independent, so this capture alone cannot distinguish endian interpretation for future nonzero values. Production should use the splitter's established unsigned integer decoding convention and retain raw evidence if a future nonzero value appears.",
-      "Follow-up testing corrected the initial plain-counter assumption: 0x756C uses custom LastCheckInterval reference-time semantics and 0x7570 uses custom LastBurnerCheck semantics."
+      "Follow-up testing corrected the initial plain-counter assumption: 0x756C uses custom LastCheckInterval reference-time semantics and 0x7570 uses custom LastBurnerCheck semantics.",
+      "Correction: the nonzero 0x756C value must not be labeled as a verified Unix timestamp. LastCheckInterval is a special Vitosoft converter whose exact wall-clock algorithm remains unresolved."
     ]
   }
 }
