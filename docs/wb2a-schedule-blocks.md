@@ -240,12 +240,35 @@ byte-exact reads prove that the write was applied. For guarded schedule writes,
 the post-write byte-exact readback is therefore the authoritative persistence
 criterion.
 
+### Second-interval write test — PASS
+
+A second guarded probe on Heating M1 Sunday verified that bytes 2/3 are the
+second independent start/end pair.
+
+Temporary test:
+
+~~~text
+28 40 80 9D FF FF FF FF
+05:00-08:00, 16:00-19:50
+~~~
+
+Observed result:
+
+- exact test readback: `2840809DFFFFFFFF`;
+- exact restore readback: `28A0FFFFFFFFFFFF`;
+- therefore slot 2 is hardware-confirmed as byte 2=start / byte 3=end;
+- the same VS1/KW short-response timeout behavior occurred and remains
+  diagnostic only; byte-exact readback confirmed persistence and restoration.
+
 Remaining block-semantic tests before enabling Home Assistant writes:
 
-1. two active intervals to verify slot 2;
-2. four active intervals to exercise all eight bytes as time values;
-3. shrink back to one interval to verify that removed slots become `FF FF`;
-4. `24:00` as an interval end;
+1. four active intervals to exercise all eight bytes as time values;
+2. restoring from that four-slot test back to the one-slot baseline will also
+   verify that previously populated slots 2..4 can be cleared back to
+   `FF FF`;
+3. `24:00` as an interval end;
+4. optionally verify an entirely empty day (`FF FF FF FF FF FF FF FF`) so
+   the UI can safely represent "no switching interval";
 5. after those pass, validate the production MQTT/HA write path with strict
    project-side validation and non-optimistic readback.
 
