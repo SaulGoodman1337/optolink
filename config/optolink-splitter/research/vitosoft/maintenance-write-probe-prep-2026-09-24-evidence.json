@@ -29,7 +29,7 @@
         "0": "Grundzustand",
         "1": "Wartung"
       },
-      "caveat": "Live test confirmed state 00 -> 01 -> 00. The transition back to 00 updates both maintenance reference registers while lifetime burner runtime and start counters remain unchanged.",
+      "caveat": "Live tests confirm state 00 -> 01 -> 00 and re-baselining of 0x756C. The effect on 0x7570 is conditional: an early reset initialized a zero burner reference, while a later CLI reset with 0x5721=0 h left an existing 0x7570 reference unchanged.",
       "reset_event": {
         "event_id": 867,
         "token": "K24_KonfiStatusWartungFunktionReset",
@@ -52,7 +52,7 @@
       "access": "read-only (Vitosoft Type 1)",
       "block_length": 4,
       "conversion": "LastBurnerCheck",
-      "interpretation": "read-only burner-runtime baseline in raw seconds; elapsed burner hours since the current maintenance reference = (current 0x08A7 raw seconds - stored 0x7570 raw seconds) / 3600. The reference is updated by 0x5724 maintenance reset and can also be updated by changing 0x5721.",
+      "interpretation": "read-only burner-runtime baseline in raw seconds; elapsed burner hours since the current maintenance reference = (current 0x08A7 raw seconds - stored 0x7570 raw seconds) / 3600. It can be updated by changing 0x5721 and was initialized by an earlier 0x5724 reset, but a later 0x5724 reset with 0x5721=0 h left it unchanged.",
       "write_policy": "do not write"
     }
   },
@@ -88,7 +88,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "MAINTENANCE_BACKEND_SET_MONTHS_WRITE_PATH_LIVE_VERIFIED",
+  "current_status": "MAINTENANCE_BACKEND_ALL_CLI_PATHS_LIVE_VERIFIED_CONDITIONAL_7570_RESET_EFFECT",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -248,7 +248,7 @@
     },
     "reset": {
       "sequence": "0x5724 = 1, then 0x5724 = 0",
-      "effect": "updates 0x756C and 0x7570 maintenance references",
+      "effect": "0x5724 1 -> 0 reliably re-baselines 0x756C; 0x7570 effect is conditional on controller/configuration state and must not be assumed.",
       "does_not_reset": [
         "0x08A7 total burner runtime",
         "0x088A total burner starts",
@@ -406,6 +406,47 @@
         "Every actual 0x5723 write re-baselines only the LastCheckInterval reference at 0x756C.",
         "0x7570 remains unchanged by 0x5723 changes.",
         "The reference advanced by 6 counts across the approximately 6-second set-to-zero restore interval, reinforcing seconds-like behavior without asserting a wall-clock epoch."
+      ]
+    },
+    "reset_write_path": {
+      "date": "2026-09-24",
+      "status": "live-verified-with-conditional-reference-effect",
+      "baseline": {
+        "hours_threshold_raw": "00",
+        "interval_raw": "00",
+        "maintenance_state_raw": "00",
+        "interval_reference_raw": "5f87b56a",
+        "interval_reference_uint_le": 1790281567,
+        "burner_reference_raw": "134cce03",
+        "burner_reference_seconds": 63851539,
+        "burner_total_raw": "154cce03",
+        "burner_total_seconds": 63851541,
+        "burner_starts_raw": "d46f0700"
+      },
+      "sequence": {
+        "state_1_write": "w;0x5724;1;1",
+        "state_1_readback": "01",
+        "state_0_write": "w;0x5724;1;0",
+        "state_0_readback": "00"
+      },
+      "after": {
+        "interval_reference_raw": "c988b56a",
+        "interval_reference_uint_le": 1790281929,
+        "interval_reference_changed": true,
+        "interval_reference_delta_counts": 362,
+        "burner_reference_raw": "134cce03",
+        "burner_reference_seconds": 63851539,
+        "burner_reference_changed": false,
+        "burner_total_raw": "154cce03",
+        "burner_total_seconds": 63851541,
+        "burner_starts_raw": "d46f0700"
+      },
+      "conclusions": [
+        "The guarded CLI reset path is live-verified end-to-end, including 0x5724 readback 00 -> 01 -> 00 and final Grundzustand.",
+        "0x756C was re-baselined by the maintenance reset.",
+        "0x7570 remained unchanged in this reset capture while the configured burner-hours threshold 0x5721 was 0 h.",
+        "The earlier reset capture initialized 0x7570 from zero, so the burner-reference effect of 0x5724 is not unconditional and must be reported as controller-state/configuration dependent.",
+        "0x08A7 and 0x088A did not decrease or reset."
       ]
     }
   }
