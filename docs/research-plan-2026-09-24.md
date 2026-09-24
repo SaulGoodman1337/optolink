@@ -154,6 +154,25 @@ The previous E7 100->99->100 test proved mutation/readback/restore, not RAM-only
 - [ ] Do not treat A0=1 as emulation; the local BC fault already disproves that shortcut.
 - [ ] Revisit Optolink-only emulation only if a concrete receive-side/member/mailbox mechanism is found.
 
+## Home Assistant dashboard implementation checkpoint
+
+The current dashboard implementation findings and UI backlog are documented in
+[`homeassistant-dashboard-checkpoint-2026-09-24.md`](homeassistant-dashboard-checkpoint-2026-09-24.md).
+
+Key points carried into the execution plan:
+
+- the intermittent Diagnose color/background issue is observed but its exact
+  frontend root cause is not yet proven;
+- the `fehlerhistorie_*_anzeige` aliases currently bypass the verified system
+  fault-code translation because they subscribe to raw MQTT topics without
+  their own `value_template`;
+- `0x555A` effective boiler target and several other already-polled values can
+  be added to the UI without increasing Optolink traffic;
+- maintenance/service candidates from the exact VDensHO1 metadata remain
+  read-only verification tasks before HA exposure;
+- finish and verify Diagnose before redesigning Pumpen, Heizung, Heizkurve,
+  Nachtabsenkung, Zeitprogramme and Graphen.
+
 ## P3 - Home Assistant and operator-facing follow-up
 
 - [ ] Keep P06 as the canonical blower RPM entity.
