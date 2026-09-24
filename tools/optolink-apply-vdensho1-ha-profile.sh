@@ -90,6 +90,19 @@ cp "$tmp" "$APP_DIR/profiles/$PROFILE_NAME"
 
 cp -a "$APP_DIR/settings_ini.py" "$APP_DIR/settings_ini.py.bak-$STAMP"
 
+# Back up every upstream runtime file modified by the GFA and phased-scheduler
+# integrations. The helper must never leave a partially patched runtime tree.
+runtime_patch_files=(
+  optolinkvs1.py
+  vs12_adapter.py
+  requests_util.py
+  c_polllist.py
+  optolinkvs2_switch.py
+)
+for rel in "${runtime_patch_files[@]}"; do
+  cp -a "$APP_DIR/$rel" "$APP_DIR/$rel.bak-$STAMP"
+done
+
 had_poll=0
 had_ha=0
 if [[ -f "$APP_DIR/poll_list.py" ]]; then
@@ -114,9 +127,17 @@ rollback_profile() {
   else
     rm -f "$APP_DIR/homeassistant_poll_list.py"
   fi
+  for rel in "${runtime_patch_files[@]}"; do
+    if [[ -f "$APP_DIR/$rel.bak-$STAMP" ]]; then
+      cp -a "$APP_DIR/$rel.bak-$STAMP" "$APP_DIR/$rel"
+    fi
+  done
   chown optolink:optolink "$APP_DIR/settings_ini.py" 2>/dev/null || true
   [[ ! -f "$APP_DIR/poll_list.py" ]] || chown optolink:optolink "$APP_DIR/poll_list.py"
   [[ ! -f "$APP_DIR/homeassistant_poll_list.py" ]] || chown optolink:optolink "$APP_DIR/homeassistant_poll_list.py"
+  for rel in "${runtime_patch_files[@]}"; do
+    chown optolink:optolink "$APP_DIR/$rel" 2>/dev/null || true
+  done
 }
 
 cp "$tmp" "$APP_DIR/homeassistant_poll_list.py"
@@ -132,7 +153,7 @@ fi
 # first attempt follows the fast global VS1 cadence; a raw-FF recovery retry
 # gets a conservative 150 ms gap. Fail closed if a future patcher revision no
 # longer provides exactly this behavior.
-python3 - "$APP_DIR/optolinkvs1.py" <<'PY'
+if ! python3 - "$APP_DIR/optolinkvs1.py" <<'PY'
 import ast
 from pathlib import Path
 import sys
@@ -180,6 +201,11 @@ print(
     "with one raw-FF recovery retry"
 )
 PY
+then
+  echo "GFA timing contract validation failed." >&2
+  rollback_profile
+  exit 1
+fi
 
 echo "Applying phased poll scheduler..."
 if ! "$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --apply; then
