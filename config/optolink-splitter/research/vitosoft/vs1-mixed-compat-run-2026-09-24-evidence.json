@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "source": {
+    "upload_name": "Eingefügter Text(20260924-093231).txt",
+    "sha256": "0927a0038b5f33c7aa56f501740806fc76f51158789c88d60d652e9e95ae6c54",
+    "bytes": 13727,
+    "lines": 230,
+    "log": "/root/wb2a-vs1-mixed-compat-20260924-113203-192051.log"
+  },
+  "helper": {
+    "file": "config/optolink-splitter/wb2a-vs1-mixed-compat-probe.py",
+    "version": "1.0.0",
+    "commit": "2b7b5cff88dd732ea062b70873bca1873fcfad5a",
+    "git_blob": "dab9f3e5134c7706e269b7a111e2f715c8fda225",
+    "sha256": "0e2bc4cc59e54d6c189d31545436328194f515cb9acb7a2b4d1807102ec5bb69"
+  },
+  "test": {
+    "result": "PASS",
+    "read_only": true,
+    "embedded_tests": {
+      "local_mixed": "8/8 PASS",
+      "pinned_p80": "23/23 PASS"
+    },
+    "stable_values": {
+      "0x00F8": {
+        "name": "device_id",
+        "p300_before": "20c2",
+        "vs1_f7": "20c2",
+        "p300_after": "20c2"
+      },
+      "0x00FB": {
+        "name": "device_sw_index",
+        "p300_before": "03",
+        "vs1_f7": "03",
+        "p300_after": "03"
+      },
+      "0x2306": {
+        "name": "day_setpoint",
+        "p300_before": "15",
+        "vs1_f7": "15",
+        "p300_after": "15"
+      },
+      "0x2323": {
+        "name": "operating_mode",
+        "p300_before": "02",
+        "vs1_f7": "02",
+        "p300_after": "02"
+      },
+      "0x6300": {
+        "name": "dhw_setpoint",
+        "p300_before": "37",
+        "vs1_f7": "37",
+        "p300_after": "37"
+      },
+      "0x6773": {
+        "name": "circulation_interval",
+        "p300_before": "00",
+        "vs1_f7": "00",
+        "p300_after": "00"
+      },
+      "0x778C": {
+        "name": "controller_sw_raw",
+        "p300_before": "0103",
+        "vs1_f7": "0103",
+        "p300_after": "0103"
+      }
+    },
+    "stable_values_match": true,
+    "gfa_same_session": {
+      "P80": [
+        "20",
+        "20"
+      ],
+      "P06": [
+        "00"
+      ],
+      "P09": [
+        "93"
+      ],
+      "P87": [
+        "20"
+      ]
+    },
+    "ff_seen": false,
+    "p300_restored": true,
+    "splitter_restarted": true,
+    "party_restarted": true,
+    "mixed_session_first_request": "STX + F7 00F8/2",
+    "mixed_session_last_guard": "6B P80",
+    "mixed_session_complete": true,
+    "observed_reply_to_next_request_gap_ms_excluding_cleanup_eot": {
+      "min": 150,
+      "max": 151,
+      "note": "Host log timestamp resolution is 1 ms; the configured minimum was 150 ms."
+    }
+  },
+  "conclusions": [
+    "On this exact VDensHO1 / 20C2 appliance, F7 Virtual_READ and 6B GFA_READ coexist successfully in one persistent VS1 session under the tested 150-ms pacing.",
+    "The seven selected stable Virtual_READ values were byte-identical P300-before, VS1-F7, and P300-after.",
+    "Two in-session P80 guards remained 0x20, so the local GFA identity remained confirmed during the mixed traffic.",
+    "This removes the main transport-level objection to a single-owner permanent-VS1 splitter architecture.",
+    "This bounded test does not yet validate the full production poll list, HA discovery/update freshness, Virtual_WRITE behavior in permanent VS1, long-duration FF rate, or production recovery policy."
+  ],
+  "runtime_note": "P09 returned 0x93 while P06 was 0x00 and P87 was 0x20. No independent flame/state signal was sampled, so this isolated state must not be assigned a burner-phase semantic.",
+  "next_gate": {
+    "description": "Guarded stock-splitter permanent-VS1 smoke test using the existing production Virtual_READ poll list before adding GFA polling.",
+    "rationale": "The mixed primitive traffic is validated, but the complete live splitter/HA polling path has not yet been exercised in permanent VS1 on this installation.",
+    "production_patch_after_gate": [
+      "Add structured read_gfa_ext() / gfaread support only.",
+      "Keep one serial owner.",
+      "Use an explicit GFA transport marker in selected diagnostic poll items.",
+      "Retain conservative pacing and FF rejection.",
+      "Apply patch reproducibly after the updater's upstream hard reset rather than hand-editing /opt/optolink."
+    ]
+  }
+}
