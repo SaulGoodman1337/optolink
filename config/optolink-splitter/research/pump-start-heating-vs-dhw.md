@@ -102,6 +102,39 @@ are not linked to base VDensHO1.
 Read-only runbook:
 [../../../docs/internal-pump-k30-k31-read.md](../../../docs/internal-pump-k30-k31-read.md).
 
+### Live characterization result - 2026-09-24
+
+A bounded read-only run returned:
+
+```text
+0x5730 = 01       K30 = speed-controlled internal pump
+0x5731 = 64       K31 = 100
+0x7752 = 00       no hydraulic-separator sensor configured
+
+0x27E5 = 00       no separate speed-controlled A1 KM-BUS pump participant
+0x27E6 = 64       E6 = 100 %
+0x27E7 = 1E       E7 = 30 %
+0x27E8 = 00       E8 = minimum according to E7
+0x27E9 = 64       E9 = 100 %
+
+0x0A54 = 01 11 01 01
+                    ^ byte 3 = SWIndex_IntPumpe = 01
+
+0x0A3C = 00
+0x7660 = 00 00
+0x7663 = 00 00
+```
+
+The controller therefore identifies the local internal pump as **variable-speed but not the K30=2 "with volume flow" variant**. A dedicated search for mandatory flow-rate telemetry is no longer a priority for this installation.
+
+K52=0 supports the direct A1 topology already seen in the runtime captures. K31=100 is a valid configuration value but is not a demonstrated volatile heating request; normal A1 runtime continues to be evidenced by the E6/E7 path and `0x7663`, followed by internal selection/clamping before `0x0A3C ~= 0x7660[1]`.
+
+The `0x0A54` event definition only assigns meaning to byte 3. Therefore `01 11 01` remains raw; only the final byte is source-backed as internal-pump software index `01`.
+
+#### E9 configuration discrepancy
+
+The current read shows `E9=100%` (`0x64`). An earlier documented local hardware snapshot recorded `E9=50%` (`0x32`). No change is inferred or corrected automatically. This is now an explicit provenance/readback item: **do not write E9 until the reason for the delta is established**.
+
 ## 0x7660 interpretation boundary
 
 Vitosoft places both the digital internal-pump output and the internal-pump

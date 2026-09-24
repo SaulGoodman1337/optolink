@@ -67,6 +67,27 @@ Preserve the raw byte. Although the metadata defines read/write access, do not m
 
 Read all four bytes. The Vitosoft definition places the internal-pump software-index subfield at byte position 3. Preserve the entire block because the preceding bytes may contain related participant identity/version material.
 
+## Live result - PASS 2026-09-24
+
+```text
+K30  0x5730 = 01
+K31  0x5731 = 64
+K52  0x7752 = 00
+E5   0x27E5 = 00
+E6   0x27E6 = 64
+E7   0x27E7 = 1E
+E8   0x27E8 = 00
+E9   0x27E9 = 64
+0A54          = 01 11 01 01
+A3C           = 00
+7660          = 00 00
+7663          = 00 00
+```
+
+Interpretation: the installed internal pump is configured as speed-controlled (`K30=1`), without the K30=2 volume-flow capability flag. No hydraulic separator is configured (`K52=0`). The internal-pump software-index field is `0x01` at byte 3 of `0x0A54`; bytes 0..2 remain undefined by this event. Runtime was idle during this sample.
+
+Current E9 is 100%, while an older local baseline recorded 50%; this discrepancy is preserved as an open configuration provenance item and is not to be corrected by writing.
+
 ## Decision tree
 
 - **K30=00:** revisit why speed-like runtime bytes are still present; the configuration says multi-stage.
