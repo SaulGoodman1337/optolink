@@ -2,6 +2,8 @@
 
 This is the **current execution plan** for the local Vitodens 200-W WB2A / VDensHO1 / 20C2 research. Older runbooks and checkpoints remain historical evidence, but their old "next step" wording does not override this file.
 
+**Next-session handoff:** [WB2A research checkpoint - 2026-09-25](research-checkpoint-2026-09-25.md) consolidates the evening 2026-09-24 state and the exact next actions for the replacement EEPROM reader, regulation-board photos and the corrected mixed flame-correlation run.
+
 ## Current verified baseline
 
 - Private Vitosoft Collector v6 snapshot: `vitosoft-private-archive-20260924-143439.7z`, SHA256 `3d31380d6dfabf8ede9e305b115e847fb0670511e253a4ed4e59feef2f7adfee`.
