@@ -54,10 +54,16 @@ ln -sf /usr/local/bin/optolink-party-test /usr/bin/optolink-party-test
 install_repo_file tools/optolink-debug.py   /usr/local/bin/optolink-debug 0755
 ln -sf /usr/local/bin/optolink-debug /usr/bin/optolink-debug
 
-# Root-operated guarded maintenance interface. Keep this more restrictive than
-# the generic read/debug helper because it contains verified write/reset paths.
+# Shared guarded maintenance core plus CLI/API frontends.
+install_repo_file config/optolink-splitter/optolink_maintenance_core.py   "$APP_DIR/optolink_maintenance_core.py" 0644
+
+# Root-operated CLI stays deliberately restrictive.
 install_repo_file tools/optolink-maintenance.py   /usr/local/bin/optolink-maintenance 0750
 ln -sf /usr/local/bin/optolink-maintenance /usr/bin/optolink-maintenance
+
+# MQTT API runs as the unprivileged optolink service user.
+install_repo_file tools/optolink-maintenance-api.py   /usr/local/bin/optolink-maintenance-api 0750
+chown root:optolink /usr/local/bin/optolink-maintenance-api
 
 install_repo_file tools/wb2a-schedule-probe.py   /usr/local/bin/wb2a-schedule-probe 0750
 ln -sf /usr/local/bin/wb2a-schedule-probe /usr/bin/wb2a-schedule-probe
@@ -82,13 +88,14 @@ ln -sf /usr/local/bin/wb2a-e7-persistence-probe /usr/bin/wb2a-e7-persistence-pro
 install_repo_file config/optolink-splitter/optolink-splitter.service   /etc/systemd/system/optolink-splitter.service 0644
 install_repo_file config/optolink-splitter/optolink-party-emulator.service   /etc/systemd/system/optolink-party-emulator.service 0644
 install_repo_file config/optolink-splitter/optolink-schedule-manager.service   /etc/systemd/system/optolink-schedule-manager.service 0644
+install_repo_file config/optolink-splitter/optolink-maintenance-api.service   /etc/systemd/system/optolink-maintenance-api.service 0644
 
 install_repo_file config/optolink-splitter/vcontrol-mapping.md   /root/optolink-vcontrol-mapping.md 0644
 
 systemctl daemon-reload
 systemctl enable optolink-splitter.service >/dev/null 2>&1 || true
 systemctl enable optolink-party-emulator.service >/dev/null 2>&1 || true
-chown root:root   /usr/local/bin/optolink-apply-vdensho1-ha-profile   /usr/local/bin/optolink-apply-vscotho1-profile   /usr/local/bin/optolink-party-test   /usr/local/bin/optolink-debug   /usr/local/bin/optolink-maintenance   /usr/local/bin/wb2a-schedule-probe   /usr/local/bin/optolink-schedule-manager   /usr/local/bin/optolink-party-emulator   /usr/local/bin/wb2a-single-session-logger   /usr/local/bin/wb2a-rkr-cycle-logger   /usr/local/bin/wb2a-pump-start-logger   /usr/local/bin/wb2a-e7-persistence-probe   /etc/systemd/system/optolink-splitter.service   /etc/systemd/system/optolink-party-emulator.service   /etc/systemd/system/optolink-schedule-manager.service   /root/optolink-vcontrol-mapping.md
+chown root:root   /usr/local/bin/optolink-apply-vdensho1-ha-profile   /usr/local/bin/optolink-apply-vscotho1-profile   /usr/local/bin/optolink-party-test   /usr/local/bin/optolink-debug   /usr/local/bin/optolink-maintenance   /usr/local/bin/wb2a-schedule-probe   /usr/local/bin/optolink-schedule-manager   /usr/local/bin/optolink-party-emulator   /usr/local/bin/wb2a-single-session-logger   /usr/local/bin/wb2a-rkr-cycle-logger   /usr/local/bin/wb2a-pump-start-logger   /usr/local/bin/wb2a-e7-persistence-probe   /etc/systemd/system/optolink-splitter.service   /etc/systemd/system/optolink-party-emulator.service   /etc/systemd/system/optolink-schedule-manager.service   /etc/systemd/system/optolink-maintenance-api.service   /root/optolink-vcontrol-mapping.md
 ok "Helpers refreshed"
 
 info "Activating VDensHO1/20C2 Home Assistant profile"
@@ -99,6 +106,22 @@ else
 fi
 
 chown -R optolink:optolink "$APP_DIR"
+
+info "Configuring guarded maintenance MQTT API"
+if runuser -u optolink -- "$APP_DIR/venv/bin/python" - <<'PY_MAINT_API'
+import sys
+sys.path.insert(0, "/opt/optolink")
+from c_settings_adapter import settings
+raise SystemExit(0 if getattr(settings, "mqtt_broker", None) else 1)
+PY_MAINT_API
+then
+  systemctl enable optolink-maintenance-api.service >/dev/null 2>&1 || true
+  systemctl restart optolink-maintenance-api.service
+  ok "Maintenance MQTT API active"
+else
+  systemctl disable --now optolink-maintenance-api.service >/dev/null 2>&1 || true
+  warn "Maintenance MQTT API disabled because mqtt_broker is not configured"
+fi
 
 info "Refreshing private update entrypoint"
 install_repo_file tools/private-update.sh   /usr/local/lib/community-scripts/private-update.sh 0755
@@ -121,6 +144,7 @@ printf 'Run RKR logger: wb2a-rkr-cycle-logger\n' >&2
 printf 'Run pump logger: wb2a-pump-start-logger --mode heating|dhw\n' >&2
 printf 'Run E7 persistence probe: wb2a-e7-persistence-probe --run\n' >&2
 printf 'Maintenance CLI: optolink-maintenance status\n' >&2
+printf 'Maintenance API: systemctl status optolink-maintenance-api\n' >&2
 printf 'Schedule probe: wb2a-schedule-probe snapshot\n' >&2
 printf 'Schedule manager: systemctl status optolink-schedule-manager\n' >&2
 ok "Optolink-Splitter update completed"
