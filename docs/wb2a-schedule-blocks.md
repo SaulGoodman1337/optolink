@@ -84,6 +84,29 @@ above 24, or minute fields 60/70 are not valid schedule times.
 
 ## Locally observed blocks
 
+### Full 21-block snapshot — 2026-09-24
+
+A complete live snapshot of all schedule blocks was read successfully through
+the running splitter.
+
+| Program | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Heating M1 | 05:00-20:00 | 05:00-20:00 | 05:00-20:00 | 05:00-20:00 | 05:00-20:00 | 05:00-20:00 | 05:00-20:00 |
+| DHW | 05:30-21:00 | 05:30-21:00 | 05:30-21:00 | 05:30-21:00 | 05:30-21:00 | 05:30-21:00 | 05:30-21:00 |
+| Circulation | 05:30-21:00 | 05:30-21:00 | 05:30-21:00 | 05:30-21:00 | 05:30-21:00 | 05:30-21:00 | 05:30-21:00 |
+
+Raw baseline:
+
+~~~text
+Heating M1  0x2000..0x2030  28 A0 FF FF FF FF FF FF
+DHW         0x2100..0x2130  2B A8 FF FF FF FF FF FF
+Circulation 0x2200..0x2230  2B A8 FF FF FF FF FF FF
+~~~
+
+All 21 reads returned splitter success code `1` and the expected eight-byte
+payload. The appliance currently uses only interval slot 1 in all three weekly
+programs; slots 2..4 are unused `FF FF` pairs.
+
 Read-only hardware work on the local WB2A already produced:
 
 ~~~text
