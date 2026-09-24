@@ -98,7 +98,7 @@ Keep the current layout for now. Revisit it later with these constraints:
 
 ### 2. Move time programs to a dedicated Home Assistant tab
 
-Status: **hardware write contract verified / guarded HA editor implemented / live HA-path verification pending**
+Status: **hardware write contract verified / guarded HA editor live-verified / visual refinement in progress**
 
 The weekly time programs currently live at the bottom of the diagnostics page
 and should be moved out of diagnostics into a dedicated, visually polished
@@ -171,9 +171,20 @@ Implementation now present:
 - full weekly dashboard with 24-hour bars, current-day/active indication and
   tap-to-edit rows.
 
-Next gate: deploy with `update`, verify the manager service/discovery, then
-perform one live edit through a Home Assistant text entity and confirm the
-dashboard write-status/readback behavior.
+Live HA gate completed on 2026-09-24: the schedule manager was deployed,
+a Heating M1 Sunday edit was sent from Home Assistant and independent
+controller readback confirmed the exact resulting block.
+
+Current next gate:
+
+- render/review the latest Zeitprogramme visual refinement;
+- verify desktop and mobile layout;
+- keep the circulation lane visible;
+- add guarded copy/apply operations for day -> day, weekdays, weekend and whole
+  week after the visual baseline is accepted.
+
+Detailed handoff:
+`docs/zeitprogramme-ha-handoff-2026-09-24.md`.
 
 The old schedule cards should be removed from the diagnostics page once the
 dedicated tab is in place.
