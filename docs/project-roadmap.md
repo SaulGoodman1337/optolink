@@ -456,7 +456,7 @@ Do not treat the M-Bus Slave Click choice as a completed implementation yet.
 
 ### Maintenance configuration / reset via Home Assistant
 
-Status: **maintenance backend fully live-verified / HA staging + Wartung view implemented / live HA verification pending**
+Status: **maintenance backend fully live-verified / HA staging isolation live-verified / Wartung view frontend verification pending**
 
 A future Home Assistant dashboard session should add a compact **Service /
 Wartung** area that not only displays the verified maintenance diagnostics but,
@@ -555,7 +555,12 @@ Home Assistant integration is now implemented in the repository:
 - the new `Wartung` dashboard page separates current values, staged values,
   API status and destructive/reference-changing actions.
 
-The remaining task is live Home Assistant verification after deployment.
+HA staging isolation is now also live-verified: temporary staged values of
+`100 h` and `1 month` left the controller at `0 h / 0 months`, after
+which the stage values were restored to `0 / 0`.
+
+The remaining task is frontend verification of the new Wartung view, including
+entity availability, confirmation dialogs and displayed post-action readbacks.
 
 ## WB2A reverse engineering: open items
 
