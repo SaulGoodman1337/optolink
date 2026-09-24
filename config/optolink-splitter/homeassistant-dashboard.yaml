@@ -356,6 +356,12 @@ views:
                 show_state: true
                 show_icon: true
               - type: entity
+                entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
+                name: Gebläse
+                icon: mdi:fan
+                show_state: true
+                show_icon: true
+              - type: entity
                 entity: sensor.vitodens_200_wb2a_rkr_brennerzustand
                 name: RKR
                 icon: mdi:state-machine
@@ -2562,6 +2568,20 @@ views:
                 tap_action:
                   action: more-info
               - type: template
+                entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
+                icon: mdi:fan
+                content: >-
+                  Gebläse {{ states('sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06') }} rpm
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09
+                icon: mdi:gauge-full
+                content: >-
+                  GFA Soll {{ states('sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09') }} %
+                tap_action:
+                  action: more-info
+              - type: template
                 entity: sensor.vitodens_200_wb2a_rkr_brennerzustand
                 icon: mdi:state-machine
                 content: >-
@@ -2614,6 +2634,13 @@ views:
                   GFA {{ 'VERRIEGELT' if is_state('binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt', 'on') else 'OK' }}
                 icon_color: >-
                   {{ 'red' if is_state('binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt', 'on') else 'green' }}
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.vitodens_200_wb2a_gfa_status3_p87
+                icon: mdi:code-tags
+                content: >-
+                  P87 {{ states('sensor.vitodens_200_wb2a_gfa_status3_p87') }}
                 tap_action:
                   action: more-info
             card_mod:
@@ -2800,6 +2827,14 @@ views:
                 overwrite_graph_appearance: true
                 graph_min: 0
                 graph_max: 100
+              - entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
+                name: Gebläse P06
+                icon: mdi:fan
+                extra_value_entity: sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09
+                extra_value_name: GFA Soll
+                overwrite_graph_appearance: true
+                graph_min: 0
+                graph_max: 6000
               - entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur_normal
                 name: RKR Soll
                 icon: mdi:target
@@ -4031,6 +4066,42 @@ views:
                 name: HK-Pumpe %
               - entity: sensor.ventilstellung_durchschnitt
                 name: Ventile Ø %
+            grid_options:
+              columns: full
+          - type: heading
+            heading: Gebläse & GFA – 24 h
+            heading_style: title
+            icon: mdi:fan
+          - type: custom:apexcharts-card
+            graph_span: 24h
+            header:
+              show: true
+              title: Gebläsedrehzahl / Modulation
+              show_states: true
+              colorize_states: true
+            yaxis:
+              - id: rpm
+                min: 0
+                max: 6000
+                decimals: 0
+              - id: percent
+                opposite: true
+                min: 0
+                max: 100
+                decimals: 0
+            all_series_config:
+              stroke_width: 2
+              curve: smooth
+            series:
+              - entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
+                name: Gebläse P06
+                yaxis_id: rpm
+              - entity: sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09
+                name: GFA Soll P09
+                yaxis_id: percent
+              - entity: sensor.vitodens_200_wb2a_brenner_modulationsgrad
+                name: Modulation Ist
+                yaxis_id: percent
             grid_options:
               columns: full
     cards: []
