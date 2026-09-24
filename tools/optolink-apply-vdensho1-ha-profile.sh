@@ -3,7 +3,7 @@ set -euo pipefail
 
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
-HELPER_REV="2026-09-22-r4"
+HELPER_REV="2026-09-24-r5-vs1-gfa"
 APP_DIR="/opt/optolink"
 
 echo "VDensHO1 profile helper: $HELPER_REV"
@@ -45,10 +45,14 @@ STAMP="$(date +%Y%m%d-%H%M%S)"
 install -d -m 0755 "$APP_DIR/profiles"
 
 tmp="$(mktemp)"
-trap 'rm -f "$tmp"' EXIT
+gfa_patcher_tmp="$(mktemp)"
+trap 'rm -f "$tmp" "$gfa_patcher_tmp"' EXIT
 
 cs_repo_fetch "$PROFILE_REL" "$tmp"
 python3 -m py_compile "$tmp"
+
+cs_repo_fetch tools/optolink-apply-vs1-gfa-readonly-patch.py "$gfa_patcher_tmp"
+python3 -m py_compile "$gfa_patcher_tmp"
 
 cp "$tmp" "$APP_DIR/profiles/$PROFILE_NAME"
 
@@ -67,6 +71,7 @@ fi
 
 rollback_profile() {
   echo "Rolling back Optolink profile..." >&2
+  cp -a "$APP_DIR/settings_ini.py.bak-$STAMP" "$APP_DIR/settings_ini.py"
   if [[ "$had_poll" == "1" ]]; then
     cp -a "$APP_DIR/poll_list.py.bak-$STAMP" "$APP_DIR/poll_list.py"
   else
@@ -83,6 +88,55 @@ rollback_profile() {
 }
 
 cp "$tmp" "$APP_DIR/homeassistant_poll_list.py"
+
+echo "Applying validated read-only VS1 GFA runtime integration..."
+"$APP_DIR/venv/bin/python" "$gfa_patcher_tmp" --self-test
+"$APP_DIR/venv/bin/python" "$gfa_patcher_tmp" --apply
+
+echo "Enabling validated permanent VS1 timing..."
+python3 - "$APP_DIR/settings_ini.py" <<'PY'
+import ast
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+src = path.read_text()
+tree = ast.parse(src)
+
+values = {}
+nodes = {}
+for node in tree.body:
+    if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+        continue
+    targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+    if len(targets) != 1 or not isinstance(targets[0], ast.Name):
+        continue
+    name = targets[0].id
+    try:
+        values[name] = ast.literal_eval(node.value)
+    except Exception:
+        pass
+    if name in {"vs1protocol", "olbreath"}:
+        nodes[name] = node
+
+if values.get("port_vitoconnect") is not None:
+    raise SystemExit("Permanent VS1 requires port_vitoconnect=None; refusing profile activation.")
+if set(nodes) != {"vs1protocol", "olbreath"}:
+    raise SystemExit("Could not uniquely locate vs1protocol and olbreath settings.")
+
+lines = src.splitlines(keepends=True)
+for name, value in (("vs1protocol", True), ("olbreath", 0.15)):
+    node = nodes[name]
+    if node.lineno != getattr(node, "end_lineno", node.lineno):
+        raise SystemExit(f"{name} must be a one-line top-level assignment.")
+    old = lines[node.lineno - 1]
+    eol = "\r\n" if old.endswith("\r\n") else "\n" if old.endswith("\n") else ""
+    lines[node.lineno - 1] = f"{name} = {value!r}{eol}"
+
+out = "".join(lines)
+ast.parse(out)
+path.write_text(out)
+PY
 
 # c_polllist.py gives poll_list.py precedence. Remove it after creating a
 # timestamped backup so the Home Assistant adapter becomes the active source.
