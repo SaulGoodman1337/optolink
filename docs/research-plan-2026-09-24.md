@@ -69,7 +69,7 @@ A1 demand + operating mode + E6/E7/E8/E9 + K31 + 6C + GWG75/76 + other overrides
 
 **Status: installed-pump characterization completed 2026-09-24.** The local controller identifies a speed-controlled internal pump (`K30=01`) without the K30=2 volume-flow capability flag, no hydraulic-separator sensor (`K52=0`), and software index `01`. The hidden selector upstream of `0x0A3C` remains a controller-firmware/MCU question.
 
-**Open configuration delta:** current `E9=100%` differs from the earlier documented hardware baseline `E9=50%`. Do not write it; verify provenance/readback before treating 100% as the intended baseline.
+**E9 provenance resolved:** the user confirmed that the change from the earlier 50% baseline to the current `E9=100%` was intentional. This is not an unexplained controller drift. Keep the historical 50% capture as history; use 100% as the current configured value.
 
 ## P0 - Complete GFA software identity
 
@@ -128,7 +128,7 @@ The current Vitosoft installation contains no authenticated WB2A firmware image 
 **TODO:**
 
 - [x] Finish software identity first: P81-P83 read successfully as raw `02/06/76` under P80=`20`.
-- [ ] Identify the main-regulation MCU, burner/GFA MCU and external firmware memories. GG1 family topology is documented; readable IC markings are still missing.
+- [ ] Identify the main-regulation MCU, burner/GFA MCU and external firmware memories. **Planned next hardware evidence:** the user will photograph the regulation board at high resolution, including both sides where safely accessible, IC markings, board/revision labels and service/debug pads. Use [regulation-board-photo-capture.md](regulation-board-photo-capture.md).
 - [ ] Keep regulation firmware, GFA firmware and coding-plug EEPROM as separate storage domains.
 - [ ] Investigate only concrete service/readout paths backed by a function, method, board interface or known protocol.
 - [ ] Archive any future raw firmware privately with hashes; commit only derived maps and reproducible analysis.
@@ -184,6 +184,21 @@ Key points carried into the execution plan:
   read-only verification tasks before HA exposure;
 - finish and verify Diagnose before redesigning Pumpen, Heizung, Heizkurve,
   Nachtabsenkung, Zeitprogramme and Graphen.
+
+## Read-later diagnostic address backlog
+
+A source-backed, read-only backlog is now maintained in [read-later-addresses-2026-09-24.md](read-later-addresses-2026-09-24.md).
+
+Highest-value not-yet-promoted local reads include:
+- `0x0816` exhaust-gas temperature;
+- `0x081A` common/mixed flow temperature;
+- `0x083A/0x083B/0x0840` primary temperature-sensor health;
+- `0x0883` FlowSwitch;
+- `0x8853` burner type;
+- `0xA305` independent boiler modulation value;
+- selected KM-BUS participant software-index/error blocks.
+
+These are **later read-only verification items**, not production poll additions.
 
 ## P3 - Home Assistant and operator-facing follow-up
 
