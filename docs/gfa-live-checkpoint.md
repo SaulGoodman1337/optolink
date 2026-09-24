@@ -17,6 +17,30 @@ Evidence:
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
 
+## 0xxxxxxxxxxxxx. GFA freshness / P80 guard latency fix - 2026-09-24
+
+A live-dashboard observation showed that P06 blower RPM could sometimes take roughly one to two minutes to appear after a state change.
+
+The direct cause is not the P06 poll group: P06/P09/P87 are `FAST`. With the current permanent-VS1 `olbreath=0.15` and roughly 33 fast poll items, their normal cadence should be on the order of seconds, not minutes.
+
+The production identity guard introduced a latency corner case:
+
+- P80 was `NORMAL` (cycle 15);
+- P06/P09/P87 were `FAST`;
+- a transient P80 communication failure cleared the cached P80=20 guard;
+- subsequent productive GFA reads were suppressed until the next successful P80 poll;
+- fifteen fast cycles can reach approximately the observed one-to-two-minute delay once serial and other splitter traffic are included.
+
+Fix:
+
+- P80 is now polled as `FAST`, immediately before P06/P09/P87;
+- a transient P80 transport failure no longer clears a previously validated P80=20 identity;
+- a successful P80 read with a value other than 0x20 still revokes the guard immediately;
+- on process start the guard remains closed until the first successful P80=20 read.
+
+Patch helper v1.0.3 commit: `686739502cbd3fedbe2a40faed6434f01f1c297a`.
+Production profile P80 FAST commit: `7775b4f412e6e8ed41cef981b7aa7f159b515e55`.
+
 ## 0xxxxxxxxxxxx. Dashboard integration for live GFA values - 2026-09-24
 
 The Home Assistant dashboard now surfaces the production GFA signals:
