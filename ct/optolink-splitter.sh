@@ -173,6 +173,9 @@ function update_script() {
 
   cs_repo_fetch config/optolink-splitter/vcontrol-mapping.md /root/optolink-vcontrol-mapping.md
   chown -R optolink:optolink /opt/optolink
+  touch /opt/optolink/.maintenance.lock
+  chown optolink:optolink /opt/optolink/.maintenance.lock
+  chmod 660 /opt/optolink/.maintenance.lock
   msg_ok "Refreshed profile helpers"
 
   msg_info "Activating VDensHO1/20C2 Home Assistant profile"
