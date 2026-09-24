@@ -332,10 +332,10 @@ if [[ "$mqtt_enabled" == "1" && -c /dev/ttyUSB0 ]]; then
     fi
   fi
 
-  echo "Publishing Home Assistant MQTT discovery (timeout 45s)..."
+  echo "Publishing Home Assistant MQTT discovery (timeout 120s)..."
   # Discovery publishing is intentionally non-fatal: the Optolink service
   # remains useful even if Home Assistant/MQTT is temporarily unavailable.
-  if timeout 45s runuser -u optolink --       "$APP_DIR/venv/bin/python" "$APP_DIR/homeassistant_publish.py"; then
+  if timeout 120s runuser -u optolink --       "$APP_DIR/venv/bin/python" "$APP_DIR/homeassistant_publish.py"; then
     echo "Home Assistant MQTT discovery published."
 
     # Discovery is published after the splitter has already started. New HA
@@ -387,7 +387,7 @@ PY
   else
     rc=$?
     if [[ "$rc" == "124" ]]; then
-      echo "WARNING: HA discovery publish timed out after 45s." >&2
+      echo "WARNING: HA discovery publish timed out after 120s." >&2
     else
       echo "WARNING: HA discovery publish failed (exit $rc)." >&2
     fi
