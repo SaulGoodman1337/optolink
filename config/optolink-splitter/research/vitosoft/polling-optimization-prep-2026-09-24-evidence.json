@@ -74,7 +74,7 @@
     "normal_cadence_seconds": "approximately 20-30 s",
     "goal": "Eliminate periodic 15-20 s FAST latency spikes before any olbreath reduction."
   },
-  "next_step": "Experiment with GFA first-attempt gap 25 ms and retry gap 150 ms, keeping global olbreath at 25 ms; reject on any second FF/failed retry/OL error.",
+  "next_step": "Run a 30-60 minute soak at global 25 ms / GFA first 25 ms / retry 150 ms, preferably including one or more burner starts. Record retry events by GFA address and reject on second-FF/failed retry/OL Error/restart.",
   "first_live_apply_attempt": {
     "timestamp_local": "2026-09-24T14:17:06+02:00",
     "result": "ABORTED_BEFORE_SCHEDULER_APPLY",
@@ -732,5 +732,107 @@
       "git_blob": "525fd7d000b3d2b39514269f8589fb620e511d1e"
     },
     "objective": "Determine whether fast 25 ms GFA first attempts plus a conservative retry can deliver consistently faster GFA updates without hard errors."
+  },
+  "gfa_fastfirst_0025_retry_015_short_gate": {
+    "timestamp_local": "2026-09-24T17:31+02:00",
+    "duration_seconds": 180,
+    "result": "PASS_CLEAN",
+    "global_olbreath_seconds": 0.025,
+    "gfa_first_attempt_gap_seconds": 0.025,
+    "gfa_retry_gap_seconds": 0.15,
+    "patcher_version": "1.0.5",
+    "patcher_self_tests": "11/11 PASS",
+    "runtime_patch": {
+      "changed_files": [
+        "optolinkvs1.py"
+      ],
+      "optolinkvs1_blob": "0e4d12238a0c1763e3e05ccce380f412ceed0676",
+      "adapter_blob": "82461ad5e61c015d311c9eb1413551c9e49035d8",
+      "requests_util_blob": "03c3fd5336ae332078f960975ecf5188c2996dd2"
+    },
+    "once_complete_before_measurement": true,
+    "measurements": {
+      "kesseltemperatur": {
+        "group": "FAST",
+        "messages": 121,
+        "min_s": 1.293,
+        "median_s": 1.477,
+        "p95_s": 1.625,
+        "max_s": 1.691,
+        "last": "34.6"
+      },
+      "brenner_modulationsgrad": {
+        "group": "FAST",
+        "messages": 121,
+        "min_s": 1.329,
+        "median_s": 1.485,
+        "p95_s": 1.617,
+        "max_s": 1.681,
+        "last": "0.0"
+      },
+      "geblaesedrehzahl_gfa_p06": {
+        "group": "FAST",
+        "messages": 121,
+        "min_s": 1.304,
+        "median_s": 1.482,
+        "p95_s": 1.62,
+        "max_s": 1.751,
+        "last": "0"
+      },
+      "gfa_modulationssollwert_p09": {
+        "group": "FAST",
+        "messages": 121,
+        "min_s": 1.287,
+        "median_s": 1.488,
+        "p95_s": 1.655,
+        "max_s": 1.747,
+        "last": "0.0"
+      },
+      "gfa_status3_p87": {
+        "group": "FAST",
+        "messages": 120,
+        "min_s": 1.357,
+        "median_s": 1.492,
+        "p95_s": 1.592,
+        "max_s": 1.706,
+        "last": "00"
+      },
+      "aussentemperatur": {
+        "group": "NORMAL",
+        "messages": 24,
+        "min_s": 7.157,
+        "median_s": 7.424,
+        "p95_s": 7.602,
+        "max_s": 7.709,
+        "last": "21.1"
+      },
+      "gfa_p80_typ": {
+        "group": "NORMAL",
+        "phase": 4,
+        "messages": 24,
+        "min_s": 7.172,
+        "median_s": 7.393,
+        "p95_s": 7.699,
+        "max_s": 7.781,
+        "last": "20"
+      }
+    },
+    "retry_telemetry": {
+      "fast_first_ff": 0,
+      "recovered_on_retry": 0,
+      "hard_errors": 0,
+      "p80_ok": true,
+      "service_ok": true
+    },
+    "comparison": [
+      "FAST median improved from about 1.88 s with 25 ms global / 150 ms GFA-first pacing to about 1.48 s with 25 ms GFA first attempts.",
+      "Compared with the original 150 ms global baseline of about 4.72 s, FAST cadence improved by roughly 69 percent.",
+      "No FF occurred in this short gate, so the conservative 150 ms retry path was not exercised during this specific run."
+    ],
+    "conclusion": [
+      "Fast 25 ms GFA first attempts plus a 150 ms recovery retry passed the 180 s gate cleanly.",
+      "The short gate supports keeping the optimistic first attempt fast while reserving conservative timing for recovery only.",
+      "Long-soak validation is still required before permanent deployment."
+    ]
   }
 }
