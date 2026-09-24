@@ -48,7 +48,7 @@ import threading
 import time
 from typing import Any
 
-VERSION = "1.0.4"
+VERSION = "1.0.5"
 ROOT = Path("/opt/optolink")
 SETTINGS = ROOT / "settings_ini.py"
 HA_POLL = ROOT / "homeassistant_poll_list.py"
@@ -80,10 +80,12 @@ UPSTREAM_RUNTIME_BLOBS = {
     "viconn_util.py": "bf6f916b20ed66746b869d4ec660542304ec6d00",
 }
 PROFILE_PATCH_BLOBS = {
-    # Exact results of tools/optolink-apply-vdensho1-ha-profile.sh applied to
-    # upstream commit c1ee204a1421447721603c5f21c6da7337fdac97.
-    "homeassistant_publish.py": "49107392ee71af629e6af8eafec337852d6340aa",
-    "mqtt_util.py": "b5173ee7a4e04e9ada50b0ed708d65accc10ca46",
+    # Exact on-disk results of tools/optolink-apply-vdensho1-ha-profile.sh
+    # applied to upstream commit c1ee204a1421447721603c5f21c6da7337fdac97.
+    # The helper uses Path.read_text()/write_text(), so upstream CRLF files are
+    # normalized to LF while the intentional source patch is applied.
+    "homeassistant_publish.py": "21d272008206abaa766563f59bd30379b80a02ce",
+    "mqtt_util.py": "5f4b159e0431a87fbdb1683fd6568971cf1a3260",
 }
 ERROR_PATTERNS = (
     "Traceback (most recent call last)",
