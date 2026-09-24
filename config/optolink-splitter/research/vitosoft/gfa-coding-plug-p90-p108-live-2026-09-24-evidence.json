@@ -76,5 +76,20 @@
       ]
     }
   },
-  "result": "PASS"
+  "result": "PASS",
+  "correlations_exact_cross_view": {
+    "regulation_summary_0x7656": "20 15 02 01",
+    "reconstructed_from_gfa": {
+      "expression": "P80 || P101 || P107 || P102",
+      "raw": "20 15 02 01",
+      "exact_match": true
+    },
+    "regulation_identifier_0x1040_first2": "02 15",
+    "reconstructed_identifier_from_gfa": {
+      "expression": "P107 || P101",
+      "raw": "02 15",
+      "exact_match": true
+    },
+    "interpretation": "Strong hardware correlation between the regulation/coding-card and GFA coding-plug identity views. Exact source byte-position semantics for the four 0x7656 subfields remain to be recovered before declaring a formal field mapping."
+  }
 }
