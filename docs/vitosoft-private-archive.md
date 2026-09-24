@@ -47,6 +47,8 @@ Actual remaining boundaries include incomplete reflection/decompilation, no ILSp
 
 ## Current appliance research stays here
 
-Read [GFA quality-aware logger and FF checkpoint - 2026-09-24](gfa-quality-logger.md) before older GFA log-retrieval instructions. The requested FF raw contexts and existing JSONL were already supplied and analyzed. The new quality helper is offline-tested; its automatic re-entry after FF remains unvalidated on the appliance at that checkpoint. Do not request those same excerpts again or confuse this open hardware validation with collector completeness.
+Use the latest relevant entry in the [current repository documentation index](../README.md#documentation), then read its actual test evidence. Appliance research may advance concurrently with archive work. This source note deliberately does not duplicate a current GFA hardware-test or missing-log task list.
 
-The private source archive does not supersede subsequent hardware observations. Preserve source path/hash, device and burner-variant applicability, and the distinction between metadata, host implementation, hardware observation and hypothesis. No production configuration or appliance state was changed by this archive documentation work.
+Do not request already supplied JSONL files or FF raw contexts based on superseded runbooks. Do not infer that a helper is still untested merely because an earlier checkpoint said so. The private source archive does not supersede subsequent hardware observations.
+
+Preserve source path/hash, device and burner-variant applicability, and the distinction between metadata, host implementation, hardware observation and hypothesis. No production configuration or appliance state was changed by this archive documentation work.
