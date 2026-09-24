@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "evidence_level": "hardware_observation",
+  "scope": "Exact source-defined prefixed KMBUS_EEPROM_READ 0x43 on local WB2A / VDensHO1 / 20C2.",
+  "source_event": {
+    "event_id": 578,
+    "source_profile": "GWG_BT2",
+    "source_label": "Kennung (Prog1)",
+    "function": "KMBUS_EEPROM_READ",
+    "function_code": "0x43",
+    "address": "0x0001",
+    "block_length": 1,
+    "prefix_read": "030000000101",
+    "local_semantics": "UNPROVEN"
+  },
+  "live_run": {
+    "started_at": "2026-09-24T22:45:19.283+02:00",
+    "ended_at": "2026-09-24T22:45:25.696+02:00",
+    "log": "/root/wb2a-kmbus-eeprom-p300-read-20260924-224519-205030.log",
+    "p300_identity_control": {
+      "result": "PASS",
+      "data": "20c2000300000103"
+    },
+    "request_frame": "410b004300010103000000010155",
+    "response_frame": "4106014300010188d4",
+    "response": {
+      "message_type": "Response Message",
+      "function_code": "0x43",
+      "address": "0x0001",
+      "block_length": 1,
+      "data": "88",
+      "status": "SUCCESS"
+    },
+    "services_restored": true,
+    "vs1_restored": true,
+    "execution_result": "PASS"
+  },
+  "conclusions": [
+    "The local 20C2 controller accepts an exact Vitosoft-shaped KMBUS_EEPROM_READ request when PrefixRead=030000000101 is supplied.",
+    "The response is a normal successful VS2 response and echoes function code 0x43, address 0x0001 and block length 1.",
+    "This hardware-verifies that PrefixRead is operational request data for this 0x43 path, not descriptive metadata.",
+    "The returned byte 0x88 must remain raw. The source label 'Kennung (Prog1)' belongs to GWG_BT2/LGM27 metadata and is not yet proven to describe the local WB2A subordinate device.",
+    "The result strongly justifies testing the remaining exact source-defined 0x43 block shapes that use the same six-byte prefix. It does not justify a blind EEPROM address sweep.",
+    "This path is evidence for access to a subordinate persistent-memory namespace. It is not evidence for main-regulation program-flash access."
+  ],
+  "next_step": [
+    "Repeat 0x0001/1 to establish stability of 0x88.",
+    "Read the remaining bounded GWG_BT2 source-defined blocks using the same prefix and exact source lengths.",
+    "Cross-correlate any stable identity/configuration bytes with local GFA P80/P81/P82/P83 and known burner/coding data without importing GWG_BT2 semantics prematurely."
+  ]
+}
