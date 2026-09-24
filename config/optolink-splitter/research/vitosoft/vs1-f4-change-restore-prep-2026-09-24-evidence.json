@@ -54,5 +54,58 @@
     "No coding, EEPROM, GFA_WRITE, PROCESS_WRITE, burner, gas-valve, actuator or safety write is implemented.",
     "Restore is attempted even if validation after the target write fails."
   ],
-  "interpretation": "PASS would establish actual state mutation and exact restoration through stock VS1/F4 on this appliance, removing the remaining transport-level blocker to permanent VS1 with existing ordinary writable HA entities."
+  "interpretation": "PASS would establish actual state mutation and exact restoration through stock VS1/F4 on this appliance, removing the remaining transport-level blocker to permanent VS1 with existing ordinary writable HA entities.",
+  "live_run": {
+    "timestamp_local": "2026-09-24T13:21:03+02:00",
+    "result": "PASS",
+    "helper_version": "1.0.1",
+    "self_tests": "6/6",
+    "device_identity": "20c2",
+    "target": "0x2306",
+    "baseline_raw": "15",
+    "baseline_celsius": 21,
+    "target_raw": "16",
+    "target_celsius": 22,
+    "change": {
+      "f4_reply": "00",
+      "f7_readback_raw": "16",
+      "verified": true
+    },
+    "restore": {
+      "attempt": 1,
+      "f4_reply": "00",
+      "f7_readback_raw": "15",
+      "verified": true
+    },
+    "p300_postcheck": {
+      "identity": "20c2",
+      "target_raw": "15",
+      "target_celsius": 21,
+      "value_restored": true
+    },
+    "splitter_restarted": true,
+    "conclusion": [
+      "Stock VS1/F4 performed an actual one-byte value mutation on ordinary setpoint 0x2306: 21 C -> 22 C.",
+      "F7 immediately confirmed the changed value.",
+      "Stock VS1/F4 restored the exact original byte on the first restore attempt and F7 confirmed 21 C.",
+      "P300 was re-established and independently confirmed 0x2306=21 C after the restore.",
+      "F4 response payload remained 00 for both change and restore and is not an echo of the written value."
+    ]
+  },
+  "profile_write_width_audit": {
+    "conclusion": "All currently exposed Optolink-backed writable controls in the live VDensHO1 HA profile resolve to one-byte datapoints.",
+    "direct_writable_poll_items": [
+      "0x2306/1 normal room target",
+      "0x2307/1 reduced room target",
+      "0x2308/1 party room target",
+      "0x6300/1 DHW target",
+      "0x2323/1 operating mode",
+      "0x6773/1 circulation interval"
+    ],
+    "service_config_controls": "Dashboard /set controls reference already-polled 1-byte 0x27xx/0x57xx/0x67xx datapoints.",
+    "party_emulator": "Uses 0x2306/1 and 0x2323/1.",
+    "time_programs": "8-byte schedules are read-only in the current live HA profile.",
+    "caveat": "Some service/config control values are source-documented R/W but have not all been semantically hardware-tested on this exact appliance. The F4 result validates transport/width, not every coding's appliance-specific effect."
+  },
+  "next_gate": "One final real-splitter write-path smoke under temporary permanent VS1, using the splitter request dispatcher rather than direct optolinkvs1 calls, before enabling permanent VS1 and updater-managed GFA polling."
 }
