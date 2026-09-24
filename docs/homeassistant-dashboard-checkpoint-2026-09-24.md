@@ -428,8 +428,12 @@ Recommended implementation order:
    - separate automation state, timing, demand logic and currently effective
      setpoints.
 5. **Zeitprogramme**
-   - replace plain weekday entity lists with a compact weekly schedule view;
-   - remain display-only until schedule writes are verified.
+   - compact read-only weekly view is now implemented;
+   - exact 8-byte day-block structure and splitter codec are documented;
+   - local write/readback/restore verification is the current gate before
+     enabling editing;
+   - after that gate, build the full editor/timeline directly on the verified
+     block contract.
 6. **Graphen**
    - make the existing ApexCharts page visually consistent;
    - remove graphs that merely duplicate contextual graphs elsewhere.
@@ -450,5 +454,8 @@ verification before using the pattern on the next view.
 - [ ] Design the logical-pump -> A1 output -> internal-pump chain.
 - [x] Read-only verify maintenance/service candidates and add read-only diagnostic entities.
 - [ ] Add editable Service / Wartung controls in HA using the verified splitter semantics.
+- [ ] Run `wb2a-schedule-probe snapshot` and preserve the 21 raw day blocks.
+- [ ] Run one guarded non-current-day schedule write/readback/restore probe.
+- [ ] After schedule-write PASS, expose validated writable schedule entities/API and build the full Zeitprogramme editor.
 - [ ] Verify all changed cards on desktop and mobile.
 - [ ] Only after Diagnose is stable, start the **Pumpen** page redesign.
