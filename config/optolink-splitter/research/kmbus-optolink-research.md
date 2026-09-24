@@ -171,8 +171,9 @@ Key semantic results:
 - `Virtual_MBUS` is linked to actual external meter profiles and must remain
   separate from KM-BUS.
 
-These results strengthen the conclusion that `PrefixRead` is operational
-routing/selector data. The earlier local prefix-less 0x43/F8 experiment omitted
+These results support `PrefixRead` as operational request data. Local P-N-P
+hardware evidence now proves an effect at 0x0001, but the exact role as routing
+or selector data is still not fully isolated. The earlier local prefix-less 0x43/F8 experiment omitted
 that selector data and must not be treated as a normal Vitosoft-defined EEPROM
 transaction.
 
@@ -290,8 +291,9 @@ Therefore the strongest current mapping is:
 Vitosoft PrefixRead -> request DATA bytes after BlockLength
 ~~~
 
-This mapping is **source-supported but not yet hardware-verified** with a real
-Vitosoft-defined KBus event on the local WB2A. The earlier prefix-less 0x43/F8
+This mapping is source-supported, and local hardware now shows that adding the
+exact six source bytes can change the 0x0001 response. Their precise role as a
+routing selector remains unproven. The earlier prefix-less 0x43/F8
 experiments remain valid wire evidence, but they must not be treated as normal
 Vitosoft KMBUS_EEPROM_READ semantics.
 
@@ -1025,6 +1027,61 @@ A guarded PrefixRead A/B discriminator is prepared as
 `wb2a-kmbus-prefix-ab-probe`. It uses P-N-P ordering (prefixed, no-prefix,
 prefixed) on only four fixed source-derived targets:
 `0x0001/1`, `0x000A/5`, `0x0078/8`, `0x00A0/10`.
+
+## PrefixRead P-N-P discriminator - one clean effect, two dynamic blocks
+
+A same-address read-only comparison was executed in one P300 session using the
+order **prefixed -> no-prefix -> prefixed** with
+`PrefixRead=030000000101`.
+
+Results:
+
+~~~text
+0x0001/1:
+  P1 = 88
+  N  = 87
+  P2 = 88
+  -> PREFIX_EFFECT_OBSERVED
+
+0x000A/5:
+  P1 = 4000000000
+  N  = 4000000000
+  P2 = 4000000000
+  -> NO_PREFIX_EFFECT_OBSERVED
+
+0x0078/8:
+  P1 = 5497549754975497
+  N  = 5497549754975497
+  P2 = d301d301d301d301
+  -> DYNAMIC_OR_INCONCLUSIVE
+
+0x00A0/10:
+  P1 = 54985498549854985498
+  N  = f201f201f201f201f201
+  P2 = 54975497549754975497
+  -> DYNAMIC_OR_INCONCLUSIVE
+~~~
+
+The `0x0001/1` result is the first clean local evidence that the six extra
+request bytes are **not universally ignored**: within a sub-second P-N-P
+sequence the two prefixed reads agreed at `88`, while the otherwise identical
+no-prefix read returned `87`.
+
+That still does **not** prove the semantic role is specifically participant
+routing. It only proves that the request form can affect the local 0x43 result.
+
+The high-address blocks remain unsuitable for literal EEPROM interpretation.
+At `0x0078`, two nominally identical prefixed reads changed from repeated
+`5497` to repeated `d301` within the same short sequence. At `0x00A0`,
+the two prefixed controls also disagreed. This confirms a fast
+transaction/state-dependent mechanism behind the repeated two-byte words.
+
+Next gate: repeat only `0x0001/1` with **one fresh P300 session per trial**
+and a balanced P/N order. This removes same-session carry-over and sequence bias
+before assigning stronger PrefixRead semantics.
+
+Evidence:
+[vitosoft/kmbus-prefix-ab-live-2026-09-24-evidence.json](vitosoft/kmbus-prefix-ab-live-2026-09-24-evidence.json).
 
 ## Research questions
 
