@@ -45,16 +45,11 @@ Then verify the relevant service:
 systemctl is-active optolink-splitter.service
 ```
 
-or:
-
-```bash
-systemctl is-active optolink-web.service
-```
-
 Do not remove the Optolink files from the old `community-scripts` repository until the migrated LXC has completed a successful `update`.
 
 ## Documentation
 
+- [GFA quality-aware logger and FF checkpoint - 2026-09-24](docs/gfa-quality-logger.md) - raw FF contexts received; bounded re-identification helper prepared, hardware validation pending. Read before older GFA log-retrieval/retry instructions.
 - [Collector research checkpoint - 2026-09-23](docs/collector-research-checkpoint.md) - current cross-topic results and next actions; read before older collector-related roadmap entries.
 - [Private archive analysis and evidence](config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-analysis.md) - verified archive/SQL coverage, variant-specific GFA map, corrected firmware and pump assumptions; derived information only.
 - [Project roadmap](docs/project-roadmap.md)
@@ -71,7 +66,6 @@ ct/                         Proxmox LXC entrypoints
 install/                    In-container installers
 tools/                      Update, profile, debug and emulator helpers
 config/optolink-splitter/   Profiles, Home Assistant config and research
-apps/optolink-web/          Optolink-Web application
 docs/                       User documentation
 json/                       Helper metadata
 ```
