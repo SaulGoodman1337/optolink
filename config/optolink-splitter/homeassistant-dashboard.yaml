@@ -640,6 +640,116 @@ button_card_templates:
 
 
 
+
+  schedule_day_row:
+    section_mode: true
+    show_icon: false
+    show_name: true
+    show_state: false
+    show_ripple: true
+    tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
+    variables:
+      day_index: 0
+      accent: '#2196f3'
+    styles:
+      card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
+        - box-shadow: |
+            [[[
+              const today = (new Date().getDay() + 6) % 7;
+              return today === Number(variables.day_index)
+                ? `inset 3px 0 0 ${variables.accent}`
+                : 'none';
+            ]]]
+        - padding: 8px 10px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: >-
+            "n status" "times times" "timeline timeline"
+        - grid-template-columns: 1fr auto
+        - grid-template-rows: min-content min-content min-content
+        - row-gap: 6px
+      name:
+        - justify-self: start
+        - align-self: center
+        - font-size: 12px
+        - font-weight: 700
+        - color: var(--primary-text-color)
+      custom_fields:
+        status:
+          - justify-self: end
+          - align-self: center
+        times:
+          - justify-self: stretch
+          - overflow: hidden
+        timeline:
+          - justify-self: stretch
+          - width: 100%
+    custom_fields:
+      status: |
+        [[[
+          const raw = String(entity?.state ?? '').trim();
+          const lower = raw.toLowerCase();
+          const intervals = [];
+          if (raw && !['unknown','unavailable','none'].includes(lower)) {
+            for (const part of raw.split(',')) {
+              const p = part.trim();
+              const m = p.match(/^(\d{2}):(\d{2})-(\d{2}):(\d{2})$/);
+              if (!m) continue;
+              const a = Number(m[1]) * 60 + Number(m[2]);
+              const b = Number(m[3]) * 60 + Number(m[4]);
+              intervals.push([a,b,`${m[3]}:${m[4]}`]);
+            }
+          }
+          const d = new Date();
+          const today = (d.getDay() + 6) % 7;
+          if (today !== Number(variables.day_index)) return '';
+          const now = d.getHours() * 60 + d.getMinutes();
+          const active = intervals.find(x => now >= x[0] && now < x[1]);
+          if (active) {
+            return `<span style="font-size:9px;font-weight:700;color:${variables.accent};">AKTIV · bis ${active[2]}</span>`;
+          }
+          return '<span style="font-size:9px;font-weight:700;color:var(--secondary-text-color);">HEUTE</span>';
+        ]]]
+      times: |
+        [[[
+          const raw = String(entity?.state ?? '').trim();
+          const lower = raw.toLowerCase();
+          if (!raw || ['unknown','unavailable'].includes(lower)) {
+            return '<span style="font-size:11px;color:var(--secondary-text-color);">keine Daten</span>';
+          }
+          if (lower === 'none') {
+            return '<span style="font-size:11px;color:var(--secondary-text-color);">keine Schaltzeit</span>';
+          }
+          const parts = raw.split(',').map(x => x.trim()).filter(Boolean);
+          return parts.map(p =>
+            `<span style="display:inline-block;margin:1px 4px 1px 0;padding:2px 7px;border-radius:999px;border:1px solid color-mix(in srgb, ${variables.accent} 32%, var(--divider-color));background:color-mix(in srgb, ${variables.accent} 10%, transparent);font-size:10px;font-weight:650;white-space:nowrap;">${p.replace('-', '–')}</span>`
+          ).join('');
+        ]]]
+      timeline: |
+        [[[
+          const raw = String(entity?.state ?? '').trim();
+          const lower = raw.toLowerCase();
+          const spans = [];
+          if (raw && !['unknown','unavailable','none'].includes(lower)) {
+            for (const part of raw.split(',')) {
+              const p = part.trim();
+              const m = p.match(/^(\d{2}):(\d{2})-(\d{2}):(\d{2})$/);
+              if (!m) continue;
+              const start = Number(m[1]) * 60 + Number(m[2]);
+              const end = Number(m[3]) * 60 + Number(m[4]);
+              const left = Math.max(0, Math.min(100, start / 1440 * 100));
+              const width = Math.max(0, Math.min(100 - left, (end - start) / 1440 * 100));
+              spans.push(`<span style="position:absolute;left:${left}%;width:${width}%;top:0;bottom:0;border-radius:999px;background:${variables.accent};"></span>`);
+            }
+          }
+          return `<div style="position:relative;width:100%;height:7px;border-radius:999px;background:color-mix(in srgb, var(--divider-color) 75%, transparent);overflow:hidden;">${spans.join('')}</div>`;
+        ]]]
+
 views:
   - title: Heizung
     path: heizung
@@ -4613,32 +4723,73 @@ views:
             icon: mdi:calendar-clock
 
           - type: custom:mushroom-template-card
-            primary: Wochenprogramme im Vitodens
+            entity: sensor.vitodens_200_wb2a_zeitprogramm_schreibstatus
+            primary: >-
+              Zeitprogramm-Schreibpfad · {{ states(entity) }}
             secondary: >-
-              Read-only · Die im Kessel gespeicherten Schaltzeiten werden hier
-              nur angezeigt. Schreiben bleibt deaktiviert, bis die
-              Zeitprogramm-Semantik vollständig verifiziert ist.
-            icon: mdi:eye-outline
-            icon_color: grey
+              {% set s = states(entity) %}
+              {% set msg = state_attr(entity, 'message') %}
+              {% set p = state_attr(entity, 'program_label') %}
+              {% set d = state_attr(entity, 'day_short') %}
+              {% set z = state_attr(entity, 'schedule') %}
+              {% if s == 'OK' and p and d %}
+                {{ p }} · {{ d }} · {{ z }} · bytegenau bestätigt
+              {% elif s == 'Fehler' and msg %}
+                {{ msg }}
+              {% elif s == 'Schreibt …' and p and d %}
+                {{ p }} · {{ d }} · {{ z }}
+              {% else %}
+                Strikte Validierung · vollständiger 8-Byte-Write · Readback-Verifikation
+              {% endif %}
+            icon: >-
+              {% set s = states(entity) %}
+              {% if s == 'OK' %}mdi:check-decagram
+              {% elif s == 'Fehler' %}mdi:alert-circle
+              {% elif s == 'Schreibt …' %}mdi:progress-clock
+              {% else %}mdi:shield-check{% endif %}
+            icon_color: >-
+              {% set s = states(entity) %}
+              {% if s == 'OK' %}green
+              {% elif s == 'Fehler' %}red
+              {% elif s == 'Schreibt …' %}amber
+              {% else %}blue{% endif %}
+            multiline_secondary: true
+            tap_action:
+              action: more-info
+            grid_options:
+              columns: 6
+
+          - type: custom:mushroom-template-card
+            primary: Bearbeitung
+            secondary: >-
+              Tag antippen → Zeitprogramm bearbeiten. Bis zu 4 Fenster im
+              10-Minuten-Raster, z. B. 05:00-08:00,16:00-22:00.
+              24:00 ist als Endzeit erlaubt; "none" leert den Tag.
+            icon: mdi:calendar-edit
+            icon_color: purple
             multiline_secondary: true
             tap_action:
               action: none
             grid_options:
-              columns: full
+              columns: 6
 
           - type: custom:mushroom-template-card
             primary: Heute · Heizung
             secondary: >-
               {% set d = ['montag','dienstag','mittwoch','donnerstag','freitag','samstag','sonntag'][now().weekday()] %}
-              {% set s = states('sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_' ~ d ~ '_anzeige') %}
-              {% set ns = namespace(items=[]) %}
-              {% for slot in s.split(',') %}
-                {% set slot = slot | trim %}
-                {% if slot and 'na' not in slot | lower and '-' in slot %}
-                  {% set ns.items = ns.items + [slot | replace('-', '–')] %}
+              {% set e = 'text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_' ~ d ~ '_editor' %}
+              {% set s = states(e) %}
+              {% set n = now().hour * 60 + now().minute %}
+              {% set ns = namespace(active=false, ende='') %}
+              {% for w in s.split(',') if s not in ['none','unknown','unavailable'] %}
+                {% set p = w.split('-') %}
+                {% if p | length == 2 %}
+                  {% set a = (p[0].split(':')[0] | int) * 60 + (p[0].split(':')[1] | int) %}
+                  {% set b = (p[1].split(':')[0] | int) * 60 + (p[1].split(':')[1] | int) %}
+                  {% if n >= a and n < b %}{% set ns.active = true %}{% set ns.ende = p[1] %}{% endif %}
                 {% endif %}
               {% endfor %}
-              {{ ns.items | join('  ·  ') if ns.items | length else 'Keine Schaltzeit' }}
+              {{ s | replace(',', ' · ') | replace('-', '–') }}{% if ns.active %} · AKTIV bis {{ ns.ende }}{% endif %}
             icon: mdi:radiator
             icon_color: orange
             multiline_secondary: true
@@ -4651,15 +4802,19 @@ views:
             primary: Heute · Warmwasser
             secondary: >-
               {% set d = ['montag','dienstag','mittwoch','donnerstag','freitag','samstag','sonntag'][now().weekday()] %}
-              {% set s = states('sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_' ~ d ~ '_anzeige') %}
-              {% set ns = namespace(items=[]) %}
-              {% for slot in s.split(',') %}
-                {% set slot = slot | trim %}
-                {% if slot and 'na' not in slot | lower and '-' in slot %}
-                  {% set ns.items = ns.items + [slot | replace('-', '–')] %}
+              {% set e = 'text.vitodens_200_wb2a_warmwasser_zeitprogramm_' ~ d ~ '_editor' %}
+              {% set s = states(e) %}
+              {% set n = now().hour * 60 + now().minute %}
+              {% set ns = namespace(active=false, ende='') %}
+              {% for w in s.split(',') if s not in ['none','unknown','unavailable'] %}
+                {% set p = w.split('-') %}
+                {% if p | length == 2 %}
+                  {% set a = (p[0].split(':')[0] | int) * 60 + (p[0].split(':')[1] | int) %}
+                  {% set b = (p[1].split(':')[0] | int) * 60 + (p[1].split(':')[1] | int) %}
+                  {% if n >= a and n < b %}{% set ns.active = true %}{% set ns.ende = p[1] %}{% endif %}
                 {% endif %}
               {% endfor %}
-              {{ ns.items | join('  ·  ') if ns.items | length else 'Keine Schaltzeit' }}
+              {{ s | replace(',', ' · ') | replace('-', '–') }}{% if ns.active %} · AKTIV bis {{ ns.ende }}{% endif %}
             icon: mdi:water-thermometer
             icon_color: cyan
             multiline_secondary: true
@@ -4672,15 +4827,19 @@ views:
             primary: Heute · Zirkulation
             secondary: >-
               {% set d = ['montag','dienstag','mittwoch','donnerstag','freitag','samstag','sonntag'][now().weekday()] %}
-              {% set s = states('sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_' ~ d ~ '_anzeige') %}
-              {% set ns = namespace(items=[]) %}
-              {% for slot in s.split(',') %}
-                {% set slot = slot | trim %}
-                {% if slot and 'na' not in slot | lower and '-' in slot %}
-                  {% set ns.items = ns.items + [slot | replace('-', '–')] %}
+              {% set e = 'text.vitodens_200_wb2a_zirkulation_zeitprogramm_' ~ d ~ '_editor' %}
+              {% set s = states(e) %}
+              {% set n = now().hour * 60 + now().minute %}
+              {% set ns = namespace(active=false, ende='') %}
+              {% for w in s.split(',') if s not in ['none','unknown','unavailable'] %}
+                {% set p = w.split('-') %}
+                {% if p | length == 2 %}
+                  {% set a = (p[0].split(':')[0] | int) * 60 + (p[0].split(':')[1] | int) %}
+                  {% set b = (p[1].split(':')[0] | int) * 60 + (p[1].split(':')[1] | int) %}
+                  {% if n >= a and n < b %}{% set ns.active = true %}{% set ns.ende = p[1] %}{% endif %}
                 {% endif %}
               {% endfor %}
-              {{ ns.items | join('  ·  ') if ns.items | length else 'Keine Schaltzeit' }}
+              {{ s | replace(',', ' · ') | replace('-', '–') }}{% if ns.active %} · AKTIV bis {{ ns.ende }}{% endif %}
             icon: mdi:pump
             icon_color: blue
             multiline_secondary: true
@@ -4688,7 +4847,6 @@ views:
               action: none
             grid_options:
               columns: 4
-
 
       - type: grid
         cards:
@@ -4698,80 +4856,83 @@ views:
             icon: mdi:radiator
           - type: markdown
             content: |
-              {% macro sched(entity) -%}
-                {%- set s = states(entity) -%}
-                {%- set ns = namespace(items=[]) -%}
-                {%- for slot in s.split(',') -%}
-                  {%- set slot = slot | trim -%}
-                  {%- if slot and 'na' not in slot | lower and '-' in slot -%}
-                    {%- set ns.items = ns.items + [slot | replace('-', '–')] -%}
-                  {%- endif -%}
-                {%- endfor -%}
-                {%- if ns.items | length -%}`{{ ns.items | join('` `') }}`{%- else -%}—{%- endif -%}
-              {%- endmacro %}
-              |  | Tag | Schaltzeiten |
-              |:--:|:--:|---|
-              | {{ '●' if now().weekday() == 0 else '' }} | **Mo** | {{ sched('sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_montag_anzeige') }} |
-              | {{ '●' if now().weekday() == 1 else '' }} | **Di** | {{ sched('sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_dienstag_anzeige') }} |
-              | {{ '●' if now().weekday() == 2 else '' }} | **Mi** | {{ sched('sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_mittwoch_anzeige') }} |
-              | {{ '●' if now().weekday() == 3 else '' }} | **Do** | {{ sched('sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_donnerstag_anzeige') }} |
-              | {{ '●' if now().weekday() == 4 else '' }} | **Fr** | {{ sched('sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_freitag_anzeige') }} |
-              | {{ '●' if now().weekday() == 5 else '' }} | **Sa** | {{ sched('sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_samstag_anzeige') }} |
-              | {{ '●' if now().weekday() == 6 else '' }} | **So** | {{ sched('sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_sonntag_anzeige') }} |
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);font-size:9px;color:var(--secondary-text-color);padding:0 4px;">
+                <span>00</span><span style="text-align:center">06</span><span style="text-align:center">12</span><span style="text-align:center">18</span><span style="text-align:right">24</span>
+              </div>
             card_mod:
               style: |
                 ha-card {
-                  border-radius: 14px;
-                  border: 1px solid var(--divider-color);
-                  border-left: 3px solid #ff9800;
+                  background: transparent;
+                  border: none;
                   box-shadow: none;
-                  overflow: hidden;
+                  margin-bottom: -8px;
                 }
                 ha-markdown {
-                  padding: 4px 10px 7px !important;
+                  padding: 0 5px !important;
                 }
-                table {
-                  width: 100%;
-                  border-collapse: collapse;
-                  font-size: 11px;
-                }
-                th {
-                  color: var(--secondary-text-color);
-                  font-size: 10px;
-                  font-weight: 600;
-                  text-align: left;
-                  border-bottom: 1px solid var(--divider-color);
-                }
-                th, td {
-                  padding: 7px 7px !important;
-                  vertical-align: middle;
-                }
-                tbody tr {
-                  border-bottom: 1px solid color-mix(in srgb, var(--divider-color) 55%, transparent);
-                }
-                tbody tr:last-child {
-                  border-bottom: none;
-                }
-                td:first-child, th:first-child {
-                  width: 18px;
-                  color: #ff9800;
-                }
-                td:nth-child(2), th:nth-child(2) {
-                  width: 34px;
-                }
-                code {
-                  display: inline-block;
-                  margin: 1px 3px 1px 0;
-                  padding: 2px 7px;
-                  border-radius: 999px;
-                  border: 1px solid color-mix(in srgb, #ff9800 28%, var(--divider-color));
-                  background: color-mix(in srgb, #ff9800 10%, transparent);
-                  color: var(--primary-text-color);
-                  font-family: inherit;
-                  font-size: 10px;
-                  font-weight: 600;
-                  white-space: nowrap;
-                }
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_montag_editor
+            name: Montag
+            variables:
+              day_index: 0
+              accent: '#ff9800'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_dienstag_editor
+            name: Dienstag
+            variables:
+              day_index: 1
+              accent: '#ff9800'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_mittwoch_editor
+            name: Mittwoch
+            variables:
+              day_index: 2
+              accent: '#ff9800'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_donnerstag_editor
+            name: Donnerstag
+            variables:
+              day_index: 3
+              accent: '#ff9800'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_freitag_editor
+            name: Freitag
+            variables:
+              day_index: 4
+              accent: '#ff9800'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_samstag_editor
+            name: Samstag
+            variables:
+              day_index: 5
+              accent: '#ff9800'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_sonntag_editor
+            name: Sonntag
+            variables:
+              day_index: 6
+              accent: '#ff9800'
             grid_options:
               columns: full
 
@@ -4783,80 +4944,83 @@ views:
             icon: mdi:water-thermometer
           - type: markdown
             content: |
-              {% macro sched(entity) -%}
-                {%- set s = states(entity) -%}
-                {%- set ns = namespace(items=[]) -%}
-                {%- for slot in s.split(',') -%}
-                  {%- set slot = slot | trim -%}
-                  {%- if slot and 'na' not in slot | lower and '-' in slot -%}
-                    {%- set ns.items = ns.items + [slot | replace('-', '–')] -%}
-                  {%- endif -%}
-                {%- endfor -%}
-                {%- if ns.items | length -%}`{{ ns.items | join('` `') }}`{%- else -%}—{%- endif -%}
-              {%- endmacro %}
-              |  | Tag | Schaltzeiten |
-              |:--:|:--:|---|
-              | {{ '●' if now().weekday() == 0 else '' }} | **Mo** | {{ sched('sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_montag_anzeige') }} |
-              | {{ '●' if now().weekday() == 1 else '' }} | **Di** | {{ sched('sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_dienstag_anzeige') }} |
-              | {{ '●' if now().weekday() == 2 else '' }} | **Mi** | {{ sched('sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_mittwoch_anzeige') }} |
-              | {{ '●' if now().weekday() == 3 else '' }} | **Do** | {{ sched('sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_donnerstag_anzeige') }} |
-              | {{ '●' if now().weekday() == 4 else '' }} | **Fr** | {{ sched('sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_freitag_anzeige') }} |
-              | {{ '●' if now().weekday() == 5 else '' }} | **Sa** | {{ sched('sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_samstag_anzeige') }} |
-              | {{ '●' if now().weekday() == 6 else '' }} | **So** | {{ sched('sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_sonntag_anzeige') }} |
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);font-size:9px;color:var(--secondary-text-color);padding:0 4px;">
+                <span>00</span><span style="text-align:center">06</span><span style="text-align:center">12</span><span style="text-align:center">18</span><span style="text-align:right">24</span>
+              </div>
             card_mod:
               style: |
                 ha-card {
-                  border-radius: 14px;
-                  border: 1px solid var(--divider-color);
-                  border-left: 3px solid #00bcd4;
+                  background: transparent;
+                  border: none;
                   box-shadow: none;
-                  overflow: hidden;
+                  margin-bottom: -8px;
                 }
                 ha-markdown {
-                  padding: 4px 10px 7px !important;
+                  padding: 0 5px !important;
                 }
-                table {
-                  width: 100%;
-                  border-collapse: collapse;
-                  font-size: 11px;
-                }
-                th {
-                  color: var(--secondary-text-color);
-                  font-size: 10px;
-                  font-weight: 600;
-                  text-align: left;
-                  border-bottom: 1px solid var(--divider-color);
-                }
-                th, td {
-                  padding: 7px 7px !important;
-                  vertical-align: middle;
-                }
-                tbody tr {
-                  border-bottom: 1px solid color-mix(in srgb, var(--divider-color) 55%, transparent);
-                }
-                tbody tr:last-child {
-                  border-bottom: none;
-                }
-                td:first-child, th:first-child {
-                  width: 18px;
-                  color: #00bcd4;
-                }
-                td:nth-child(2), th:nth-child(2) {
-                  width: 34px;
-                }
-                code {
-                  display: inline-block;
-                  margin: 1px 3px 1px 0;
-                  padding: 2px 7px;
-                  border-radius: 999px;
-                  border: 1px solid color-mix(in srgb, #00bcd4 28%, var(--divider-color));
-                  background: color-mix(in srgb, #00bcd4 10%, transparent);
-                  color: var(--primary-text-color);
-                  font-family: inherit;
-                  font-size: 10px;
-                  font-weight: 600;
-                  white-space: nowrap;
-                }
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_montag_editor
+            name: Montag
+            variables:
+              day_index: 0
+              accent: '#00bcd4'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_dienstag_editor
+            name: Dienstag
+            variables:
+              day_index: 1
+              accent: '#00bcd4'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_mittwoch_editor
+            name: Mittwoch
+            variables:
+              day_index: 2
+              accent: '#00bcd4'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_donnerstag_editor
+            name: Donnerstag
+            variables:
+              day_index: 3
+              accent: '#00bcd4'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_freitag_editor
+            name: Freitag
+            variables:
+              day_index: 4
+              accent: '#00bcd4'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_samstag_editor
+            name: Samstag
+            variables:
+              day_index: 5
+              accent: '#00bcd4'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_sonntag_editor
+            name: Sonntag
+            variables:
+              day_index: 6
+              accent: '#00bcd4'
             grid_options:
               columns: full
 
@@ -4868,80 +5032,83 @@ views:
             icon: mdi:pump
           - type: markdown
             content: |
-              {% macro sched(entity) -%}
-                {%- set s = states(entity) -%}
-                {%- set ns = namespace(items=[]) -%}
-                {%- for slot in s.split(',') -%}
-                  {%- set slot = slot | trim -%}
-                  {%- if slot and 'na' not in slot | lower and '-' in slot -%}
-                    {%- set ns.items = ns.items + [slot | replace('-', '–')] -%}
-                  {%- endif -%}
-                {%- endfor -%}
-                {%- if ns.items | length -%}`{{ ns.items | join('` `') }}`{%- else -%}—{%- endif -%}
-              {%- endmacro %}
-              |  | Tag | Schaltzeiten |
-              |:--:|:--:|---|
-              | {{ '●' if now().weekday() == 0 else '' }} | **Mo** | {{ sched('sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_montag_anzeige') }} |
-              | {{ '●' if now().weekday() == 1 else '' }} | **Di** | {{ sched('sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_dienstag_anzeige') }} |
-              | {{ '●' if now().weekday() == 2 else '' }} | **Mi** | {{ sched('sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_mittwoch_anzeige') }} |
-              | {{ '●' if now().weekday() == 3 else '' }} | **Do** | {{ sched('sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_donnerstag_anzeige') }} |
-              | {{ '●' if now().weekday() == 4 else '' }} | **Fr** | {{ sched('sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_freitag_anzeige') }} |
-              | {{ '●' if now().weekday() == 5 else '' }} | **Sa** | {{ sched('sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_samstag_anzeige') }} |
-              | {{ '●' if now().weekday() == 6 else '' }} | **So** | {{ sched('sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_sonntag_anzeige') }} |
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);font-size:9px;color:var(--secondary-text-color);padding:0 4px;">
+                <span>00</span><span style="text-align:center">06</span><span style="text-align:center">12</span><span style="text-align:center">18</span><span style="text-align:right">24</span>
+              </div>
             card_mod:
               style: |
                 ha-card {
-                  border-radius: 14px;
-                  border: 1px solid var(--divider-color);
-                  border-left: 3px solid #2196f3;
+                  background: transparent;
+                  border: none;
                   box-shadow: none;
-                  overflow: hidden;
+                  margin-bottom: -8px;
                 }
                 ha-markdown {
-                  padding: 4px 10px 7px !important;
+                  padding: 0 5px !important;
                 }
-                table {
-                  width: 100%;
-                  border-collapse: collapse;
-                  font-size: 11px;
-                }
-                th {
-                  color: var(--secondary-text-color);
-                  font-size: 10px;
-                  font-weight: 600;
-                  text-align: left;
-                  border-bottom: 1px solid var(--divider-color);
-                }
-                th, td {
-                  padding: 7px 7px !important;
-                  vertical-align: middle;
-                }
-                tbody tr {
-                  border-bottom: 1px solid color-mix(in srgb, var(--divider-color) 55%, transparent);
-                }
-                tbody tr:last-child {
-                  border-bottom: none;
-                }
-                td:first-child, th:first-child {
-                  width: 18px;
-                  color: #2196f3;
-                }
-                td:nth-child(2), th:nth-child(2) {
-                  width: 34px;
-                }
-                code {
-                  display: inline-block;
-                  margin: 1px 3px 1px 0;
-                  padding: 2px 7px;
-                  border-radius: 999px;
-                  border: 1px solid color-mix(in srgb, #2196f3 28%, var(--divider-color));
-                  background: color-mix(in srgb, #2196f3 10%, transparent);
-                  color: var(--primary-text-color);
-                  font-family: inherit;
-                  font-size: 10px;
-                  font-weight: 600;
-                  white-space: nowrap;
-                }
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_montag_editor
+            name: Montag
+            variables:
+              day_index: 0
+              accent: '#2196f3'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_dienstag_editor
+            name: Dienstag
+            variables:
+              day_index: 1
+              accent: '#2196f3'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_mittwoch_editor
+            name: Mittwoch
+            variables:
+              day_index: 2
+              accent: '#2196f3'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_donnerstag_editor
+            name: Donnerstag
+            variables:
+              day_index: 3
+              accent: '#2196f3'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_freitag_editor
+            name: Freitag
+            variables:
+              day_index: 4
+              accent: '#2196f3'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_samstag_editor
+            name: Samstag
+            variables:
+              day_index: 5
+              accent: '#2196f3'
+            grid_options:
+              columns: full
+          - type: custom:button-card
+            template: schedule_day_row
+            entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_sonntag_editor
+            name: Sonntag
+            variables:
+              day_index: 6
+              accent: '#2196f3'
             grid_options:
               columns: full
 
