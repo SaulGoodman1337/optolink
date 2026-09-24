@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "date": "2026-09-24",
-  "status": "TRANSPORT_CONTEXT_ERROR_CORRECTED",
+  "status": "PHASE_A_PASS",
   "evidence_level": "hardware_observation",
   "scope": "First bounded read-only Virtual_READ vs KMBUS_RAM_READ 0x41 correlation on local WB2A / VDensHO1 / 20C2.",
   "tracking_issue": 30,
@@ -71,7 +71,7 @@
     "ERROR"
   ],
   "live_results": "All 7 ordinary Virtual_READ requests succeeded; all 7 KMBUS_RAM_READ 0x41 requests produced client-side timeout, including the previously verified 0x00F8/8 positive control.",
-  "conclusion": "The failed 0x41 correlation run was caused by using VS2/P300 generic requests against a production splitter intentionally running permanent VS1/KW. No conclusion about KMBUS_RAM_READ address semantics can be drawn from those timeouts.",
+  "conclusion": "Phase A passed: on seven known logical addresses, 0x41 KMBUS_RAM_READ and 0x01 Virtual_READ are byte-identical in an explicitly initialized P300 session. 0x41 is real and controller-supported, but currently behaves like an alternate/mirrored logical read path on the sampled addresses.",
   "live_run": {
     "started_at": "2026-09-24T22:01:32+02:00",
     "ended_at": "2026-09-24T22:02:17+02:00",
@@ -172,8 +172,8 @@
   },
   "next_step": {
     "priority": 1,
-    "action": "Run KMBUS_RAM_READ only in a deliberately bounded temporary P300/VS2 maintenance window: stop the single-owner VS1 splitter (and Party service if active), initialize P300 explicitly, perform read-only 0x01 control + 0x41 reads, close serial, then restore permanent VS1 services and verify P06/GFA polling.",
-    "no_semantic_expansion": true
+    "action": "Repeat only 0x0A3C/0x7660/0x7663 during a natural non-zero pump/heating or DHW state, preferably with a short bounded P300 watch window, to prove dynamic equivalence.",
+    "secondary": "After dynamic proof, test a very small source-derived set of addresses outside the ordinary VDensHO1 datapoint set to look for any 0x41-only namespace; do not blind-sweep."
   },
   "transport_diagnostic_2208": {
     "service_state": "active",
@@ -222,5 +222,97 @@
   "invalidated_conclusions": [
     "Do not interpret request;0x01 timeout as evidence of a dispatcher/version mismatch.",
     "Do not use P300 raw frames 41 05 ... inside the live persistent VS1/KW session."
+  ],
+  "successful_p300_window": {
+    "started_at": "2026-09-24T22:23:33.057+02:00",
+    "ended_at": "2026-09-24T22:23:40.228+02:00",
+    "log": "/root/wb2a-kmbus-p300-read-20260924-222333-203971.log",
+    "production_before": "VS1/KW",
+    "p300_initialized": true,
+    "p300_identity_control": {
+      "function": "0x01",
+      "address": "0x00F8",
+      "length": 8,
+      "data": "20c2000300000103",
+      "result": "PASS"
+    },
+    "pairs": [
+      {
+        "name": "identity",
+        "address": "0x00F8",
+        "length": 8,
+        "virtual": "20c2000300000103",
+        "kmbus41": "20c2000300000103",
+        "classification": "IDENTICAL"
+      },
+      {
+        "name": "pump_final_command",
+        "address": "0x0A3C",
+        "length": 1,
+        "virtual": "00",
+        "kmbus41": "00",
+        "classification": "IDENTICAL"
+      },
+      {
+        "name": "internal_pump_runtime",
+        "address": "0x7660",
+        "length": 2,
+        "virtual": "0000",
+        "kmbus41": "0000",
+        "classification": "IDENTICAL"
+      },
+      {
+        "name": "a1_pump_request",
+        "address": "0x7663",
+        "length": 2,
+        "virtual": "0000",
+        "kmbus41": "0000",
+        "classification": "IDENTICAL"
+      },
+      {
+        "name": "internal_pump_identity",
+        "address": "0x5730",
+        "length": 1,
+        "virtual": "01",
+        "kmbus41": "01",
+        "classification": "IDENTICAL"
+      },
+      {
+        "name": "internal_pump_sw_block",
+        "address": "0x0A54",
+        "length": 4,
+        "virtual": "01110101",
+        "kmbus41": "01110101",
+        "classification": "IDENTICAL"
+      },
+      {
+        "name": "a1_remote_identity",
+        "address": "0x27A0",
+        "length": 1,
+        "virtual": "00",
+        "kmbus41": "00",
+        "classification": "IDENTICAL"
+      }
+    ],
+    "transport_evidence": {
+      "request_0x41_acknowledged": true,
+      "response_command_echoes_0x41": true,
+      "example_request": "41 05 00 41 00 f8 08 46",
+      "example_response": "41 0d 01 41 00 f8 08 20 c2 00 03 00 00 01 03 38"
+    },
+    "restoration": {
+      "splitter_restarted": true,
+      "party_restarted": true,
+      "vs1_restored": true
+    },
+    "result": "PASS"
+  },
+  "phase_a_conclusion": [
+    "KMBUS_RAM_READ 0x41 is definitively implemented by the local VDensHO1/20C2 controller in P300 mode.",
+    "The controller returns a proper successful 0x41 response frame; this is not client-side rewriting to Virtual_READ 0x01.",
+    "All seven sampled addresses returned byte-identical data under 0x01 and 0x41.",
+    "This strongly supports an alias/mirror interpretation for the sampled logical address space.",
+    "The three pump-runtime objects were all zero during this run, so dynamic equivalence is not yet proven for non-zero runtime state.",
+    "Static non-zero objects 0x5730=01 and 0x0A54=01110101 also matched, strengthening the broad-alias hypothesis beyond the identity block."
   ]
 }
