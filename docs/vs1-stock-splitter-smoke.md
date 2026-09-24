@@ -106,7 +106,30 @@ homeassistant_publish.py 21d272008206abaa766563f59bd30379b80a02ce
 mqtt_util.py             5f4b159e0431a87fbdb1683fd6568971cf1a3260
 ```
 
-v1.0.5 pins these real on-disk results. No other tracked modification is accepted.
+v1.0.6 pins these real on-disk results. No other tracked modification is accepted.
+
+## Sixth attempt - MQTT observer bug fixed before VS1 start
+
+The next attempt passed the complete stock/profile preflight, identified 212 expected cycle-0 MQTT topics, captured the original settings SHA256 and stopped the splitter. The actual VS1 splitter run still did **not** start because the independent MQTT observer crashed first.
+
+Cause:
+
+```text
+TypeError: int() argument must be a string, a bytes-like object or a real number, not 'ReasonCode'
+```
+
+The helper explicitly uses Paho callback API v2. Current Paho v2 supplies a `ReasonCode` object and exposes `reason_code.is_failure`; v1.0.5 incorrectly attempted `int(reason_code)`.
+
+Cleanup succeeded:
+
+- original settings SHA256: `afb2beeddbdde21b6bbfdf0a66ec3be0f77998a7c1f50c32d7386d5eefe9ea05`;
+- restored settings SHA256: identical;
+- splitter service restarted;
+- backup removed only after byte-exact restore.
+
+The old `RESTORED_BASELINE_PROTOCOL=NOT_CONFIRMED` was a verification-timing weakness, not evidence that the restored splitter was unusable. v1.0.6 waits up to 10 seconds for the VS2/300 initialization marker and performs that check before restarting Party.
+
+v1.0.6 also increases the smoke window to **60 seconds**. With 212 expected topics and `olbreath=0.15`, the breath delay alone gives a 31.8-second lower bound before serial response and MQTT overhead, so 30 seconds was not a sound complete-cycle gate.
 
 ## Temporary settings
 
@@ -133,7 +156,7 @@ The party emulator is stopped if it was active.
 
 The helper itself has no direct Optolink write implementation and does not add any GFA polling.
 
-## 30-second validation
+## 60-second validation
 
 The current stock splitter is started with the temporary settings and must remain active/running with one unchanged MainPID for the complete window.
 
@@ -198,7 +221,7 @@ Run in the optolink-splitter LXC as root:
   install -m 0700 "$tmp" "$script"
 
   /opt/optolink/venv/bin/python "$script" --self-test
-  /opt/optolink/venv/bin/python -u "$script" --execute --seconds 30
+  /opt/optolink/venv/bin/python -u "$script" --execute --seconds 60
 )
 ```
 
