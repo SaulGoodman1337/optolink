@@ -1,6 +1,6 @@
 # WB2A stock splitter permanent-VS1 smoke gate
 
-Status: **prepared; first live attempt stopped safely at preflight because the migrated installation has no `.git` metadata. v1.0.2 now supports exact runtime-file hash verification as a fallback. Live VS1 execution still pending.**
+Status: **prepared; first live attempt stopped safely at preflight because the migrated installation has no `.git` metadata. v1.0.3 now supports exact runtime-file hash verification as a fallback. Live VS1 execution still pending.**
 
 This is the final read-path gate before adding production GFA polling to the splitter.
 
@@ -27,34 +27,34 @@ config/optolink-splitter/wb2a-stock-vs1-smoke.py
 Version:
 
 ```text
-1.0.2
+1.0.3
 ```
 
 Pinned commit:
 
 ```text
-1a58ddef9306b704a6921b03939df1a6febf6f30
+421b72c0578a31a4e67865385a59d1b04054e6f5
 ```
 
 Git blob:
 
 ```text
-abdc8c0be377926e60659a5c52452b48d9ee2f03
+3a81d4f1d3c856a3d03b176f4d1ca11c63efd27f
 ```
 
 SHA256:
 
 ```text
-6aa2394d5d93121fefd6718ba625b1d63ed19e41d5418da961c8ca8e32edf732
+26d4435b69353794d704526a0a5204b858df0871c13d9409876ecd060a943145
 ```
 
-The helper's eleven embedded offline logic tests cover settings patching, missing-setting refusal, literal setting parsing, poll-topic extraction, disabled groups, MQTT topic formatting/collision detection, journal success/error classification, Git-blob hashing and duration bounds.
+The helper's thirteen embedded offline logic tests cover settings patching, missing-setting refusal, literal setting parsing, poll-topic extraction, disabled groups, MQTT topic formatting/collision detection, journal success/error classification, Git-blob hashing and duration bounds.
 
 ## Stock-code requirement
 
-The first live attempt on 2026-09-24 stopped safely before any settings/service change because `git rev-parse HEAD` exited with code 128. That exit code alone does not distinguish a missing `.git` directory from Git's `safe.directory` ownership protection. v1.0.2 handles both cases: if `.git` exists, Git is invoked with a per-process `safe.directory=/opt/optolink`; if `.git` is absent, the exact 14-file runtime blob manifest is used. No device command, temporary settings write or service stop occurred in the failed preflight.
+The first live attempt on 2026-09-24 stopped safely before any settings/service change because `git rev-parse HEAD` exited with code 128. That exit code alone does not distinguish a missing `.git` directory from Git's `safe.directory` ownership protection. v1.0.3 handles both cases: if `.git` exists, Git is invoked with a per-process `safe.directory=/opt/optolink`; if `.git` is absent, the exact 14-file runtime blob manifest is used. No device command, temporary settings write or service stop occurred in the failed preflight.
 
-v1.0.2 accepts either of two strict stock-source verification modes:
+v1.0.3 accepts either of two strict stock-source verification modes:
 
 1. **Git mode:** `/opt/optolink` is a Git checkout, HEAD equals local `origin/main`, and no tracked files are modified.
 2. **Migrated-install fallback:** if `.git` is absent, 14 critical runtime Python files must match exact Git-blob IDs from upstream commit `c1ee204a1421447721603c5f21c6da7337fdac97`. These include the main splitter, VS1/VS2 transports, request/poll/settings/MQTT/HA modules and supporting runtime helpers. Any missing or differing file aborts before changes.
@@ -69,6 +69,29 @@ The gate additionally refuses live execution unless:
 - MQTT is configured.
 
 Untracked local configuration files are permitted; tracked splitter source modifications are not.
+
+## Second preflight result - intentional VDensHO1 runtime patches
+
+The second live attempt again stopped **before any service/settings change**. This time Git verification succeeded far enough to show exactly two tracked runtime modifications:
+
+```text
+M homeassistant_publish.py
+M mqtt_util.py
+```
+
+These are intentional changes applied by `tools/optolink-apply-vdensho1-ha-profile.sh`:
+
+- `homeassistant_publish.py`: expands `{mqtt_base}` and `%mqtt_listen%` placeholders in generated Home Assistant discovery strings.
+- `mqtt_util.py`: replaces one delayed writable-state readback with staged delays `0.25, 1.0, 2.5, 5.0` seconds.
+
+v1.0.3 accepts **only these two paths and only their exact patched Git-blob IDs**:
+
+```text
+homeassistant_publish.py 49107392ee71af629e6af8eafec337852d6340aa
+mqtt_util.py             b5173ee7a4e04e9ada50b0ed708d65accc10ca46
+```
+
+Any additional tracked modification or any different content in either file remains a hard preflight failure.
 
 ## Temporary settings
 
@@ -169,9 +192,11 @@ Do not manually stop services and do not edit settings first.
 A successful tail should include approximately:
 
 ```text
-STOCK_VERIFY_MODE=git-clean-origin-main
-# or on a migrated installation:
-STOCK_VERIFY_MODE=runtime-blob-manifest
+STOCK_VERIFY_MODE=git-origin-main-plus-vdensho1-profile-patches
+TRACKED_CHECKOUT=origin_main_plus_exact_vdensho1_profile_patches
+PROFILE_PATCH_BLOBS=match files=2
+# or, if .git is truly absent:
+STOCK_VERIFY_MODE=runtime-blob-manifest-plus-vdensho1-profile-patches
 RUNTIME_BLOB_MANIFEST=match files=14
 EXPECTED_CYCLE0_MQTT_TOPICS=<n>
 JOURNAL_VS1_INITIALIZED=yes
