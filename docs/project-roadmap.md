@@ -456,7 +456,7 @@ Do not treat the M-Bus Slave Click choice as a completed implementation yet.
 
 ### Maintenance configuration / reset via Home Assistant
 
-Status: **maintenance backend + HA staging + MQTT Discovery live-verified / Wartung view frontend verification pending**
+Status: **maintenance backend + HA staging + MQTT Discovery + Wartung render live-verified / HA interaction test pending**
 
 A future Home Assistant dashboard session should add a compact **Service /
 Wartung** area that not only displays the verified maintenance diagnostics but,
@@ -568,8 +568,11 @@ presentation issue: the default button-card layout rendered oversized action
 icons/cards. A compact maintenance action template and compact safety card are
 now committed and YAML-validated.
 
-The remaining task is frontend verification of the corrected Wartung view,
-including confirmation dialogs and displayed post-action readbacks.
+The corrected Wartung view has now been reviewed live: layout and entity
+rendering are good after the compact action-card fix. The remaining task is the
+Home Assistant interaction test: stage values from the UI, verify that staging
+does not change the controller, then verify one confirmed Apply action and its
+displayed post-action readback.
 
 ## WB2A reverse engineering: open items
 
