@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "date": "2026-09-24",
-  "status": "GENERIC_REQUEST_PATH_DIAGNOSIS",
+  "status": "TRANSPORT_CONTEXT_ERROR_CORRECTED",
   "evidence_level": "hardware_observation",
   "scope": "First bounded read-only Virtual_READ vs KMBUS_RAM_READ 0x41 correlation on local WB2A / VDensHO1 / 20C2.",
   "tracking_issue": 30,
@@ -71,7 +71,7 @@
     "ERROR"
   ],
   "live_results": "All 7 ordinary Virtual_READ requests succeeded; all 7 KMBUS_RAM_READ 0x41 requests produced client-side timeout, including the previously verified 0x00F8/8 positive control.",
-  "conclusion": "Normal Virtual_READ works, but both generic function 0x01 and 0x41 time out. Because upstream generic 0x01 builds the same VS2 bytes as ordinary Virtual_READ, diagnose the live request command path/version before interpreting any KMBUS result.",
+  "conclusion": "The failed 0x41 correlation run was caused by using VS2/P300 generic requests against a production splitter intentionally running permanent VS1/KW. No conclusion about KMBUS_RAM_READ address semantics can be drawn from those timeouts.",
   "live_run": {
     "started_at": "2026-09-24T22:01:32+02:00",
     "ended_at": "2026-09-24T22:02:17+02:00",
@@ -172,7 +172,7 @@
   },
   "next_step": {
     "priority": 1,
-    "action": "Run a narrow transport diagnostic: normal r control, generic request 0x01 control, 0x41 known-positive with longer timeout, and capture unmatched MQTT responses.",
+    "action": "Run KMBUS_RAM_READ only in a deliberately bounded temporary P300/VS2 maintenance window: stop the single-owner VS1 splitter (and Party service if active), initialize P300 explicitly, perform read-only 0x01 control + 0x41 reads, close serial, then restore permanent VS1 services and verify P06/GFA polling.",
     "no_semantic_expansion": true
   },
   "transport_diagnostic_2208": {
@@ -203,6 +203,24 @@
       "Use raw;4105000100F80806 as a byte-identical Virtual_READ control that bypasses the request command dispatcher.",
       "Use raw;4105004100F80846 as the byte-level KMBUS_RAM_READ 0x41 control.",
       "Only resume address correlation after one of the raw/generic 0x41 controls succeeds."
+    ],
+    "corrected_interpretation": [
+      "The generic request timeouts were expected under permanent VS1 because vs12_adapter.do_request() explicitly raises NotImplementedError: request command not supported with VS1/KW, use raw instead.",
+      "The journal confirms exactly this for both request;0x01 and request;0x41.",
+      "The raw P300 frames also timed out because raw sends bytes directly into the currently active VS1/KW session; it does not switch the appliance/session into P300/VS2.",
+      "Therefore the prior hypothesis of a broken/old request dispatcher was incorrect.",
+      "The earlier locally successful 0x41 KMBUS_RAM_READ result must have been obtained while the splitter/device was in VS2/P300 context, before permanent VS1 production activation."
     ]
-  }
+  },
+  "production_transport_context": {
+    "protocol": "VS1/KW",
+    "vs1protocol": true,
+    "reason": "Permanent VS1 was activated earlier on 2026-09-24 to support stable mixed F7 Virtual_READ + 6B GFA_READ production polling, including blower speed P06.",
+    "evidence": "config/optolink-splitter/research/vitosoft/vs1-gfa-production-activation-2026-09-24-evidence.json",
+    "consequence": "VS2/P300 generic request function codes such as 0x41 cannot be issued through the live splitter's request/do_request path while VS1 is active."
+  },
+  "invalidated_conclusions": [
+    "Do not interpret request;0x01 timeout as evidence of a dispatcher/version mismatch.",
+    "Do not use P300 raw frames 41 05 ... inside the live persistent VS1/KW session."
+  ]
 }
