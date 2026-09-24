@@ -28,28 +28,42 @@ Do not reopen these as generic tasks without new evidence:
 - treating P87 bit 1 as a named "flame stabilized" signal; only its measured timing relation is established;
 - blind GFA, burner-safety, EEPROM or coding-plug writes.
 
-## P0 - Internal-pump arbitration map
+## P0 - Internal-pump hidden selection logic
 
-**Goal:** determine where the normal A1 request becomes the final internal-pump request and whether a safe, documented heating-mode request path exists.
+**Completed hardware result:** the adjacent global result objects have already been tested on the local WB2A.
 
-**Read-only channels:**
+- `0x0A3A` is readable but remained `0` through the tested local heating start even while A1 runtime was active.
+- `0x0A3B` is readable but remained `0`; no separate M2 pump path is active.
+- `0x0A3C` tracks the final internal-pump command and matches `0x7660[1]` even when it diverges from `0x7663[1]`.
+- `0x7663` represents the A1 heating-circuit runtime command; `0x7660` represents the internal physical-pump runtime command.
+- Therefore the earlier hypothesis `0x0A3A = computed A1 request feeding 0x7663` is **rejected**. Do not schedule another generic A3A/A3B discriminator run.
 
-- `0x0A3A / 1` - heating-circuit pump A1 set speed;
-- `0x0A3B / 1` - heating-circuit pump M2 set speed;
-- `0x0A3C / 1` - internal pump set speed;
-- `0x7663 / 2` - A1/M1 runtime/output;
-- `0x7660 / 2` - internal-pump runtime/output.
+Current best architecture:
+
+```text
+A1 demand + operating mode + E6/E7/E8/E9 + K31 + 6C + GWG75/76 + other overrides
+                                  |
+                                  v
+                      hidden controller selection
+                                  |
+                                  v
+                    0x0A3C ~= 0x7660[1]
+                                  |
+                                  v
+                         internal KM-BUS pump
+```
 
 **TODO:**
 
-- [ ] Capture all five values in pump-off, heating request/pre-purge, flame-on stable heating and post-flame/restart-inhibition states.
-- [ ] Preserve exact timestamps and burner/GFA context with each transition.
-- [ ] Observe, if it occurs naturally, a heating state with A1 demand above the 50% GWG75 floor.
-- [ ] Determine whether `0x0A3A` follows calculated A1 demand while `0x0A3C` follows the later internal-pump arbitration result.
-- [ ] Compare the same channels during DHW/DHW overrun to keep the bypass path explicit.
-- [ ] Do not introduce pump-control writes until the read-only arbitration map is internally consistent.
+- [ ] Treat `0x0A3C` as the verified final command shadow, not a writable target.
+- [ ] Search remaining host-side/protected code specifically for the selector between exposed configuration inputs and `0x0A3C`.
+- [ ] Prioritize the two protected FlowCalibration binary states and embedded resources; the normal deep string/member corpus did not expose a WB2A burner-dependent pump override.
+- [ ] Keep legacy `0x571D` / `0x581D` closed: both returned invalid-address on the local controller.
+- [ ] Use natural passive observations only when they answer a specific formula question, e.g. whether an A1 request above the GWG75 50% floor is passed through to the internal command.
+- [ ] Keep the documented external-demand/K34 path separate: it can force the internal circulation pump ON but is not proven to request 100% and can affect boiler heat demand via 9B.
+- [ ] If protected host code yields no selector, move this question to actual controller-firmware/MCU analysis rather than probing unrelated virtual addresses.
 
-**Completion criterion:** a reproducible state table explains which object changes first and how `0x0A3A`, `0x0A3C`, `0x7663` and `0x7660` relate in heating and DHW.
+**Completion criterion:** a source-backed selector/override path is found, or the workstream is explicitly transferred to controller-firmware analysis with the exposed datapoint layer considered exhausted.
 
 ## P0 - Complete GFA software identity
 
