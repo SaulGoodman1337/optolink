@@ -1,6 +1,6 @@
 # WB2A GFA flame/status correlation probe
 
-Status: **prepared and offline-tested; live run pending**
+Status: **v1.0.1 prepared for permanent production VS1; first v1.0.0 live attempt aborted safely at settings preflight; corrected live run pending**
 
 ## Goal
 
@@ -79,6 +79,35 @@ The inherited tests include exact setpoint restoration, active-burner refusal,
 lost trigger response, interruption cleanup, restore hard-failure handling,
 fixed write-address bounds, FF quarantine, P80 identity guards and service
 restoration.
+
+## First live attempt: preflight-only abort
+
+The first live invocation on 2026-09-24 completed the full offline test chain, then aborted immediately with:
+
+```text
+ERROR: Require explicit vs1protocol = False; settings are never modified.
+```
+
+This was a helper compatibility defect, not a controller or transport failure. The
+historical P80 parent was written before the production splitter moved to permanent
+`vs1protocol=True`, and its standalone `read_settings()` deliberately rejects that
+mode.
+
+The correlation child has been corrected to parse the production settings itself
+without importing or modifying them. It now requires:
+
+```text
+vs1protocol = True
+port_vitoconnect = None
+port_optolink = a literal local /dev/... path
+```
+
+The old parent remains unchanged and SHA256-pinned. Trigger/write/restore behavior
+is therefore unchanged; only the child entrypoint's configuration precondition is
+updated for the current production architecture.
+
+The failed first attempt occurred before serial ownership and before
+`run_triggered()`; no controller write or observation was performed.
 
 ## Live interpretation targets
 
