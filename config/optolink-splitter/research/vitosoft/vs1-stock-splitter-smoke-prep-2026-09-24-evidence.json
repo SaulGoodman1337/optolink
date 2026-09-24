@@ -9,11 +9,11 @@
   },
   "helper": {
     "file": "config/optolink-splitter/wb2a-stock-vs1-smoke.py",
-    "version": "1.0.4",
-    "commit": "3f78e114e9666780f39b82f5580e8820448c6ed7",
-    "git_blob": "53d96652c855c4bf892eeca3270a7c9afa0d20df",
-    "sha256": "02494962fc007059ab6fc5c917dfbedf66f88d89df6e868b5065e14134d4aa6e",
-    "embedded_logic_tests": "14/14 expected; includes exact porcelain leading-space regression",
+    "version": "1.0.5",
+    "commit": "89125f275b6e9cdd935e815b5b60f257bbe1fb03",
+    "git_blob": "a221d961d8b916c6fff8f520f13887e33cd4a61c",
+    "sha256": "22ca88ba1f4a13bd844236bbc55ed16b198f65693b01628344776b3e458688c3",
+    "embedded_logic_tests": "14/14",
     "default_seconds": 30,
     "duration_bounds_seconds": [
       20,
@@ -64,8 +64,8 @@
           "mqtt_util.py"
         ],
         "exact_git_blobs": [
-          "49107392ee71af629e6af8eafec337852d6340aa",
-          "b5173ee7a4e04e9ada50b0ed708d65accc10ca46"
+          "21d272008206abaa766563f59bd30379b80a02ce",
+          "5f4b159e0431a87fbdb1683fd6568971cf1a3260"
         ],
         "any_other_tracked_modification": "hard fail"
       }
@@ -123,13 +123,14 @@
     "files": {
       "homeassistant_publish.py": {
         "purpose": "expand {mqtt_base} and %mqtt_listen% placeholders for generated discovery strings",
-        "expected_git_blob": "49107392ee71af629e6af8eafec337852d6340aa"
+        "expected_git_blob": "21d272008206abaa766563f59bd30379b80a02ce"
       },
       "mqtt_util.py": {
         "purpose": "staged writable readback delays (0.25, 1.0, 2.5, 5.0 seconds)",
-        "expected_git_blob": "b5173ee7a4e04e9ada50b0ed708d65accc10ca46"
+        "expected_git_blob": "5f4b159e0431a87fbdb1683fd6568971cf1a3260"
       }
-    }
+    },
+    "newline_note": "Expected blobs now reproduce the actual profile helper pipeline including universal-newline read and LF write normalization."
   },
   "third_attempt": {
     "timestamp_local": "2026-09-24T12:36:38+02:00",
@@ -138,5 +139,17 @@
     "device_or_settings_changes": false,
     "services_changed": false,
     "fix": "v1.0.4 preserves porcelain status columns with rstrip CR/LF only and adds a regression test for the exact first-line case"
+  },
+  "fourth_attempt": {
+    "timestamp_local": "2026-09-24T12:40:37+02:00",
+    "result": "FAIL_PRECONDITION",
+    "reason": "The two intentional VDensHO1 runtime patches matched semantically but expected Git blobs were computed while preserving upstream CRLF. The profile helper actually uses Path.read_text()/write_text(), normalizing those files to LF.",
+    "observed_blobs": {
+      "homeassistant_publish.py": "21d272008206abaa766563f59bd30379b80a02ce",
+      "mqtt_util.py": "5f4b159e0431a87fbdb1683fd6568971cf1a3260"
+    },
+    "reproduced_exactly_from_profile_helper": true,
+    "device_or_settings_changes": false,
+    "services_changed": false
   }
 }
