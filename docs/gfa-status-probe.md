@@ -142,24 +142,24 @@ These are simulated tests; they do not establish the live status-byte semantics.
 
 The next helper changes only the already-supported A1 normal-room/day setpoint, event 82 at `0x2306`, as a controlled demand stimulus.
 
-Helper: [`wb2a-gfa-triggered-status-probe.py`](../config/optolink-splitter/wb2a-gfa-triggered-status-probe.py), version 1.0.0.
+Helper: [`wb2a-gfa-triggered-status-probe.py`](../config/optolink-splitter/wb2a-gfa-triggered-status-probe.py), version 1.0.1.
 
 Implementation commit:
 
 ```text
-374d9fc5df8f1daec04ebb50e580660b98c5377a
+8259cd5f3c07c4d46939e17e7bc87dc47378717f
 ```
 
 Git blob:
 
 ```text
-315d9e7525855237c09225bc310e5e10bf76370b
+98f2f5342d24e32d7cb8b088a5af3589d378526d
 ```
 
 SHA256:
 
 ```text
-4fd17cbd259be55aaf4bb499e796d4101bd4da363f3f12d8846e27a5df4b3784
+6d5810e1595ba6e464452dcd927259e9bade8f550a92b492fd40c2a27972604b
 ```
 
 The published Git blob exactly matches the offline-tested local file. The helper recursively pins the unchanged status/pacing/quality/cycle/session/P80 chain.
@@ -212,6 +212,30 @@ The published live code was compiled and exercised through **168 tests**:
 
 The new integration tests include burner-active refusal, already-37 refusal, mutable-precondition change, exact 37->original restoration, lost trigger response after the simulated physical write, interruption during VS1 capture, hard restore failure, fixed write address/value bounds, focused read-address bounds and inactive-party preservation.
 
+### First trigger attempt - parser correction
+
+The first triggered run on 2026-09-24 did **not** enter the GFA observation loop. Preconditions were clean: original `0x2306=21 C`, `0x55DC=0`, P300 `20c2`, and two independent P80 replies `20`.
+
+The temporary write request was:
+
+```text
+41 06 00 02 23 06 01 25 57
+```
+
+The WB2A replied:
+
+```text
+41 05 01 02 23 06 01 32
+```
+
+Version 1.0.0 incorrectly interpreted the final payload byte `01` as a data-length field requiring one following echoed data byte. Live evidence shows that for this successful Virtual_WRITE response it is the **acknowledged write length**. The response contains no echoed value.
+
+The same response was received for all three cleanup writes requesting the original 21 C. Because v1.0.0 raised before its following Virtual_READ, the run itself could not prove the restored value by readback. The controller nevertheless acknowledged each one-byte restore write. Before another trigger run, manually verify `0x2306` and `0x55DC`.
+
+Version 1.0.1 corrects only this response decoding. It still verifies the actual setpoint value exclusively with the following Virtual_READ; no safety check was removed. The full pinned chain passes **168/168 offline tests**, including the exact live WB2A response above.
+
+[Machine-readable failed-run evidence](../config/optolink-splitter/research/vitosoft/gfa-triggered-status-failed-run-2026-09-24-evidence.json).
+
 ### First triggered live run
 
 Start with the boiler burner off and the normal day setpoint below 37 C. **Do not manually set 37 C first**; the helper does that itself.
@@ -227,11 +251,11 @@ Run as root in the same LXC. Do not stop the splitter first and do not change `v
   trap 'rm -f "$tmp"' EXIT
 
   curl --fail --show-error --location --retry 2 --connect-timeout 15 \
-    'https://raw.githubusercontent.com/SaulGoodman1337/optolink/374d9fc5df8f1daec04ebb50e580660b98c5377a/config/optolink-splitter/wb2a-gfa-triggered-status-probe.py' \
+    'https://raw.githubusercontent.com/SaulGoodman1337/optolink/8259cd5f3c07c4d46939e17e7bc87dc47378717f/config/optolink-splitter/wb2a-gfa-triggered-status-probe.py' \
     -o "$tmp"
 
   printf '%s  %s\n' \
-    '4fd17cbd259be55aaf4bb499e796d4101bd4da363f3f12d8846e27a5df4b3784' \
+    '6d5810e1595ba6e464452dcd927259e9bade8f550a92b492fd40c2a27972604b' \
     "$tmp" | sha256sum -c -
 
   install -m 0700 "$tmp" "$script"
