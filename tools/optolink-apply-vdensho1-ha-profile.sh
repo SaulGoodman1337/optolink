@@ -5,6 +5,7 @@ CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
 HELPER_REV="2026-09-24-r5-vs1-gfa"
 APP_DIR="/opt/optolink"
+VALIDATED_UPSTREAM_REF="c1ee204a1421447721603c5f21c6da7337fdac97"
 
 echo "VDensHO1 profile helper: $HELPER_REV"
 echo "Optolink source: $CS_REPO @ $CS_REF"
@@ -40,6 +41,26 @@ if [[ ! -d "$APP_DIR" || ! -f "$APP_DIR/settings_ini.py" ]]; then
   echo "Optolink-Splitter installation not found in $APP_DIR" >&2
   exit 1
 fi
+
+if [[ ! -d "$APP_DIR/.git" ]]; then
+  echo "Optolink-Splitter checkout has no .git metadata; refusing validated profile activation." >&2
+  exit 1
+fi
+
+current_upstream="$(runuser -u optolink -- git -C "$APP_DIR" rev-parse HEAD)"
+if [[ "$current_upstream" != "$VALIDATED_UPSTREAM_REF" ]]; then
+  echo "Restoring hardware-validated upstream ref $VALIDATED_UPSTREAM_REF..."
+  if ! runuser -u optolink -- git -C "$APP_DIR" cat-file -e "$VALIDATED_UPSTREAM_REF^{commit}" 2>/dev/null; then
+    runuser -u optolink -- git -C "$APP_DIR" fetch --depth=1 origin "$VALIDATED_UPSTREAM_REF"
+  fi
+  runuser -u optolink -- git -C "$APP_DIR" reset --hard "$VALIDATED_UPSTREAM_REF"
+fi
+
+[[ "$(runuser -u optolink -- git -C "$APP_DIR" rev-parse HEAD)" == "$VALIDATED_UPSTREAM_REF" ]] || {
+  echo "Could not activate validated upstream ref $VALIDATED_UPSTREAM_REF." >&2
+  exit 1
+}
+echo "Validated upstream ref: $VALIDATED_UPSTREAM_REF"
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
 install -d -m 0755 "$APP_DIR/profiles"
