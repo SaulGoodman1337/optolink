@@ -302,6 +302,91 @@ button_card_templates:
         v3:
           - border-left: 1px solid var(--divider-color)
 
+
+  # Static accent variants.
+  # Keep accent styling inside the template itself: instance-level style
+  # overrides on these nested button-cards were not reliable on the first
+  # dashboard mount, but appeared after switching views.
+  diag_group2_blue:
+    template: diag_group2
+    styles:
+      card:
+        - border-left: 3px solid #2196f3
+      name:
+        - color: #2196f3
+
+  diag_group3_blue:
+    template: diag_group3
+    styles:
+      card:
+        - border-left: 3px solid #2196f3
+      name:
+        - color: #2196f3
+
+  diag_group2_green:
+    template: diag_group2
+    styles:
+      card:
+        - border-left: 3px solid #4caf50
+      name:
+        - color: #4caf50
+
+  diag_group3_green:
+    template: diag_group3
+    styles:
+      card:
+        - border-left: 3px solid #4caf50
+      name:
+        - color: #4caf50
+
+  diag_group2_purple:
+    template: diag_group2
+    styles:
+      card:
+        - border-left: 3px solid #9c27b0
+      name:
+        - color: #9c27b0
+
+  diag_group3_purple:
+    template: diag_group3
+    styles:
+      card:
+        - border-left: 3px solid #9c27b0
+      name:
+        - color: #9c27b0
+
+  diag_group2_cyan:
+    template: diag_group2
+    styles:
+      card:
+        - border-left: 3px solid #00bcd4
+      name:
+        - color: #00bcd4
+
+  diag_group3_cyan:
+    template: diag_group3
+    styles:
+      card:
+        - border-left: 3px solid #00bcd4
+      name:
+        - color: #00bcd4
+
+  diag_group2_orange:
+    template: diag_group2
+    styles:
+      card:
+        - border-left: 3px solid #ff9800
+      name:
+        - color: #ff9800
+
+  diag_group3_orange:
+    template: diag_group3
+    styles:
+      card:
+        - border-left: 3px solid #ff9800
+      name:
+        - color: #ff9800
+
 views:
   - title: Heizung
     path: heizung
@@ -3215,12 +3300,7 @@ views:
             heading_style: subtitle
             icon: mdi:information-outline
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--blue-color, #2196f3)
-              name:
-                - color: var(--blue-color, #2196f3)
+            template: diag_group3_blue
             name: Identifikation
             custom_fields:
               v1:
@@ -3244,12 +3324,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--blue-color, #2196f3)
-              name:
-                - color: var(--blue-color, #2196f3)
+            template: diag_group3_blue
             name: Software
             custom_fields:
               v1:
@@ -3282,12 +3357,7 @@ views:
             heading_style: subtitle
             icon: mdi:home-cog-outline
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--green-color, #4caf50)
-              name:
-                - color: var(--green-color, #4caf50)
+            template: diag_group3_green
             name: Anlage
             custom_fields:
               v1:
@@ -3311,12 +3381,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group2
-            styles:
-              card:
-                - border-left: 3px solid var(--green-color, #4caf50)
-              name:
-                - color: var(--green-color, #4caf50)
+            template: diag_group2_green
             name: EEPROM
             custom_fields:
               v1:
@@ -3351,12 +3416,7 @@ views:
             heading_style: subtitle
             icon: mdi:memory
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--purple-color, #9c27b0)
-              name:
-                - color: var(--purple-color, #9c27b0)
+            template: diag_group3_purple
             name: Kessel
             custom_fields:
               v1:
@@ -3380,12 +3440,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group2
-            styles:
-              card:
-                - border-left: 3px solid var(--purple-color, #9c27b0)
-              name:
-                - color: var(--purple-color, #9c27b0)
+            template: diag_group2_purple
             name: Warmwasser
             custom_fields:
               v1:
@@ -3403,12 +3458,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--purple-color, #9c27b0)
-              name:
-                - color: var(--purple-color, #9c27b0)
+            template: diag_group3_purple
             name: Heizleistung
             custom_fields:
               v1:
@@ -3432,12 +3482,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--purple-color, #9c27b0)
-              name:
-                - color: var(--purple-color, #9c27b0)
+            template: diag_group3_purple
             name: Warmwasserleistung
             custom_fields:
               v1:
@@ -3461,12 +3506,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group2
-            styles:
-              card:
-                - border-left: 3px solid var(--purple-color, #9c27b0)
-              name:
-                - color: var(--purple-color, #9c27b0)
+            template: diag_group2_purple
             name: Brenner
             custom_fields:
               v1:
@@ -3484,12 +3524,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group2
-            styles:
-              card:
-                - border-left: 3px solid var(--purple-color, #9c27b0)
-              name:
-                - color: var(--purple-color, #9c27b0)
+            template: diag_group2_purple
             name: Interne Pumpe
             custom_fields:
               v1:
@@ -3507,12 +3542,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--purple-color, #9c27b0)
-              name:
-                - color: var(--purple-color, #9c27b0)
+            template: diag_group3_purple
             name: Geräteausführung
             custom_fields:
               v1:
@@ -3545,12 +3575,7 @@ views:
             heading_style: subtitle
             icon: mdi:valve
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--blue-color, #2196f3)
-              name:
-                - color: var(--blue-color, #2196f3)
+            template: diag_group3_blue
             name: Position
             custom_fields:
               v1:
@@ -3574,12 +3599,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--blue-color, #2196f3)
-              name:
-                - color: var(--blue-color, #2196f3)
+            template: diag_group3_blue
             name: Schrittzahl
             custom_fields:
               v1:
@@ -3603,12 +3623,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--blue-color, #2196f3)
-              name:
-                - color: var(--blue-color, #2196f3)
+            template: diag_group3_blue
             name: Frequenz 1
             custom_fields:
               v1:
@@ -3632,12 +3647,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group2
-            styles:
-              card:
-                - border-left: 3px solid var(--blue-color, #2196f3)
-              name:
-                - color: var(--blue-color, #2196f3)
+            template: diag_group2_blue
             name: Frequenz 2
             custom_fields:
               v1:
@@ -3664,12 +3674,7 @@ views:
             heading_style: subtitle
             icon: mdi:water-boiler
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--cyan-color, #00bcd4)
-              name:
-                - color: var(--cyan-color, #00bcd4)
+            template: diag_group3_cyan
             name: Start / Stop
             custom_fields:
               v1:
@@ -3693,12 +3698,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--cyan-color, #00bcd4)
-              name:
-                - color: var(--cyan-color, #00bcd4)
+            template: diag_group3_cyan
             name: DLH-Regler
             custom_fields:
               v1:
@@ -3722,12 +3722,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--cyan-color, #00bcd4)
-              name:
-                - color: var(--cyan-color, #00bcd4)
+            template: diag_group3_cyan
             name: Nachregelung
             custom_fields:
               v1:
@@ -3760,12 +3755,7 @@ views:
             heading_style: subtitle
             icon: mdi:gas-burner
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--orange-color, #ff9800)
-              name:
-                - color: var(--orange-color, #ff9800)
+            template: diag_group3_orange
             name: Schaltdifferenzen
             custom_fields:
               v1:
@@ -3789,12 +3779,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--orange-color, #ff9800)
-              name:
-                - color: var(--orange-color, #ff9800)
+            template: diag_group3_orange
             name: Brennerpause
             custom_fields:
               v1:
@@ -3818,12 +3803,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group2
-            styles:
-              card:
-                - border-left: 3px solid var(--orange-color, #ff9800)
-              name:
-                - color: var(--orange-color, #ff9800)
+            template: diag_group2_orange
             name: KT-Regler
             custom_fields:
               v1:
@@ -3850,12 +3830,7 @@ views:
             heading_style: subtitle
             icon: mdi:chart-line
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--purple-color, #9c27b0)
-              name:
-                - color: var(--purple-color, #9c27b0)
+            template: diag_group3_purple
             name: Kennlinie 10–30
             custom_fields:
               v1:
@@ -3879,12 +3854,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group2
-            styles:
-              card:
-                - border-left: 3px solid var(--purple-color, #9c27b0)
-              name:
-                - color: var(--purple-color, #9c27b0)
+            template: diag_group2_purple
             name: Kennlinie 40–50
             custom_fields:
               v1:
@@ -3902,12 +3872,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group3
-            styles:
-              card:
-                - border-left: 3px solid var(--purple-color, #9c27b0)
-              name:
-                - color: var(--purple-color, #9c27b0)
+            template: diag_group3_purple
             name: Kennlinie 60–80
             custom_fields:
               v1:
@@ -3931,12 +3896,7 @@ views:
             grid_options:
               columns: full
           - type: custom:button-card
-            template: diag_group2
-            styles:
-              card:
-                - border-left: 3px solid var(--purple-color, #9c27b0)
-              name:
-                - color: var(--purple-color, #9c27b0)
+            template: diag_group2_purple
             name: Kennlinie 90–100
             custom_fields:
               v1:
