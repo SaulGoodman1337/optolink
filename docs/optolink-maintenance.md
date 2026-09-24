@@ -1,0 +1,168 @@
+# Optolink maintenance CLI
+
+`optolink-maintenance` is the guarded service/maintenance interface for the
+locally verified **Vitodens 200-W WB2A / VDensHO1 / 20C2 / SW03** maintenance
+datapoints.
+
+It deliberately exposes only operations that were verified on the real local
+controller. It is not a generic raw Optolink write tool.
+
+## Installation
+
+The normal splitter update installs the CLI as:
+
+```text
+/usr/local/bin/optolink-maintenance
+/usr/bin/optolink-maintenance -> /usr/local/bin/optolink-maintenance
+```
+
+The executable is installed with mode `0750`. Run it as root on the
+Optolink-Splitter host.
+
+After updating the repository deployment:
+
+```bash
+update
+optolink-maintenance status
+```
+
+## Verified controller contract
+
+| Address | Access used by CLI | Verified meaning |
+| --- | --- | --- |
+| `0x5721` | read/write | burner-runtime maintenance threshold; raw x 100 h; source range 0..10000 h |
+| `0x5723` | read/write | maintenance time interval; 0..24 months |
+| `0x5724` | read/write sequence | maintenance state; verified maintenance reset sequence `1 -> 0` |
+| `0x756C` | read-only | `LastCheckInterval` reference; little-endian Unix-seconds timestamp |
+| `0x7570` | read-only | `LastBurnerCheck` burner-runtime-seconds baseline |
+| `0x08A7` | read-only | total burner runtime in seconds |
+| `0x088A` | read-only | total burner starts |
+
+The verified derived burner runtime since the last maintenance is:
+
+```text
+(current 0x08A7 - stored 0x7570) / 3600
+```
+
+The maintenance reset does **not** reset `0x08A7` or `0x088A`.
+
+## Commands
+
+### Status
+
+```bash
+optolink-maintenance status
+```
+
+For machine-readable output:
+
+```bash
+optolink-maintenance --json status
+```
+
+Use `--verbose` when individual splitter requests/responses are needed for
+diagnostics. Verbose protocol output goes to stderr so `--json` remains
+parseable on stdout.
+
+### Burner-runtime maintenance threshold
+
+The operator-facing value is supplied in hours. Only exact 100 h steps in the
+verified source range are accepted:
+
+```bash
+optolink-maintenance set-hours 3000
+```
+
+Examples:
+
+```text
+0 h      -> raw 0
+100 h    -> raw 1
+3000 h   -> raw 30
+10000 h  -> raw 100 / 0x64
+```
+
+The command reads the current value first. If the requested value is already
+active, it performs no write unless `--force` is supplied.
+
+Every write is independently read back. If the requested state cannot be
+verified, the CLI attempts to restore and verify the previous value.
+
+Changing `0x5721` was locally verified not to modify the maintenance
+references or lifetime burner counters.
+
+### Time interval
+
+```bash
+optolink-maintenance set-months 12 \
+  --confirm-reference-reset RESET-ZEITREFERENZ
+```
+
+Accepted values are `0..24` months.
+
+**Important:** a write to `0x5723` re-baselines `0x756C` to the current
+time. This side effect was observed on the real controller for both the
+temporary 24-month setting and the restore to zero. Therefore the CLI refuses
+an actual `0x5723` write unless the explicit
+`--confirm-reference-reset RESET-ZEITREFERENZ` acknowledgement is present.
+
+When the requested month value is already active, the default behavior is a
+no-op so the existing time reference is preserved. `--force` permits an
+intentional same-value write, but the explicit reference-reset acknowledgement
+is still required.
+
+### Maintenance reset
+
+```bash
+optolink-maintenance reset --confirm RESET-WARTUNG
+```
+
+This executes the locally verified sequence:
+
+```text
+0x5724 = 1
+0x5724 = 0
+```
+
+The CLI always attempts to return `0x5724` to `0` in a safety/finalization
+path, even if the first write ACK or subsequent readback fails.
+
+After the sequence it verifies:
+
+- `0x5724` returned to `Grundzustand`;
+- `0x756C` contains a plausible new time reference;
+- `0x7570` contains a plausible new burner-runtime reference;
+- total burner runtime and total burner starts did not decrease.
+
+The reset updates the maintenance references but leaves the configured
+`0x5721` and `0x5723` thresholds intact.
+
+## Guard rails
+
+The CLI intentionally contains the following restrictions:
+
+- a process lock prevents parallel maintenance CLI sessions;
+- `0x756C` and `0x7570` have no write command;
+- `set-hours` rejects values outside 0..10000 h or values not divisible by
+  100 h;
+- `set-months` rejects values outside 0..24;
+- `set-months` requires explicit acknowledgement of the reference reset;
+- `reset` requires the exact `RESET-WARTUNG` confirmation token;
+- writes use readback as the authoritative success criterion;
+- ambiguous/failed writes attempt rollback to the previous configuration;
+- maintenance reset is kept separate from burner-fault unlock/reset semantics.
+
+## Future Home Assistant use
+
+The Home Assistant/dashboard workstream may build controls on top of this
+verified contract, but should preserve the same constraints:
+
+- bounded numeric control for `0x5721`;
+- bounded numeric control for `0x5723` with explicit warning that changing it
+  re-baselines the time reference;
+- protected maintenance-reset action;
+- no direct write access to `0x756C` or `0x7570`;
+- no reuse of the maintenance reset as a burner-fault reset.
+
+The CLI's `--json` mode is intended to make a future wrapper/service easier
+without requiring Home Assistant to construct raw `w;0x....` requests.
