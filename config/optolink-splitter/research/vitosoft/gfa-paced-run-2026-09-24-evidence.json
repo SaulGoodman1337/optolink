@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "scope": "Offline analysis of supplied console/raw-log/JSONL transcripts. No appliance access, production configuration change or helper change.",
+  "source": {
+    "name": "Eingefügter Text(20260924-063900).txt",
+    "sha256": "11ef98f6aa02cab31e665bafaf6935ec4ecf72f0b1b8f65b663cfcbd0a2202a6",
+    "bytes": 739554,
+    "lines": 3943,
+    "json_records": 231,
+    "json_kind_counts": {"metadata": 1, "observation_start": 1, "round": 224, "rejected_round": 2, "reidentification_start": 1, "reidentification_complete": 1, "summary": 1},
+    "log_name": "wb2a-gfa-paced-20260924-083031-186681.log",
+    "jsonl_name": "wb2a-gfa-paced-20260924-083031-186681.jsonl",
+    "coverage": "Complete supplied combined transcript parsed. This is user-supplied cat output, not a direct fetch from the LXC. No download/hash-check/self-test preamble appears in this upload."
+  },
+  "helper": {
+    "name": "wb2a-gfa-paced-probe.py",
+    "experiment_version": "1.0.0",
+    "parent_version": "1.1.0",
+    "commit": "3a9bfccc2cfcf7562fce50c47715490eea1adfa6",
+    "sha256": "053c7806d863c7fe551903a24498f4841c0d2235b661e674f80f07696065e974",
+    "changed_in_this_analysis": false
+  },
+  "checks_performed": {
+    "all_json_objects_parsed": true,
+    "accepted_round_sequence_1_to_224": true,
+    "attempt_sequence_1_to_226_including_rejected": true,
+    "raw_hex_and_addresses_consistent": true,
+    "decoded_arithmetic_consistent": true,
+    "latency_and_sample_span_arithmetic_consistent": true,
+    "console_sample_values_match_json": true,
+    "raw_request_reply_pair_order_checked": true,
+    "json_runtime_bytes_match_raw_transcript_in_order": true,
+    "ff_rx_count_matches_rejected_rounds": true,
+    "rejected_decoded_values_are_null": true,
+    "annotated_gap_matches_neighbor_timestamps_where_available": true
+  },
+  "paced": {
+    "observation_start": "2026-09-24T08:30:42.098+02:00",
+    "requested_seconds": 300,
+    "accepted_rounds": 224,
+    "attempted_rounds": 226,
+    "accepted_rounds_by_segment": {"1": 31, "2": 193},
+    "sampling_read_count": 1130,
+    "ff_count": 2,
+    "ff_fraction": 0.001769911504424779,
+    "ff_percent": 0.17699115044247787,
+    "denominator_scope": "P06/P09/P10/P84 and P80 reads within attempted measurement rounds, including rejected rounds. Initial/re-entry/closing identification reads excluded.",
+    "all_gfa_reads_in_raw_log": 1136,
+    "independent_p80_reads": 4,
+    "extra_same_session_p80_guards_outside_rounds": 2,
+    "raw_histograms_in_attempted_rounds": {
+      "P06": {"00": 226}, "P09": {"00": 226}, "P10": {"00": 226}, "P84": {"00": 226}, "P80": {"20": 224, "ff": 2}
+    },
+    "accepted_runtime_samples": 896,
+    "all_received_runtime_samples_including_rejected": 904,
+    "runtime_samples_nonzero": 0,
+    "timing": {
+      "annotated_reply_to_next_request_gap_ms": {"count": 1130, "minimum": 150.099, "mean": 150.263777, "median": 150.218, "maximum": 155.553},
+      "same_segment_p06_interval_ms": {"count": 222, "minimum": 1042.376, "mean": 1228.244032, "median": 1215.9325, "maximum": 1309.064},
+      "p06_to_p84_span_ms": {"count": 224, "minimum": 625.833, "mean": 737.592629, "median": 731.641, "maximum": 802.714},
+      "accepted_runtime_reply_latency_ms": {"count": 896, "minimum": 54.214, "mean": 95.376972, "median": 76.5955, "maximum": 169.077},
+      "interpretation": "Host timestamps, sequential channels; the device's internal acquisition time is unknown. P06 intervals exclude segment boundaries."
+    },
+    "ff_events": [
+      {"attempt": 32, "segment": 1, "parameter": "P80", "address": "0x4050", "request": "6b 40 50 01", "raw_hex": "ff", "tx_time": "2026-09-24T08:31:21.599+02:00", "rx_time": "2026-09-24T08:31:21.746+02:00", "reply_latency_ms_rounded_from_log": 147.0, "rx_to_next_tx_gap_ms": 150.271, "action": "Round quarantined; full re-identification succeeded."},
+      {"attempt": 226, "segment": 2, "parameter": "P80", "address": "0x4050", "request": "6b 40 50 01", "raw_hex": "ff", "tx_time": "2026-09-24T08:35:30.871+02:00", "rx_time": "2026-09-24T08:35:30.962+02:00", "reply_latency_ms": 90.329, "rx_to_next_tx_gap_ms": 150.24, "action": "Round quarantined; less than 15 seconds remain, so no second re-identification attempted."}
+    ],
+    "reidentification": {"attempted": 1, "succeeded": 1, "duration_s": 11.088428, "gap_from_last_confirmed_s": 12.3739, "completed_at": "2026-09-24T08:31:32.886+02:00", "P300_identity": "20c2", "independent_P80": ["20", "20"], "same_session_P80": "20"},
+    "failure_time": "2026-09-24T08:35:31.013+02:00",
+    "failure_elapsed_s": 288.9152754159877,
+    "remaining_window_s_at_failure": 11.084724584012292,
+    "failure_reason": "Too little observation time remains for a new verified segment.",
+    "failure_is_reconnection_cap": false,
+    "failure_is_observed_read_timeout": false,
+    "failure_is_failed_reidentification": false,
+    "recovery": {"p300_identity": "20c2", "p300_verified_at": "2026-09-24T08:35:33.080+02:00", "splitter_running_at": "2026-09-24T08:35:35.157+02:00", "party_running_at": "2026-09-24T08:35:37.230+02:00", "splitter_stop_to_running_s": 303.858, "ha_freshness_confirmed_for_this_run": false}
+  },
+  "comparison_baseline": {
+    "source_name": "Eingefügter Text(20260924-062018).txt",
+    "source_sha256": "a976eaac07fa52ea1b1911412e011be51a3cd59705a7d81dd5fe3a25569d431f",
+    "source_bytes": 489573,
+    "source_lines": 2901,
+    "json_records": 171,
+    "accepted_rounds": 158,
+    "attempted_rounds": 162,
+    "rejected_rounds": 4,
+    "sampling_read_count": 804,
+    "ff_count": 4,
+    "ff_percent": 0.4975124378109453,
+    "denominator_scope": "Same attempted-measurement-round definition as paced run; 158*5 + 4 + 3 + 3 + 4 = 804, not 162*5, because rejected rounds stop immediately.",
+    "raw_histograms_in_attempted_rounds": {"P06": {"00": 162}, "P09": {"00": 162}, "P10": {"00": 160, "ff": 2}, "P84": {"00": 158, "ff": 2}, "P80": {"20": 158}},
+    "mean_same_segment_p06_interval_ms": 617.564448,
+    "mean_p06_to_p84_span_ms": 369.690475,
+    "reconstructed_reply_to_next_request_gap_ms": {"count": 800, "minimum": 50.3, "mean": 50.89826, "median": 50.822, "maximum": 54.825},
+    "observation_elapsed_s": 132.188506,
+    "reconnections_attempted": 3,
+    "reconnections_succeeded": 3,
+    "result": "FAIL"
+  },
+  "original_summary": {"kind": "summary", "version": "1.1.0", "result": "FAIL", "last_confirmed_elapsed_s": 287.679389, "failure_elapsed_s": 288.9152754159877, "attempted_rounds": 226, "rejected_rounds": 2, "reconnections_attempted": 1, "reconnections_succeeded": 1, "segments": 2, "continuous_session": false, "quality_policy": "FF quarantined; other data not independently verified", "observation_complete": false, "seconds_requested": 300, "observation_elapsed_s": 288.915282, "rounds_confirmed": 224, "nonzero_rounds": 0, "phase_changes": 0, "P80_confirmed": false, "P300_restored": true, "splitter_restarted": true, "services_restarted": ["optolink-party-emulator.service", "optolink-splitter.service"], "errors": ["Too little observation time remains for a new verified segment."], "full_burner_cycle_verified": false, "flame_polled": false, "experiment": "reply_gap_150ms", "experiment_version": "1.0.0", "minimum_reply_gap_ms": 150, "pacing_proves_root_cause": false},
+  "conclusions": {
+    "actual_150ms_spacing_verified_from_host_timestamps": true,
+    "descriptive_ff_fraction_lower_than_baseline": true,
+    "pacing_causality_proven": false,
+    "ff_root_cause_known": false,
+    "first_full_300s_observation_completed": false,
+    "independent_flame_measurement": false,
+    "burner_start_verified": false,
+    "retained_samples_still_useful_despite_fail": true,
+    "comparison_limit": "Only six FF observations across two nonrandomized, sequential, differently censored runs; register distribution changed. Do not claim a proven percentage improvement or a resolved timing requirement.",
+    "next_action": "No further blind idle duration/retry escalation. Keep the same pinned 150-ms helper for one 60-second observation during naturally already-established burner operation. This tests persistent nonzero runtime readings, not root-cause resolution or a complete start. Record the actual boiler flame display independently."
+  }
+}
