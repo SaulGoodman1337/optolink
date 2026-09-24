@@ -3,7 +3,7 @@ set -euo pipefail
 
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
-HELPER_REV="2026-09-24-r5-vs1-gfa"
+HELPER_REV="2026-09-24-r6-phased-poll"
 APP_DIR="/opt/optolink"
 VALIDATED_UPSTREAM_REF="c1ee204a1421447721603c5f21c6da7337fdac97"
 
@@ -67,13 +67,17 @@ install -d -m 0755 "$APP_DIR/profiles"
 
 tmp="$(mktemp)"
 gfa_patcher_tmp="$(mktemp)"
-trap 'rm -f "$tmp" "$gfa_patcher_tmp"' EXIT
+poll_patcher_tmp="$(mktemp)"
+trap 'rm -f "$tmp" "$gfa_patcher_tmp" "$poll_patcher_tmp"' EXIT
 
 cs_repo_fetch "$PROFILE_REL" "$tmp"
 python3 -m py_compile "$tmp"
 
 cs_repo_fetch tools/optolink-apply-vs1-gfa-readonly-patch.py "$gfa_patcher_tmp"
 python3 -m py_compile "$gfa_patcher_tmp"
+
+cs_repo_fetch tools/optolink-apply-phased-poll-scheduler-patch.py "$poll_patcher_tmp"
+python3 -m py_compile "$poll_patcher_tmp"
 
 cp "$tmp" "$APP_DIR/profiles/$PROFILE_NAME"
 
@@ -113,6 +117,10 @@ cp "$tmp" "$APP_DIR/homeassistant_poll_list.py"
 echo "Applying validated read-only VS1 GFA runtime integration..."
 "$APP_DIR/venv/bin/python" "$gfa_patcher_tmp" --self-test
 "$APP_DIR/venv/bin/python" "$gfa_patcher_tmp" --apply
+
+echo "Applying phased poll scheduler..."
+"$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --self-test
+"$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --apply
 
 echo "Enabling validated permanent VS1 timing..."
 python3 - "$APP_DIR/settings_ini.py" <<'PY'
