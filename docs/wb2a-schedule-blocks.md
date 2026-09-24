@@ -1,6 +1,6 @@
 # WB2A / VDensHO1 time-program block format
 
-Status: **complete daily block semantics hardware-verified; guarded Home Assistant write path implementation in progress**
+Status: **daily block semantics hardware-verified; guarded Home Assistant write path live-verified**
 
 Scope:
 
@@ -375,6 +375,24 @@ Behavior:
    as authoritative for an eight-byte schedule block.
 
 Choose a weekday other than today for the first test.
+
+## Current local schedule state after live HA testing
+
+The first live Home Assistant edit was successfully written through the guarded
+schedule manager and independently read back from the controller.
+
+Current intentional local state relevant to follow-up work:
+
+- Heating M1 Sunday is still at the test value `05:50-20:00` unless changed
+  back by the user.
+- The circulation schedule is intentionally cleared to
+  `FFFFFFFFFFFFFFFF` for all seven weekdays because the local installation
+  does not have a circulation pump.
+- The circulation lane remains visible in the dashboard by user request and
+  should not be removed or hidden yet.
+
+The cleared circulation week is therefore **intentional configuration**, not a
+write-path incident.
 
 ## Guarded Home Assistant write path
 
