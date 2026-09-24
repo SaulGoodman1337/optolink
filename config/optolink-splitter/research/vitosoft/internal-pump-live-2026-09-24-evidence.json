@@ -40,12 +40,13 @@
   ],
   "discrepancy": {
     "field": "E9 / 0x27E9",
-    "current_raw": "0x64",
-    "current_percent": 100,
     "prior_documented_raw": "0x32",
     "prior_documented_percent": 50,
-    "status": "UNRESOLVED_CONFIGURATION_DELTA",
-    "action": "Do not write. Re-read and establish provenance before treating 100% as the intended baseline."
+    "current_raw": "0x64",
+    "current_percent": 100,
+    "status": "RESOLVED_OPERATOR_CHANGE",
+    "provenance": "User confirmed on 2026-09-24 that E9 was intentionally changed to 100%.",
+    "interpretation": "Not unexplained controller drift. Historical 50% remains valid for the earlier capture; current configured value is 100%."
   },
   "safety": {
     "writes_performed": false,
