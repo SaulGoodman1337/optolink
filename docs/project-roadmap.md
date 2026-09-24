@@ -574,6 +574,11 @@ Home Assistant interaction test: stage values from the UI, verify that staging
 does not change the controller, then verify one confirmed Apply action and its
 displayed post-action readback.
 
+The first UI interaction attempt then exposed an API lifecycle defect:
+`PartOf=optolink-splitter.service` caused the maintenance API to be stopped
+cleanly when the splitter restarted. The unit is now decoupled from propagated
+stop/restart and configured with `Restart=always`.
+
 ## WB2A reverse engineering: open items
 
 ### RKR / restart state
