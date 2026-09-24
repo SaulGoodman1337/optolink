@@ -340,10 +340,12 @@ Diagnose then becomes the stable reference implementation for all later views.
 
 ## 5b. Pumpen view modern cockpit test
 
-Status: **implemented in YAML / live visual test pending**
+Status: **implemented and live-tested / accepted as provisional baseline**
 
 The **Pumpen** view has been rebuilt as the first follow-up view using the
-Diagnose cockpit language.
+Diagnose cockpit language. The current live result is usable and will be kept
+for now, but the visual design is **not considered final** and should be
+revisited in a later dashboard-design pass.
 
 Current structure:
 
@@ -371,9 +373,13 @@ Semantics are intentionally conservative:
 All Vitodens entities referenced by the redesigned Pumpen view were checked
 against the current production Home Assistant profile before committing.
 
-Next step: test the view live on desktop/mobile and refine spacing, density,
-labels and control grouping from screenshots before treating the pattern as
-final.
+Deferred TODO:
+
+- revisit the Pumpen page later with a stronger visual concept;
+- refine spacing, density, colors, hierarchy and control grouping;
+- reconsider whether the request/output/runtime relationships can be presented
+  more intuitively without implying an unverified direct control path;
+- keep the current implementation as the working baseline until that redesign.
 
 ## 6. Order for redesigning the remaining dashboard views
 
