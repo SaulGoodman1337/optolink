@@ -740,6 +740,75 @@ Next gate:
 Evidence:
 [vitosoft/kmbus-ram-correlation-2026-09-24-evidence.json](vitosoft/kmbus-ram-correlation-2026-09-24-evidence.json).
 
+## Live Phase A PASS - 0x41 mirrors 0x01 on all seven sampled addresses
+
+A guarded temporary P300 maintenance window was executed on the exact local
+WB2A / VDensHO1 / 20C2 controller while permanent production remained VS1/KW
+before and after the test.
+
+Window:
+
+~~~text
+2026-09-24T22:23:33.057+02:00
+..
+2026-09-24T22:23:40.228+02:00
+~~~
+
+The probe:
+
+- stopped Party and the permanent VS1 splitter;
+- explicitly initialized P300;
+- verified the normal 0x01 identity control;
+- compared 0x01 Virtual_READ and 0x41 KMBUS_RAM_READ on seven allowlisted
+  addresses;
+- left the interface in detection state;
+- restarted splitter and Party;
+- verified `VS1/KW protocol initialized` after restoration.
+
+Result:
+
+| Address | Meaning | 0x01 | 0x41 | Class |
+| --- | --- | --- | --- | --- |
+| `0x00F8/8` | controller identity | `20c2000300000103` | `20c2000300000103` | IDENTICAL |
+| `0x0A3C/1` | final pump command | `00` | `00` | IDENTICAL |
+| `0x7660/2` | internal pump runtime | `0000` | `0000` | IDENTICAL |
+| `0x7663/2` | A1 pump request | `0000` | `0000` | IDENTICAL |
+| `0x5730/1` | internal pump identity | `01` | `01` | IDENTICAL |
+| `0x0A54/4` | internal pump SW block | `01110101` | `01110101` | IDENTICAL |
+| `0x27A0/1` | A1 remote identity | `00` | `00` | IDENTICAL |
+
+The wire trace proves that 0x41 is genuinely handled as its own function code.
+For example:
+
+~~~text
+TX 41 05 00 41 00 f8 08 46
+RX 06
+RX 41 0d
+RX 01 41 00 f8 08 20 c2 00 03 00 00 01 03 38
+~~~
+
+The response command byte remains `0x41`; the client is not silently rewriting
+the request to `0x01`.
+
+### Interpretation
+
+This is now strong local evidence that `KMBUS_RAM_READ 0x41` exposes an
+alternate or mirrored **logical address view** for at least these sampled
+controller/KM-BUS-related objects.
+
+It is no longer credible to interpret the 0x41 address field as direct raw CPU
+RAM for these samples. Static non-zero values (`0x5730=01`,
+`0x0A54=01110101`) mirror exactly as well as the identity block.
+
+The remaining caveat is dynamic behavior: during this run
+`0x0A3C`, `0x7660` and `0x7663` were all zero. Therefore the next
+high-value experiment is to repeat only those three pairs during a naturally
+active heating/DHW/pump state and verify whether non-zero transitions remain
+byte-identical and temporally aligned.
+
+Evidence:
+[vitosoft/kmbus-ram-correlation-2026-09-24-evidence.json](vitosoft/kmbus-ram-correlation-2026-09-24-evidence.json).
+
 ## Research questions
 
 The project should answer these in order:
