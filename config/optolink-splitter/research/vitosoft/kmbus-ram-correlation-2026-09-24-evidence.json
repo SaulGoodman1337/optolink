@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "date": "2026-09-24",
-  "status": "CONTROL_FAILED_NEEDS_TRANSPORT_DIAGNOSIS",
+  "status": "GENERIC_REQUEST_PATH_DIAGNOSIS",
   "evidence_level": "hardware_observation",
   "scope": "First bounded read-only Virtual_READ vs KMBUS_RAM_READ 0x41 correlation on local WB2A / VDensHO1 / 20C2.",
   "tracking_issue": 30,
@@ -71,7 +71,7 @@
     "ERROR"
   ],
   "live_results": "All 7 ordinary Virtual_READ requests succeeded; all 7 KMBUS_RAM_READ 0x41 requests produced client-side timeout, including the previously verified 0x00F8/8 positive control.",
-  "conclusion": "No RAM/mirror mapping conclusion is valid from this run. Diagnose generic-request transport/response filtering first, then repeat the correlation matrix.",
+  "conclusion": "Normal Virtual_READ works, but both generic function 0x01 and 0x41 time out. Because upstream generic 0x01 builds the same VS2 bytes as ordinary Virtual_READ, diagnose the live request command path/version before interpreting any KMBUS result.",
   "live_run": {
     "started_at": "2026-09-24T22:01:32+02:00",
     "ended_at": "2026-09-24T22:02:17+02:00",
@@ -174,5 +174,35 @@
     "priority": 1,
     "action": "Run a narrow transport diagnostic: normal r control, generic request 0x01 control, 0x41 known-positive with longer timeout, and capture unmatched MQTT responses.",
     "no_semantic_expansion": true
+  },
+  "transport_diagnostic_2208": {
+    "service_state": "active",
+    "normal_virtual_read": {
+      "command": "r;0x00F8;8;raw;False",
+      "response": "1;0xf8;20c2000300000103",
+      "status": "SUCCESS"
+    },
+    "generic_virtual_read": {
+      "command": "request;0x01;0x00F8;8;;0x00",
+      "status": "CLIENT_TIMEOUT"
+    },
+    "generic_kmbus_ram_read": {
+      "command": "request;0x41;0x00F8;8;;0x00",
+      "status": "CLIENT_TIMEOUT"
+    },
+    "journal_observation": "Splitter remained active and continued normal receive traffic; supplied tail did not expose an accepted generic-request response.",
+    "interpretation": [
+      "The failure is not specific to KMBUS_RAM_READ because generic function 0x01 also times out.",
+      "In current upstream optolink-splitter source, read_datapoint_ext(0x00F8,8) and do_request(function=0x01,address=0x00F8,length=8,data='',protid=0x00) construct the same VS2 request bytes: 41 05 00 01 00 F8 08 06.",
+      "Therefore, if the live do_request() branch is actually executed, the controller should see the same request as the successful ordinary read.",
+      "The strongest current hypothesis is a live-install command-dispatch/version mismatch: the deployed requests_util.py may not contain/execute the request/req branch, or the response may be published in a form filtered by optolink-debug.",
+      "This must be verified on the live host before any further KM-BUS semantic testing."
+    ],
+    "next_read_only_tests": [
+      "Inspect the live /opt/optolink/requests_util.py for the request/req branch and identify the actual imported module path.",
+      "Use raw;4105000100F80806 as a byte-identical Virtual_READ control that bypasses the request command dispatcher.",
+      "Use raw;4105004100F80846 as the byte-level KMBUS_RAM_READ 0x41 control.",
+      "Only resume address correlation after one of the raw/generic 0x41 controls succeeds."
+    ]
   }
 }
