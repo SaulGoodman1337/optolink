@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "evidence_level": "hardware_observation",
+  "scope": "Fresh-P300-session balanced PrefixRead discriminator for KMBUS_EEPROM_READ 0x43 at local 0x0001/1.",
+  "live_run": {
+    "started_at": "2026-09-24T23:06:28.862+02:00",
+    "ended_at": "2026-09-24T23:06:51.899+02:00",
+    "log": "/root/wb2a-kmbus-prefix-isolated-20260924-230628-206289.log",
+    "address": "0x0001",
+    "length": 1,
+    "prefix_read": "030000000101",
+    "order": "PNNPNPPN",
+    "fresh_p300_session_per_trial": true,
+    "p300_identity_control": "PASS: 0x00F8/8 -> 20c2000300000103",
+    "trials": [
+      {"n":1,"label":"P","data":"81"},
+      {"n":2,"label":"N","data":"87"},
+      {"n":3,"label":"N","data":"81"},
+      {"n":4,"label":"P","data":"81"},
+      {"n":5,"label":"N","data":"81"},
+      {"n":6,"label":"P","data":"81"},
+      {"n":7,"label":"P","data":"87"},
+      {"n":8,"label":"N","data":"81"}
+    ],
+    "prefixed_counts": {"81":3,"87":1},
+    "no_prefix_counts": {"81":3,"87":1},
+    "classification": "NO_ISOLATED_PREFIX_EFFECT",
+    "services_restored": true,
+    "vs1_restored": true,
+    "execution_result": "PASS"
+  },
+  "conclusions": [
+    "The earlier same-session 88 -> 87 -> 88 P-N-P pattern does not reproduce when every request is placed in a fresh P300 session.",
+    "Prefixed and no-prefix requests produced exactly the same empirical distribution: 0x81 three times and 0x87 once in each group.",
+    "The local 0x0001/1 result is therefore session/time/state dependent, not demonstrated to be controlled by the six extra PrefixRead bytes.",
+    "The prior claim that PrefixRead was hardware-proven to alter local 0x43 routing is withdrawn.",
+    "The strongest current statement is that the controller accepts extra request bytes after BlockLength, while their semantics on local VDensHO1/20C2 remain unproven.",
+    "Combined with the repeated two-byte high-address responses, local 0x43 must not be treated as a literal EEPROM dump or as validated LGM27 persistent-memory access."
+  ],
+  "source_reassessment": [
+    "The public InsideViessmannVitosoft parser preserves PrefixRead as XML metadata; its byte-conversion code is commented out.",
+    "The public VS2Message builder supports optional Data bytes after BlockSize, but no recovered source currently binds the ecnEventType PrefixRead field to that Data parameter.",
+    "Therefore the mapping 'PrefixRead -> trailing VS2 request Data bytes' remains a plausible inference, not a recovered Vitosoft implementation fact."
+  ],
+  "next_step": [
+    "Stop further live 0x43 address expansion for now.",
+    "Recover the actual Vitosoft host binding from PrefixRead/PrefixWrite metadata into the communication request builder using the private archive/decompiled assemblies.",
+    "Resume live 0x43 testing only after the exact vendor serialization path is recovered or another independent protocol source establishes the field placement."
+  ]
+}
