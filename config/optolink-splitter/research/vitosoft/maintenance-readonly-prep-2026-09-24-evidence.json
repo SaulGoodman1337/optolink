@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "scope": "Read-only preparation for validating VDensHO1 / 20C2 / SW03 maintenance and service datapoints before any productive Home Assistant exposure.",
+  "sources": {
+    "exact_profile_event_catalog": "config/optolink-splitter/research/vitosoft/vdensho1-events.csv",
+    "dashboard_checkpoint": "docs/homeassistant-dashboard-checkpoint-2026-09-24.md",
+    "external_generated_crosscheck": {
+      "repository": "SoulSolistice/esphome_vitohome",
+      "commit": "066b7d35889c95e862ea6a7ba84377fe4eeafa78",
+      "path": "example/catalogs/vdensho1.yaml",
+      "note": "Generated from Vitosoft XML for exact VDensHO1 identification 0x20C2 / SW03; used as an independent derived cross-check for block lengths, converters, units and enum labels."
+    }
+  },
+  "targets": [
+    {
+      "address": "0x5721",
+      "vitosoft_name": "(21) Betriebsstunden Brenner fuer Wartung / Grenzwert Betriebsstunden Brenner",
+      "token": "K21_KonfiBetriebsstdBrennerWart100",
+      "block_length": 1,
+      "conversion": "raw * 100",
+      "unit": "h",
+      "read_only_probe": "r;0x5721;1;raw;False",
+      "production_status": "not yet exposed",
+      "interpretation": "Configured burner-runtime maintenance threshold in 100 h steps."
+    },
+    {
+      "address": "0x5723",
+      "vitosoft_name": "(23) Zeitintervall fuer Wartung / Eingestelltes Zeitintervall",
+      "token": "K23_KonfiZeitintervallWartung",
+      "block_length": 1,
+      "conversion": "NoConversion",
+      "unit": "months",
+      "read_only_probe": "r;0x5723;1;raw;False",
+      "production_status": "not yet exposed"
+    },
+    {
+      "address": "0x5724",
+      "vitosoft_name": "(24) Status der Wartung / Wartung",
+      "token": "K24_KonfiStatusWartung",
+      "block_length": 1,
+      "conversion": "enum",
+      "enum": {
+        "0": "Grundzustand",
+        "1": "Wartung"
+      },
+      "read_only_probe": "r;0x5724;1;raw;False",
+      "production_status": "not yet exposed",
+      "safety_note": "A separate write-only reset function exists at the same address in Vitosoft metadata. This preparation intentionally performs only Virtual_READ-style reads and must not issue a write/reset."
+    },
+    {
+      "address": "0x756C",
+      "vitosoft_name": "vergangene Zeit seit letzter Wartung",
+      "token": "LetzteIntervallWartung",
+      "block_length": 4,
+      "conversion": "NoConversion",
+      "unit": "months",
+      "read_only_probe": "r;0x756C;4;raw;False",
+      "production_status": "not yet exposed"
+    },
+    {
+      "address": "0x7570",
+      "vitosoft_name": "Betriebsstunden Brenner seit letzter Wartung",
+      "token": "LetzteBrennerWartung",
+      "block_length": 4,
+      "conversion": "NoConversion",
+      "unit": "h",
+      "read_only_probe": "r;0x7570;4;raw;False",
+      "production_status": "not yet exposed"
+    }
+  ],
+  "probe_command": "for spec in '0x5721 1' '0x5723 1' '0x5724 1' '0x756C 4' '0x7570 4'; do set -- $spec; echo === $1 len$2 ===; /usr/local/bin/optolink-debug request \"r;$1;$2;raw;False\"; echo; done",
+  "interpretation_rules": [
+    "Preserve the raw bytes exactly before decoding.",
+    "Treat multi-byte NoConversion values as unsigned little-endian only after the local raw response is checked against the existing splitter/Vitosoft integer convention.",
+    "Do not expose any reset or write path for maintenance values during this validation.",
+    "Do not add productive polling until local reads are successful and values are plausible for this exact appliance.",
+    "Keep these service values separate from burner fault unlock/reset semantics."
+  ],
+  "current_status": "STATICALLY_READY_FOR_BOUNDED_READ_ONLY_LIVE_READ"
+}
