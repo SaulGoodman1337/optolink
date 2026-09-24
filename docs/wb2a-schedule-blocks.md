@@ -1,6 +1,6 @@
 # WB2A / VDensHO1 time-program block format
 
-Status: **read path, complete four-slot writes and 24:00 day-end verified; empty-day test pending**
+Status: **complete daily block semantics hardware-verified; guarded Home Assistant write path implementation in progress**
 
 Scope:
 
@@ -301,12 +301,40 @@ Observed result:
 - production validation should permit `24:00` only as an interval end, never
   as a start time.
 
-Remaining block-semantic tests before enabling Home Assistant writes:
+### Empty-day write test — PASS
 
-1. verify an entirely empty day (`FF FF FF FF FF FF FF FF`) so the UI can
-   safely represent "no switching interval";
-2. after that passes, validate the production MQTT/HA write path with strict
-   project-side validation and non-optimistic readback.
+A final guarded probe on Heating M1 Sunday wrote an entirely empty day:
+
+~~~text
+FF FF FF FF FF FF FF FF
+(no active intervals)
+~~~
+
+Observed result:
+
+- exact test readback: `FFFFFFFFFFFFFFFF`;
+- exact restore readback: `28A0FFFFFFFFFFFF`;
+- therefore zero active intervals is hardware-confirmed and can be represented
+  safely by the Home Assistant editor;
+- the same VS1/KW short-response timeout occurred and remains diagnostic only.
+
+### Hardware schedule contract — COMPLETE
+
+The local `VDensHO1 / 20C2 / SW03` controller has now verified:
+
+- zero, one, two and four active intervals;
+- all four start/end slot pairs;
+- complete eight-byte writes;
+- addition and removal of interval slots;
+- unused pairs as `FF FF`;
+- ten-minute time encoding;
+- `24:00 / 0xC0` as a valid interval end;
+- byte-exact post-write readback;
+- byte-exact restoration of the original day block.
+
+The remaining gate is no longer controller block semantics. It is the
+production Home Assistant/MQTT integration: strict validation, serialized
+write/readback, visible status and non-optimistic UI behavior.
 
 
 A guarded helper is included:
