@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "date": "2026-09-24",
-  "status": "PHASE_A_PASS",
+  "status": "PHASE_B_DYNAMIC_PASS",
   "evidence_level": "hardware_observation",
   "scope": "First bounded read-only Virtual_READ vs KMBUS_RAM_READ 0x41 correlation on local WB2A / VDensHO1 / 20C2.",
   "tracking_issue": 30,
@@ -71,7 +71,7 @@
     "ERROR"
   ],
   "live_results": "All 7 ordinary Virtual_READ requests succeeded; all 7 KMBUS_RAM_READ 0x41 requests produced client-side timeout, including the previously verified 0x00F8/8 positive control.",
-  "conclusion": "Phase A passed: on seven known logical addresses, 0x41 KMBUS_RAM_READ and 0x01 Virtual_READ are byte-identical in an explicitly initialized P300 session. 0x41 is real and controller-supported, but currently behaves like an alternate/mirrored logical read path on the sampled addresses.",
+  "conclusion": "Phase B dynamic pass: 0x41 KMBUS_RAM_READ mirrors 0x01 Virtual_READ even for non-zero pump runtime state. Separately, the live data shows A1 request 30% being transformed to final internal-pump 50%, exactly matching the known 50% coding-plug minimum as the leading clamp hypothesis.",
   "live_run": {
     "started_at": "2026-09-24T22:01:32+02:00",
     "ended_at": "2026-09-24T22:02:17+02:00",
@@ -172,8 +172,8 @@
   },
   "next_step": {
     "priority": 1,
-    "action": "Repeat only 0x0A3C/0x7660/0x7663 during a natural non-zero pump/heating or DHW state, preferably with a short bounded P300 watch window, to prove dynamic equivalence.",
-    "secondary": "After dynamic proof, test a very small source-derived set of addresses outside the ordinary VDensHO1 datapoint set to look for any 0x41-only namespace; do not blind-sweep."
+    "action": "Deprioritize further 0x41 mirror probing. Move to source-derived read families that may expose genuinely distinct spaces: XRAM_READ 0x31 first, then reconstruct prefixed KMBUS_EEPROM_READ 0x43 and structured KBUS_* reads.",
+    "optional_closure": "If desired, capture same-window E7 (0x27E7) and coding-plug 0x1070 block while the 30->50 state is present to close the GWG75 clamp correlation."
   },
   "transport_diagnostic_2208": {
     "service_state": "active",
@@ -314,5 +314,93 @@
     "This strongly supports an alias/mirror interpretation for the sampled logical address space.",
     "The three pump-runtime objects were all zero during this run, so dynamic equivalence is not yet proven for non-zero runtime state.",
     "Static non-zero objects 0x5730=01 and 0x0A54=01110101 also matched, strengthening the broad-alias hypothesis beyond the identity block."
+  ],
+  "successful_dynamic_p300_window": {
+    "started_at": "2026-09-24T22:26:31.578+02:00",
+    "ended_at": "2026-09-24T22:26:38.704+02:00",
+    "log": "/root/wb2a-kmbus-p300-read-20260924-222631-203993.log",
+    "p300_initialized": true,
+    "pairs": [
+      {
+        "name": "identity",
+        "address": "0x00F8",
+        "length": 8,
+        "virtual": "20c2000300000103",
+        "kmbus41": "20c2000300000103",
+        "classification": "IDENTICAL"
+      },
+      {
+        "name": "pump_final_command",
+        "address": "0x0A3C",
+        "length": 1,
+        "virtual": "32",
+        "kmbus41": "32",
+        "classification": "IDENTICAL"
+      },
+      {
+        "name": "internal_pump_runtime",
+        "address": "0x7660",
+        "length": 2,
+        "virtual": "0332",
+        "kmbus41": "0332",
+        "classification": "IDENTICAL"
+      },
+      {
+        "name": "a1_pump_request",
+        "address": "0x7663",
+        "length": 2,
+        "virtual": "031e",
+        "kmbus41": "031e",
+        "classification": "IDENTICAL"
+      },
+      {
+        "name": "internal_pump_identity",
+        "address": "0x5730",
+        "length": 1,
+        "virtual": "01",
+        "kmbus41": "01",
+        "classification": "IDENTICAL"
+      },
+      {
+        "name": "internal_pump_sw_block",
+        "address": "0x0A54",
+        "length": 4,
+        "virtual": "01110101",
+        "kmbus41": "01110101",
+        "classification": "IDENTICAL"
+      },
+      {
+        "name": "a1_remote_identity",
+        "address": "0x27A0",
+        "length": 1,
+        "virtual": "00",
+        "kmbus41": "00",
+        "classification": "IDENTICAL"
+      }
+    ],
+    "dynamic_pump_decode": {
+      "0x7663": "03 1e -> state byte 0x03, speed byte 0x1e = 30%",
+      "0x7660": "03 32 -> state byte 0x03, speed byte 0x32 = 50%",
+      "0x0A3C": "32 -> 50%, exactly matching 0x7660[1]"
+    },
+    "arbitration_observation": "A1 runtime request was 30% while the internal-pump final/runtime speed was 50% in the same approximately 300 ms window. This directly confirms a controller-side transformation/clamp between 0x7663 and 0x0A3C/0x7660.",
+    "configuration_correlation": {
+      "known_E7_percent": 30,
+      "known_coding_plug_GWG75_internal_pump_min_percent": 50,
+      "status": "CONSISTENT_WITH_CLAMP_NOT_CAUSALLY_PROVEN_BY_THIS_RUN",
+      "note": "The 30->50 transformation exactly matches the previously established E7=30 and coding-plug GWG75=50 values, making GWG75 the leading explanation for the minimum internal-pump clamp. These configuration values were not re-read in this exact P300 window."
+    },
+    "restoration": {
+      "splitter_restarted": true,
+      "party_restarted": true,
+      "vs1_restored": true
+    },
+    "result": "PASS"
+  },
+  "phase_b_conclusion": [
+    "Dynamic non-zero equivalence is proven: 0x41 and 0x01 returned identical values for 0x0A3C, 0x7660 and 0x7663 while the pump path was active.",
+    "The 0x41 path is therefore strongly characterized as an alternate/mirrored logical read path for the sampled VDensHO1 address space, not a distinct hidden runtime RAM namespace.",
+    "The same run independently reveals the pump arbitration: A1 requested 30% (0x7663[1]=0x1E), while the final/internal pump command was 50% (0x0A3C=0x32 and 0x7660[1]=0x32).",
+    "That 30->50 uplift is exactly consistent with the known coding-plug GWG75 minimum internal-pump speed of 50%, but a same-window configuration read is still needed for strict causal closure."
   ]
 }
