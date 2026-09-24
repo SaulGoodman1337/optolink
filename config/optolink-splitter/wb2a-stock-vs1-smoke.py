@@ -543,6 +543,11 @@ def main() -> int:
     def abort(signum, _frame):
         raise SmokeError(f"Interrupted by signal {signum}; entering cleanup.")
 
+    previous_handlers = {
+        sig: signal.signal(sig, abort)
+        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+    }
+
     try:
         log(f"WB2A stock splitter VS1 smoke {VERSION}; seconds={args.seconds}")
         log("SOURCE_PATCH=no; OPTO_WRITE_BY_HELPER=no; GFA_POLL_PATCH=no")
@@ -623,8 +628,6 @@ def main() -> int:
                 raise SmokeError(f"Temporary settings readback failed for {key}.")
         log(f"TEMP_SETTINGS_SHA256={temp_sha}")
         log("TEMP_SETTINGS=vs1protocol:true,mqtt_listen:none,tcpip_port:none,olbreath:0.15")
-
-        previous_handlers = {sig: signal.signal(sig, abort) for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)}
 
         subscriber.clear()
         test_started_epoch = time.time()
