@@ -86,7 +86,7 @@ A3C           = 00
 
 Interpretation: the installed internal pump is configured as speed-controlled (`K30=1`), without the K30=2 volume-flow capability flag. No hydraulic separator is configured (`K52=0`). The internal-pump software-index field is `0x01` at byte 3 of `0x0A54`; bytes 0..2 remain undefined by this event. Runtime was idle during this sample.
 
-Current E9 is 100%, while an older local baseline recorded 50%; this discrepancy is preserved as an open configuration provenance item and is not to be corrected by writing.
+Current E9 is 100%, while an older local baseline recorded 50%. The user confirmed the change to 100% was intentional, so there is no unexplained controller-side drift. No write is required.
 
 ## Decision tree
 
