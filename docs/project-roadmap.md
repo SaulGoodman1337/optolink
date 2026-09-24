@@ -456,7 +456,7 @@ Do not treat the M-Bus Slave Click choice as a completed implementation yet.
 
 ### Maintenance configuration / reset via Home Assistant
 
-Status: **splitter verification complete / shared core + guarded CLI + MQTT API implemented / safe API behavior live-verified / shared-lock test pending / future HA task pending**
+Status: **splitter verification complete / shared core + guarded CLI + MQTT API implemented / safe API behavior + shared lock live-verified / final bounded API write pending / future HA task pending**
 
 A future Home Assistant dashboard session should add a compact **Service /
 Wartung** area that not only displays the verified maintenance diagnostics but,
@@ -530,10 +530,14 @@ The non-write API safety suite is now live-verified:
 - baseline and final values for `0x5721`, `0x5723`, `0x5724`,
   `0x756C`, `0x7570`, `0x08A7` and `0x088A` matched.
 
+The shared CLI/API lock is now live-verified. While the common
+`/opt/optolink/.maintenance.lock` was held externally, both the root CLI and
+the unprivileged MQTT API failed closed with a `busy` result. Normal CLI
+access resumed after release.
+
 Remaining API validation before Home Assistant integration:
 
-- shared CLI/API lock contention behavior;
-- one final bounded live API write after the lock test passes.
+- one final bounded live API write with independent readback and restore.
 
 ## WB2A reverse engineering: open items
 
