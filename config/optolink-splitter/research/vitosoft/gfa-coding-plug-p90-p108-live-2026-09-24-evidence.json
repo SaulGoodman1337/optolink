@@ -91,5 +91,13 @@
       "exact_match": true
     },
     "interpretation": "Strong hardware correlation between the regulation/coding-card and GFA coding-plug identity views. Exact source byte-position semantics for the four 0x7656 subfields remain to be recovered before declaring a formal field mapping."
+  },
+  "date_crosscheck": {
+    "gwg_0x1020_raw": "00 00 FF FF FF 00 00 00 00 00 00 00 00 00 00 00",
+    "gwg_source_date_bytes": "FF FF FF",
+    "gfa_P103_P105": "14 0C 04",
+    "exact_match": false,
+    "conclusion": "GWG/main-regulation and GFA/fire-control coding-plug date fields are separate datasets on this appliance.",
+    "remaining_open": "GFA calendar display encoding and year base"
   }
 }
