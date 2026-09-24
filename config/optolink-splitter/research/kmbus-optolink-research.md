@@ -632,6 +632,59 @@ because they would reveal a partially overlapping hidden state space. If only
 Runbook:
 [../../../docs/kmbus-ram-correlation-probe.md](../../../docs/kmbus-ram-correlation-probe.md).
 
+## Live Phase A result - control failed before semantic comparison
+
+First run window:
+
+~~~text
+2026-09-24T22:01:32+02:00
+..
+2026-09-24T22:02:17+02:00
+~~~
+
+All seven ordinary `Virtual_READ` controls succeeded:
+
+~~~text
+0x00F8/8 -> 20c2000300000103
+0x0A3C/1 -> 00
+0x7660/2 -> 0000
+0x7663/2 -> 0000
+0x5730/1 -> 01
+0x0A54/4 -> 01110101
+0x27A0/1 -> 00
+~~~
+
+Every paired `KMBUS_RAM_READ 0x41` invocation timed out at the debug client,
+including the previously locally verified positive control:
+
+~~~text
+request;0x41;0x00F8;8;;0x00
+-> timeout
+~~~
+
+This invalidates the run as a memory-map comparison. It does **not** overturn
+the earlier local proof that 0x41 works at 0x00F8. The first diagnostic target
+is now the generic request path / response observation rather than any new RAM
+address.
+
+Important implementation detail: `optolink-debug` filters MQTT responses by
+the requested address. Therefore a printed timeout means that no response with
+the expected address was accepted within the timeout. It does **not** prove
+that the splitter/controller emitted no response at all; an error or response
+using another address could have been discarded by the helper.
+
+Next gate:
+
+1. verify ordinary `r` still works;
+2. verify generic `request;0x01;...` works;
+3. retry the known-positive `0x41/0x00F8/8` with a longer timeout;
+4. capture all MQTT responses, including unmatched-address responses;
+5. only after the positive 0x41 control returns, resume the seven-address
+   correlation matrix.
+
+Evidence:
+[vitosoft/kmbus-ram-correlation-2026-09-24-evidence.json](vitosoft/kmbus-ram-correlation-2026-09-24-evidence.json).
+
 ## Research questions
 
 The project should answer these in order:
