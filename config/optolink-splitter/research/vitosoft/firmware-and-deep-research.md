@@ -239,7 +239,7 @@ This would be a major step beyond Vitosoft metadata.
 
 ## Firmware acquisition questions
 
-Before attempting a hardware dump, establish the electronics architecture.
+Before attempting a hardware dump, establish the electronics architecture. The user has explicitly planned a high-resolution regulation-board photo session for this purpose; see [../../../../docs/regulation-board-photo-capture.md](../../../../docs/regulation-board-photo-capture.md).
 
 Required evidence:
 
