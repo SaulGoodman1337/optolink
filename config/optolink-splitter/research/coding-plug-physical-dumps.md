@@ -33,6 +33,39 @@ clipped package alone. The three identical reads prove repeatability of this
 capture setup, but they do not yet prove electrical isolation of chip1 from the
 second 24C04. Reading chip2 separately is therefore an important control.
 
+## Physical IC identification from the existing photos
+
+A closer review of the already available photographs corrects the earlier
+over-simplified description of the two packages. They are **not identical
+parts**, although both belong to the same 4-Kbit I2C EEPROM class:
+
+- **f01 / SIM1 side:** STMicroelectronics `24C04W6` (M24C04-W family);
+- **f02 / SIM2 side:** Microchip `24LC04B` (marking consistent with
+  `24LC04B/SN`).
+
+Both devices provide 4 Kbit = **512 bytes**, use a two-wire I2C-compatible
+interface, have a 16-byte page-write organization and operate at 2.5..5.5 V
+for these variants. They are therefore broadly programmer-compatible as a
+24C04-class device, but they are not identical silicon.
+
+There is one relevant implementation difference:
+
+- Microchip 24LC04B documents A0/A1/A2 as not internally connected;
+- ST M24C04-W uses E1/E2 as chip-enable/address inputs, with the upper address
+  bit A8 carried in the device-select code.
+
+The board photographs show a very similar passive network on both faces
+(decoupling capacitor plus `1003` = 100 kOhm resistor) and five external
+contact pads per face. This strongly suggests two separate EEPROM channels or
+interfaces, one per board face, rather than two identical packages simply
+paralleled on one I2C bus. That topology is still a **photographic inference**,
+not an electrically verified schematic.
+
+The existing saved files are named `chip1`, but the photographs do not prove
+whether that label corresponds to **f01/ST** or **f02/Microchip**. Until a new
+capture explicitly records the board face, the raw files must remain
+vendor-neutral `chip1` samples.
+
 ## Sample registry
 
 | Sample | Physical role | IC | Reads | Result | SHA256 |
@@ -184,6 +217,48 @@ The 96 % identity is also useful evidence against the temporary programmer
 connection problem having produced arbitrary garbage: an accidental bad read
 would be very unlikely to reproduce the same coherent image three times and
 match the first spare at 492 of 512 byte positions.
+
+### Additional binary-structure observations
+
+A closer binary comparison reveals more structure than the initial summary:
+
+- `0x01..0x0B` is repeated exactly at `0x5B..0x65`;
+- `0x14..0x5A` is repeated exactly at `0x66..0xAC` (71 bytes);
+- the first copy has an additional unique 8-byte area at `0x0C..0x13`;
+- `0xAE..0xE1` is a 52-byte zero-filled area in both spare captures;
+- the differing lower-block tail at `0xE2..0xF0` naturally groups into five
+  consecutive 3-byte fields.
+
+If interpreted only structurally as unsigned little-endian 24-bit values
+(without assigning semantics), those five fields are:
+
+| Field offset | spare-1 | spare-2 |
+| ---: | ---: | ---: |
+| 0x0E2 | 92 | 190 |
+| 0x0E5 | 6 | 16 |
+| 0x0E8 | 43 | 174 |
+| 0x0EB | 2 | 0 |
+| 0x0EE | 28674 | 124428 |
+
+This 3-byte alignment makes the tail differences look deliberately formatted,
+but it does **not** establish whether the fields are counters, identifiers,
+calibration values, checksums or something else.
+
+### Special caution around 0x100
+
+Both EEPROM families are 512-byte devices organized around a 256-byte address
+boundary; the high address bit is part of the device-select/addressing
+mechanism. The conspicuous spare-2 pattern beginning exactly at `0x100`
+therefore deserves extra caution, especially because connection problems were
+observed later during the bench session.
+
+The saved reads are internally repeatable, so they remain useful evidence.
+However, until the same side is re-read with the face/vendor explicitly
+recorded (or with an independent reader), the `0x100..0x1FF` region should
+not be given semantic meaning solely from the `A5 5A` pattern.
+
+The lower-block differences at `0x0E2..0x0F0` are not affected by that
+256-byte boundary and are therefore the stronger cross-sample evidence.
 
 ## Repository files
 
