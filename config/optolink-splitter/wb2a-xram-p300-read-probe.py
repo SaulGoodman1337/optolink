@@ -429,11 +429,13 @@ def run_guarded(services, opener, log) -> int:
             failures.append("VS1 restore verification failed: " + str(exc))
 
     success_count = sum(1 for row in results if row["xram"]["status"] == "SUCCESS")
+    completed = len(results) == len(TARGETS) and not failures
     log(f"XRAM_SUCCESS_COUNT={success_count}/{len(TARGETS)}")
-    log("RESULT=" + ("PASS" if len(results) == len(TARGETS) and not failures else "FAIL"))
+    log("XRAM_CAPABILITY=" + ("SOURCE_TARGET_SUCCESS" if success_count else "NO_SOURCE_TARGET_SUCCEEDED"))
+    log("EXECUTION_RESULT=" + ("PASS" if completed else "FAIL"))
     for failure in failures:
         log("ERROR: " + failure)
-    return 0 if len(results) == len(TARGETS) and not failures else 1
+    return 0 if completed else 1
 
 
 def self_test() -> int:
