@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "source": {
+    "upload_name": "Eingefügter Text(20260924-090716).txt",
+    "sha256": "7300d9dc272e8668c0ab2d518826a9f04037cb09dbba47f97dd382570b3ce946",
+    "bytes": 139565,
+    "lines": 707,
+    "log": "/root/wb2a-gfa-p87-p09-hires-20260924-110532-191250.log",
+    "jsonl": "/root/wb2a-gfa-p87-p09-hires-20260924-110532-191250.jsonl"
+  },
+  "helper": {
+    "file": "config/optolink-splitter/wb2a-gfa-p87-p09-hires-probe.py",
+    "version": "1.0.0",
+    "commit": "c5e2b2662fe586df0c740b78100714db38723664",
+    "git_blob": "afe7b9b63ac7cc87b7607403fbcc30c8ae1a569f",
+    "sha256": "b5249b35e30258494a8c3a7c681d31913f1a13a7663f302e23d146cc90f4413c"
+  },
+  "trigger": {
+    "original_day_setpoint_c": 21,
+    "temporary_setpoint_c": 37,
+    "trigger_time": "2026-09-24T11:05:45.395+02:00",
+    "trigger_verified": true,
+    "pre_modulation_0x55dc_raw": 0,
+    "trigger_to_vs1_s": 4.347
+  },
+  "acquisition": {
+    "result": "PASS",
+    "observation_seconds": 35,
+    "accepted_guard_blocks": 29,
+    "accepted_pairs": 58,
+    "rejected_blocks": 0,
+    "reconnections": 0,
+    "ff_seen": false,
+    "P80_confirmed": "0x20",
+    "P300_restored": true,
+    "splitter_restarted": true,
+    "party_restarted": true,
+    "minimum_reply_gap_ms": 150,
+    "order_reverses_by_block": true
+  },
+  "pre_plateau_sequence": {
+    "P87_observed_sequence": [
+      "20",
+      "50",
+      "60",
+      "62"
+    ],
+    "first_P87_60_rx": "2026-09-24T11:05:58.035+02:00",
+    "first_P87_60_after_trigger_s": 12.64,
+    "note": "P87=40 was not sampled in this narrower run; the prior triggered status run observed 20->40->50->60->62."
+  },
+  "critical_ordering": {
+    "p87_bit1": {
+      "last_clear_raw": "60",
+      "last_clear_rx": "2026-09-24T11:06:06.897+02:00",
+      "first_set_raw": "62",
+      "first_set_rx": "2026-09-24T11:06:07.392+02:00",
+      "changed_bits": [
+        1
+      ],
+      "transition_bracket_ms": 495,
+      "transition_interval": "(11:06:06.897, 11:06:07.392]"
+    },
+    "p09_plateau_release": {
+      "plateau_raw": "93",
+      "plateau_pct": 57.6534,
+      "last_plateau_rx": "2026-09-24T11:06:07.649+02:00",
+      "first_below_raw": "91",
+      "first_below_pct": 56.869,
+      "first_below_rx": "2026-09-24T11:06:08.139+02:00",
+      "transition_bracket_ms": 490,
+      "transition_interval": "(11:06:07.649, 11:06:08.139]"
+    },
+    "windows_overlap": false,
+    "minimum_separation_ms": 257,
+    "proof_statement": "P87 bit 1 was already observed set at 11:06:07.392, while P09 was still independently observed at the 0x93 startup plateau at 11:06:07.649. Therefore the P87 bit-1 transition precedes the P09 plateau release in this run.",
+    "not_proven": [
+      "P87 bit 1 causes the P09 release.",
+      "P87 bit 1 is a flame-detection signal.",
+      "P87 bit 1 means flame stabilization complete or regulation enabled.",
+      "Any manufacturer-defined semantic name for P87 bit 1."
+    ]
+  },
+  "timing_from_trigger": {
+    "last_P87_bit1_clear_s": 21.502,
+    "first_P87_bit1_set_s": 21.997,
+    "last_P09_plateau_s": 22.254,
+    "first_P09_below_plateau_s": 22.744
+  },
+  "sampling": {
+    "approximate_same_channel_median_interval_ms": {
+      "P87": 497,
+      "P09": 496
+    },
+    "P87_interval_range_ms": [
+      459,
+      1001
+    ],
+    "P09_interval_range_ms": [
+      463,
+      999
+    ],
+    "critical_pair_29": {
+      "order": "P87->P09",
+      "P87_62_rx": "2026-09-24T11:06:07.392+02:00",
+      "P09_93_rx": "2026-09-24T11:06:07.649+02:00",
+      "span_ms": 256.534
+    },
+    "critical_pair_30": {
+      "order": "P87->P09",
+      "P87_62_rx": "2026-09-24T11:06:07.856+02:00",
+      "P09_91_rx": "2026-09-24T11:06:08.139+02:00",
+      "span_ms": 283.395
+    }
+  },
+  "restore": {
+    "restored_day_setpoint_c": 21,
+    "readback_verified": true,
+    "post_restore_modulation_0x55dc_raw": 41,
+    "post_restore_note": "Burner remained active immediately after setpoint restoration; restore does not imply immediate flame-off."
+  },
+  "conclusion": "The high-resolution run establishes temporal ordering: P87 bit 1 becomes set before P09 leaves the high-start modulation plateau. It remains an unnamed controller/GFA status precursor or marker; causality and vendor semantics are unresolved.",
+  "next_step": "No further faster live polling is required for ordering. Prioritize source/static interpretation of P87 bit 1 and production-safe VS1 integration if this marker is to be exposed diagnostically."
+}
