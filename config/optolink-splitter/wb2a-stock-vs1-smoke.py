@@ -48,7 +48,7 @@ import threading
 import time
 from typing import Any
 
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 ROOT = Path("/opt/optolink")
 SETTINGS = ROOT / "settings_ini.py"
 HA_POLL = ROOT / "homeassistant_poll_list.py"
@@ -480,7 +480,13 @@ def verify_stock_runtime() -> tuple[str, str]:
         try:
             head = run(git_safe_cmd("rev-parse", "HEAD"), timeout=10).stdout.strip()
             origin = run(git_safe_cmd("rev-parse", "origin/main"), timeout=10).stdout.strip()
-            dirty = run(git_safe_cmd("status", "--porcelain", "--untracked-files=no"), timeout=10).stdout.strip()
+            # Preserve the leading XY status columns. str.strip() would remove
+            # the leading space from the first porcelain line (" M file") and
+            # corrupt its path parsing. Only trim trailing line terminators.
+            dirty = run(
+                git_safe_cmd("status", "--porcelain", "--untracked-files=no"),
+                timeout=10,
+            ).stdout.rstrip("\r\n")
         except Exception as exc:
             raise SmokeError("Git metadata exists but stock verification failed: " + str(exc)) from exc
         if head != origin:
@@ -595,8 +601,19 @@ def self_test() -> int:
         def test_parse_porcelain_expected_profile_patches(self):
             text = " M homeassistant_publish.py\n M mqtt_util.py\n"
             self.assertEqual(
-                sorted(parse_porcelain_paths(text)),
+                sorted(parse_porcelain_paths(text.rstrip("\r\n"))),
                 ["homeassistant_publish.py", "mqtt_util.py"],
+            )
+
+        def test_porcelain_first_line_leading_space_must_survive(self):
+            raw = " M homeassistant_publish.py\n M mqtt_util.py\n"
+            # Regression for v1.0.3: .strip() changed the first line to
+            # "M homeassistant_publish.py", causing raw[3:] -> "omeassistant...".
+            preserved = raw.rstrip("\r\n")
+            self.assertTrue(preserved.startswith(" M "))
+            self.assertEqual(
+                parse_porcelain_paths(preserved)[0],
+                "homeassistant_publish.py",
             )
 
         def test_parse_porcelain_rejects_rename(self):
@@ -611,7 +628,7 @@ def self_test() -> int:
 
     result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(Tests))
     if result.wasSuccessful():
-        print("LOCAL_STOCK_VS1_SMOKE_TESTS=13/13")
+        print("LOCAL_STOCK_VS1_SMOKE_TESTS=14/14")
         return 0
     return 1
 
