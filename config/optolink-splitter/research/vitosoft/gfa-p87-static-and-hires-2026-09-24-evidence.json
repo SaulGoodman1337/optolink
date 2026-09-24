@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "purpose": "Resolve P87 bit semantics from static sources before designing a higher-resolution live timing correlation.",
+  "local_target": {
+    "profile": "VDensHO1 / 20C2",
+    "burner_variant": "GFA",
+    "P80_expected": "0x20",
+    "parameter": "P87",
+    "event_id": 8211,
+    "address": "0x4057",
+    "source_label": "GFA Status 3",
+    "length_bytes": 1,
+    "conversion": "NoConversion"
+  },
+  "static_source_result": {
+    "private_archive_analysis": "No value table, enum, or bit definition recovered for P87/P85-P88.",
+    "public_vitosoft_export": {
+      "repository": "MorrisonHB/Optolink_02",
+      "commit": "ec77c6917909ae229b17a6104db4f81f9a31e263",
+      "corroborated_label": "8211;(P87) GFA Status 3;;VSKO_Scot_CES_P87~0x4057;1",
+      "bit_table_found": false
+    },
+    "conclusion": "P87 bit 1 cannot be given a manufacturer-defined semantic name from the currently available static sources."
+  },
+  "live_basis": {
+    "evidence_file": "config/optolink-splitter/research/vitosoft/gfa-triggered-startup-2026-09-24-evidence.json",
+    "P87_sequence": [
+      "20",
+      "40",
+      "50",
+      "60",
+      "62"
+    ],
+    "first_P84_06_to_first_P87_62_s": 10.148,
+    "first_P87_60_to_first_P87_62_s": 9.866,
+    "observed_P87_62_to_first_P09_drop_s": 0.497,
+    "interpretation": "P87 bit 1 is strongly associated with release/end of the high-start P09 plateau, but causal order and vendor semantics are not proven."
+  },
+  "next_probe": {
+    "file": "config/optolink-splitter/wb2a-gfa-p87-p09-hires-probe.py",
+    "version": "1.0.0",
+    "commit": "c5e2b2662fe586df0c740b78100714db38723664",
+    "git_blob": "afe7b9b63ac7cc87b7607403fbcc30c8ae1a569f",
+    "sha256": "b5249b35e30258494a8c3a7c681d31913f1a13a7663f302e23d146cc90f4413c",
+    "parent": {
+      "file": "config/optolink-splitter/wb2a-gfa-triggered-status-probe.py",
+      "sha256": "6d5810e1595ba6e464452dcd927259e9bade8f550a92b492fd40c2a27972604b"
+    },
+    "observation_seconds_default": 35,
+    "runtime_reads": [
+      "P87 0x4057",
+      "P09 0x4009",
+      "P80 0x4050 guard"
+    ],
+    "pairs_per_guard_block": 2,
+    "order_policy": "odd blocks P87->P09 twice; even blocks P09->P87 twice",
+    "minimum_reply_gap_ms": 150,
+    "new_write_paths": false,
+    "inherited_write_policy": "temporary A1 normal setpoint 0x2306=37 then exact pre-read original restore with readback",
+    "local_compile": "PASS",
+    "local_logic_tests": "9/9 PASS",
+    "full_parent_chain_tests": "run on LXC before --execute; parent was not present in the isolated local test directory"
+  }
+}
