@@ -69,13 +69,18 @@ poll_list = {
         "fixed": ["WW", "A1", "M1", "K12", "GFA", "SW", "BLR", "CFDM", "RKR"],
     },
 
-    "poll_interval": 2,
+    # Continuous cycle scheduling. The local phased-scheduler patch keeps
+    # olbreath between every real Optolink transaction and distributes the
+    # slower groups across their period instead of bunching them into one
+    # long cycle.
+    "poll_interval": 0,
     "poll_groups": {
-        "ONCE": 0,
+        "ONCE": 0,       # exactly once per splitter process start
         "FAST": 1,       # every completed poll cycle
-        "NORMAL": 15,    # every 15 poll cycles
-        "SLOW": 150,     # every 150 poll cycles
-        "RARE": 900,     # every 900 poll cycles
+        "NORMAL": 5,     # approximately every 5 FAST cycles
+        "DIAG": 15,      # internal control diagnostics
+        "SLOW": 150,     # sensor/EEPROM health; roughly several minutes
+        "RARE": 900,     # counters/error history; roughly tens of minutes
         "DISABLED": -1,
     },
 
@@ -92,17 +97,17 @@ poll_list = {
             "state_class": "measurement",
             "suggested_display_precision": 1,
             "poll": [
-                ("FAST",   "aussentemperatur",                   0x0800, 2, 0.1, True),
-                ("NORMAL", "aussentemperatur_tiefpass",          0x5525, 2, 0.1, True),
-                ("NORMAL", "aussentemperatur_gedaempft",         0x5527, 2, 0.1, True),
+                ("NORMAL",   "aussentemperatur",                   0x0800, 2, 0.1, True),
+                ("SLOW", "aussentemperatur_tiefpass",          0x5525, 2, 0.1, True),
+                ("SLOW", "aussentemperatur_gedaempft",         0x5527, 2, 0.1, True),
                 ("FAST",   "kesseltemperatur",                   0x0810, 2, 0.1, True),
                 ("FAST",   "kessel_solltemperatur_effektiv",     0x555A, 2, 0.1, True),
                 ("NORMAL", "abgastemperatur",                    0x0816, 2, 0.1, True),
                 ("FAST",   "warmwasser_temperatur",              0x0812, 2, 0.1, True),
-                ("FAST", "warmwasser_solltemperatur_aktuell",  0x6500, 2, 0.1, True),
+                ("NORMAL", "warmwasser_solltemperatur_aktuell",  0x6500, 2, 0.1, True),
                 ("FAST",   "heizkreis_m1_vorlauftemperatur",     0x2900, 2, 0.1, True),
                 ("FAST",   "heizkreis_m1_vorlaufsolltemperatur", 0x2544, 2, 0.1, True),
-                ("FAST", "heizkreis_m1_raumsolltemperatur_aktuell",
+                ("NORMAL", "heizkreis_m1_raumsolltemperatur_aktuell",
                                                                   0x2500, 22, "b:12:13", 0.1, True),
             ],
         },
@@ -141,7 +146,7 @@ poll_list = {
             "enabled_by_default": True,
             "icon": "mdi:identifier",
             "poll": [
-                ("FAST", "gfa_p80_typ", 0x4050, 1, "gfa:raw", False),
+                ("NORMAL", "gfa_p80_typ", 0x4050, 1, "gfa:raw", False),
             ],
         },
         {
@@ -222,8 +227,8 @@ poll_list = {
                 ("FAST",   "heizkreis_m1_pumpe_ausgang",        0x7663, 2, "b:0:0", 1, False),
                 ("FAST",   "heizkreis_m1_pumpe_logisch",        0x2906, 1, 1, False),
                 ("FAST",   "speicherladepumpe_status",          0x6513, 1, 1, False),
-                ("FAST",   "zirkulationspumpe_status",          0x6515, 1, 1, False),
-                ("NORMAL", "warmwasser_flowswitch",             0x0883, 1, 1, False),
+                ("NORMAL",   "zirkulationspumpe_status",          0x6515, 1, 1, False),
+                ("FAST", "warmwasser_flowswitch",             0x0883, 1, 1, False),
                 ("NORMAL", "heizkreis_m1_sparbetrieb",          0x2302, 1, 1, False),
             ],
         },
@@ -234,7 +239,7 @@ poll_list = {
             "entity_category": "diagnostic",
             "enabled_by_default": True,
             "poll": [
-                ("FAST", "relais_k12_status", 0x0842, 1, 1, False),
+                ("NORMAL", "relais_k12_status", 0x0842, 1, 1, False),
             ],
         },
 
@@ -277,8 +282,8 @@ poll_list = {
             "payload_on": "True",
             "payload_off": "False",
             "poll": [
-                ("NORMAL", "heizkreis_m1_frostgefahr",  0x2500, 22, "b:16:16:0x01", "bool", False),
-                ("NORMAL", "heizkreis_m1_ferienbetrieb", 0x2535, 1, "b:0:0:0x01", "bool", False),
+                ("SLOW", "heizkreis_m1_frostgefahr",  0x2500, 22, "b:16:16:0x01", "bool", False),
+                ("SLOW", "heizkreis_m1_ferienbetrieb", 0x2535, 1, "b:0:0:0x01", "bool", False),
             ],
         },
         {
@@ -356,9 +361,9 @@ poll_list = {
                     "min": 3,
                     "max": 37,
                     "poll": [
-                        ("FAST", "heizkreis_m1_raumsolltemperatur_normal",     0x2306, 1, 1, False),
-                        ("FAST", "heizkreis_m1_raumsolltemperatur_reduziert", 0x2307, 1, 1, False),
-                        ("FAST", "heizkreis_m1_raumsolltemperatur_party",     0x2308, 1, 1, False),
+                        ("NORMAL", "heizkreis_m1_raumsolltemperatur_normal",     0x2306, 1, 1, False),
+                        ("NORMAL", "heizkreis_m1_raumsolltemperatur_reduziert", 0x2307, 1, 1, False),
+                        ("NORMAL", "heizkreis_m1_raumsolltemperatur_party",     0x2308, 1, 1, False),
                     ],
                 },
                 {
@@ -367,7 +372,7 @@ poll_list = {
                     "min": 10,
                     "max": 60,
                     "poll": [
-                        ("FAST", "warmwasser_solltemperatur", 0x6300, 1, 1, False),
+                        ("NORMAL", "warmwasser_solltemperatur", 0x6300, 1, 1, False),
                     ],
                 },
             ],
@@ -391,7 +396,7 @@ poll_list = {
             "value_template": "{% set v = value | int(-1) %}{% if v == 0 %}Abschalt{% elif v == 1 %}Nur WW{% elif v == 2 %}Heizen + WW{% elif v == 3 %}Dauernd Reduziert{% elif v == 4 %}Dauernd Normal{% else %}Unbekannt ({{ v }}){% endif %}",
             "optimistic": False,
             "poll": [
-                ("FAST", "heizkreis_m1_betriebsart", 0x2323, 1, 1, False),
+                ("NORMAL", "heizkreis_m1_betriebsart", 0x2323, 1, 1, False),
             ],
         },
 
@@ -416,7 +421,7 @@ poll_list = {
             "value_template": "{% set v = value | int(-1) %}{% if v == 0 %}Schaltuhr{% elif v == 1 %}1 pro Stunde{% elif v == 2 %}2 pro Stunde{% elif v == 3 %}3 pro Stunde{% elif v == 4 %}4 pro Stunde{% elif v == 5 %}5 pro Stunde{% elif v == 6 %}6 pro Stunde{% elif v == 7 %}EIN{% else %}Unbekannt ({{ v }}){% endif %}",
             "optimistic": False,
             "poll": [
-                ("FAST", "zirkulation_intervall", 0x6773, 1, 1, False),
+                ("NORMAL", "zirkulation_intervall", 0x6773, 1, 1, False),
             ],
         },
 
@@ -653,13 +658,13 @@ poll_list = {
                 {
                     "value_template": "{% set v = value | int(-1) %}{% if v == 0 %}Abschaltbetrieb{% elif v == 1 %}Reduzierter Betrieb{% elif v == 2 %}Normalbetrieb{% elif v == 3 %}Dauernd Normal{% else %}Wert {{ v }}{% endif %}",
                     "poll": [
-                        ("FAST", "heizkreis_m1_betriebsart_aktuell", 0x2500, 22, "b:1:1", 1, False),
+                        ("NORMAL", "heizkreis_m1_betriebsart_aktuell", 0x2500, 22, "b:1:1", 1, False),
                     ],
                 },
                 {
                     "value_template": "{% set v = value | int(-1) %}{% if v == 2 %}Normal dauernd{% elif v == 3 %}Heizen + WW Schaltzeiten{% else %}Wert {{ v }}{% endif %}",
                     "poll": [
-                        ("FAST", "heizkreis_m1_betriebsprogramm_aktuell", 0x2301, 1, 1, False),
+                        ("NORMAL", "heizkreis_m1_betriebsprogramm_aktuell", 0x2301, 1, 1, False),
                     ],
                 },
                 {
@@ -715,55 +720,55 @@ poll_list = {
                 {
                     "unit_of_measurement": "°C",
                     "poll": [
-                        ("SLOW", "heizkreis_m1_frostgrenze_a3", 0x27A3, 1, 1, True),
-                        ("SLOW", "heizkreis_m1_sommersparabschaltung_a6", 0x27A6, 1, 1, False),
-                        ("SLOW", "heizkreis_m1_vorlauf_min_c5", 0x27C5, 1, 1, False),
-                        ("SLOW", "heizkreis_m1_vorlauf_max_c6", 0x27C6, 1, 1, False),
-                        ("SLOW", "kessel_maximaltemperatur_06", 0x5706, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_frostgrenze_a3", 0x27A3, 1, 1, True),
+                        ("ONCE", "heizkreis_m1_sommersparabschaltung_a6", 0x27A6, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_vorlauf_min_c5", 0x27C5, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_vorlauf_max_c6", 0x27C6, 1, 1, False),
+                        ("ONCE", "kessel_maximaltemperatur_06", 0x5706, 1, 1, False),
                     ],
                 },
                 {
                     "unit_of_measurement": "K",
                     "poll": [
-                        ("SLOW", "heizkreis_m1_heizkennlinie_niveau_d4", 0x27D4, 1, 1, True),
-                        ("SLOW", "warmwasser_kessel_offset_60", 0x6760, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_heizkennlinie_niveau_d4", 0x27D4, 1, 1, True),
+                        ("ONCE", "warmwasser_kessel_offset_60", 0x6760, 1, 1, False),
                     ],
                 },
                 {
                     "unit_of_measurement": "%",
                     "poll": [
-                        ("SLOW", "heizkreis_m1_pumpe_max_drehzahl_e6", 0x27E6, 1, 1, False),
-                        ("SLOW", "heizkreis_m1_pumpe_min_drehzahl_e7", 0x27E7, 1, 1, False),
-                        ("SLOW", "heizkreis_m1_pumpe_reduziert_e9",    0x27E9, 1, 1, False),
-                        ("SLOW", "interne_pumpe_solldrehzahl_31",      0x5731, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_pumpe_max_drehzahl_e6", 0x27E6, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_pumpe_min_drehzahl_e7", 0x27E7, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_pumpe_reduziert_e9",    0x27E9, 1, 1, False),
+                        ("ONCE", "interne_pumpe_solldrehzahl_31",      0x5731, 1, 1, False),
                     ],
                 },
                 {
                     "unit_of_measurement": "min",
                     "poll": [
-                        ("SLOW", "heizkreis_m1_pumpe_reduziert_a9", 0x27A9, 1, 1, False),
-                        ("SLOW", "warmwasser_pumpennachlauf_62",     0x6762, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_pumpe_reduziert_a9", 0x27A9, 1, 1, False),
+                        ("ONCE", "warmwasser_pumpennachlauf_62",     0x6762, 1, 1, False),
                     ],
                 },
                 {
                     "poll": [
-                        ("SLOW", "heizkreis_m1_speichervorrang_a2",         0x27A2, 1, 1, False),
-                        ("SLOW", "heizkreis_m1_frostschutz_a4",             0x27A4, 1, 1, False),
-                        ("SLOW", "heizkreis_m1_sommerspar_schaltschwelle_a5",0x27A5, 1, 1, False),
-                        ("SLOW", "heizkreis_m1_mischersparfunktion_a7",      0x27A7, 1, 1, False),
-                        ("SLOW", "heizkreis_m1_heizkennlinie_neigung_d3",    0x27D3, 1, 0.1, False),
-                        ("SLOW", "heizkreis_m1_pumpentyp_e5",                0x27E5, 1, 1, False),
-                        ("SLOW", "heizkreis_m1_pumpe_nebenbetrieb_e8",       0x27E8, 1, 1, False),
-                        ("SLOW", "heizkreis_m1_temperaturprogramm_f1",       0x27F1, 1, 1, False),
-                        ("SLOW", "heizkreis_m1_party_zeitbegrenzung_f2",     0x27F2, 1, 1, False),
-                        ("SLOW", "interne_pumpe_kennung_30",                 0x5730, 1, 1, False),
-                        ("SLOW", "warmwasser_sollbereich_56",                0x6756, 1, 1, False),
-                        ("SLOW", "warmwasser_einschalt_offset_59",           0x6759, 1, 1, False),
-                        ("SLOW", "warmwasser_speicher_anbindung_5b",         0x675B, 1, 1, False),
-                        ("SLOW", "umschaltventil_bauart_65",                 0x6765, 1, 1, False),
-                        ("SLOW", "zirkulation_bei_ww_soll1_71",             0x6771, 1, 1, False),
-                        ("SLOW", "zirkulation_bei_ww_soll2_72",             0x6772, 1, 1, False),
-                        ("SLOW", "relais_k12_funktion_53",                   0x7753, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_speichervorrang_a2",         0x27A2, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_frostschutz_a4",             0x27A4, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_sommerspar_schaltschwelle_a5",0x27A5, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_mischersparfunktion_a7",      0x27A7, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_heizkennlinie_neigung_d3",    0x27D3, 1, 0.1, False),
+                        ("ONCE", "heizkreis_m1_pumpentyp_e5",                0x27E5, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_pumpe_nebenbetrieb_e8",       0x27E8, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_temperaturprogramm_f1",       0x27F1, 1, 1, False),
+                        ("ONCE", "heizkreis_m1_party_zeitbegrenzung_f2",     0x27F2, 1, 1, False),
+                        ("ONCE", "interne_pumpe_kennung_30",                 0x5730, 1, 1, False),
+                        ("ONCE", "warmwasser_sollbereich_56",                0x6756, 1, 1, False),
+                        ("ONCE", "warmwasser_einschalt_offset_59",           0x6759, 1, 1, False),
+                        ("ONCE", "warmwasser_speicher_anbindung_5b",         0x675B, 1, 1, False),
+                        ("ONCE", "umschaltventil_bauart_65",                 0x6765, 1, 1, False),
+                        ("ONCE", "zirkulation_bei_ww_soll1_71",             0x6771, 1, 1, False),
+                        ("ONCE", "zirkulation_bei_ww_soll2_72",             0x6772, 1, 1, False),
+                        ("ONCE", "relais_k12_funktion_53",                   0x7753, 1, 1, False),
                     ],
                 },
             ],
@@ -1084,16 +1089,16 @@ poll_list = {
             "enabled_by_default": True,
             "suggested_display_precision": 1,
             "poll": [
-                ("NORMAL", "blr_kesselsolltemperatur_effektiv",  0xA307, 2, 0.01, False),
-                ("NORMAL", "cfdm_kesselsolltemperatur_effektiv", 0xA391, 2, 0.01, False),
+                ("DIAG", "blr_kesselsolltemperatur_effektiv",  0xA307, 2, 0.01, False),
+                ("DIAG", "cfdm_kesselsolltemperatur_effektiv", 0xA391, 2, 0.01, False),
                 # nvoSupplyTemp_CFDM; hardware-verified against 0x0810 over a
                 # full start/stop cycle. Mean delta was +0.04 K, mean absolute
                 # delta 0.14 K (sequential reads, therefore not atomic).
-                ("NORMAL", "cfdm_vorlauftemperatur",              0xA393, 2, 0.01, False),
+                ("DIAG", "cfdm_vorlauftemperatur",              0xA393, 2, 0.01, False),
                 # nviConsumerDmd Temp CFDM; hardware-readable, but verified as
                 # an inactive/external input on this WB2A's local heating path:
                 # it stayed 0.00 C both idle and during a live 50 C burner run.
-                ("NORMAL", "cfdm_consumer_demand_temperatur",     0xA385, 2, 0.01, False),
+                ("DIAG", "cfdm_consumer_demand_temperatur",     0xA385, 2, 0.01, False),
             ],
         },
         # -----------------------------------------------------------------
@@ -1210,14 +1215,14 @@ poll_list = {
             "enabled_by_default": True,
             "suggested_display_precision": 1,
             "poll": [
-                ("NORMAL", "cfdm_leistungswert", 0xA38F, 2, "b:0:0", 0.5, False),
+                ("DIAG", "cfdm_leistungswert", 0xA38F, 2, "b:0:0", 0.5, False),
                 # 55D3 byte0 is treated by historical vcontrold/OpenV configs
                 # as a fine burner-power value. This WB2A capture confirms a
                 # close correlation while firing (69 at A305=66%, 38 at
                 # A305=33%), but the field already ramps during pre-purge.
                 # Therefore keep it diagnostic and describe it as a GFA
                 # power/control value rather than thermal output.
-                ("NORMAL", "gfa_leistungs_ansteuerwert_fein", 0x55D3, 9, "b:0:0", 1, False),
+                ("DIAG", "gfa_leistungs_ansteuerwert_fein", 0x55D3, 9, "b:0:0", 1, False),
             ],
         },
 
@@ -1229,7 +1234,7 @@ poll_list = {
             "poll": [
                 # Hardware-readable external/LON-style input. It remained
                 # FF=HVAC_NUL through a complete local heating burner start.
-                ("NORMAL", "cfdm_application_mode", 0xA382, 1, 1, False),
+                ("DIAG", "cfdm_application_mode", 0xA382, 1, 1, False),
             ],
         },
 
@@ -1297,11 +1302,11 @@ poll_list = {
             "entity_category": "diagnostic",
             "enabled_by_default": True,
             "poll": [
-                ("NORMAL", "cfdm_harte_sperre",    0xA395, 4, "b:2:2:0x01", "bool", False),
-                ("NORMAL", "cfdm_fehler",           0xA395, 4, "b:2:2:0x04", "bool", False),
+                ("DIAG", "cfdm_harte_sperre",    0xA395, 4, "b:2:2:0x01", "bool", False),
+                ("DIAG", "cfdm_fehler",           0xA395, 4, "b:2:2:0x04", "bool", False),
                 # A38F byte1 is the documented CFDM power-state enum:
                 # 0=AUS, 1=EIN. Live run: 3f01 while firing, 0000 when off.
-                ("NORMAL", "cfdm_leistungsstatus", 0xA38F, 2, "b:1:1:0x01", "bool", False),
+                ("DIAG", "cfdm_leistungsstatus", 0xA38F, 2, "b:1:1:0x01", "bool", False),
             ],
         },
         {
@@ -1310,7 +1315,7 @@ poll_list = {
             "enabled_by_default": True,
             "value_template": "{% set v = value | int(-1) %}{% if v == 0 %}Kein Fehler{% elif v >= 0 %}0x{{ '%02X' | format(v) }}{% else %}unbekannt{% endif %}",
             "poll": [
-                ("NORMAL", "aktueller_alarm_fehlercode", 0xA132, 29, "b:28:28", 1, False),
+                ("SLOW", "aktueller_alarm_fehlercode", 0xA132, 29, "b:28:28", 1, False),
             ],
         },
 
@@ -1642,29 +1647,29 @@ poll_list = {
             "enabled_by_default": True,
             "icon": "mdi:calendar-clock",
             "poll": [
-                ("RARE", "heizkreis_m1_zeitprogramm_montag",     0x2000, 8, "schedvdens"),
-                ("RARE", "heizkreis_m1_zeitprogramm_dienstag",   0x2008, 8, "schedvdens"),
-                ("RARE", "heizkreis_m1_zeitprogramm_mittwoch",   0x2010, 8, "schedvdens"),
-                ("RARE", "heizkreis_m1_zeitprogramm_donnerstag", 0x2018, 8, "schedvdens"),
-                ("RARE", "heizkreis_m1_zeitprogramm_freitag",    0x2020, 8, "schedvdens"),
-                ("RARE", "heizkreis_m1_zeitprogramm_samstag",    0x2028, 8, "schedvdens"),
-                ("RARE", "heizkreis_m1_zeitprogramm_sonntag",    0x2030, 8, "schedvdens"),
+                ("ONCE", "heizkreis_m1_zeitprogramm_montag",     0x2000, 8, "schedvdens"),
+                ("ONCE", "heizkreis_m1_zeitprogramm_dienstag",   0x2008, 8, "schedvdens"),
+                ("ONCE", "heizkreis_m1_zeitprogramm_mittwoch",   0x2010, 8, "schedvdens"),
+                ("ONCE", "heizkreis_m1_zeitprogramm_donnerstag", 0x2018, 8, "schedvdens"),
+                ("ONCE", "heizkreis_m1_zeitprogramm_freitag",    0x2020, 8, "schedvdens"),
+                ("ONCE", "heizkreis_m1_zeitprogramm_samstag",    0x2028, 8, "schedvdens"),
+                ("ONCE", "heizkreis_m1_zeitprogramm_sonntag",    0x2030, 8, "schedvdens"),
 
-                ("RARE", "warmwasser_zeitprogramm_montag",       0x2100, 8, "schedvdens"),
-                ("RARE", "warmwasser_zeitprogramm_dienstag",     0x2108, 8, "schedvdens"),
-                ("RARE", "warmwasser_zeitprogramm_mittwoch",     0x2110, 8, "schedvdens"),
-                ("RARE", "warmwasser_zeitprogramm_donnerstag",   0x2118, 8, "schedvdens"),
-                ("RARE", "warmwasser_zeitprogramm_freitag",      0x2120, 8, "schedvdens"),
-                ("RARE", "warmwasser_zeitprogramm_samstag",      0x2128, 8, "schedvdens"),
-                ("RARE", "warmwasser_zeitprogramm_sonntag",      0x2130, 8, "schedvdens"),
+                ("ONCE", "warmwasser_zeitprogramm_montag",       0x2100, 8, "schedvdens"),
+                ("ONCE", "warmwasser_zeitprogramm_dienstag",     0x2108, 8, "schedvdens"),
+                ("ONCE", "warmwasser_zeitprogramm_mittwoch",     0x2110, 8, "schedvdens"),
+                ("ONCE", "warmwasser_zeitprogramm_donnerstag",   0x2118, 8, "schedvdens"),
+                ("ONCE", "warmwasser_zeitprogramm_freitag",      0x2120, 8, "schedvdens"),
+                ("ONCE", "warmwasser_zeitprogramm_samstag",      0x2128, 8, "schedvdens"),
+                ("ONCE", "warmwasser_zeitprogramm_sonntag",      0x2130, 8, "schedvdens"),
 
-                ("RARE", "zirkulation_zeitprogramm_montag",      0x2200, 8, "schedvdens"),
-                ("RARE", "zirkulation_zeitprogramm_dienstag",    0x2208, 8, "schedvdens"),
-                ("RARE", "zirkulation_zeitprogramm_mittwoch",    0x2210, 8, "schedvdens"),
-                ("RARE", "zirkulation_zeitprogramm_donnerstag",  0x2218, 8, "schedvdens"),
-                ("RARE", "zirkulation_zeitprogramm_freitag",     0x2220, 8, "schedvdens"),
-                ("RARE", "zirkulation_zeitprogramm_samstag",     0x2228, 8, "schedvdens"),
-                ("RARE", "zirkulation_zeitprogramm_sonntag",     0x2230, 8, "schedvdens"),
+                ("ONCE", "zirkulation_zeitprogramm_montag",      0x2200, 8, "schedvdens"),
+                ("ONCE", "zirkulation_zeitprogramm_dienstag",    0x2208, 8, "schedvdens"),
+                ("ONCE", "zirkulation_zeitprogramm_mittwoch",    0x2210, 8, "schedvdens"),
+                ("ONCE", "zirkulation_zeitprogramm_donnerstag",  0x2218, 8, "schedvdens"),
+                ("ONCE", "zirkulation_zeitprogramm_freitag",     0x2220, 8, "schedvdens"),
+                ("ONCE", "zirkulation_zeitprogramm_samstag",     0x2228, 8, "schedvdens"),
+                ("ONCE", "zirkulation_zeitprogramm_sonntag",     0x2230, 8, "schedvdens"),
             ],
         },
     ],
