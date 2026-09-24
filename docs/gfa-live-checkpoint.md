@@ -17,6 +17,48 @@ Evidence:
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
 
+## 0xxxxxxxxx. Real splitter permanent-VS1 write path PASS - 2026-09-24
+
+The final bounded integration gate passed through the **actual running splitter production path**:
+
+```text
+MQTT /set
+ -> mqtt_util.handle_set_topic
+ -> splitter command queue
+ -> requests_util.response_to_request
+ -> vs12_adapter.write_datapoint_ext
+ -> stock optolinkvs1 F4
+ -> WB2A
+```
+
+Observed live sequence:
+
+```text
+BASELINE_2306=0x15 (21 C)
+TARGET_2306=0x16 (22 C)
+CHANGE_RESPONSE=1;0x2306;22
+CHANGED_STATE=22
+RESTORE_RESPONSE=1;0x2306;21
+RESTORED_STATE=21
+FINAL_SPLITTER_F7_2306=0x15 (21 C)
+JOURNAL_UNEXPECTED_RESTART=no
+VS1_MAINPID_STABLE=yes
+SETTINGS_RESTORED=yes
+RESTORED_BASELINE_PROTOCOL=VS2/300
+TARGET_WRITE_VERIFIED=yes
+RESTORE_VERIFIED=yes
+DIRECT_FALLBACK_USED=no
+RESULT=PASS
+```
+
+This removes the remaining splitter-transport blocker for permanent VS1 on the exact VDensHO1/20C2 installation. The current live HA profile's Optolink-backed writable controls are all one-byte datapoints; schedules remain read-only.
+
+The helper printed `ERROR: 0` before/after the run because its outer exception wrapper also caught successful `SystemExit(0)`. This was cosmetic only; the gate itself returned PASS and completed normal recovery.
+
+Production deployment is a separate step and had **not** been performed by this gate. The successful test restored the original settings byte-for-byte and returned the splitter to VS2/300.
+
+Evidence: [real-splitter VS1 write gate](../config/optolink-splitter/research/vitosoft/vs1-splitter-write-gate-prep-2026-09-24-evidence.json).
+
 ## 0xxxxxxxx. Stock VS1 F4 value mutation + restore PASS - 2026-09-24
 
 The actual one-byte state mutation gate passed on ordinary setpoint `0x2306`:
