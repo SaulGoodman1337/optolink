@@ -25,7 +25,7 @@ import sys
 import tempfile
 import time
 
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 ROOT = Path("/opt/optolink")
 
 BASE_BLOBS = {
@@ -425,6 +425,8 @@ def self_test() -> int:
             self.assertIn("continuation = is_bytebit", out)
 
         def test_switch_patch(self):
+            # Synthetic source keeps the exact indentation of the real upstream
+            # markers patch_switch() intentionally matches fail-closed.
             src = """force_poll_flag = False
 reload_poll_flag = False
 
@@ -444,22 +446,22 @@ def main():
     global mod_mqtt
     global poll_pointer, poll_cycle
     global force_poll_flag, reload_poll_flag
-    # force poll including onceonlies
-    if force_poll_flag:
-        poll_pointer = 0
-        poll_cycle = 0
-        force_poll_flag = False
-    # reload poll list, including onceonlies
-    if reload_poll_flag:
-        poll_list.make_list(reload=True)
-        if(len(poll_data) != poll_list.num_items):          # type: ignore
-            poll_data = [None] * poll_list.num_items
-        publish_stats()
-        poll_pointer = 0
-        poll_cycle = 0
-        reload_poll_flag = False
-    # poll cycle control
-    poll_cycle += 1
+                            # force poll including onceonlies
+                            if force_poll_flag:
+                                poll_pointer = 0
+                                poll_cycle = 0
+                                force_poll_flag = False
+                            # reload poll list, including onceonlies
+                            if reload_poll_flag:
+                                poll_list.make_list(reload=True)
+                                if(len(poll_data) != poll_list.num_items):          # type: ignore
+                                    poll_data = [None] * poll_list.num_items
+                                publish_stats()
+                                poll_pointer = 0
+                                poll_cycle = 0
+                                reload_poll_flag = False
+                                    # poll cycle control
+                                    poll_cycle += 1
 """
             out = patch_switch(src)
             self.assertIn("startup_once_complete", out)
