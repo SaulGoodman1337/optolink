@@ -2,13 +2,14 @@
 
 **Current status: P80, snapshots, same-session access and a continuous 60-second burner-start trace are hardware-confirmed. The paced startup trace completed 49/49 rounds with no FF replies or reconnects, captured P84 raw 00->02->04->05->06, fan speed 0->4500 rpm and the subsequent modulation-down ramp. Intermittent FF replies from longer captures remain unresolved.**
 
-Read the [paced comparison and startup trace](gfa-paced-comparison.md) for the latest live result. The earlier [long-run FF investigation](gfa-cycle-ff-investigation.md) remains relevant to acquisition quality, but it no longer blocks interpretation of the new clean 60-second startup trace.
+Read the [paced comparison and startup trace](gfa-paced-comparison.md) for the latest live result. The next bounded experiment is the [GFA status/startup probe](gfa-status-probe.md): P84/P12 every round, alternating P85/P86 and P87/P88, with P80 guarding every round. It records raw bits only; no flame/status semantics are assigned. The earlier [long-run FF investigation](gfa-cycle-ff-investigation.md) remains relevant to acquisition quality.
 
 A firing snapshot previously decoded P06 as 4110 rpm. The new continuous trace now independently supports the channel with a coherent 0->660->2490->4500 rpm startup and subsequent ramp down to 2790 rpm. The older isolated P06=FF conversion to 7650 rpm remains invalid as a physical event. Permanent Home Assistant integration remains unverified.
 
 Evidence:
 
 - [Continuous startup trace](../config/optolink-splitter/research/vitosoft/gfa-startup-run-2026-09-24-evidence.json).
+- [Status-target selection](../config/optolink-splitter/research/vitosoft/gfa-status-targets-2026-09-24-evidence.json).
 - [First long-run failure and FF samples](../config/optolink-splitter/research/vitosoft/gfa-cycle-ff-2026-09-23-evidence.json).
 - [Snapshot comparison](../config/optolink-splitter/research/vitosoft/gfa-snapshots-2026-09-23-evidence.json).
 - [Same-session measurements and timing](../config/optolink-splitter/research/vitosoft/gfa-session-2026-09-23-evidence.json).
