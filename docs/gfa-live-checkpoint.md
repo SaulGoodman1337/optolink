@@ -17,6 +17,33 @@ Evidence:
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
 
+## 0xxxxxxxx. Stock VS1 F4 value mutation + restore PASS - 2026-09-24
+
+The actual one-byte state mutation gate passed on ordinary setpoint `0x2306`:
+
+```text
+BASELINE_2306=0x15 (21 C)
+TARGET_2306=0x16 (22 C)
+F4_CHANGE_REPLY=00
+CHANGED_READBACK_2306=0x16 (22 C)
+F4_RESTORE_REPLY=00
+RESTORED_READBACK_2306=0x15 (21 C)
+P300_POST_2306=0x15 (21 C)
+TARGET_WRITE_VERIFIED=yes
+RESTORE_VERIFIED=yes
+P300_RESTORED=yes
+P300_VALUE_RESTORED=yes
+RESULT=PASS
+```
+
+Therefore stock VS1/F4 is no longer only handshake-tested: actual mutation and exact restoration are hardware-proven on this appliance. As in the idempotent run, response payload `00` is not a value echo; F7/P300 readback is authoritative.
+
+Audit of the current live HA profile shows that all exposed Optolink-backed writable controls resolve to one-byte datapoints. Weekly schedules remain read-only. This removes the current write-width transport blocker for permanent VS1; appliance-specific semantics of every service coding remain a separate validation question.
+
+One final integration gate is prepared to exercise the real running splitter path through an isolated temporary MQTT `/set` namespace before permanent activation.
+
+Evidence: [F4 change/restore gate](../config/optolink-splitter/research/vitosoft/vs1-f4-change-restore-prep-2026-09-24-evidence.json).
+
 ## 0xxxxxxx. Stock VS1 F4 idempotent transport PASS - 2026-09-24
 
 The stock upstream VS1 write implementation has now passed a bounded hardware transport test on ordinary setpoint `0x2306`.
