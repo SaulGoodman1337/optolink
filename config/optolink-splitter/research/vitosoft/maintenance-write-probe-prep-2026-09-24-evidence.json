@@ -87,7 +87,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "0x5723_WRITE_VERIFIED_0x756C_TIMESTAMP_REFERENCE_IDENTIFIED",
+  "current_status": "0x5723_WRITE_VERIFIED_READY_FOR_SOURCE_BACKED_0x5724_RESET_PROBE",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -130,5 +130,26 @@
         "0x5724 stayed at Grundzustand and 0x7570 stayed zero."
       ]
     }
+  },
+  "reset_source": {
+    "appliance": "Vitodens 200-W WB2A service instructions",
+    "behavior": "If maintenance is performed before the service indication appears, set coding 24:1 and then 24:0; maintenance parameters for burner hours and time interval start again at zero.",
+    "separation": "Resetting total burner operating hours, burner starts and consumption is a separate optional service operation.",
+    "implication": "A bounded 0x5724 1 -> 0 sequence is source-backed as the maintenance-interval reset path; total counters should be monitored but must not be intentionally reset."
+  },
+  "next_probe": {
+    "target": "0x5724",
+    "sequence": "baseline -> write 1 -> observe -> write 0 -> observe",
+    "safety_restore": "always attempt 0x5724=0 on exit",
+    "monitor": [
+      "0x5721 configured burner-hours interval",
+      "0x5723 configured month interval",
+      "0x5724 maintenance status",
+      "0x756C LastCheckInterval raw reference",
+      "0x7570 LastBurnerCheck raw reference",
+      "0x08A7 total burner runtime raw",
+      "0x088A burner starts raw"
+    ],
+    "expected_research_value": "If 0x7570 snapshots 0x08A7 when 24 is reset, LastBurnerCheck can be modeled as current total burner runtime minus stored maintenance baseline."
   }
 }
