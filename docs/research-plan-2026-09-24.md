@@ -62,12 +62,12 @@ A1 demand + operating mode + E6/E7/E8/E9 + K31 + 6C + GWG75/76 + other overrides
 - [ ] Use natural passive observations only when they answer a specific formula question, e.g. whether an A1 request above the GWG75 50% floor is passed through to the internal command.
 - [ ] Keep the documented external-demand/K34 path separate: it can force the internal circulation pump ON but is not proven to request 100% and can affect boiler heat demand via 9B.
 - [x] Transfer the hidden-selector algorithm itself to controller-firmware/MCU analysis. The focused host/decompilation layer exposed no `0x0A3C` / `0x7660` arbitration implementation.
-- [ ] Complete the newly isolated **installed-pump characterization** before MCU work: read-only K30 `0x5730`, K31 `0x5731`, K52 `0x7752`, E5-E9 `0x27E5..0x27E9`, internal-pump software index `0x0A54/4` and same-window `0x0A3C/0x7660/0x7663`. Use [internal-pump-k30-k31-read.md](internal-pump-k30-k31-read.md).
-- [ ] If K30=`02` ("drehzahlgeregelt mit Volumenstrom"), perform a targeted read-only search for internal-pump flow telemetry; do not assume the already-rejected Neptun `0x0C24` path applies to base VDensHO1.
-- [ ] If K30=`01`, deprioritize mandatory flow-sensor hunting and continue the hidden runtime arbitration as a controller-firmware problem.
-- [ ] Do not write K30/K31 during characterization; both are configuration objects and may be persistent.
+- [x] Complete the installed-pump characterization: `K30=01` (speed-controlled), `K31=100`, `K52=00`, `E5=00`, `E6=100`, `E7=30`, `E8=0`, `E9=100`, `0x0A54=01 11 01 01` with software index byte3=`01`; same-window runtime was idle (`A3C=0`, `7660=0000`, `7663=0000`).
+- [x] K30 is `01`, not `02`; therefore a mandatory internal-pump volume-flow telemetry search is deprioritized for this installation. The rejected Neptun `0x0C24` path remains unrelated to base VDensHO1.
+- [x] K30=`01` confirmed; continue the hidden runtime arbitration as a controller-firmware/MCU problem rather than a flow-sensor discovery problem.
+- [x] Characterization completed read-only; no K30/K31 write was performed.
 
-**Status: hidden runtime-selector algorithm remains a controller-firmware/MCU question, but installed-pump capability/role characterization is newly reopened.** Static v6 metadata now gives a bounded, source-backed read-only K30/K31/KM-BUS identity step; this is not a return to blind address probing.
+**Status: installed-pump characterization completed 2026-09-24.** The local controller identifies a speed-controlled internal pump (`K30=01`) without the K30=2 volume-flow capability flag, no hydraulic-separator sensor (`K52=0`), and software index `01`. The hidden selector upstream of `0x0A3C` remains a controller-firmware/MCU question.\n\n**Open configuration delta:** current `E9=100%` differs from the earlier documented hardware baseline `E9=50%`. Do not write it; verify provenance/readback before treating 100% as the intended baseline.
 
 ## P0 - Complete GFA software identity
 
