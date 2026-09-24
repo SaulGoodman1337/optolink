@@ -103,16 +103,17 @@ The read transport is already production-verified. The missing identity fields a
 
 ## P1 - Protected FlowCalibration and embedded resources
 
-v6 confirms four protected ILDASM outputs representing two distinct FlowCalibration binary states. A new Collector run is not required.
+**Status: completed for the WB2A pump-control question.** See [FlowCalibration / hydraulic-calibration host analysis](../config/optolink-splitter/research/vitosoft/flowcalibration-hydraulic-2026-09-24.md).
 
-**TODO:**
+- [x] Identify the two protected binary states: production 4.0.11.1 / SHA256 `bd8b...c017f`, and explicit test 4.0.7.1 / SHA256 `4aa4...7ee3`.
+- [x] Perform static analysis without executing vendor binaries. ILSpy exposes metadata/public APIs; the protected numerical algorithm bodies remain obfuscated/stubbed.
+- [x] Recover the unprotected host integration from `MobileClient.exe`, `ViessmannIPC.dll` and `vsmCommunicationInterface.dll`.
+- [x] Resolve the hydraulic transport: `CustomAppId=1`, start/stop at Neptun `0x7950`, data from `0x7688/0x0C24/0x0C26`.
+- [x] Resolve the result writer: KD3/KD4 plus E6/E7/E9, but only for supported VD3XX heater types; `NichtVD3xx` is explicitly rejected for result writes.
+- [x] Verify v6 membership: every Neptun/HydraulicCalibration address used by the host path is absent from base VDensHO1; the known E6/E7/E8/E9 GWG objects remain valid VDensHO1 controls.
+- [x] Record the negative conclusion: FlowCalibration does **not** expose a newly demonstrated volatile WB2A pump override.
 
-- [ ] Hash and identify the two distinct protected FlowCalibration binaries from the private snapshot.
-- [ ] Perform offline static inspection with tools that do not execute the assemblies.
-- [ ] Inspect embedded resources/proprietary containers for pump, calibration, firmware and coding-plug structures.
-- [ ] Record negative findings as negative findings; a failed decompiler is not proof that the functionality is absent.
-
-**Completion criterion:** a small derived report names each binary hash, tool/result and any source-supported constants or call paths.
+**Completion result:** the host integration and applicability boundary are sufficiently resolved. The protected numerical calibration algorithm itself remains unrecovered, but it is no longer a priority for the current WB2A pump-selector question.
 
 ## P1 - Firmware architecture, not repeated SQL hunting
 
