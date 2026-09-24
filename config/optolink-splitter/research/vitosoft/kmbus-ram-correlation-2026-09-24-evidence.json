@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "status": "AWAITING_LIVE_RUN",
+  "evidence_level": "planned_hardware_observation",
+  "scope": "First bounded read-only Virtual_READ vs KMBUS_RAM_READ 0x41 correlation on local WB2A / VDensHO1 / 20C2.",
+  "tracking_issue": 30,
+  "safety": {
+    "writes_permitted": false,
+    "broad_address_sweep_permitted": false,
+    "functions_used": [
+      "Virtual_READ 0x01",
+      "KMBUS_RAM_READ 0x41"
+    ]
+  },
+  "targets": [
+    {"address": "0x00F8", "length": 8, "meaning": "controller identity", "role": "positive control"},
+    {"address": "0x0A3C", "length": 1, "meaning": "final internal-pump command shadow", "role": "runtime discriminator"},
+    {"address": "0x7660", "length": 2, "meaning": "internal pump runtime/output", "role": "runtime discriminator"},
+    {"address": "0x7663", "length": 2, "meaning": "A1 runtime/calculated pump request", "role": "runtime discriminator"},
+    {"address": "0x5730", "length": 1, "meaning": "K30 internal-pump identity/capability", "role": "KM-BUS-related static object"},
+    {"address": "0x0A54", "length": 4, "meaning": "internal-pump software-index block", "role": "KM-BUS participant structure"},
+    {"address": "0x27A0", "length": 1, "meaning": "A1/M1 remote-control identification", "role": "independent KM-BUS participant object"}
+  ],
+  "known_control": {
+    "virtual_0x00F8_8": "20c2000300000103",
+    "kmbus_ram_0x00F8_8": "20c2000300000103",
+    "status": "LOCAL-VERIFIED before this run"
+  },
+  "classifications": [
+    "IDENTICAL",
+    "DIFFERENT_STABLE",
+    "DIFFERENT_DYNAMIC",
+    "VIRTUAL_ONLY",
+    "KMBUS_ONLY",
+    "ERROR"
+  ],
+  "live_results": null,
+  "conclusion": null
+}
