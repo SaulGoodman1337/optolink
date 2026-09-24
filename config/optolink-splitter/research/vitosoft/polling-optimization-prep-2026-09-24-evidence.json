@@ -74,7 +74,7 @@
     "normal_cadence_seconds": "approximately 20-30 s",
     "goal": "Eliminate periodic 15-20 s FAST latency spikes before any olbreath reduction."
   },
-  "next_step": "Test olbreath=0.05 with the same 180-second passive cadence observer and automatic rollback to 0.10 on any communication error; if clean, perform a longer soak including a burner start before making 0.05 permanent in the profile helper.",
+  "next_step": "Longer 0.10 s soak including a burner cycle. Do not make 0.05 permanent.",
   "first_live_apply_attempt": {
     "timestamp_local": "2026-09-24T14:17:06+02:00",
     "result": "ABORTED_BEFORE_SCHEDULER_APPLY",
@@ -323,6 +323,113 @@
       "FAST cadence improved from about 4.7 s to about 3.5 s with no observed communication errors.",
       "NORMAL cadence improved from about 24 s to about 17.5 s, consistent with five FAST cycles.",
       "Proceed to a separate 50 ms test before choosing the permanent production value."
+    ]
+  },
+  "cadence_test_olbreath_005": {
+    "timestamp_local": "2026-09-24T14:40+02:00",
+    "duration_seconds": 180,
+    "result": "FAIL_AUTO_ROLLBACK_TO_0.10",
+    "passive_only": true,
+    "mqtt_no_redundant": false,
+    "olbreath_seconds": 0.05,
+    "poll_interval": 0,
+    "once_complete_before_measurement": true,
+    "service_active_at_end_of_measurement": true,
+    "p80_identity_ok": true,
+    "measurements": {
+      "kesseltemperatur": {
+        "group": "FAST",
+        "messages": 84,
+        "min_s": 1.867,
+        "median_s": 2.134,
+        "p95_s": 2.341,
+        "max_s": 2.428,
+        "last": "36.5"
+      },
+      "brenner_modulationsgrad": {
+        "group": "FAST",
+        "messages": 84,
+        "min_s": 1.878,
+        "median_s": 2.152,
+        "p95_s": 2.303,
+        "max_s": 2.39,
+        "last": "0.0"
+      },
+      "geblaesedrehzahl_gfa_p06": {
+        "group": "FAST",
+        "messages": 84,
+        "min_s": 1.952,
+        "median_s": 2.128,
+        "p95_s": 2.334,
+        "max_s": 2.404,
+        "last": "0"
+      },
+      "gfa_modulationssollwert_p09": {
+        "group": "FAST",
+        "messages": 83,
+        "min_s": 1.945,
+        "median_s": 2.137,
+        "p95_s": 2.323,
+        "max_s": 4.151,
+        "last": "0.0"
+      },
+      "gfa_status3_p87": {
+        "group": "FAST",
+        "messages": 84,
+        "min_s": 1.964,
+        "median_s": 2.129,
+        "p95_s": 2.307,
+        "max_s": 2.439,
+        "last": "00"
+      },
+      "aussentemperatur": {
+        "group": "NORMAL",
+        "messages": 17,
+        "min_s": 10.114,
+        "median_s": 10.599,
+        "p95_s": 11.264,
+        "max_s": 11.329,
+        "last": "19.5"
+      },
+      "gfa_p80_typ": {
+        "group": "NORMAL",
+        "phase": 4,
+        "messages": 17,
+        "min_s": 10.114,
+        "median_s": 10.594,
+        "p95_s": 11.285,
+        "max_s": 11.315,
+        "last": "20"
+      }
+    },
+    "communication_failure": {
+      "timestamp_local": "2026-09-24T14:42:41+02:00",
+      "datapoint": "GFA P09",
+      "address": "0x4009",
+      "symptom": "GFA_READ returned FF; quarantined",
+      "splitter_log": "OL Error do_poll_item 16, Addr 4009, RetCode 255, Data ?",
+      "observable_cadence_effect": "P09 max interval increased to 4.151 s, approximately one missed FAST cycle."
+    },
+    "rollback": {
+      "target_olbreath_seconds": 0.1,
+      "performed": true
+    },
+    "conclusion": [
+      "50 ms materially improves cadence, with FAST median near 2.13 s and NORMAL median near 10.6 s.",
+      "However, one GFA P09 read returned FF within the 180 s gate and was quarantined.",
+      "This short-run failure is sufficient to reject 50 ms as the production timing for the current hardware/software setup.",
+      "The comparison strongly suggests reduced timing margin at 50 ms, although one event alone does not prove that olbreath was the sole physical cause.",
+      "100 ms remains the fastest currently clean tested setting."
+    ]
+  },
+  "production_timing_recommendation": {
+    "olbreath_seconds": 0.1,
+    "status": "candidate production value pending longer soak",
+    "next_validation": [
+      "verify rollback actually restored olbreath=0.10 and service is active",
+      "run a longer 100 ms soak including at least one complete burner start/modulation cycle",
+      "check FF quarantine count, OL Error, restart and traceback markers",
+      "only after 100 ms long-soak PASS consider an optional 75 ms experiment"
     ]
   }
 }
