@@ -17,6 +17,25 @@ Evidence:
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
 
+## 0xxxxxxxxxxxx. Dashboard integration for live GFA values - 2026-09-24
+
+The Home Assistant dashboard now surfaces the production GFA signals:
+
+- `sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06` as the real controller-reported blower speed;
+- `sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09` beside the existing modulation signal;
+- `sensor.vitodens_200_wb2a_gfa_status3_p87` as raw diagnostics only.
+
+Dashboard changes:
+
+- blower RPM badge on the main heating overview;
+- P06/P09/P87 chips on the Diagnose view;
+- P06 row in the existing `Brenner / Regelung` background-graph card with P09 as its extra value;
+- dedicated 24 h `Gebläse & GFA` ApexCharts graph with separate RPM and percent axes.
+
+The old disproven interpretation of `0x55D3[6:7]` as blower RPM remains excluded. P06/0x4006 is now the canonical blower-speed source for this installation.
+
+Dashboard commit: `818c04a39752ee88868a01a9acaeb6e390696161`.
+
 ## 0xxxxxxxxxxx. Permanent VS1 + GFA production verification PASS - 2026-09-24
 
 The post-activation production verification is complete.
