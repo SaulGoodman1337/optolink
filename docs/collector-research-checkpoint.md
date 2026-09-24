@@ -27,6 +27,21 @@ The important results are:
 
 The archive analysis itself issued no appliance commands. The subsequent P80 test was explicitly executed by the user and transmitted only reads and communication-control bytes. Production profiles, dashboard, settings and controller parameters were not changed by these helpers. Raw proprietary binaries, SQL content, full IL and machine-specific exports were not committed.
 
+## All-devices supplement - 2026-09-24
+
+A later private v5 collector snapshot added a complete cross-profile metadata graph without changing the installed core Vitosoft definition version. The derived results are documented in [Vitosoft all-devices cross-profile analysis](../config/optolink-splitter/research/vitosoft/all-devices-2026-09-24.md).
+
+Key additions that future research must preserve:
+
+- 399 profiles, 11,582 events and 104,339 Device↔Event links were normalized.
+- VDensHO1 remains 581 linked events / 362 non-empty addresses; `VDensHO1`, `VPendHO1` and `VScotHO1` have the same exported event/address signature.
+- 399 globally defined events have no profile link. This includes `0x0A3C` Internal pump set speed, which is already known from local research. Therefore **missing profile membership is not proof of runtime/protocol absence**.
+- Virtual-WILO definitions link only to the `WILO` profile in this graph. Generic KMBUS EEPROM / EEPROM / XRAM definitions link to other device families, not VDensHO1. These are applicability clues, not transport prohibitions or write permission.
+- The two SQL update tables remain empty, so the new all-device pass does not add a WB2A firmware source.
+- Existing P06/P09/P10 GFA conclusions are confirmed rather than superseded; burner-variant filtering and later live captures remain stronger local evidence.
+
+The v5 archive itself has a known Deep-postprocessing packaging failure after the large Deep inventories were written. That collector-status issue belongs to the private source repository and does not invalidate the completed All-Devices graph, SQL export, tool dumps or outer manifest verification.
+
 ## Workstream status and next action
 
 | Workstream | Current result | Next action / dependency |
