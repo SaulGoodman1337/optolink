@@ -632,6 +632,63 @@ because they would reveal a partially overlapping hidden state space. If only
 Runbook:
 [../../../docs/kmbus-ram-correlation-probe.md](../../../docs/kmbus-ram-correlation-probe.md).
 
+## Transport correction - permanent production transport is VS1/KW
+
+A critical transport-context correction applies to all live KBus/KM-BUS
+experiments after the production GFA activation on 2026-09-24.
+
+The local splitter is intentionally running **permanent VS1/KW**:
+
+~~~text
+vs1protocol = True
+olbreath    = 0.15
+~~~
+
+This was activated and verified to support one persistent single-owner VS1
+session carrying both:
+
+- `F7 Virtual_READ` for normal controller datapoints;
+- `6B GFA_READ` for burner/GFA values including blower speed P06.
+
+Evidence:
+[vitosoft/vs1-gfa-production-activation-2026-09-24-evidence.json](vitosoft/vs1-gfa-production-activation-2026-09-24-evidence.json).
+
+The splitter adapter explicitly does **not** support the generic VS2/P300
+`request` function while VS1 is selected:
+
+~~~text
+request command not supported with VS1/KW, use raw instead
+~~~
+
+The 22:08 journal captured this exact warning for both generic function 0x01
+and 0x41.
+
+A second correction is equally important: sending a P300 frame through the
+splitter's generic `raw` command does not change protocol mode. In the active
+VS1 session, raw bytes such as:
+
+~~~text
+41 05 00 01 00 F8 08 06
+41 05 00 41 00 F8 08 46
+~~~
+
+are simply injected into the VS1/KW session and time out. This is expected and
+is **not** evidence that P300 or 0x41 stopped working.
+
+Therefore:
+
+1. the earlier successful local `KMBUS_RAM_READ 0x41` remains valid evidence
+   from a VS2/P300 context;
+2. the 22:01/22:08 timeout runs are transport-context failures only;
+3. no further 0x41 semantic test may be executed through the live permanent-VS1
+   MQTT request path;
+4. future 0x41 work requires a bounded maintenance window that temporarily
+   stops the VS1 serial owner, explicitly initializes P300/VS2 on the Optolink
+   port, performs read-only requests, closes the direct serial session, and
+   restores/validates permanent VS1 + GFA polling.
+
+This correction supersedes the earlier dispatcher/version-mismatch hypothesis.
+
 ## Live Phase A result - control failed before semantic comparison
 
 First run window:
@@ -663,9 +720,7 @@ request;0x41;0x00F8;8;;0x00
 ~~~
 
 This invalidates the run as a memory-map comparison. It does **not** overturn
-the earlier local proof that 0x41 works at 0x00F8. The first diagnostic target
-is now the generic request path / response observation rather than any new RAM
-address.
+the earlier local proof that 0x41 works at 0x00F8. This run is now understood as a **protocol-context error**: the live splitter was already in permanent VS1/KW. The generic VS2/P300 request path is intentionally unavailable there. No RAM-address inference is valid.
 
 Important implementation detail: `optolink-debug` filters MQTT responses by
 the requested address. Therefore a printed timeout means that no response with
