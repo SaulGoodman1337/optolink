@@ -74,7 +74,7 @@
     "normal_cadence_seconds": "approximately 20-30 s",
     "goal": "Eliminate periodic 15-20 s FAST latency spikes before any olbreath reduction."
   },
-  "next_step": "Longer 0.10 s soak including a burner cycle. Do not make 0.05 permanent.",
+  "next_step": "Restore 0.15 s and establish a long clean baseline before any intermediate timing experiment.",
   "first_live_apply_attempt": {
     "timestamp_local": "2026-09-24T14:17:06+02:00",
     "result": "ABORTED_BEFORE_SCHEDULER_APPLY",
@@ -423,13 +423,103 @@
     ]
   },
   "production_timing_recommendation": {
-    "olbreath_seconds": 0.1,
-    "status": "candidate production value pending longer soak",
+    "olbreath_seconds": 0.15,
+    "status": "conservative production baseline; requires long-soak confirmation",
     "next_validation": [
-      "verify rollback actually restored olbreath=0.10 and service is active",
-      "run a longer 100 ms soak including at least one complete burner start/modulation cycle",
-      "check FF quarantine count, OL Error, restart and traceback markers",
-      "only after 100 ms long-soak PASS consider an optional 75 ms experiment"
+      "restore olbreath=0.15",
+      "run at least 60 minutes passive soak at 150 ms including normal burner activity",
+      "compare FF/OL Error rate against the 100 ms and 50 ms runs",
+      "only if 150 ms is clean, optionally test 125 ms as an intermediate value"
     ]
+  },
+  "long_soak_olbreath_010": {
+    "timestamp_local": "2026-09-24T14:46:34+02:00",
+    "duration_seconds": 1800,
+    "result": "FAIL",
+    "passive_only": true,
+    "mqtt_no_redundant": false,
+    "olbreath_seconds": 0.1,
+    "poll_interval": 0,
+    "measurements": {
+      "kesseltemperatur": {
+        "group": "FAST",
+        "messages": 529,
+        "min_s": 3.148,
+        "median_s": 3.399,
+        "p95_s": 3.577,
+        "max_s": 6.774,
+        "last": "34.0"
+      },
+      "brenner_modulationsgrad": {
+        "group": "FAST",
+        "messages": 529,
+        "min_s": 3.072,
+        "median_s": 3.393,
+        "p95_s": 3.603,
+        "max_s": 6.821,
+        "last": "0.0"
+      },
+      "geblaesedrehzahl_gfa_p06": {
+        "group": "FAST",
+        "messages": 530,
+        "min_s": 3.177,
+        "median_s": 3.413,
+        "p95_s": 3.584,
+        "max_s": 6.769,
+        "last": "0"
+      },
+      "gfa_modulationssollwert_p09": {
+        "group": "FAST",
+        "messages": 530,
+        "min_s": 3.179,
+        "median_s": 3.414,
+        "p95_s": 3.576,
+        "max_s": 6.769,
+        "last": "0.0"
+      },
+      "gfa_status3_p87": {
+        "group": "FAST",
+        "messages": 529,
+        "min_s": 3.182,
+        "median_s": 3.419,
+        "p95_s": 3.599,
+        "max_s": 6.775,
+        "last": "00"
+      },
+      "aussentemperatur": {
+        "group": "NORMAL",
+        "messages": 105,
+        "min_s": 16.373,
+        "median_s": 17.114,
+        "p95_s": 17.611,
+        "max_s": 20.371,
+        "last": "19.9"
+      },
+      "gfa_p80_typ": {
+        "group": "NORMAL",
+        "phase": 4,
+        "messages": 106,
+        "min_s": 16.287,
+        "median_s": 17.014,
+        "p95_s": 17.68,
+        "max_s": 20.376,
+        "last": "20"
+      }
+    },
+    "communication_failure": {
+      "timestamp_local": "2026-09-24T14:55:38+02:00",
+      "datapoint": "GFA P87",
+      "address": "0x4057",
+      "symptom": "GFA_READ returned FF; quarantined",
+      "splitter_log": "OL Error do_poll_item 17, Addr 4057, RetCode 255, Data ?",
+      "observable_cadence_effect": "FAST maximum interval rose to about 6.77-6.82 s, approximately one missed FAST cycle."
+    },
+    "interpretation": [
+      "The 100 ms short gate was insufficient to establish production stability.",
+      "A second independent GFA address (P87/0x4057) showed the same FF/timeout symptom previously seen at 50 ms on P09/0x4009.",
+      "The repeated timing-correlated FF pattern strengthens the hypothesis that reduced reply-to-next-request spacing is lowering communication margin for GFA_READ.",
+      "This does not prove olbreath is the sole cause; a long 150 ms baseline is still required to estimate the background error rate."
+    ],
+    "production_decision": "Reject 0.10 as production timing pending further evidence."
   }
 }
