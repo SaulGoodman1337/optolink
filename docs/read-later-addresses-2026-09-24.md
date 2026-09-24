@@ -80,6 +80,28 @@ These exact-profile datapoints are still not in the production HA poll definitio
 | B | `0x0A5C` | 4 bytes | remote-control A1 software-index block | byte 3 SW index |
 | B | `0x0A60` | 4 bytes | remote-control M2 software-index block | byte 3 SW index |
 
+### Viessmann LON protocol resolution
+
+The Viessmann LON handbook now provides the missing protocol semantics:
+
+- `nviHCCxSpaceSet` has a documented 20 C fallback if no fresh network value is received.
+- `nviHCCxFlowTSet` likewise uses 20 C as fallback in its applicable LON mode.
+- In normal internal/default HCC operation these LON setpoints are not authoritative; internal controller settings apply.
+- `nviDHWCSetpt` becomes authoritative only when the DHWC ApplicMode selects the external LON DHW path.
+
+Local hardware follow-up:
+
+```text
+0x2306 = 21 C      normal A1 room target
+0x2321 =  0 C      explicit external A1 room target
+A401   = 20.00 C   nviHCC1 SpaceSetpt
+
+0x6300 = 45 C      configured DHW target
+0x6500 =  5.0 C    current/effective DHW target in this idle window
+A3C0   = 50.00 C   nviDHWC Setpt
+```
+
+Therefore neither A401 nor A3C0 is a direct mirror of the corresponding local controller target.
 ### Suggested next bounded read-later batch
 
 The HCC classification is now largely settled: `A401/A403/A441/A443` all read 20.00 °C, including the absent M2 path. The next batch only closes the two remaining mapping questions:
