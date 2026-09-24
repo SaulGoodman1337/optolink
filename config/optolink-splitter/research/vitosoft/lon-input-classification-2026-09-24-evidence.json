@@ -106,38 +106,90 @@
       "decoded": {
         "software_index_byte3": 0
       }
+    },
+    {
+      "address": "0x2321",
+      "raw": "00",
+      "meaning": "ExternRTSolltemperaturA1M1",
+      "decoded": {
+        "value_c": 0,
+        "conversion": "NoConversion"
+      }
+    },
+    {
+      "address": "0x6300",
+      "raw": "2D",
+      "meaning": "Bedien WW Solltemperatur",
+      "decoded": {
+        "value_c": 45,
+        "conversion": "NoConversion"
+      }
+    },
+    {
+      "address": "0x6500",
+      "raw": "3200",
+      "meaning": "WW SolltemperaturAktuell repeat",
+      "decoded": {
+        "little_endian_decimal": 50,
+        "value_c": 5,
+        "conversion": "div10"
+      }
+    },
+    {
+      "address": "0xA3C0",
+      "raw": "8813",
+      "meaning": "nviDHWC Setpt repeat",
+      "decoded": {
+        "little_endian_decimal": 5000,
+        "value_c": 50,
+        "conversion": "div100"
+      }
     }
   ],
   "conclusions": [
-    "A401/A403/A441/A443 all read exactly 20.00 C. Because M2 is absent locally yet its HCC2 nvi values equal the HCC1 nvi values, 20.00 C is strongly consistent with an inactive/default network-input value rather than a live local controller target.",
-    "A401 does not track the configured A1 room target in this snapshot: local 0x2306 was 21 C while A401 was 20.00 C.",
-    "A403 does not track the active internal A1 flow target: 0x2544 was 0.0 C while A403 was 20.00 C.",
-    "A3C0 was 50.00 C while 0x6500 current DHW target was 5.0 C. Therefore A3C0 is not a mirror of the currently effective DHW target. The configured user DHW target 0x6300 was not sampled in this run and is the correct next comparison.",
-    "The internal pump is the only populated pump software-index block among the three sampled pump identities: 0x0A54 is nonzero while 0x0A4C and 0x0A50 are all zero."
+    "A401/A403/A441/A443 all read exactly 20.00 C. The Viessmann LON handbook independently documents 20 C as the fallback for HCC nvi room/flow setpoint variables, strongly resolving these readings as default/inactive network-input values rather than local controller outputs.",
+    "A401 is not a mirror of either local room target tested: 0x2306 was 21 C and explicit external-room target 0x2321 was 0 C while A401 stayed 20.00 C.",
+    "A403 is not a mirror of the active internal A1 flow target: 0x2544 was 0.0 C while A403 was 20.00 C.",
+    "A3C0 is not a mirror of either tested local DHW target representation: configured user target 0x6300 was 45 C, current/effective target 0x6500 was 5.0 C, while A3C0 remained 50.00 C.",
+    "Viessmann LON documentation states that nviDHWCSetpt is only functional when the DHWC ApplicMode explicitly selects the external LON DHW setpoint path; therefore the raw 50.00 C value must not be presented as an active local DHW target without the ApplicMode.",
+    "The internal pump is the only populated pump software-index block among the sampled pump identities: 0x0A54 is nonzero while 0x0A4C and 0x0A50 are all zero."
   ],
   "hypotheses": {
     "HCC_nvi_default": {
-      "confidence": "strong",
-      "statement": "The HCC1/HCC2 nvi setpoint objects are inactive/default LON input-side values on this installation.",
-      "basis": "All four HCC nvi objects equal 20.00 C despite different local topology and active A1 values; absent M2 provides a control."
+      "confidence": "confirmed_by_hardware_plus_vendor_protocol_documentation",
+      "statement": "A401/A403/A441/A443 are LON input-side values; the observed 20.00 C is the documented HCC fallback/default and is not the live local A1/M2 setpoint.",
+      "basis": "All four local reads are 20.00 C including absent M2, and Viessmann LON handbook documents 20 C as the fallback for nviHCCxSpaceSet and nviHCCxFlowTSet."
     },
     "DHWC_nvi_mapping": {
-      "confidence": "open",
-      "statement": "A3C0 may correspond to the configured DHW user setpoint rather than the currently effective 0x6500 value.",
-      "next_test": "Read 0x6300 and compare it with A3C0 in the same window."
+      "confidence": "rejected_as_direct_mirror",
+      "statement": "A3C0 is not a direct mirror of either configured 0x6300 or current/effective 0x6500 on this appliance.",
+      "basis": "A3C0=50.00 C, 0x6300=45 C, 0x6500=5.0 C in the same observation period; vendor LON documentation makes nviDHWCSetpt conditional on ApplicMode."
     },
     "HCC_external_room_mapping": {
-      "confidence": "open",
-      "statement": "A401 may correspond to or feed the external room-setpoint object 0x2321 rather than the normal user room setpoint 0x2306.",
-      "next_test": "Read 0x2321 and compare it with A401 in the same window."
+      "confidence": "rejected",
+      "statement": "A401 is not a direct mirror of 0x2321.",
+      "basis": "0x2321=0 C while A401=20.00 C."
     }
   },
   "next_read_only": [
-    "0x2321 / 1 ExternRTSolltemperaturA1M1 vs 0xA401 / 2 nviHCC1 SpaceSetpt",
-    "0x6300 / 1 configured DHW target vs 0xA3C0 / 2 nviDHWC Setpt",
-    "Optional repeat of 0x6500 to preserve current/effective DHW target context"
+    "0xA400 / 1 nviHCC1 ApplicMode",
+    "0xA440 / 1 nviHCC2 ApplicMode",
+    "0xA3C2 / 1 nviDHWC ApplicMode",
+    "Interpret 0x00 and 0xFF conservatively as internal/default/non-overriding states because catalog/manual naming differs, while both leave the related nvi setpoint non-authoritative."
   ],
   "safety": {
     "writes_performed": false
+  },
+  "source_backed_lon_semantics": {
+    "source": "Viessmann LON handbook 5458 766 / 5719 291 GB",
+    "hcc": {
+      "nviHCCxSpaceSet": "SNVT_temp_p; only functional for HCC ApplicMode modes that explicitly use it; when no receive-heartbeat message is present its documented fallback is 20 C.",
+      "nviHCCxFlowTSet": "SNVT_temp_p; only functional for HVAC_FLOW_TEMP; documented fallback is 20 C if that mode remains selected without a fresh value.",
+      "default_internal_control": "In the default/internal HCC operating modes, the nvi space/flow setpoints are not functional."
+    },
+    "dhwc": {
+      "nviDHWCSetpt": "SNVT_temp_p; used only when nviDHWCApplicMd selects HVAC_HEAT.",
+      "default_internal_control": "For HVAC_AUTO/HVAC_NUL-style internal control, the nviDHWC setpoint is not functional and internal DHW control applies."
+    }
   }
 }
