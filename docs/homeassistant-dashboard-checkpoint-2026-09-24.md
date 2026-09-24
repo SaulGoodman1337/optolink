@@ -257,11 +257,22 @@ Read-only validation on the local **VDensHO1 / 20C2 / SW03** appliance on
 | `0x5721` | `00` | configured burner-runtime maintenance threshold = 0 h; source conversion is raw x 100 h |
 | `0x5723` | `00` | configured maintenance interval = 0 months |
 | `0x5724` | `00` | maintenance status = `Grundzustand` |
-| `0x756C` | `00000000` | elapsed time since last maintenance = 0 months |
-| `0x7570` | `00000000` | burner runtime since last maintenance = 0 h |
+| `0x756C` | `00000000` | initial raw value only; later write testing proved custom `LastCheckInterval` reference semantics |
+| `0x7570` | `00000000` | initial raw value only; source uses custom `LastBurnerCheck` conversion |
 
-All five reads succeeded with their source-backed block lengths. No write or
-maintenance-reset command was issued.
+All five reads succeeded with their source-backed block lengths.
+
+Follow-up splitter testing then verified `0x5723` as read/write. Setting it
+temporarily to 24 months produced raw `0x18` and restoring it to zero produced
+raw `0x00`. Both writes caused `0x756C` to be replaced with the current
+little-endian Unix-seconds timestamp; the two captured reference values were
+exactly ten seconds apart. Therefore `0x756C` is **not** a plain elapsed-month
+counter. The source conversion is `LastCheckInterval`.
+
+The original Vitosoft event inventory also confirms that `0x756C` and
+`0x7570` are read-only Type-1 events. `0x7570` uses the custom
+`LastBurnerCheck` conversion and must likewise not be treated as direct raw
+hours until that conversion has been reconstructed.
 
 The zero configuration at `0x5721` / `0x5723` should be described
 conservatively as **no nonzero maintenance threshold/interval currently
@@ -274,8 +285,8 @@ The five values are now exposed in the production HA profile as slow-changing
 - `wartung_brennerstunden_grenzwert`;
 - `wartung_zeitintervall`;
 - `wartung_status`;
-- `wartung_vergangene_zeit_seit_letzter_wartung`;
-- `wartung_brennerstunden_seit_letzter_wartung`.
+- technical raw reference sensors `wartung_intervall_referenz_raw` and
+  `wartung_brenner_referenz_raw` for the two custom-conversion registers.
 
 No command/reset entity is exposed even though Vitosoft contains maintenance
 write/reset paths.
@@ -293,8 +304,8 @@ verified the real controller operations for:
 - writing `0x5721` including the x100 h conversion and valid range;
 - writing `0x5723` including the valid month range;
 - interpreting and, if applicable, resetting `0x5724`;
-- determining the reset/write semantics associated with `0x756C` and
-  `0x7570`;
+- reconstructing the `LastCheckInterval` / `LastBurnerCheck` conversions
+  for read-only `0x756C` and `0x7570`;
 - read-after-write / read-after-reset behavior and persistence;
 - a rollback/recovery path.
 
