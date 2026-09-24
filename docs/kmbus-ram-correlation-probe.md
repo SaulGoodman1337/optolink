@@ -174,6 +174,41 @@ and both attempted P300 raw frames timed out in the active VS1 session.
 Therefore those timeout runs are not evidence about 0x41 support or address
 mapping. They are transport-context failures.
 
+### Guarded helper
+
+A dedicated helper is now versioned for exactly this situation:
+
+~~~text
+config/optolink-splitter/wb2a-kmbus-p300-read-probe.py
+~~~
+
+The updater installs it as:
+
+~~~text
+/usr/local/bin/wb2a-kmbus-p300-read-probe
+~~~
+
+It requires the normal production setting `vs1protocol=True`, pauses the
+single VS1 serial owner, explicitly enters P300, performs only a fixed
+allowlist of `0x01 Virtual_READ` and `0x41 KMBUS_RAM_READ` requests, then
+restores the previously running services and requires the splitter journal to
+show `VS1/KW protocol initialized` again.
+
+Use the built-in offline gate first:
+
+~~~bash
+wb2a-kmbus-p300-read-probe --self-test
+~~~
+
+Only after that passes:
+
+~~~bash
+wb2a-kmbus-p300-read-probe --execute
+~~~
+
+The helper does not modify `settings_ini.py` and implements no controller
+write function.
+
 ### Correct method for future 0x41 tests
 
 `KMBUS_RAM_READ 0x41` is a VS2/P300 function in the current research model.
