@@ -70,7 +70,7 @@ poll_list = {
             "brenner", "pumpe", "zirkulation", "betriebsart", "solltemperatur",
             "temperatur", "gebläse", "über", "stör", "geräte"
         ],
-        "fixed": ["WW", "A1", "M1", "K12", "GFA", "SW", "BLR", "CFDM", "RKR"],
+        "fixed": ["WW", "A1", "M1", "K12", "GFA", "SW", "BLR", "CFDM", "RKR", "API"],
     },
 
     # Continuous cycle scheduling. The local phased-scheduler patch keeps
@@ -229,15 +229,16 @@ poll_list = {
         #   0x756C len4: read-only LastCheckInterval reference storage
         #   0x7570 len4: read-only LastBurnerCheck reference storage
         #
-        # Important correction from the live 0x5723 write probe:
-        # 0x756C is NOT a plain elapsed-month counter. It changed to a
-        # little-endian Unix-seconds reference timestamp whenever 0x5723 was
-        # changed. 0x7570 likewise has a Vitosoft custom conversion and must
-        # not be exposed as direct elapsed hours until LastBurnerCheck is
-        # reconstructed.
+        # Verified maintenance semantics:
+        # 0x756C is NOT a plain elapsed-month counter and is NOT verified as a
+        # Unix timestamp. It is a seconds-like LastCheckInterval reference
+        # that is re-baselined by 0x5723 writes and maintenance reset.
+        # 0x7570 is a burner-runtime-seconds reference. Changing 0x5721 can
+        # re-baseline it; the 0x5724 reset effect is conditional.
         #
-        # Production remains READ ONLY for maintenance control: no command
-        # topic and no maintenance-reset control yet.
+        # Productive writes are never exposed as raw Optolink commands here.
+        # Home Assistant stages desired values through the guarded maintenance
+        # MQTT API and explicit dashboard actions perform the confirmed write.
         # -----------------------------------------------------------------
         {
             "domain": "sensor",
@@ -283,6 +284,94 @@ poll_list = {
             "icon": "mdi:wrench",
             "poll": [
                 ("RARE", "wartung_status", 0x5724, 1, 1, False),
+            ],
+        },
+
+        # -----------------------------------------------------------------
+        # Guarded maintenance API / Home Assistant staging.
+        #
+        # Changing these number entities only changes the staged value in the
+        # API service. It does NOT write the controller. The dashboard has
+        # separate confirmed Apply actions that call maintenance/cmnd.
+        # -----------------------------------------------------------------
+        {
+            "domain": "number",
+            "entity_category": "config",
+            "mode": "box",
+            "units": [
+                {
+                    "min": 0,
+                    "max": 10000,
+                    "step": 100,
+                    "unit_of_measurement": "h",
+                    "icon": "mdi:timer-cog-outline",
+                    "nopoll": [
+                        {
+                            "name": "wartung_brennerstunden_sollwert",
+                            "state_topic": "{mqtt_base}/maintenance/stage/hours/state",
+                            "command_topic": "{mqtt_base}/maintenance/stage/hours/set",
+                        },
+                    ],
+                },
+                {
+                    "min": 0,
+                    "max": 24,
+                    "step": 1,
+                    "unit_of_measurement": "Monate",
+                    "icon": "mdi:calendar-edit",
+                    "nopoll": [
+                        {
+                            "name": "wartung_zeitintervall_sollwert",
+                            "state_topic": "{mqtt_base}/maintenance/stage/months/state",
+                            "command_topic": "{mqtt_base}/maintenance/stage/months/set",
+                        },
+                    ],
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "unit_of_measurement": "h",
+            "device_class": "duration",
+            "state_class": "measurement",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "icon": "mdi:timer-sand",
+            "suggested_display_precision": 3,
+            "nopoll": [
+                {
+                    "name": "wartung_brenner_seit_referenz",
+                    "state_topic": "{mqtt_base}/maintenance/state",
+                    "value_template": "{{ value_json.burner_since_reference_hours }}",
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "icon": "mdi:shield-check-outline",
+            "nopoll": [
+                {
+                    "name": "wartung_api_status",
+                    "state_topic": "{mqtt_base}/maintenance/status",
+                    "value_template": "{% set s = value_json.state | default('unknown') %}{% if s == 'ready' %}Bereit{% elif s == 'staged' %}Entwurf{% elif s == 'ok' %}OK{% elif s == 'error' %}Fehler{% else %}{{ s }}{% endif %}",
+                    "json_attributes_topic": "{mqtt_base}/maintenance/status",
+                },
+            ],
+        },
+        {
+            "domain": "binary_sensor",
+            "payload_on": "online",
+            "payload_off": "offline",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "icon": "mdi:lan-connect",
+            "nopoll": [
+                {
+                    "name": "wartung_api_verfuegbar",
+                    "state_topic": "{mqtt_base}/maintenance/availability",
+                },
             ],
         },
 
