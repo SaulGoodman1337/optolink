@@ -123,63 +123,6 @@ poll_list = {
         },
 
         # -----------------------------------------------------------------
-        # Feuerungsautomat / GFA direct VS1 reads.
-        #
-        # Hardware-validated on this exact WB2A using persistent VS1:
-        #   P80 0x4050 = 0x20 local GFA branch identity
-        #   P06 0x4006 = controller-reported fan speed, x30 rpm
-        #   P09 0x4009 = GFA modulation setpoint, x0.3922 %
-        #   P87 0x4057 = GFA Status 3 raw byte; bit semantics unresolved
-        #
-        # The runtime integration treats "gfa:<format>" as read-only 0x6B.
-        # P80 MUST stay before P06/P09/P87. The transport layer uses P80=20
-        # as a fail-closed identity guard and suppresses the remaining GFA
-        # poll items if that identity is missing or different.
-        # -----------------------------------------------------------------
-        {
-            "domain": "sensor",
-            "entity_category": "diagnostic",
-            "enabled_by_default": True,
-            "icon": "mdi:identifier",
-            "poll": [
-                ("NORMAL", "gfa_p80_typ", 0x4050, 1, "gfa:raw", False),
-            ],
-        },
-        {
-            "domain": "sensor",
-            "unit_of_measurement": "rpm",
-            "state_class": "measurement",
-            "entity_category": "diagnostic",
-            "enabled_by_default": True,
-            "icon": "mdi:fan",
-            "suggested_display_precision": 0,
-            "poll": [
-                ("FAST", "geblaesedrehzahl_gfa_p06", 0x4006, 1, "gfa:30", False),
-            ],
-        },
-        {
-            "domain": "sensor",
-            "unit_of_measurement": "%",
-            "state_class": "measurement",
-            "entity_category": "diagnostic",
-            "enabled_by_default": True,
-            "icon": "mdi:gauge",
-            "suggested_display_precision": 1,
-            "poll": [
-                ("FAST", "gfa_modulationssollwert_p09", 0x4009, 1, "gfa:0.3922", False),
-            ],
-        },
-        {
-            "domain": "sensor",
-            "entity_category": "diagnostic",
-            "enabled_by_default": True,
-            "icon": "mdi:code-tags",
-            "poll": [
-                ("FAST", "gfa_status3_p87", 0x4057, 1, "gfa:raw", False),
-            ],
-        },
-
-        # -----------------------------------------------------------------
         # Counters
         # -----------------------------------------------------------------
         {
