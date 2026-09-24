@@ -6,6 +6,22 @@ Historical experiment sections below are retained as evidence. Their old "next s
 
 A firing snapshot decoded P06 as 4110 rpm; the continuous trace independently supports the channel with a coherent 0->660->2490->4500 rpm startup and subsequent ramp down to 2790 rpm. Permanent Home Assistant integration is now verified active. The older isolated P06=FF conversion to 7650 rpm remains invalid as a physical event.
 
+## GFA software identity P81-P83 - PASS 2026-09-24
+
+A bounded read-only sequence through the already active production `gfaread` path returned:
+
+```text
+opening P80 = 0x20
+P81          = 0x02  FA software version
+P82          = 0x06  FA software revision
+P83          = 0x76  appliance/GFA configuration
+closing P80 = 0x20
+```
+
+The GFA branch identity was therefore stable before and after the three reads. Vitosoft defines all three as one-byte `GFA_READ`, `NoConversion`, read-only values. The evidence supports separate raw version/revision values `2` and `6`; it does **not** yet prove an official display notation such as `2.6` or `02.06`. P83 remains an opaque configuration code `0x76` until a source-backed mapping is recovered.
+
+Evidence: [P81-P83 live identity](../config/optolink-splitter/research/vitosoft/gfa-p81-p83-live-2026-09-24-evidence.json).
+
 Evidence:
 
 - [Continuous startup trace](../config/optolink-splitter/research/vitosoft/gfa-startup-run-2026-09-24-evidence.json).
