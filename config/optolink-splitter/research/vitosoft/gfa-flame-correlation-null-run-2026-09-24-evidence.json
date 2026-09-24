@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "source": {
+    "upload_name": "Eingefügter Text(20260924-194938).txt",
+    "sha256": "af8554676da9378026b284a3a6fa809aa2a3ab4c320351ff03db124d17adc7f9",
+    "lines": 368,
+    "bytes": 35093,
+    "log": "/root/wb2a-gfa-flame-correlation-20260924-214823-202291.log",
+    "jsonl": "/root/wb2a-gfa-flame-correlation-20260924-214823-202291.jsonl"
+  },
+  "helper": {
+    "file": "config/optolink-splitter/wb2a-gfa-flame-correlation-probe.py",
+    "version": "1.0.1",
+    "commit": "52e1f72c73dbb17222ace44479849853fc6f8b43"
+  },
+  "preflight": {
+    "production_vs1protocol": true,
+    "p300_identity": "20c2",
+    "original_setpoint_c": 21,
+    "burner_precondition_0x55dc_raw": 0,
+    "p80_independent": [
+      "20",
+      "20"
+    ],
+    "trigger_setpoint_c": 37,
+    "trigger_verified": true,
+    "trigger_time": "2026-09-24T21:48:38.538+02:00",
+    "trigger_to_same_session_p80_s": 4.431
+  },
+  "observation": {
+    "requested_seconds": 60,
+    "completed_before_failure": false,
+    "accepted_rounds": 32,
+    "rejected_rounds_before_abort": 0,
+    "first_round_time": "2026-09-24T21:48:43.947+02:00",
+    "last_complete_round_time": "2026-09-24T21:49:15.133+02:00",
+    "distinct": {
+      "P84": [
+        "00"
+      ],
+      "P87": [
+        "00"
+      ],
+      "flame_55d3": [
+        0
+      ],
+      "flame_55dd": [
+        0
+      ],
+      "lockout_55d3": [
+        0
+      ],
+      "fine_control_raw": [
+        0
+      ]
+    },
+    "flame_channels_agreed_all_complete_rounds": true,
+    "startup_activity_seen": false,
+    "round_span_ms": {
+      "average": 793.809,
+      "maximum": 947.9
+    },
+    "failure": {
+      "attempt": 33,
+      "address": "0x4057",
+      "raw": "ff",
+      "time": "2026-09-24T21:49:15.672+02:00",
+      "policy": "suspect FF; round quarantined",
+      "implementation_issue": "v1.0.1 mixed child did not catch SuspectFF and invoke inherited re-identification path, so the whole run aborted."
+    }
+  },
+  "comparison_to_prior_trigger": {
+    "prior_evidence": "config/optolink-splitter/research/vitosoft/gfa-triggered-startup-2026-09-24-evidence.json",
+    "prior_trigger_same_setpoint_c": 37,
+    "prior_first_P84_nonzero_s_after_trigger": 4.793,
+    "prior_first_P84_raw": "02",
+    "interpretation": "The 37 C room-setpoint stimulus is not an unconditional burner-start command. It produced a startup in the prior thermal/controller state but no burner/GFA activity in this run before the transport FF."
+  },
+  "cleanup": {
+    "setpoint_restored": true,
+    "restored_c": 21,
+    "p300_restored": true,
+    "splitter_restarted": true,
+    "party_restarted": true,
+    "post_restore_modulation_0x55dc_raw": 0,
+    "p80_confirmed_closing": false,
+    "overall_result": "FAIL_due_to_unhandled_FF_not_restore_failure"
+  },
+  "conclusions": [
+    "The production-VS1 compatibility fix worked: the live path reached the controller, verified 20C2/P80=20, wrote only the bounded temporary 0x2306=37 stimulus, and restored the original 21 C value.",
+    "No burner startup was captured: all 32 complete mixed rounds remained P84=00, P87=00, both independent flame indicators false, lockout false, and fine GFA control value zero.",
+    "The same 37 C stimulus had previously produced P84=02 within 4.793 s, so it is a demand stimulus whose effect depends on current controller/thermal conditions rather than a direct burner command.",
+    "The run failed because a known sporadic FF on P87 was not handled by the mixed child, not because of a restore or controller fault."
+  ],
+  "corrective_action": {
+    "next_helper_version": "1.0.2",
+    "change": "Catch inherited SuspectFF, reject current round, perform full inherited P300/P80 re-identification, reset transition history across the gap, continue if the remaining bounded window permits.",
+    "additional_summary": "Emit STARTUP_ACTIVITY_SEEN yes/no so a clean null observation is not confused with a captured burner start."
+  }
+}
