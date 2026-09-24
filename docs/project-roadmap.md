@@ -450,14 +450,15 @@ Desired future controls:
 - display the current maintenance state from `0x5724`;
 - display elapsed months since the last maintenance by decoding the read-only
   `0x756C` LastCheckInterval reference;
-- display burner runtime since the last maintenance as
+- display burner runtime since the current maintenance reference as
   `(0x08A7 - 0x7570) / 3600`;
 - provide a protected maintenance-reset action using the locally verified
   `0x5724: 1 -> 0` sequence.
 
 Splitter verification is now complete for the maintenance control path:
 
-- `0x5721`: local R/W verified, raw x 100 h, tested at 0 and 10000 h;
+- `0x5721`: local R/W verified, raw x 100 h; a later live CLI test proved
+  that changing 0 -> nonzero re-baselines `0x7570`;
 - `0x5723`: local R/W verified, 0..24 months, tested at 0 and 24 months;
 - `0x5724`: local state transition and maintenance-reset sequence
   `1 -> 0` verified;
@@ -475,7 +476,7 @@ keep the maintenance reset separate from burner-fault unlock/reset logic.
 Guarded splitter backend now available:
 
 - `optolink-maintenance status`;
-- `optolink-maintenance set-hours <0..10000>`;
+- `optolink-maintenance set-hours <0..10000> --confirm-reference-reset RESET-BRENNERREFERENZ`;
 - `optolink-maintenance set-months <0..24> --confirm-reference-reset RESET-ZEITREFERENZ`;
 - `optolink-maintenance reset --confirm RESET-WARTUNG`;
 - `--json` output for a future wrapper/service.
