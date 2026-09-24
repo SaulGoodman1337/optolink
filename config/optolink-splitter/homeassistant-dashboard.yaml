@@ -3612,12 +3612,6 @@ views:
             heading: Systemfehler
             heading_style: subtitle
             icon: mdi:alert-circle-outline
-            badges:
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus
-                name: Aktueller Status
-                show_state: true
-                show_icon: true
           - type: custom:button-card
             template: diag_history_system
             entity: sensor.vitodens_200_wb2a_fehlerhistorie_01_anzeige
@@ -3694,6 +3688,11 @@ views:
             heading_style: subtitle
             icon: mdi:chip
             badges:
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus
+                name: Status
+                show_state: true
+                show_icon: true
               - type: entity
                 entity: sensor.vitodens_200_wb2a_gfa_kennung_anzeige
                 name: GFA
