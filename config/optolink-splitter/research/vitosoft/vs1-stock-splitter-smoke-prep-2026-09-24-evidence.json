@@ -9,11 +9,11 @@
   },
   "helper": {
     "file": "config/optolink-splitter/wb2a-stock-vs1-smoke.py",
-    "version": "1.0.1",
-    "commit": "cd0d02b93cc24f901e6799a822b48c02dfb12025",
-    "git_blob": "d521182fb32570800733a71ce77633faee16ae05",
-    "sha256": "9ba6821e066e6c4217117929c99d11f233ff62bd0a55f92b4628e8a9622dcef6",
-    "local_logic_tests": "10/10 embedded tests; v1.0.1 adds Git-blob hash helper test",
+    "version": "1.0.2",
+    "commit": "1a58ddef9306b704a6921b03939df1a6febf6f30",
+    "git_blob": "abdc8c0be377926e60659a5c52452b48d9ee2f03",
+    "sha256": "6aa2394d5d93121fefd6718ba625b1d63ed19e41d5418da961c8ca8e32edf732",
+    "embedded_logic_tests": "11/11",
     "default_seconds": 30,
     "duration_bounds_seconds": [
       20,
@@ -52,7 +52,11 @@
         "mode": "critical runtime Git-blob manifest",
         "upstream_ref": "c1ee204a1421447721603c5f21c6da7337fdac97",
         "files": 14,
-        "behavior": "If .git is absent, all 14 pinned runtime Python files must match exact upstream Git blob IDs before any service/settings change."
+        "behavior": "Only if .git is absent, all 14 pinned runtime Python files must match exact upstream Git blob IDs before any service/settings change."
+      },
+      "git_mode": {
+        "behavior": "If .git exists, invoke Git with per-process -c safe.directory=/opt/optolink, require HEAD == origin/main and no tracked modifications.",
+        "persistent_git_config_modified": false
       }
     }
   },
@@ -90,7 +94,7 @@
   "first_attempt": {
     "timestamp_local": "2026-09-24T12:21:20+02:00",
     "result": "FAIL_PRECONDITION",
-    "reason": "/opt/optolink is not a Git working tree; git rev-parse HEAD exited 128",
+    "reason": "git rev-parse HEAD exited 128 before any changes; exact cause not observable from the captured exception text (possible safe.directory ownership protection or absent Git metadata)",
     "device_or_settings_changes": false,
     "services_changed": false,
     "note": "Failure occurred before backup creation, service stop, MQTT subscriber start, or temporary settings write."
