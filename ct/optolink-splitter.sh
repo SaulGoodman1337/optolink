@@ -125,6 +125,11 @@ function update_script() {
   chmod 755 /usr/local/bin/optolink-debug
   ln -sf /usr/local/bin/optolink-debug /usr/bin/optolink-debug
 
+  cs_repo_fetch tools/optolink-maintenance.py /usr/local/bin/optolink-maintenance
+  chmod 750 /usr/local/bin/optolink-maintenance
+  chown root:root /usr/local/bin/optolink-maintenance
+  ln -sf /usr/local/bin/optolink-maintenance /usr/bin/optolink-maintenance
+
   cs_repo_fetch config/optolink-splitter/wb2a-single-session-logger.py /usr/local/bin/wb2a-single-session-logger
   chmod 755 /usr/local/bin/wb2a-single-session-logger
   chown root:root /usr/local/bin/wb2a-single-session-logger
@@ -172,4 +177,5 @@ echo -e "${INFO}${YW}Party emulation:${CL} ${GN}systemctl status optolink-party-
 echo -e "${INFO}${YW}Serial devices:${CL} ${GN}optolink-ports${CL}"
 echo -e "${INFO}${YW}VDensHO1 HA profile:${CL} ${GN}optolink-apply-vdensho1-ha-profile${CL}"
 echo -e "${INFO}${YW}Legacy rollback profile:${CL} ${GN}optolink-apply-vscotho1-profile${CL}"
+echo -e "${INFO}${YW}Maintenance CLI:${CL} ${GN}optolink-maintenance status${CL}"
 echo -e "${INFO}${YW}Inside the container, run '${GN}update${YW}' to update Optolink-Splitter.${CL}"
