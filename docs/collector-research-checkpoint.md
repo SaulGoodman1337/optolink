@@ -2,11 +2,11 @@
 
 **Read this checkpoint before older collector-related tasks in the project roadmap.** It records the results from `vitosoft-private-archive-20260923-205048.7z` and subsequent explicit hardware tests. It supersedes older intermediate interpretations where they conflict, without erasing historical measurements or superseding unrelated dashboard work.
 
-## Latest hardware update - 22:33 Europe/Berlin
+## Latest hardware update - 2026-09-24 startup capture
 
-**Step A is completed:** the user ran `wb2a-gfa-p80-probe.py` 1.0.0 on the local WB2A. Two independently synchronized VS1 reads of `0x4050` returned `0x20` (GFA). Actual P300 identity reads returned `20C2` before and after the test, both previously running services were restored, and the live result was PASS.
+**GFA runtime access is now confirmed beyond P80.** After the identity, snapshot and same-session tests, the paced 60-second helper captured a coherent local startup trace in one continuous VS1 session: 49/49 accepted rounds, no FF, P84 raw `00->02->04->05->06`, P06 `0->4500 rpm` and subsequent ramp to 2790 rpm while P09/P10 decreased. P300 20C2 and both services were restored.
 
-The transcript and scope are documented in [GFA live checkpoint](gfa-live-checkpoint.md). That document also describes the next helper, `wb2a-gfa-snapshot.py`, which is implemented and passes 45 offline tests but **has not yet been run on the appliance**. The next test reads only P06/P09/P10/P84 once each with fresh synchronization, guarded by P80=0x20 before and after. It is not a high-rate or simultaneous logger.
+The current transcript and limits are documented in [GFA live checkpoint](gfa-live-checkpoint.md) and [GFA pacing comparison](gfa-paced-comparison.md). The earlier snapshot and same-session tests are completed. The startup trace is sequential, not simultaneous, and does not contain an independent flame bit.
 
 Do not repeat the initial P80-only experiment merely because older static-analysis files say hardware validation is pending. The new evidence proves P80 access and successful recovery in this run, not all GFA registers, permanent integration, firmware access or a pump override.
 
@@ -32,9 +32,9 @@ The archive analysis itself issued no appliance commands. The subsequent P80 tes
 | Workstream | Current result | Next action / dependency |
 | --- | --- | --- |
 | Collector integrity and source inventory | Completed for supplied archive. SQL succeeds despite misleading wrapper exit-code messages. | Retain original privately; improve reporting separately rather than recollecting. |
-| Real blower RPM | P80 confirms GFA branch. P06 0x4006 is raw x30 rpm; P09 interpretation corrected. | Run the bounded four-register snapshot, then correlate P06 with natural operation. |
-| GFA transport | Independently synchronized P80 read succeeded twice; P300 reply and running services restored. | Validate other allowlisted reads. A persistent-session logger is a separate later step, without parallel splitter polling. |
-| Flame stabilization / startup plateau | P17/C08/C11/C13 do not belong to the now-confirmed GFA branch. | Validate P84/P06/P09/P10 before attributing the approximately 12-second interval to a parameter. No start-safety writes. |
+| Real blower RPM | P06 is now live-correlated across snapshot and continuous startup trace: 0 -> 660 -> 2490 -> 4500 rpm, later falling to 2790 rpm. | Treat as controller-reported fan speed; independent tachometer calibration remains optional. |
+| GFA transport | Independent and persistent-session reads are live-confirmed; a paced 60-second startup trace completed 49/49 rounds with no FF/reconnect. Longer captures still showed intermittent FF. | Keep 150 ms as a diagnostic pacing choice, not a vendor requirement; permanent serial ownership/integration remains separate. |
+| Flame stabilization / startup plateau | Continuous trace captured P84 `00->02->04->05->06`; after first `06`, P09 held its plateau about 9.37 s and P06 began falling about 10.36 s later. | Recover/validate phase semantics before naming `06` as flame recognition or stabilization. No start-safety writes. |
 | Internal pump selection / high-speed heating | No new verified WB2A volatile request. Neptun remains other-device calibration. | Seek supported runtime request or actual firmware evidence. Keep commands distinct from rotor feedback. |
 | E7 persistence / endurance | 0x778B is periodically set/reset-only, not a defined write counter; 0x778E remains opaque. Prior minimal-write test does not establish RAM-only behavior. | No per-burner-cycle E7 policy until storage/endurance or a volatile alternative is established. |
 | KM-BUS through Optolink | Named member-list block resolves to LON RPCs, not physical KM-BUS or function 0x5D. | Keep virtual diagnostics, physical KM-BUS, LON and legacy gateways separate; require exact request semantics. |
@@ -85,18 +85,18 @@ Unless new controller-specific evidence changes them:
 
 User's live run at 22:33 on 2026-09-23: two P80=0x20 replies, valid P300 baseline and recovery, both services restored. The original helper remains unchanged as a reproducible reference. [P80 runbook](gfa-p80-probe.md).
 
-### Step B - prepared, live execution pending: bounded snapshot
+### Step B - completed: bounded snapshot and same-session validation
 
-Use [the snapshot instructions](gfa-live-checkpoint.md) for P06/P09/P10/P84. All reads have fresh synchronization; the sample timestamps differ. Preserve raw replies and report idle versus naturally running burner state. Do not force a start. No parameter writes, automatic updater execution or permanent VS1 configuration change.
+The off/on snapshot, ten-round same-session test and subsequent paced observations are complete. P06/P09/P10/P84 all return meaningful nonzero data under firing conditions. The latest startup trace is the preferred runtime evidence; preserve raw P84 state numbers without invented names.
 
 The helper tries to restore communication and services after ordinary errors/signals. It is not an unconditional guarantee against SIGKILL, power failure or disconnected USB hardware. Verify Home Assistant freshness separately after the helper finishes.
 
-### Step C - later: faster observation and independent offline work
+### Step C - current: phase semantics, integration and independent offline work
 
-Once runtime access is confirmed, review a persistent-session logger for finer timing. Do not mistake this first sequential snapshot for a startup trace. Only after read timing, semantics and normal-operation integration are validated should GFA values become production HA sensors.
+Persistent-session runtime access and a startup trace are now confirmed. Next prioritize source/behavior correlation for P84/P85-P88 and the short startup hold, plus an architecture for coordinated VS1/P300 ownership. Do not promote GFA values to production HA sensors until the remaining FF quality issue and integration/recovery policy are resolved.
 
 Protected FlowCalibration analysis, embedded-resource investigation, E7 endurance, physical coding-plug dumping and actual firmware acquisition remain independent tasks. Time-program serialization can be developed offline; dashboard work does not wait for these hardware research steps.
 
 ## Completion boundary
 
-The archive received complete manifest/table-count checks but not exhaustive understanding of every proprietary method. Subsequent P80 access is now hardware-confirmed from the user's transcript; other GFA access and pump/firmware solutions are not. Preserve each new hardware result with raw evidence, conditions and recovery status rather than inferring it from static metadata or this successful identity read.
+The archive received complete manifest/table-count checks but not exhaustive understanding of every proprietary method. Subsequent GFA identity, snapshot, persistent-session and startup access are now hardware-confirmed from user transcripts; pump/firmware solutions and production integration are not. Preserve each new hardware result with raw evidence, conditions and recovery status rather than inferring it from static metadata or this successful identity read.
