@@ -266,33 +266,18 @@ This intentionally includes useful events that are not necessarily part of the
 VDensHO1 device tree but are valuable reverse-engineering leads, for example
 coding-plug and GFA/SCOT event families.
 
-### `tools/extract-vitosoft-project-data.py`
+### Private extractor: `extract-vitosoft-project-data.py`
 
-Repository tool for the point at which the full Vitosoft XML LFS objects are
-available locally.
+The extractor source has moved to the private Vitosoft source repository:
 
-Example:
+`SaulGoodman1337/Viessmann-Vitosoft-300-SID1/collector/tools/extract-vitosoft-project-data.py`
 
-~~~bash
-python3 tools/extract-vitosoft-project-data.py \
-  --data-dir /path/to/vitosoft/XML \
-  --device VDensHO1 \
-  --out-dir config/optolink-splitter/research/vitosoft/generated
-~~~
-
-It joins the device membership from `DPDefinitions.xml` against
-`ecnEventType.xml` and emits:
-
-- a complete low-level device-event CSV;
-- a `KBUS_*` / `KMBUS_*`-only CSV;
-- an extraction summary JSON.
-
-For protocol-family research, add `--include-global-wilo`. This performs a
-global metadata pass for events whose low-level access uses
-`Virtual_WILO_READ` or `Virtual_WILO_WRITE`, maps those events back to the
-Vitosoft device types that reference them, and writes
-`virtual-wilo-events.csv`. This is intended for metadata-first, read-only
-reverse engineering; it does not send any hardware command.
+It joins device membership from `DPDefinitions.xml` against
+`ecnEventType.xml` and emits the complete low-level device-event CSV,
+the KBUS/KMBUS-only CSV, and an extraction summary. The
+`--include-global-wilo` mode remains a metadata-only global pass and sends no
+hardware command. Collector/extractor implementation is intentionally no longer
+stored in this operational Optolink repository.
 
 ## Full low-level join status
 
@@ -309,7 +294,7 @@ missing access:    0
 KBUS/KMBUS events: 0
 ~~~
 
-The validated extractor is `tools/extract-vitosoft-project-data.py`.
+The validated extractor is maintained privately at `collector/tools/extract-vitosoft-project-data.py` in `SaulGoodman1337/Viessmann-Vitosoft-300-SID1`.
 
 The most important protocol result is that the exact VDensHO1 profile uses
 ordinary `Virtual_READ/Virtual_WRITE`, `GFA_READ` and RPC accesses, but no
@@ -384,63 +369,21 @@ serial port, stop the normal splitter service before switching to VS1, restore
 VS2/P300 in a `finally` path, then restart the service. Do not issue
 `GFA_WRITE` while investigating blower speed or burner state.
 
-### Private collector v4 status
+### Collector toolchain location
 
-The first private archive also exposed and helped correct several collection
-problems:
+The Collector implementation and its historical generations were moved on
+2026-09-24 to the private source repository
+`SaulGoodman1337/Viessmann-Vitosoft-300-SID1`, under `collector/tools/`.
 
-- raw MDF/LDF database files were preserved successfully;
-- SQL SELECT export initially failed because the connection-string builder used
-  property syntax that is brittle on Windows PowerShell 5.1; it now uses
-  canonical dictionary-style fields;
-- transient ZIP/file-lock handling in the deep collector was hardened;
-- Windows PowerShell 5.1 parser failures caused by inline `try`/hashtable
-  expressions were corrected;
-- prerequisite discovery/installation now covers the Visual Studio/.NET
-  Framework developer tools needed for ILDASM/DUMPBIN and 7-Zip.
+The current hardened archival generation is
+`collector/tools/collect-vitosoft-private-archive-v4.ps1`. SQL export,
+deep-metadata extraction, KM-BUS/pump collection and the older collector
+generations are preserved there as well. The verified
+`collector-20260923-205048` Release in that repository is the canonical raw
+snapshot for the analysis documented here.
 
-Manual tests on the actual Vitosoft Windows host verified the installed tools:
-
-~~~text
-dumpbin   vsmInterfaceCommon.dll   exit 0
-corflags  vsmInterfaceCommon.dll   exit 0
-sn -T     vsmInterfaceCommon.dll   exit 0
-ildasm    vsmInterfaceCommon.dll   works / emits IL
-~~~
-
-One separate managed assembly, `MobileClient\FlowCalibration.dll`, returns:
-
-~~~text
-Protected module -- cannot disassemble
-~~~
-
-This is an assembly-level ILDASM protection condition, not evidence that
-ILDASM itself is broken.
-
-The attempted external-tool worker pools based on nested
-`Start-Process`/PowerShell child-process wrappers proved unreliable on
-Windows PowerShell 5.1 and were deliberately removed from the current v4
-collector. Current execution strategy:
-
-- raw-tree copy: multithreaded `robocopy /MT`;
-- Deep and read-only SQL collectors: independent stages may overlap;
-- ILDASM, DUMPBIN, CORFLAGS and `sn.exe`: direct sequential invocation using
-  the same call mechanism that was manually verified;
-- each tool family first runs a single self-test before the complete file set;
-- ILDASM-protected assemblies are counted separately rather than treated as a
-  systemic tool failure;
-- ILSpyCmd is included as a managed-decompiler fallback for assemblies that
-  ILDASM refuses;
-- 7-Zip compression remains multithreaded.
-
-Current hardened script used for the next fresh full run:
-
-~~~text
-tools/collect-vitosoft-private-archive-v4.ps1
-~~~
-
-The interrupted partial output directories were deleted. The next private
-archive run is therefore a fresh collection, not a resume.
+This repository keeps the derived protocol findings and hardware-facing work,
+not the Windows collection implementation.
 
 ### Firmware/update interpretation boundary
 
@@ -505,46 +448,15 @@ See `../pump-start-heating-vs-dhw.md` for the resulting WB2A interpretation
 and the exact read-only probe commands.
 
 
-## KM-BUS / internal-pump PowerShell collector
+## KM-BUS / internal-pump collector source
 
-For the WB2A internal-pump investigation, use:
+The source of the read-only KM-BUS/internal-pump collector moved to the private
+Vitosoft repository:
 
-```text
-tools/collect-vitosoft-kmbus-pump.ps1
-```
+`collector/tools/collect-vitosoft-kmbus-pump.ps1`
 
-The collector is intentionally read-only and compact. It:
-
-- inventories the detected Vitosoft installation;
-- records hashes of the three core production metadata files when present;
-- searches text/XML/configuration files for KM-BUS and internal-pump symbols,
-  addresses and manufacturer terms;
-- scans EXE/DLL files for matching embedded ASCII/UTF-16 strings without
-  copying the binaries;
-- produces a ZIP suitable for repository research/import.
-
-Typical direct PowerShell invocation from GitHub:
-
-```powershell
-$script = "$env:TEMP\collect-vitosoft-kmbus-pump.ps1"
-
-Invoke-WebRequest `
-  -Uri "https://raw.githubusercontent.com/SaulGoodman1337/optolink/main/tools/collect-vitosoft-kmbus-pump.ps1" `
-  -OutFile $script
-
-Set-ExecutionPolicy -Scope Process Bypass -Force
-& $script
-```
-
-If automatic installation discovery fails:
-
-```powershell
-& $script -Root "C:\Program Files (x86)\Viessmann Vitosoft 300 SID1\ServiceTool"
-```
-
-The ZIP contains only inventories, search hits, hashes and short binary-string
-contexts; it does not include Vitosoft EXE/DLL binaries.
-
+The production result below remains in Optolink because it is a project finding
+used by the WB2A pump investigation.
 
 ### KM-BUS collector production result
 
@@ -583,149 +495,25 @@ later priority matches.
 
 ## Deep research collector
 
-For a complete reusable Vitosoft research bundle, use:
+The reusable deep-research collector and its metadata extractor are maintained
+in the private Vitosoft source repository:
 
-```text
-tools/collect-vitosoft-deep-research.ps1
-```
+- `collector/tools/collect-vitosoft-deep-research.ps1`
+- `collector/tools/extract-vitosoft-deep-metadata.py`
 
-It supersedes the narrow one-purpose collectors when the goal is to preserve
-future research context for VDensHO1/20C2.
-
-Direct PowerShell invocation:
-
-```powershell
-$script = "$env:TEMP\collect-vitosoft-deep-research.ps1"
-
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/SaulGoodman1337/optolink/main/tools/collect-vitosoft-deep-research.ps1" -OutFile $script
-
-Set-ExecutionPolicy -Scope Process Bypass -Force
-& $script
-```
-
-The collector performs:
-
-- complete file inventory and SHA256 hashing;
-- unlimited targeted text scanning;
-- DLL/EXE version and managed-assembly identification;
-- all printable DLL/EXE ASCII and UTF-16LE string extraction by default;
-- .NET type/method/property/field inventory where reflection-only loading is
-  available;
-- firmware/update/programming candidate discovery;
-- binary-string research for MDF/LDF/ECNDAT/SYS/LIB and firmware-like files;
-- automatic execution of `extract-vitosoft-deep-metadata.py`.
-
-The resulting `metadata/` directory contains the small Git-suitable,
-device-centric corpus. The large raw-derived string bundle is primarily an
-analysis input and does not need to be committed wholesale.
-
-See `firmware-and-deep-research.md` for repository policy and the separate
-controller-firmware research track.
-
+See that repository's `collector/README.md` for invocation and provenance.
 
 ## Private archival collector
 
-For a deliberately comprehensive **private** capture of the Vitosoft Windows
-installation, use:
+The complete private archival Collector toolchain now lives in
+`SaulGoodman1337/Viessmann-Vitosoft-300-SID1`.
 
-`tools/collect-vitosoft-private-archive.ps1`
+Current hardened entry point:
 
-Typical direct invocation from an **elevated (Run as Administrator)**
-Windows PowerShell session:
+`collector/tools/collect-vitosoft-private-archive-v4.ps1`
 
-```powershell
-$script = "$env:TEMP\collect-vitosoft-private-archive.ps1"
-
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/SaulGoodman1337/optolink/main/tools/collect-vitosoft-private-archive.ps1" -OutFile $script
-
-Set-ExecutionPolicy -Scope Process Bypass -Force
-
-# Syntax check before execution (especially useful on Windows PowerShell 5.1)
-$tokens = $null
-$errors = $null
-[System.Management.Automation.Language.Parser]::ParseFile(
-  $script,
-  [ref]$tokens,
-  [ref]$errors
-) | Out-Null
-
-if ($errors.Count -gt 0) {
-  $errors | Format-List *
-  throw "Collector script has PowerShell parser errors."
-}
-
-& $script -CreateArchive
-```
-
-Current performance strategy is intentionally conservative on Windows
-PowerShell 5.1:
-
-- the raw file copy uses multithreaded robocopy;
-- the independent deep-derived and read-only SQL stages can overlap;
-- ILDASM, DUMPBIN, CORFLAGS and strong-name inspection run through direct,
-  sequential tool invocations because this exact path was verified manually;
-- 7-Zip uses multithreaded compression.
-
-Earlier attempts to parallelize every external analysis tool through nested
-PowerShell/Start-Process workers were removed after they produced unreliable
-empty/invalid exit-status handling on the target PowerShell 5.1 host. Reliable
-collection is preferred over tool-level concurrency.
-
-The current hardened collector variant is
-`tools/collect-vitosoft-private-archive-v4.ps1`. It runs one self-test per
-tool group before processing all files, so a systemic invocation problem stops
-after one file instead of creating dozens of repeated failures.
-
-The collector records measured phase durations in
-`system/phase-timings.csv` and records the chosen CPU/copy settings in
-`private-archive-summary.json`.
-
-The collector now runs a prerequisite preflight before the Vitosoft scan. It
-records the before/after tool state and, unless
-`-SkipPrerequisiteInstall` is supplied, attempts to install missing research
-tools needed for the complete private analysis:
-
-- Visual Studio 2022 Build Tools minimal components for `ildasm.exe`,
-  `dumpbin.exe`, MSBuild and related .NET Framework SDK tools;
-- 7-Zip via winget when available, for reliable large archive creation.
-
-PowerShell 5.1+, robocopy and reg.exe are treated as core Windows
-prerequisites. Optional tools such as dotnet, sqlcmd, sqllocaldb, Git and Git
-LFS are inventoried but are not installed merely for collection when the
-collector has a native alternative.
-
-The private collector includes the normal deep-derived collector and additionally
-attempts to preserve:
-
-- the complete Vitosoft installation parent tree;
-- related Viessmann ProgramData/AppData/Documents trees;
-- registry keys and Windows service/process/task metadata relevant to
-  Viessmann/Vitosoft/SQL;
-- Authenticode metadata plus full ILDASM and DUMPBIN output when the tools are
-  available after preflight;
-- managed assembly identity/MVID/reference/resource graphs even if ILDASM is
-  unavailable;
-- .NET/Visual-Studio/toolchain inventory, serial/USB inventory, loaded
-  Vitosoft/SQL process modules, service executable paths, disk space, Windows
-  hotfixes and relevant recent application-event-log entries;
-- raw `ecnViessmann.mdf/.ldf` database files;
-- SELECT-only SQL schema/table exports through
-  `tools/export-vitosoft-sql-readonly.ps1` when an already reachable SQL
-  instance can be discovered;
-- priority copies of `ecnUpdateDefinition` and
-  `ecnDeviceSoftwareUpdate` exports;
-- a complete SHA256 manifest, archive statistics, prerequisite report and Git
-  LFS template;
-- an integrity-tested `.7z` when `-CreateArchive` is used and 7-Zip is
-  available.
-
-The collector intentionally does **not** auto-attach an MDF via
-`AttachDbFilename`, because attaching a database changes SQL Server state.
-If no existing SQL instance is reachable, the MDF/LDF bytes are still
-preserved for later isolated analysis.
-
-The resulting private bundle can contain proprietary files, database content,
-machine-specific paths and credentials present in application configuration.
-Do not upload it wholesale to the public repository. The normal
-`collect-vitosoft-deep-research.ps1` remains the preferred public/derived
-research collector.
+The supporting read-only SQL exporter, historical Collector generations and
+offline extractors are preserved beside it. The full verified archive is stored
+as private Release asset `collector-20260923-205048`; this public Optolink
+repository intentionally retains only small derived research artifacts and
+device-facing tooling.
