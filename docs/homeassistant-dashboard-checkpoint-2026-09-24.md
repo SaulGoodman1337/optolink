@@ -269,10 +269,25 @@ little-endian Unix-seconds timestamp; the two captured reference values were
 exactly ten seconds apart. Therefore `0x756C` is **not** a plain elapsed-month
 counter. The source conversion is `LastCheckInterval`.
 
-The original Vitosoft event inventory also confirms that `0x756C` and
-`0x7570` are read-only Type-1 events. `0x7570` uses the custom
-`LastBurnerCheck` conversion and must likewise not be treated as direct raw
-hours until that conversion has been reconstructed.
+The original Vitosoft event inventory confirms that `0x756C` and
+`0x7570` are read-only Type-1 events.
+
+Follow-up splitter tests completed the missing semantics:
+
+- `0x5721` is locally verified R/W; raw `0x64` = 10000 h and restore to
+  `0x00` succeeded without changing the maintenance references;
+- `0x5723` is locally verified R/W for 0..24 months;
+- maintenance reset is locally verified as `0x5724 = 1` followed by
+  `0x5724 = 0`;
+- that reset updates `0x756C` to the current little-endian Unix-seconds
+  reference timestamp;
+- that reset updates `0x7570` to the current burner-runtime-seconds baseline;
+- burner runtime since maintenance is therefore
+  `(current 0x08A7 - stored 0x7570) / 3600`;
+- total burner runtime `0x08A7` and burner starts `0x088A` remained
+  unchanged during the maintenance reset.
+
+The splitter-side maintenance read/write/reset behavior is therefore verified.
 
 The zero configuration at `0x5721` / `0x5723` should be described
 conservatively as **no nonzero maintenance threshold/interval currently
@@ -434,6 +449,6 @@ verification before using the pattern on the next view.
       state belong in the top-level Diagnose view.
 - [ ] Design the logical-pump -> A1 output -> internal-pump chain.
 - [x] Read-only verify maintenance/service candidates and add read-only diagnostic entities.
-- [ ] After splitter write/reset verification, add editable Service / Wartung controls in HA.
+- [ ] Add editable Service / Wartung controls in HA using the verified splitter semantics.
 - [ ] Verify all changed cards on desktop and mobile.
 - [ ] Only after Diagnose is stable, start the **Pumpen** page redesign.
