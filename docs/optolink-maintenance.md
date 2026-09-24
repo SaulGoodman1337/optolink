@@ -30,7 +30,7 @@ optolink-maintenance status
 
 | Address | Access used by CLI | Verified meaning |
 | --- | --- | --- |
-| `0x5721` | read/write | burner-runtime maintenance threshold; raw x 100 h; source range 0..10000 h |
+| `0x5721` | read/write | burner-runtime maintenance threshold; raw x 100 h; source range 0..10000 h; changing 0 -> nonzero can re-baseline `0x7570` |
 | `0x5723` | read/write | maintenance time interval; 0..24 months |
 | `0x5724` | read/write sequence | maintenance state; verified maintenance reset sequence `1 -> 0` |
 | `0x756C` | read-only | `LastCheckInterval` 32-bit reference; exact Vitosoft wall-clock conversion still unresolved |
@@ -38,7 +38,7 @@ optolink-maintenance status
 | `0x08A7` | read-only | total burner runtime in seconds |
 | `0x088A` | read-only | total burner starts |
 
-The verified derived burner runtime since the last maintenance is:
+The verified derived burner runtime since the current maintenance reference is:
 
 ```text
 (current 0x08A7 - stored 0x7570) / 3600
@@ -70,7 +70,8 @@ The operator-facing value is supplied in hours. Only exact 100 h steps in the
 verified source range are accepted:
 
 ```bash
-optolink-maintenance set-hours 3000
+optolink-maintenance set-hours 3000 \
+  --confirm-reference-reset RESET-BRENNERREFERENZ
 ```
 
 Examples:
@@ -88,8 +89,20 @@ active, it performs no write unless `--force` is supplied.
 Every write is independently read back. If the requested state cannot be
 verified, the CLI attempts to restore and verify the previous value.
 
-Changing `0x5721` was locally verified not to modify the maintenance
-references or lifetime burner counters.
+A later live CLI test exposed an important side effect that the earlier raw
+probe had masked: changing `0x5721` from 0 h to a nonzero threshold
+re-baselined `0x7570` to the current total burner-runtime counter. Therefore
+every actual `set-hours` write now requires:
+
+```text
+--confirm-reference-reset RESET-BRENNERREFERENZ
+```
+
+The observed restore from 100 h back to 0 h did not re-baseline `0x7570`
+again, but the CLI intentionally applies the confirmation guard conservatively
+to every real threshold write.
+
+Changing `0x5721` did not alter `0x756C`, `0x08A7` or `0x088A`.
 
 ### Time interval
 
@@ -146,6 +159,8 @@ The CLI intentionally contains the following restrictions:
 - `0x756C` and `0x7570` have no write command;
 - `set-hours` rejects values outside 0..10000 h or values not divisible by
   100 h;
+- `set-hours` requires explicit acknowledgement that the burner-runtime
+  reference `0x7570` may be re-baselined;
 - `set-months` rejects values outside 0..24;
 - `set-months` requires explicit acknowledgement of the reference reset;
 - `reset` requires the exact `RESET-WARTUNG` confirmation token;
@@ -158,7 +173,8 @@ The CLI intentionally contains the following restrictions:
 The Home Assistant/dashboard workstream may build controls on top of this
 verified contract, but should preserve the same constraints:
 
-- bounded numeric control for `0x5721`;
+- bounded numeric control for `0x5721` with explicit warning that a real
+  threshold change can re-baseline `0x7570`;
 - bounded numeric control for `0x5723` with explicit warning that changing it
   re-baselines the `LastCheckInterval` reference;
 - protected maintenance-reset action;
