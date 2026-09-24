@@ -102,18 +102,15 @@ A3C0   = 50.00 C   nviDHWC Setpt
 ```
 
 Therefore neither A401 nor A3C0 is a direct mirror of the corresponding local controller target.
-### Suggested next bounded read-later batch
+### LON ApplicMode closure - completed
 
-The direct-mirror questions are now closed. The final LON check is only the current applicability/authority mode:
-
-```bash
-echo "=== LON ApplicMode closure ==="
-/usr/local/bin/optolink-debug request "r;0xA400;1;raw;False"
-/usr/local/bin/optolink-debug request "r;0xA440;1;raw;False"
-/usr/local/bin/optolink-debug request "r;0xA3C2;1;raw;False"
+```text
+0xA400 = FF   nviHCC1 ApplicMode = HVAC_NUL
+0xA440 = FF   nviHCC2 ApplicMode = HVAC_NUL
+0xA3C2 = FF   nviDHWC ApplicMode = HVAC_NUL
 ```
 
-No writes are involved. The exact catalog exposes these as HCC1, HCC2 and DHWC LON ApplicMode objects. A result representing AUTO/NUL/internal control closes the local LON-setpoint path as inactive. Preserve raw bytes because catalog and handbook terminology differ slightly for 0x00 versus 0xFF, while both non-overriding states leave the corresponding nvi setpoint non-authoritative.
+This closes the local LON setpoint path. Under these ApplicMode values the HCC/DHWC nvi setpoints are not authoritative, so the observed 20 °C / 50 °C network-input values must not be displayed as active local controller setpoints.
 
 ### Live HCC/DHWC classification result
 
