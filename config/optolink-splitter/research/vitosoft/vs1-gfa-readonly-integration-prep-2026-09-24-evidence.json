@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "prerequisite": {
+    "stock_permanent_vs1_read_gate": "PASS",
+    "duration_s": 60,
+    "mqtt_expected": 212,
+    "mqtt_seen": 212,
+    "mqtt_missing": 0,
+    "baseline_restored": "VS2/300"
+  },
+  "patch": {
+    "file": "tools/optolink-apply-vs1-gfa-readonly-patch.py",
+    "version": "1.0.0",
+    "commit": "63c7421d434b186ded82012b6612bb545d2bfc78",
+    "upstream_ref": "c1ee204a1421447721603c5f21c6da7337fdac97",
+    "base_blobs": {
+      "optolinkvs1.py": "cff6b4d8d52ca4ee1f79c310dd9377dba1a18270",
+      "vs12_adapter.py": "dfcd97cbe598bb71aafd5c1735e1fb4018b8be68",
+      "requests_util.py": "0e2b94547518bde504632579d5d7c4da45e56db7"
+    },
+    "behavior": [
+      "Adds optolinkvs1.read_gfa_ext() using function 0x6B.",
+      "Restricts the new GFA transport to one-byte reads; other lengths return 0xFD until separately validated.",
+      "Adds vs12_adapter.read_gfa_ext(); in VS2 mode it returns unsupported 0xAF and never switches protocols implicitly.",
+      "Adds poll marker gfa:<format>, e.g. gfa:30 or gfa:0.3922.",
+      "Adds explicit read-only command gfaread;<addr>;1;[format];[signed].",
+      "Does not add any GFA_WRITE, PROCESS_WRITE, coding, actuator or safety write path."
+    ],
+    "intended_initial_targets": [
+      {
+        "name": "P80",
+        "address": "0x4050",
+        "length": 1,
+        "format": "gfa:raw",
+        "meaning": "local GFA branch identity; expected raw 20"
+      },
+      {
+        "name": "P06",
+        "address": "0x4006",
+        "length": 1,
+        "format": "gfa:30",
+        "meaning": "controller-reported fan speed rpm"
+      },
+      {
+        "name": "P09",
+        "address": "0x4009",
+        "length": 1,
+        "format": "gfa:0.3922",
+        "meaning": "GFA modulation setpoint percent"
+      },
+      {
+        "name": "P87",
+        "address": "0x4057",
+        "length": 1,
+        "format": "gfa:raw",
+        "meaning": "GFA Status 3 raw; bit semantics unresolved"
+      }
+    ]
+  },
+  "production_policy": {
+    "enable_persistent_vs1_now": false,
+    "reason": "VS1 F4 Virtual_WRITE remains unvalidated while current HA profile contains writable entities.",
+    "next_gate": "Apply patch in a controlled staging run with write ingress disabled and temporary GFA poll items, then validate P80/P06/P09/P87 publication before any permanent profile/updater activation."
+  }
+}
