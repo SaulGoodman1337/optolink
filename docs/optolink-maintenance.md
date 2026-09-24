@@ -33,7 +33,7 @@ optolink-maintenance status
 | `0x5721` | read/write | burner-runtime maintenance threshold; raw x 100 h; source range 0..10000 h |
 | `0x5723` | read/write | maintenance time interval; 0..24 months |
 | `0x5724` | read/write sequence | maintenance state; verified maintenance reset sequence `1 -> 0` |
-| `0x756C` | read-only | `LastCheckInterval` reference; little-endian Unix-seconds timestamp |
+| `0x756C` | read-only | `LastCheckInterval` 32-bit reference; exact Vitosoft wall-clock conversion still unresolved |
 | `0x7570` | read-only | `LastBurnerCheck` burner-runtime-seconds baseline |
 | `0x08A7` | read-only | total burner runtime in seconds |
 | `0x088A` | read-only | total burner starts |
@@ -100,8 +100,9 @@ optolink-maintenance set-months 12 \
 
 Accepted values are `0..24` months.
 
-**Important:** a write to `0x5723` re-baselines `0x756C` to the current
-time. This side effect was observed on the real controller for both the
+**Important:** a write to `0x5723` re-baselines the 32-bit `0x756C`
+`LastCheckInterval` reference. This side effect was observed on the real
+controller for both the
 temporary 24-month setting and the restore to zero. Therefore the CLI refuses
 an actual `0x5723` write unless the explicit
 `--confirm-reference-reset RESET-ZEITREFERENZ` acknowledgement is present.
@@ -130,7 +131,7 @@ path, even if the first write ACK or subsequent readback fails.
 After the sequence it verifies:
 
 - `0x5724` returned to `Grundzustand`;
-- `0x756C` contains a plausible new time reference;
+- `0x756C` contains a new nonzero `LastCheckInterval` reference;
 - `0x7570` contains a plausible new burner-runtime reference;
 - total burner runtime and total burner starts did not decrease.
 
@@ -159,10 +160,22 @@ verified contract, but should preserve the same constraints:
 
 - bounded numeric control for `0x5721`;
 - bounded numeric control for `0x5723` with explicit warning that changing it
-  re-baselines the time reference;
+  re-baselines the `LastCheckInterval` reference;
 - protected maintenance-reset action;
 - no direct write access to `0x756C` or `0x7570`;
 - no reuse of the maintenance reset as a burner-fault reset.
 
 The CLI's `--json` mode is intended to make a future wrapper/service easier
 without requiring Home Assistant to construct raw `w;0x....` requests.
+
+
+### Note on `LastCheckInterval`
+
+The raw `0x756C` value advances in seconds-like increments and changes when
+the maintenance interval/reference is re-baselined. An earlier research pass
+temporarily interpreted the 32-bit little-endian value as a Unix timestamp.
+That interpretation is **not considered verified**: the public Vitosoft
+reverse-engineering documentation lists `LastCheckInterval` as a special
+converter whose algorithm is not implemented, and the decoded wall-clock value
+does not consistently match the host/controller time. The CLI therefore keeps
+this field semantically raw until the exact converter is reconstructed.
