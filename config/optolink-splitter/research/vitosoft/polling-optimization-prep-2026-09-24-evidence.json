@@ -710,5 +710,27 @@
       "This validates the live retry path and suggests raw FF is not explained solely by insufficient GFA inter-request spacing.",
       "A useful next experiment is a fast first GFA attempt at 25 ms with a conservative 150 ms retry gap."
     ]
+  },
+  "gfa_fastfirst_retry_experiment": {
+    "prepared_at_local": "2026-09-24",
+    "status": "PREPARED_NOT_YET_LIVE_TESTED",
+    "safety_scope": [
+      "read-only GFA_READ 0x6B only",
+      "no EEPROM/coding/actuator/burner write path added",
+      "primary risk is transient communication load/desynchronization rather than persistent configuration change"
+    ],
+    "design": {
+      "global_olbreath_seconds": 0.025,
+      "gfa_first_attempt_gap_seconds": 0.025,
+      "gfa_retry_gap_seconds": 0.15,
+      "raw_ff_retry_count": 1,
+      "second_ff_behavior": "quarantine and fail"
+    },
+    "implementation": {
+      "gfa_patcher_version": "1.0.5",
+      "commit": "3a0810d1a32292bcdebd992ea03173976c071602",
+      "git_blob": "525fd7d000b3d2b39514269f8589fb620e511d1e"
+    },
+    "objective": "Determine whether fast 25 ms GFA first attempts plus a conservative retry can deliver consistently faster GFA updates without hard errors."
   }
 }
