@@ -127,7 +127,7 @@ Keep the current layout for now. Revisit it later with these constraints:
 
 ### 2. Move time programs to a dedicated Home Assistant tab
 
-Status: **read-only UI implemented / block format understood / local write gate pending**
+Status: **hardware write contract verified / guarded HA editor implemented / live HA-path verification pending**
 
 The weekly time programs currently live at the bottom of the diagnostics page
 and should be moved out of diagnostics into a dedicated, visually polished
@@ -180,8 +180,29 @@ Current schedule reverse-engineering update (2026-09-24):
 - exact contract and test procedure:
   `docs/wb2a-schedule-blocks.md`.
 
-Next gate: run a probe on a weekday other than today and require exact test
-readback plus exact restoration before enabling writable HA schedule controls.
+Hardware gate completed on 2026-09-24:
+
+- full 21-block read baseline captured;
+- 1-, 2- and 4-interval complete-block writes passed;
+- populated slots were cleared back to `FF FF` successfully;
+- `24:00` end boundary passed;
+- fully empty `FFFFFFFFFFFFFFFF` day passed;
+- every probe restored the original block byte-for-byte.
+
+Implementation now present:
+
+- guarded `optolink-schedule-manager` service;
+- strict validation before every schedule write;
+- complete 8-byte writes with byte-exact readback and automatic restore on a
+  mismatch;
+- 21 non-optimistic MQTT text editor entities;
+- schedule reads moved from `ONCE` to `SLOW` for physical-panel resync;
+- full weekly dashboard with 24-hour bars, current-day/active indication and
+  tap-to-edit rows.
+
+Next gate: deploy with `update`, verify the manager service/discovery, then
+perform one live edit through a Home Assistant text entity and confirm the
+dashboard write-status/readback behavior.
 
 The old schedule cards should be removed from the diagnostics page once the
 dedicated tab is in place.
