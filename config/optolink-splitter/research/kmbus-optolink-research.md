@@ -17,6 +17,11 @@ The current deep analysis of the read-only memory/access families is:
 [vitosoft/kmbus-read-memory-analysis-2026-09-24.md](vitosoft/kmbus-read-memory-analysis-2026-09-24.md).
 The corresponding execution task is GitHub issue **#30**.
 
+The first bounded live correlation run is prepared in
+[../../../docs/kmbus-ram-correlation-probe.md](../../../docs/kmbus-ram-correlation-probe.md),
+with a pre-created evidence template at
+[vitosoft/kmbus-ram-correlation-2026-09-24-evidence.json](vitosoft/kmbus-ram-correlation-2026-09-24-evidence.json).
+
 ## Local system
 
 - boiler: Vitodens 200-W WB2A
@@ -599,6 +604,33 @@ already-filtered generated catalog.
 | inject accessory/slave state | **unknown** | no write experiment justified yet |
 | emulate Vitotrol over Optolink only | **unknown** | depends on previous rows |
 | access coding-plug EEPROM through 0x43 | **not proven** | no physical/semantic link established |
+
+## Live Phase A started - bounded 0x41 correlation
+
+The first live phase deliberately avoids any broad memory scan. It compares
+ordinary `Virtual_READ` and `KMBUS_RAM_READ 0x41` at seven already understood
+addresses with source-backed lengths:
+
+~~~text
+0x00F8 / 8   controller identity / positive control
+0x0A3C / 1   final internal-pump command shadow
+0x7660 / 2   internal-pump runtime/output
+0x7663 / 2   A1 runtime/calculated pump request
+0x5730 / 1   K30 internal-pump identity/capability
+0x0A54 / 4   internal-pump software-index block
+0x27A0 / 1   A1/M1 remote-control identification
+~~~
+
+The objective is to classify each pair as identical, stable-different,
+dynamic-different, Virtual-only, KMBUS-only or error.
+
+A match across all addresses would support a broad mirror/alternate-access
+interpretation. Differences at runtime addresses would be especially valuable
+because they would reveal a partially overlapping hidden state space. If only
+`0x00F8` works, it must be treated as a special/common identity structure.
+
+Runbook:
+[../../../docs/kmbus-ram-correlation-probe.md](../../../docs/kmbus-ram-correlation-probe.md).
 
 ## Research questions
 
