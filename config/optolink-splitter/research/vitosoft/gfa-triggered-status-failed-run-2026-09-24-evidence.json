@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "run": {
+    "log": "/root/wb2a-gfa-triggered-status-20260924-102659-190063.log",
+    "jsonl": "/root/wb2a-gfa-triggered-status-20260924-102659-190063.jsonl",
+    "helper_version": "1.0.0",
+    "helper_commit": "374d9fc5df8f1daec04ebb50e580660b98c5377a",
+    "helper_sha256": "4fd17cbd259be55aaf4bb499e796d4101bd4da363f3f12d8846e27a5df4b3784"
+  },
+  "preconditions": {
+    "original_day_setpoint_c": 21,
+    "modulation_0x55dc_raw": 0,
+    "P80_independent_reads": [
+      "20",
+      "20"
+    ],
+    "P300_identity": "20c2"
+  },
+  "trigger_write": {
+    "request_hex": "41 06 00 02 23 06 01 25 57",
+    "response_hex": "41 05 01 02 23 06 01 32",
+    "response_interpretation": "successful Virtual_WRITE response; one byte acknowledged; no echoed data byte",
+    "exact_value_readback_performed": false,
+    "observation_started": false
+  },
+  "restore_attempts": [
+    {
+      "requested_c": 21,
+      "request_hex": "41 06 00 02 23 06 01 15 47",
+      "response_hex": "41 05 01 02 23 06 01 32",
+      "exact_value_readback_performed": false
+    },
+    {
+      "requested_c": 21,
+      "request_hex": "41 06 00 02 23 06 01 15 47",
+      "response_hex": "41 05 01 02 23 06 01 32",
+      "exact_value_readback_performed": false
+    },
+    {
+      "requested_c": 21,
+      "request_hex": "41 06 00 02 23 06 01 15 47",
+      "response_hex": "41 05 01 02 23 06 01 32",
+      "exact_value_readback_performed": false
+    }
+  ],
+  "result": {
+    "script_result": "FAIL",
+    "reason": "v1.0.0 incorrectly treated the acknowledged write length byte as a data-length field requiring an echoed value",
+    "P300_restored": true,
+    "splitter_restarted": true,
+    "party_restarted": true,
+    "setpoint_restore_readback_verified_by_run": false,
+    "gfa_capture_performed": false
+  },
+  "correction": {
+    "helper_version": "1.0.1",
+    "commit": "8259cd5f3c07c4d46939e17e7bc87dc47378717f",
+    "git_blob": "98f2f5342d24e32d7cb8b088a5af3589d378526d",
+    "sha256": "6d5810e1595ba6e464452dcd927259e9bade8f550a92b492fd40c2a27972604b",
+    "tests_passed": 168,
+    "live_write_ack_test_hex": "41 05 01 02 23 06 01 32",
+    "policy": "write response validates function/address/acknowledged byte count; exact setpoint value remains verified only by the following Virtual_READ"
+  },
+  "next_step": "Before another trigger run, manually read 0x2306 and 0x55DC. Require 0x2306=21 (0x15) and 0x55DC=0 for the same baseline."
+}
