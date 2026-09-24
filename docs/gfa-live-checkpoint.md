@@ -1,19 +1,40 @@
 # GFA live checkpoint - 2026-09-23
 
-**Current status: short P80/snapshot/same-session tests succeeded, but the first requested 300-second observation failed at a P80=FF mismatch. P300 and both previously running services were restored. Two earlier isolated FF runtime samples expose a measurement-quality gap.**
+**Current status: P80, snapshots, same-session access and a continuous 60-second burner-start trace are hardware-confirmed. The paced startup trace completed 49/49 rounds with no FF replies or reconnects, captured P84 raw 00->02->04->05->06, fan speed 0->4500 rpm and the subsequent modulation-down ramp. Intermittent FF replies from longer captures remain unresolved.**
 
-Read the [long-run FF investigation](gfa-cycle-ff-investigation.md) before executing another logger. The next step is to inspect the existing raw TX/RX log, not repeat the long experiment unchanged. Its complete pasted JSONL has already been analyzed; do not ask for it again.
+Read the [paced comparison and startup trace](gfa-paced-comparison.md) for the latest live result. The earlier [long-run FF investigation](gfa-cycle-ff-investigation.md) remains relevant to acquisition quality, but it no longer blocks interpretation of the new clean 60-second startup trace.
 
-A firing snapshot previously decoded P06 as 4110 rpm. That result is not revoked, but the later isolated P06=FF conversion to 7650 rpm is not a validated physical event. Continuous acquisition, a complete startup trace and permanent Home Assistant integration remain unverified.
+A firing snapshot previously decoded P06 as 4110 rpm. The new continuous trace now independently supports the channel with a coherent 0->660->2490->4500 rpm startup and subsequent ramp down to 2790 rpm. The older isolated P06=FF conversion to 7650 rpm remains invalid as a physical event. Permanent Home Assistant integration remains unverified.
 
 Evidence:
 
+- [Continuous startup trace](../config/optolink-splitter/research/vitosoft/gfa-startup-run-2026-09-24-evidence.json).
 - [First long-run failure and FF samples](../config/optolink-splitter/research/vitosoft/gfa-cycle-ff-2026-09-23-evidence.json).
 - [Snapshot comparison](../config/optolink-splitter/research/vitosoft/gfa-snapshots-2026-09-23-evidence.json).
 - [Same-session measurements and timing](../config/optolink-splitter/research/vitosoft/gfa-session-2026-09-23-evidence.json).
 - [Static variant/scaling definitions](../config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-evidence.json).
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
+
+## 0. Latest live result - continuous startup trace, 2026-09-24
+
+The unchanged paced helper ran for 60 seconds with 150-ms minimum reply spacing. The appliance transitioned from idle-like zero GFA values into a complete startup-like sequence during the observation. All 49 rounds were accepted; no FF reply or reconnect occurred. Closing P80 remained 20, P300 20C2 was restored, and both previously running services reported running.
+
+Observed P84 raw sequence: **00 -> 02 -> 04 -> 05 -> 06**. No manufacturer phase names have been recovered, so these remain raw states.
+
+Key timing:
+
+- P84 02 at 08:56:37.119.
+- P09 raw 93 / 57.6534% at 08:56:37.895.
+- P10 raw 58 / 35.2% at 08:56:38.104.
+- P06 first nonzero at 08:56:38.882: 660 rpm.
+- P06 first reaches 4500 rpm at 08:56:41.339.
+- P84 04 at 08:56:45.655, 05 at 08:56:46.766, 06 at 08:56:47.934.
+- P09 first leaves its 57.6534% plateau 9.368 s after the first observed 06.
+- P06 first drops below 4410 rpm 10.362 s after the first observed 06.
+- Last round: 2790 rpm, P09 34.9058%, P10 33.2%, P84 06.
+
+This is the strongest timing lead for the short startup-hold/flame-stabilization investigation. It does not prove that P84=06 is flame recognition because the logger did not poll an independent flame signal. See [paced comparison](gfa-paced-comparison.md) and the machine-readable startup evidence for details.
 
 ## 1. First P80 hardware result
 
