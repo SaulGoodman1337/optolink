@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "purpose": "Guarded stock optolink-splitter permanent-VS1 smoke gate using the existing Home Assistant read poll list before enabling any production GFA polling.",
+  "prerequisite_live_result": {
+    "evidence": "config/optolink-splitter/research/vitosoft/vs1-mixed-compat-run-2026-09-24-evidence.json",
+    "result": "PASS",
+    "conclusion": "F7 Virtual_READ and 6B GFA_READ coexist in one persistent VS1 session on the exact VDensHO1/20C2 appliance at tested 150-ms pacing."
+  },
+  "helper": {
+    "file": "config/optolink-splitter/wb2a-stock-vs1-smoke.py",
+    "version": "1.0.0",
+    "commit": "af582f24b144863221d0a1e3137ce27eeb47d1ba",
+    "git_blob": "2a53de0c41e2a1adcb17b5025113e7b09b647149",
+    "sha256": "a9cd4a1b1750d650573d8718a85e940fffa231c4bff62500265b2215f07241c3",
+    "local_logic_tests": "9/9 PASS before publication; final signal-handling patch changes cleanup arm timing only",
+    "default_seconds": 30,
+    "duration_bounds_seconds": [
+      20,
+      60
+    ]
+  },
+  "gate_policy": {
+    "stock_code_required": true,
+    "requirements": [
+      "/opt/optolink HEAD equals local origin/main",
+      "no tracked modifications in /opt/optolink",
+      "/opt/optolink/homeassistant_poll_list.py exists",
+      "/opt/optolink/poll_list.py does not exist",
+      "port_vitoconnect is None",
+      "baseline vs1protocol is False",
+      "splitter service is active/running",
+      "MQTT broker/topic configured"
+    ],
+    "temporary_settings_only": {
+      "vs1protocol": true,
+      "mqtt_listen": null,
+      "tcpip_port": null,
+      "olbreath": 0.15
+    },
+    "write_ingress": {
+      "mqtt_commands_and_set_topics": "disabled by mqtt_listen=None; upstream on_message returns before command/set handling",
+      "tcp": "disabled by tcpip_port=None",
+      "party_emulator": "stopped if previously active"
+    },
+    "source_patch": false,
+    "gfa_poll_patch": false,
+    "direct_optolink_write_by_helper": false
+  },
+  "validation": {
+    "process": [
+      "stock splitter reaches active/running",
+      "MainPID remains stable for complete window",
+      "journal contains VS1/KW protocol initialized",
+      "journal contains enter main loop",
+      "journal contains no configured timeout/poll/restart error patterns"
+    ],
+    "mqtt": [
+      "subscriber is connected before temporary splitter start",
+      "retained pre-test deliveries are excluded",
+      "all current homeassistant_poll_list entries enabled on poll cycle 0 must publish at least once",
+      "missing topics are listed and cause FAIL"
+    ],
+    "recovery": [
+      "settings_ini.py original bytes/mode/uid/gid are saved",
+      "temporary file replacement is atomic",
+      "SIGINT/SIGTERM/SIGHUP cleanup handlers are armed before service/settings changes",
+      "original settings SHA256 is verified byte-for-byte before service restoration",
+      "splitter and party service are restored only if previously running",
+      "restored splitter must return active/running and log VS2/300 protocol initialized",
+      "backup is removed only after verified byte-exact restore; otherwise retained locally"
+    ]
+  },
+  "not_validated_by_pass": [
+    "VS1 Virtual_WRITE behavior",
+    "production GFA polling implementation",
+    "long-duration FF behavior",
+    "catastrophic interruption recovery such as SIGKILL/power/storage failure"
+  ],
+  "next_after_pass": "Implement a narrow update-safe structured GFA_READ path under the splitter's single VS1 serial owner, then stage P06/P09/P87/P80 diagnostic polling."
+}
