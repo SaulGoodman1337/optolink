@@ -288,6 +288,43 @@ order:
 
 Diagnose then becomes the stable reference implementation for all later views.
 
+## 5b. Pumpen view modern cockpit test
+
+Status: **implemented in YAML / live visual test pending**
+
+The **Pumpen** view has been rebuilt as the first follow-up view using the
+Diagnose cockpit language.
+
+Current structure:
+
+- top-level pump/hydraulic status badges and chips;
+- separate live sections for **Heizkreis M1** and the **internal boiler pump**;
+- short-history background graphs for pump speed/hydraulic context;
+- compact status tiles for logical M1 request, A1 output, pump status, speed
+  and diverter-valve state;
+- editable E6/E7/E8/E9/A9 and coding 31 controls retained;
+- long parameter explanations moved from separate info buttons to hold-action
+  browser_mod popups to reduce visual clutter;
+- DHW charging/circulation states and controls consolidated into a modern
+  subsection;
+- KM-BUS pump diagnostics and hardware identity grouped at the bottom.
+
+Semantics are intentionally conservative:
+
+- `0x2906` logical M1 request and `0x7663` A1 output are shown together;
+- `0x7660` internal-pump runtime is shown as a separate boiler-pump path;
+- the dashboard does **not** imply that A1 output directly drives the internal
+  physical pump;
+- the unresolved upstream selector feeding the final internal-pump command
+  remains a research topic rather than an operator-facing claim.
+
+All Vitodens entities referenced by the redesigned Pumpen view were checked
+against the current production Home Assistant profile before committing.
+
+Next step: test the view live on desktop/mobile and refine spacing, density,
+labels and control grouping from screenshots before treating the pattern as
+final.
+
 ## 6. Order for redesigning the remaining dashboard views
 
 The agreed visual direction is to reuse the Diagnose cockpit language rather
