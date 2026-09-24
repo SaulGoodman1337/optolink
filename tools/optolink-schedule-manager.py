@@ -320,7 +320,13 @@ class ScheduleManager:
 
         target = self.command_map.get(message.topic)
         if target is not None:
-            if getattr(message, "retain", False):
+            retained = bool(getattr(message, "retain", False))
+            log(
+                "COMMAND "
+                f"{target[0]}/{DAYS[target[1]][0]} "
+                f"retain={retained} payload={payload!r}"
+            )
+            if retained:
                 log(
                     "WARNING: ignoring retained schedule command on "
                     f"{message.topic}: {payload!r}"
