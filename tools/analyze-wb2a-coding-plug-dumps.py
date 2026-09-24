@@ -14,6 +14,7 @@ Useful goals:
 - show exact byte/bit differences;
 - find known local identity bytes such as 20 15 02 01;
 - find possible ASCII/BCD representations of the coding-plug part number;
+- search for the hardware-read active GFA P90/P100-P108 signatures;
 - produce a machine-readable JSON report for later correlation work.
 """
 
@@ -38,6 +39,18 @@ KNOWN_PATTERNS = {
     # the physical coding plug actually stores the number this way.
     "part_number_bcd_78_33_97_1f": bytes.fromhex("78 33 97 1f"),
     "part_number_bcd_07_83_39_71": bytes.fromhex("07 83 39 71"),
+    # Hardware-read GFA coding-plug diagnostics from the installed 7833971
+    # plug. These are search signatures only; a hit does not prove a physical
+    # field mapping without same-plug/side correlation.
+    "active_gfa_p90_p108_raw": bytes.fromhex(
+        "00 63 15 01 14 0c 04 d6 02 00"
+    ),
+    "active_gfa_p100_p108_raw": bytes.fromhex(
+        "63 15 01 14 0c 04 d6 02 00"
+    ),
+    "active_gfa_date_raw": bytes.fromhex("14 0c 04"),
+    "active_gfa_date_bcd_candidate": bytes.fromhex("20 12 04"),
+    "active_gfa_crc_identity_tail": bytes.fromhex("d6 02 00"),
 }
 
 
