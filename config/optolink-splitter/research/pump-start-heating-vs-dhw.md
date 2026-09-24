@@ -58,6 +58,50 @@ not use blind KBUS/KMBUS probes as its primary path. Ordinary VDensHO1 virtual
 objects, GFA reads and already hardware-verified raw runtime structures are the
 correct first layer.
 
+## New internal-pump identity/configuration layer - 2026-09-24
+
+Post-FlowCalibration v6 analysis exposed a more relevant **base-VDensHO1** configuration/diagnostic layer:
+
+| Event | Address | Meaning | Exact v6 result |
+| ---: | --- | --- | --- |
+| 884 | `0x5730` | K30 / internal circulation-pump identification | Virtual_READ/WRITE, 1 byte, VDensHO1 |
+| 885 | `0x5730` | KM-BUS diagnostic view "Internal circulation pump" | same byte, VDensHO1 |
+| 886 | `0x5731` | K31 / set speed internal pump | Virtual_READ/WRITE, 1 byte, VDensHO1 |
+| 5292 | `0x0A54` | internal-pump software index | Virtual_READ, 4-byte block, software-index subfield at byte 3 |
+| 2894 | `0x27E5` | KM-BUS heating-circuit pump A1 identification | Virtual_READ/WRITE, 1 byte, VDensHO1 |
+
+The exact K30 value labels are:
+
+```text
+0 = stufig / multi-stage
+1 = drehzahlgeregelt / variable-speed
+2 = drehzahlgeregelt mit Volumenstrom / variable-speed with flow rate
+```
+
+The KM-BUS participant view at the same address has `0=not present`,
+`1=present`, while value 2 reuses the K30 flow-capable label.
+
+This does **not** overturn the host-selector conclusion: focused decompilation
+still found no host-side algorithm that arbitrates `0x0A3C` / `0x7660`.
+Instead, K30/K31/0x0A54 provide the missing characterization of what internal
+pump the controller believes is installed and which configuration path is
+available.
+
+A particularly important discriminator is K30:
+
+- `K30=01`: the controller identifies a variable-speed pump without declared
+  flow-rate capability;
+- `K30=02`: the controller explicitly identifies a variable-speed internal
+  pump **with flow-rate capability**, which justifies a targeted search for a
+  pump/KM-BUS flow channel that may use a non-obvious event name/address.
+
+The earlier Neptun/FlowCalibration flow addresses remain excluded for this
+purpose because v6 membership shows that those hydraulic-calibration objects
+are not linked to base VDensHO1.
+
+Read-only runbook:
+[../../../docs/internal-pump-k30-k31-read.md](../../../docs/internal-pump-k30-k31-read.md).
+
 ## 0x7660 interpretation boundary
 
 Vitosoft places both the digital internal-pump output and the internal-pump
