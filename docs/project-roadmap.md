@@ -394,6 +394,42 @@ Next work:
 
 Do not treat the M-Bus Slave Click choice as a completed implementation yet.
 
+### Maintenance configuration / reset via Home Assistant
+
+Status: **future HA task / blocked on splitter write+reset verification**
+
+A future Home Assistant dashboard session should add a compact **Service /
+Wartung** area that not only displays the verified maintenance diagnostics but,
+once the underlying controller operations are proven safe and reversible, can
+also configure the maintenance thresholds from Home Assistant.
+
+Desired future controls:
+
+- configure the burner-runtime maintenance threshold at `0x5721`
+  (source conversion: raw x 100 h);
+- configure the maintenance time interval at `0x5723` in months;
+- display the current maintenance state from `0x5724`;
+- display elapsed months since the last maintenance from `0x756C`;
+- display burner runtime since the last maintenance from `0x7570`;
+- provide a maintenance-reset action only if the exact reset semantics,
+  required payload and post-reset behavior have been verified locally.
+
+Dashboard implementation is deliberately deferred. This splitter/research
+workstream must first establish for each writable/resettable object:
+
+1. exact Vitosoft access mode and write block length;
+2. accepted value range / enum and conversion;
+3. exact wire payload;
+4. read-after-write behavior;
+5. persistence across controller restart where relevant;
+6. exact effect of reset operations and which counters/status values change;
+7. a safe rollback/recovery procedure;
+8. separation from burner fault unlock/reset semantics.
+
+Do **not** expose a Home Assistant command topic merely because a P300 write
+returns ACK. The effect must be verified on this exact
+`VDensHO1 / 20C2 / SW03` appliance first.
+
 ## WB2A reverse engineering: open items
 
 ### RKR / restart state
