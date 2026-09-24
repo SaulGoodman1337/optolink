@@ -189,16 +189,13 @@ Key points carried into the execution plan:
 
 A source-backed, read-only backlog is now maintained in [read-later-addresses-2026-09-24.md](read-later-addresses-2026-09-24.md).
 
-Highest-value not-yet-promoted local reads include:
-- `0x0816` exhaust-gas temperature;
-- `0x081A` common/mixed flow temperature;
-- `0x083A/0x083B/0x0840` primary temperature-sensor health;
-- `0x0883` FlowSwitch;
-- `0x8853` burner type;
-- `0xA305` independent boiler modulation value;
-- selected KM-BUS participant software-index/error blocks.
+Production-profile audit completed:
+- `0x0816` exhaust-gas temperature is already polled at NORMAL cadence and can be used in dashboards without additional Optolink traffic.
+- `0x5527`, `0xA305`, `0x0883`, primary sensor-status bytes, circulation-pump state, K12 and several KM diagnostics are also already present.
+- `0x081A` is intentionally not promoted as a physical temperature because the associated local sensor-status evidence marks that path invalid/open/reference-state.
+- genuine not-yet-integrated high-value candidates now start with `0x8853` burner type, `0xA403` HCC1 FlowSetpt and selected KM-BUS participant software-index/error blocks.
 
-These are **later read-only verification items**, not production poll additions.
+These are **later read-only verification items**. Never add a duplicate poll for an address already present in the production profile.
 
 ## P3 - Home Assistant and operator-facing follow-up
 
