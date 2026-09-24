@@ -4708,6 +4708,276 @@ views:
 
     cards: []
 
+  - title: Wartung
+    path: wartung
+    icon: mdi:wrench-clock
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Service / Wartung
+            heading_style: title
+            icon: mdi:wrench-clock
+            badges:
+              - type: entity
+                entity: binary_sensor.vitodens_200_wb2a_wartung_api_verfuegbar
+                name: API
+                show_state: true
+              - type: entity
+                entity: binary_sensor.vitodens_200_wb2a_wartung_status
+                name: Kessel
+                show_state: true
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_wartung_api_status
+                name: Letzte Aktion
+                show_state: true
+
+          - type: markdown
+            content: |
+              ### Kontrollierte Wartungskonfiguration
+
+              Die beiden Sollwert-Felder unten sind **nur Entwürfe**. Eine Änderung des Entwurfs schreibt noch **nichts** in die Vitodens.
+
+              Erst **„Übernehmen“** sendet einen bestätigten Request an die abgesicherte Maintenance-API. Die API prüft Bereich, Lock, Readback und bekannte Referenz-Seiteneffekte.
+
+              - Brennerstunden: eine echte Änderung von 0x5721 **kann 0x7570 neu basen**.
+              - Zeitintervall: jede echte Änderung von 0x5723 **setzt 0x756C neu**.
+              - Wartungsreset: führt kontrolliert 0x5724: 1 → 0 aus; 0x756C wird neu gebased, der Effekt auf 0x7570 ist zustandsabhängig.
+            grid_options:
+              columns: full
+
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Brennerstunden
+            heading_style: subtitle
+            icon: mdi:timer-cog-outline
+
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_wartung_brennerstunden_grenzwert
+            name: Aktueller Grenzwert
+            icon: mdi:timer-check-outline
+            vertical: false
+            grid_options:
+              columns: 6
+              rows: 1
+
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_wartung_brenner_seit_referenz
+            name: Seit Referenz
+            icon: mdi:timer-sand
+            vertical: false
+            grid_options:
+              columns: 6
+              rows: 1
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_wartung_brennerstunden_sollwert
+            name: Neuer Grenzwert
+            icon: mdi:timer-edit-outline
+            vertical: false
+            features:
+              - type: numeric-input
+                style: slider
+            features_position: bottom
+            grid_options:
+              columns: full
+              rows: 2
+
+          - type: custom:button-card
+            entity: number.vitodens_200_wb2a_wartung_brennerstunden_sollwert
+            name: Brennerstunden übernehmen
+            icon: mdi:check-circle-outline
+            show_state: true
+            label: |
+              [[[
+                const current = states['sensor.vitodens_200_wb2a_wartung_brennerstunden_grenzwert']?.state ?? '?';
+                return 'Aktuell ' + current + ' h · Entwurf ' + (entity?.state ?? '?') + ' h';
+              ]]]
+            show_label: true
+            styles:
+              card:
+                - border: 1px solid var(--divider-color)
+                - border-radius: 14px
+                - background: color-mix(in srgb, var(--primary-color) 8%, var(--ha-card-background, var(--card-background-color)))
+              icon:
+                - color: var(--primary-color)
+            tap_action:
+              action: perform-action
+              perform_action: mqtt.publish
+              confirmation:
+                text: |
+                  [[[
+                    return 'Brennerstunden-Grenzwert wirklich auf ' + (entity?.state ?? '?') + ' h setzen? Eine echte Änderung von 0x5721 kann die Brenner-Referenz 0x7570 neu basen.';
+                  ]]]
+              data:
+                topic: openv/maintenance/cmnd
+                qos: 0
+                retain: false
+                payload: |
+                  [[[
+                    const value = Number(entity?.state);
+                    return JSON.stringify({
+                      api_version: 1,
+                      request_id: 'ha-hours-' + Date.now(),
+                      action: 'set_hours',
+                      value: value,
+                      confirm_reference_change: true
+                    });
+                  ]]]
+            grid_options:
+              columns: full
+              rows: 2
+
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Zeitintervall
+            heading_style: subtitle
+            icon: mdi:calendar-clock
+
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_wartung_zeitintervall
+            name: Aktuelles Intervall
+            icon: mdi:calendar-check-outline
+            vertical: false
+            grid_options:
+              columns: 6
+              rows: 1
+
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_wartung_api_status
+            name: API-Status
+            icon: mdi:shield-check-outline
+            vertical: false
+            tap_action:
+              action: more-info
+            grid_options:
+              columns: 6
+              rows: 1
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_wartung_zeitintervall_sollwert
+            name: Neues Intervall
+            icon: mdi:calendar-edit
+            vertical: false
+            features:
+              - type: numeric-input
+                style: slider
+            features_position: bottom
+            grid_options:
+              columns: full
+              rows: 2
+
+          - type: custom:button-card
+            entity: number.vitodens_200_wb2a_wartung_zeitintervall_sollwert
+            name: Zeitintervall übernehmen
+            icon: mdi:calendar-arrow-right
+            show_state: true
+            label: |
+              [[[
+                const current = states['sensor.vitodens_200_wb2a_wartung_zeitintervall']?.state ?? '?';
+                return 'Aktuell ' + current + ' Monate · Entwurf ' + (entity?.state ?? '?') + ' Monate';
+              ]]]
+            show_label: true
+            styles:
+              card:
+                - border: 1px solid var(--divider-color)
+                - border-radius: 14px
+                - background: color-mix(in srgb, var(--primary-color) 8%, var(--ha-card-background, var(--card-background-color)))
+              icon:
+                - color: var(--primary-color)
+            tap_action:
+              action: perform-action
+              perform_action: mqtt.publish
+              confirmation:
+                text: |
+                  [[[
+                    return 'Wartungsintervall wirklich auf ' + (entity?.state ?? '?') + ' Monate setzen? Jeder echte Write auf 0x5723 setzt die Zeitreferenz 0x756C neu.';
+                  ]]]
+              data:
+                topic: openv/maintenance/cmnd
+                qos: 0
+                retain: false
+                payload: |
+                  [[[
+                    const value = Number(entity?.state);
+                    return JSON.stringify({
+                      api_version: 1,
+                      request_id: 'ha-months-' + Date.now(),
+                      action: 'set_months',
+                      value: value,
+                      confirm_reference_change: true
+                    });
+                  ]]]
+            grid_options:
+              columns: full
+              rows: 2
+
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Wartungsaktion
+            heading_style: subtitle
+            icon: mdi:shield-alert-outline
+
+          - type: custom:button-card
+            entity: binary_sensor.vitodens_200_wb2a_wartung_status
+            name: Wartung zurücksetzen
+            icon: mdi:wrench-clock
+            show_state: true
+            label: Kontrollierter Reset der Wartungsreferenz
+            show_label: true
+            styles:
+              card:
+                - border: 1px solid color-mix(in srgb, var(--warning-color) 55%, var(--divider-color))
+                - border-radius: 14px
+                - background: color-mix(in srgb, var(--warning-color) 8%, var(--ha-card-background, var(--card-background-color)))
+              icon:
+                - color: var(--warning-color)
+              name:
+                - font-weight: 700
+            tap_action:
+              action: perform-action
+              perform_action: mqtt.publish
+              confirmation:
+                text: >-
+                  Wartungsreset wirklich ausführen? Die API führt 0x5724
+                  kontrolliert von 0 → 1 → 0. Dabei wird 0x756C neu gebased;
+                  der Effekt auf 0x7570 ist vom Reglerzustand abhängig.
+              data:
+                topic: openv/maintenance/cmnd
+                qos: 0
+                retain: false
+                payload: |
+                  [[[
+                    return JSON.stringify({
+                      api_version: 1,
+                      request_id: 'ha-reset-' + Date.now(),
+                      action: 'reset',
+                      confirm: true
+                    });
+                  ]]]
+            grid_options:
+              columns: full
+              rows: 2
+
+          - type: markdown
+            content: |
+              **Sicherheitsmodell**
+
+              Home Assistant sendet keine rohen Optolink-Schreibbefehle. Alle Aktionen laufen über openv/maintenance/cmnd und den gemeinsam mit dem CLI verwendeten Maintenance-Core.
+
+              Bei einem Write-Fehler wird der Konfigurationswert nach Möglichkeit zurückgerollt. Eine bereits ausgelöste Referenzänderung ist dadurch jedoch nicht garantiert reversibel.
+            grid_options:
+              columns: full
+
   - title: Zeitprogramme
     path: zeitprogramme
     icon: mdi:calendar-clock
