@@ -74,7 +74,7 @@
     "normal_cadence_seconds": "approximately 20-30 s",
     "goal": "Eliminate periodic 15-20 s FAST latency spikes before any olbreath reduction."
   },
-  "next_step": "Restore 0.15 s and establish a long clean baseline before any intermediate timing experiment.",
+  "next_step": "Run a 30-60 minute soak with global 0.05 s and GFA minimum gap 0.15 s, preferably including a full burner start/modulation cycle. Track first-FF/retry recovery and hard errors separately.",
   "first_live_apply_attempt": {
     "timestamp_local": "2026-09-24T14:17:06+02:00",
     "result": "ABORTED_BEFORE_SCHEDULER_APPLY",
@@ -549,6 +549,108 @@
       "Observe passive cadence plus first-attempt FF retry/recovery logs.",
       "Reject on any second FF, failed retry, OL Error, restart or P80 identity failure.",
       "If short gate passes, run a longer soak before changing the permanent profile helper."
+    ]
+  },
+  "gfa_specific_timing_short_gate": {
+    "timestamp_local": "2026-09-24T15:44+02:00",
+    "duration_seconds": 180,
+    "result": "PASS_CLEAN",
+    "global_olbreath_seconds": 0.05,
+    "gfa_min_gap_seconds": 0.15,
+    "gfa_ff_retry_count": 1,
+    "patcher_version": "1.0.4",
+    "patcher_self_tests": "11/11 PASS",
+    "runtime_patch": {
+      "changed_files": [
+        "optolinkvs1.py"
+      ],
+      "optolinkvs1_blob": "f542be6cfe02b880eb2b0e9d28c9c96892a192fe",
+      "adapter_blob": "82461ad5e61c015d311c9eb1413551c9e49035d8",
+      "requests_util_blob": "03c3fd5336ae332078f960975ecf5188c2996dd2"
+    },
+    "once_complete_before_measurement": true,
+    "measurements": {
+      "kesseltemperatur": {
+        "group": "FAST",
+        "messages": 72,
+        "min_s": 2.254,
+        "median_s": 2.48,
+        "p95_s": 2.75,
+        "max_s": 2.839,
+        "last": "34.6"
+      },
+      "brenner_modulationsgrad": {
+        "group": "FAST",
+        "messages": 72,
+        "min_s": 2.246,
+        "median_s": 2.493,
+        "p95_s": 2.761,
+        "max_s": 2.883,
+        "last": "0.0"
+      },
+      "geblaesedrehzahl_gfa_p06": {
+        "group": "FAST",
+        "messages": 72,
+        "min_s": 2.246,
+        "median_s": 2.483,
+        "p95_s": 2.692,
+        "max_s": 2.756,
+        "last": "0"
+      },
+      "gfa_modulationssollwert_p09": {
+        "group": "FAST",
+        "messages": 73,
+        "min_s": 2.247,
+        "median_s": 2.48,
+        "p95_s": 2.706,
+        "max_s": 2.769,
+        "last": "0.0"
+      },
+      "gfa_status3_p87": {
+        "group": "FAST",
+        "messages": 73,
+        "min_s": 2.214,
+        "median_s": 2.47,
+        "p95_s": 2.709,
+        "max_s": 2.767,
+        "last": "00"
+      },
+      "aussentemperatur": {
+        "group": "NORMAL",
+        "messages": 14,
+        "min_s": 11.948,
+        "median_s": 12.416,
+        "p95_s": 12.992,
+        "max_s": 13.016,
+        "last": "22.2"
+      },
+      "gfa_p80_typ": {
+        "group": "NORMAL",
+        "phase": 4,
+        "messages": 14,
+        "min_s": 11.96,
+        "median_s": 12.491,
+        "p95_s": 12.943,
+        "max_s": 13.155,
+        "last": "20"
+      }
+    },
+    "retry_telemetry": {
+      "first_ff": 0,
+      "recovered_on_retry": 0,
+      "hard_errors": 0,
+      "p80_ok": true,
+      "service_ok": true
+    },
+    "comparison": {
+      "versus_global_010": "FAST median improved from about 3.4 s to about 2.48 s without the GFA FF seen during the 100 ms long soak.",
+      "versus_global_005_without_gfa_gap": "FAST median is modestly slower than the about 2.13 s pure-50-ms run, but the short gate had no GFA FF."
+    },
+    "conclusion": [
+      "The mixed timing model passed the 180 s clean gate.",
+      "Ordinary F7/F4 traffic can remain at the 50 ms upstream timing while direct GFA_READ 0x6B is paced to at least 150 ms.",
+      "No FF occurred, therefore the new retry path was not exercised in this gate.",
+      "A longer soak with burner activity is still required before making this permanent."
     ]
   }
 }
