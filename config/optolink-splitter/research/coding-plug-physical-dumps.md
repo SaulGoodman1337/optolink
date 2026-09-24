@@ -38,7 +38,7 @@ second 24C04. Reading chip2 separately is therefore an important control.
 | Sample | Physical role | IC | Reads | Result | SHA256 |
 | --- | --- | --- | ---: | --- | --- |
 | spare-1 | spare; **not installed in the boiler** | chip1 / 24C04 | 3 | byte-for-byte identical | `3dd583723661ea765f4e57405628def121bf78f1bc7d09dc1dfb51fec362f386` |
-| spare-2 | second spare | pending | pending | pending | pending |
+| spare-2 | second spare; **not installed in the boiler** | chip1 / 24C04 | 3 | byte-for-byte identical | `554d890e5c5158893ca44b10e0503f38f8c6de4f01de0fb2b9e55211a3e48946` |
 | active | currently installed coding plug | pending | pending | pending | pending |
 
 The exact external part number/revision of **spare-1** has not yet been
@@ -105,11 +105,92 @@ open:
 No semantic byte mapping should be claimed until the remaining plug/chip
 captures are available.
 
+
+## Spare-2 / chip1 analysis
+
+Despite the temporary CH341A/clip connection trouble during setup, the three
+saved reads are internally consistent:
+
+```text
+size:   512 bytes each
+SHA256: 554d890e5c5158893ca44b10e0503f38f8c6de4f01de0fb2b9e55211a3e48946
+
+read1 == read2
+read1 == read3
+read2 == read3
+differing bytes: 0
+stable offsets: 512 / 512
+```
+
+This makes random read noise or an unstable I2C capture unlikely for the three
+files that were actually saved.
+
+Basic structure:
+
+- Shannon byte entropy: approximately **2.763 bits/byte**;
+- **49** distinct byte values;
+- longest `FF` run: **240 bytes**;
+- longest `00` run: **52 bytes**;
+- the same **71-byte duplicated region** is present:
+  `0x014..0x05A == 0x066..0x0AC`;
+- printable ASCII `M22,` again occurs at `0x021` and `0x073`;
+- the known currently-installed-plug search patterns
+  `20 15 02 01`, ASCII `7833971` and the tested BCD variants are absent.
+
+### Spare-1 versus spare-2
+
+This comparison is particularly useful because the two spare captures are
+**not identical**, but they are extremely close:
+
+```text
+identical bytes: 492 / 512 = 96.0938 %
+first difference: 0x0E2
+bytes 0x000..0x0E1: identical
+```
+
+All differences are confined to a small tail/service-looking area:
+
+| Offset | spare-1 | spare-2 |
+| ---: | ---: | ---: |
+| 0x0E2 | 5C | BE |
+| 0x0E5 | 06 | 10 |
+| 0x0E8 | 2B | AE |
+| 0x0EB | 02 | 00 |
+| 0x0EE | 02 | 0C |
+| 0x0EF | 70 | E6 |
+| 0x0F0 | 00 | 01 |
+| 0x100 | FF | 00 |
+| 0x102 | FF | 00 |
+| 0x104 | FF | 00 |
+| 0x106 | FF | 00 |
+| 0x108..0x10F | FF FF FF FF FF FF FF FF | A5 5A A5 5A A5 5A A5 5A |
+| 0x1FF | 01 | FF |
+
+The `A5 5A` repetition and the exact repeatability of all three reads make
+this look like deliberate stored content rather than transient bus corruption.
+The change exactly at the `0x100` boundary is also notable because a 24C04
+crosses its 256-byte block boundary there.
+
+The strongest current interpretation is therefore:
+
+- both spare plugs share the same main data image/family to a very high degree;
+- the duplicated 71-byte main-looking region is identical between them;
+- only a small tail/upper-block area differs and may contain manufacturing,
+  test, calibration, state, copy-selection or other per-device metadata;
+- this remains a hypothesis until the plug labels, chip2 captures and active
+  coding-plug dump are available.
+
+The 96 % identity is also useful evidence against the temporary programmer
+connection problem having produced arbitrary garbage: an accidental bad read
+would be very unlikely to reproduce the same coherent image three times and
+match the first spare at 492 of 512 byte positions.
+
 ## Repository files
 
 Raw captures are stored unchanged under:
 
-`config/optolink-splitter/research/coding-plug-dumps/spare-1/`
+`config/optolink-splitter/research/coding-plug-dumps/spare-1/` and
+`config/optolink-splitter/research/coding-plug-dumps/spare-2/`
 
 Files:
 
@@ -117,6 +198,10 @@ Files:
 - `chip1-read2.bin`
 - `chip1-read3.bin`
 - `coding-plug-dump-analysis.json`
+
+The spare-2 directory contains the corresponding three `chip1-read*.bin`
+files and analyzer report. The campaign directory additionally contains
+`spare-1-vs-spare-2-chip1.json` with the exact cross-sample byte differences.
 
 The JSON report follows the output structure of
 `tools/analyze-wb2a-coding-plug-dumps.py`.

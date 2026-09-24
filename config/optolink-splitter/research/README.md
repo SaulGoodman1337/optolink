@@ -65,6 +65,15 @@ an observation rather than a storage-format conclusion.
 Detailed capture registry and raw-file locations:
 [coding-plug-physical-dumps.md](coding-plug-physical-dumps.md).
 
+Spare-2 adds a second repeatable chip1 image with SHA256
+`554d890e5c5158893ca44b10e0503f38f8c6de4f01de0fb2b9e55211a3e48946`.
+It is **96.0938 % byte-identical** to spare-1: 492 of 512 bytes match and
+`0x000..0x0E1` is identical. Differences are concentrated at
+`0x0E2..0x0F0`, the 24C04 `0x100` block boundary region, and `0x1FF`.
+Spare-2 contains the deliberate-looking pattern
+`00 FF 00 FF 00 FF 00 FF A5 5A A5 5A A5 5A A5 5A` at
+`0x100..0x10F`.
+
 ## Vitosoft production join — 2026-09-23
 
 The complete production Vitosoft data set for the local controller family is

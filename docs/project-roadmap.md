@@ -739,8 +739,13 @@ Physical bench update (2026-09-24):
   may be drawn from those absent patterns;
 - raw files and the analyzer JSON are now versioned under
   `config/optolink-splitter/research/coding-plug-dumps/spare-1/`;
-- next comparison set: capture the second spare and then the active plug, and
-  include **both physical 24C04 packages** per plug if possible.
+- second spare/chip1 capture completed: three 512-byte reads are identical,
+  SHA256 `554d890e5c5158893ca44b10e0503f38f8c6de4f01de0fb2b9e55211a3e48946`;
+- spare-1 and spare-2 chip1 images match at 492/512 bytes (96.0938 %); the
+  complete main-looking region through `0x0E1` is identical and differences
+  are concentrated near the tail / `0x100` 24C04 block boundary;
+- next comparison set: capture chip2 where possible, then the **currently
+  active** coding plug last, keeping the whole campaign read-only.
 
 
 Determine whether the Kesselcodierstecker can be read or modified beyond the

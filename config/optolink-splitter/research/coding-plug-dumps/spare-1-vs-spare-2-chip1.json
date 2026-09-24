@@ -1,0 +1,126 @@
+{
+  "format": 1,
+  "purpose": "read-only cross-sample comparison of chip1",
+  "samples": {
+    "spare-1": {
+      "sha256": "3dd583723661ea765f4e57405628def121bf78f1bc7d09dc1dfb51fec362f386",
+      "size": 512
+    },
+    "spare-2": {
+      "sha256": "554d890e5c5158893ca44b10e0503f38f8c6de4f01de0fb2b9e55211a3e48946",
+      "size": 512
+    }
+  },
+  "identical": false,
+  "identical_bytes": 492,
+  "total_bytes": 512,
+  "identical_percent": 96.0938,
+  "first_difference_offset": "0x0E2",
+  "differences": [
+    [
+      "0x0E2",
+      "5C",
+      "BE"
+    ],
+    [
+      "0x0E5",
+      "06",
+      "10"
+    ],
+    [
+      "0x0E8",
+      "2B",
+      "AE"
+    ],
+    [
+      "0x0EB",
+      "02",
+      "00"
+    ],
+    [
+      "0x0EE",
+      "02",
+      "0C"
+    ],
+    [
+      "0x0EF",
+      "70",
+      "E6"
+    ],
+    [
+      "0x0F0",
+      "00",
+      "01"
+    ],
+    [
+      "0x100",
+      "FF",
+      "00"
+    ],
+    [
+      "0x102",
+      "FF",
+      "00"
+    ],
+    [
+      "0x104",
+      "FF",
+      "00"
+    ],
+    [
+      "0x106",
+      "FF",
+      "00"
+    ],
+    [
+      "0x108",
+      "FF",
+      "A5"
+    ],
+    [
+      "0x109",
+      "FF",
+      "5A"
+    ],
+    [
+      "0x10A",
+      "FF",
+      "A5"
+    ],
+    [
+      "0x10B",
+      "FF",
+      "5A"
+    ],
+    [
+      "0x10C",
+      "FF",
+      "A5"
+    ],
+    [
+      "0x10D",
+      "FF",
+      "5A"
+    ],
+    [
+      "0x10E",
+      "FF",
+      "A5"
+    ],
+    [
+      "0x10F",
+      "FF",
+      "5A"
+    ],
+    [
+      "0x1FF",
+      "01",
+      "FF"
+    ]
+  ],
+  "notes": [
+    "Bytes 0x000..0x0E1 are identical.",
+    "The 71-byte repeated region 0x014..0x05A == 0x066..0x0AC is identical in both samples.",
+    "Differences are concentrated in the tail of the first 256-byte block, the 0x100 boundary region, and byte 0x1FF."
+  ]
+}

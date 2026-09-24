@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "purpose": "read-only WB2A coding-plug dump comparison",
+  "sample": "spare-2",
+  "physical_role": "second spare coding plug; not installed in boiler",
+  "known_patterns": {
+    "coding_card_identity_2015_0201": "20 15 02 01",
+    "part_number_ascii_7833971": "37 38 33 33 39 37 31",
+    "part_number_bcd_78_33_97_1f": "78 33 97 1f",
+    "part_number_bcd_07_83_39_71": "07 83 39 71"
+  },
+  "dump_summary": {
+    "count": 3,
+    "size_each": 512,
+    "sha256_each": "554d890e5c5158893ca44b10e0503f38f8c6de4f01de0fb2b9e55211a3e48946",
+    "all_identical": true,
+    "stable_offsets": 512,
+    "differing_offsets_total": 0,
+    "byte_entropy": 2.763132,
+    "unique_byte_values": 49,
+    "longest_ff_run": 240,
+    "longest_00_run": 52,
+    "printable_ascii_strings": [
+      {
+        "offset": 33,
+        "length": 4,
+        "text": "M22,"
+      },
+      {
+        "offset": 115,
+        "length": 4,
+        "text": "M22,"
+      }
+    ],
+    "known_pattern_hits": {
+      "coding_card_identity_2015_0201": [],
+      "part_number_ascii_7833971": [],
+      "part_number_bcd_78_33_97_1f": [],
+      "part_number_bcd_07_83_39_71": []
+    },
+    "repeated_region": {
+      "source": "0x014..0x05A",
+      "copy": "0x066..0x0AC",
+      "length": 71,
+      "identical": true
+    }
+  }
+}
