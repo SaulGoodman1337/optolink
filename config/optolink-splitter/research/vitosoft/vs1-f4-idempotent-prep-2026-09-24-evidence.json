@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "prerequisite": {
+    "stock_permanent_vs1_read_gate": "PASS",
+    "mixed_f7_gfa_splitter_poll_gate": "PASS",
+    "latest_gfa_evidence": "config/optolink-splitter/research/vitosoft/vs1-gfa-readonly-integration-prep-2026-09-24-evidence.json"
+  },
+  "purpose": "Validate the stock upstream VS1/F4 Virtual_WRITE transport without intentionally changing the effective controller value.",
+  "helper": {
+    "file": "config/optolink-splitter/wb2a-vs1-f4-idempotent-probe.py",
+    "version": "1.0.1",
+    "commit": "f27ba04a70596788c70257135c9dd56d3c978480",
+    "git_blob": "f471d9a17ff5c1039d9dae4b461d657ea30ed6d6",
+    "sha256": "51ee828efa4a943a1cd56c267b6f26f8d1c8fec28a9f384bf5ad8e26106a4ca4"
+  },
+  "target": {
+    "address": "0x2306",
+    "name": "ordinary day room setpoint",
+    "length": 1,
+    "write_policy": "Read the current byte via VS1/F7, then write exactly that same byte via stock upstream VS1/F4.",
+    "conservative_baseline_gate_celsius": [
+      10,
+      30
+    ],
+    "intentional_value_change": false
+  },
+  "checks": [
+    "Require splitter active/running and normal vs1protocol=False baseline.",
+    "Stop Party if active and stop splitter for exclusive serial ownership.",
+    "Require pinned stock optolinkvs1.py Git blob.",
+    "Initialize VS1 and verify 00F8 identity is 20C2.",
+    "Read 0x2306 via F7.",
+    "Write the identical byte via stock optolinkvs1.write_datapoint_ext/F4.",
+    "Require one-byte successful F4 response.",
+    "Read 0x2306 via F7 and require unchanged value.",
+    "Perform an additional final F7 verification.",
+    "Switch back to P300 directly and verify 00F8/2 = 20C2 before closing serial.",
+    "Restore splitter and Party service state."
+  ],
+  "exclusions": [
+    "No value-changing setpoint write.",
+    "No GFA_WRITE 0x68.",
+    "No coding/EEPROM/process/safety/actuator write."
+  ],
+  "interpretation": "PASS validates the stock VS1/F4 transport handshake and same-value readback on this appliance. A separate value-changing +/-1 C test is still required before claiming that F4 state mutation is fully validated."
+}
