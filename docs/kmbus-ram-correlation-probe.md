@@ -148,93 +148,52 @@ address space. Source-derived selectors/functions become the next priority.
 Preserve the exact address/length/output. That would be direct evidence of a
 hidden read namespace.
 
-## Transport diagnostic after first live run
+## Transport correction after first live run
 
-The first live run could not reach the comparison phase because all generic
-`request;...` calls timed out, including the positive 0x41 control.
+The first live run was planned with the wrong production-transport assumption.
 
-A follow-up control established:
+The local splitter is intentionally running permanent **VS1/KW** after the GFA
+activation required for blower speed P06 and the other GFA diagnostics. In this
+mode:
 
-~~~text
-service: active
+- normal controller datapoints use VS1 `F7 Virtual_READ`;
+- GFA values use VS1 `6B GFA_READ`;
+- `vs12_adapter.do_request()` deliberately rejects the generic VS2/P300
+  `request` command;
+- a P300 frame sent through `raw` is merely injected into the active VS1
+  session and does **not** switch the protocol to P300.
 
-r;0x00F8;8;raw;False
--> 1;0xf8;20c2000300000103
-
-request;0x01;0x00F8;8;;0x00
--> timeout
-
-request;0x41;0x00F8;8;;0x00
--> timeout
-~~~
-
-This is especially diagnostic because the current upstream splitter source
-constructs **byte-identical VS2 telegrams** for these two requests:
+The 22:08 journal confirms the intended rejection:
 
 ~~~text
-ordinary Virtual_READ 0x00F8/8
-generic request fct=0x01 addr=0x00F8 len=8 protid=0 data=""
-    -> 41 05 00 01 00 F8 08 06
+request command not supported with VS1/KW, use raw instead
 ~~~
 
-Therefore the controller cannot explain the difference if the generic
-`do_request()` branch is actually reached. The live command-dispatch/source
-version must be checked first.
+and both attempted P300 raw frames timed out in the active VS1 session.
 
-### Read-only dispatcher/raw diagnostic
+Therefore those timeout runs are not evidence about 0x41 support or address
+mapping. They are transport-context failures.
 
-~~~bash
-DBG=/usr/local/bin/optolink-debug
+### Correct method for future 0x41 tests
 
-echo "========== LIVE MODULE =========="
-/opt/optolink/venv/bin/python - <<'PY'
-import inspect
-import requests_util
-print("module:", requests_util.__file__)
-src = inspect.getsource(requests_util.response_to_request)
-print("has request/req branch:", '["request", "req"]' in src or "['request', 'req']" in src)
-print("--- matching lines ---")
-for i, line in enumerate(src.splitlines(), 1):
-    if "request" in line.lower() or "unknown command" in line.lower():
-        print(f"{i:03d}: {line}")
-PY
+`KMBUS_RAM_READ 0x41` is a VS2/P300 function in the current research model.
+Future tests must use a bounded **temporary P300 maintenance window**:
 
-echo
-echo "========== SOURCE GREP =========="
-grep -n -A12 -B5 'cmnd in.*request' /opt/optolink/requests_util.py || true
-grep -n 'unknown command received' /opt/optolink/requests_util.py || true
+1. confirm permanent production state is VS1/KW;
+2. stop the Party emulator if running;
+3. stop `optolink-splitter.service` so it releases the single serial owner;
+4. open the Optolink serial device directly;
+5. explicitly initialize P300/VS2;
+6. run a normal P300 Virtual_READ positive control;
+7. run only the allowlisted read-only 0x41 requests;
+8. close the direct serial session;
+9. restart `optolink-splitter.service`;
+10. restart Party if it was active;
+11. verify journal marker `VS1/KW protocol initialized`;
+12. verify fresh GFA P80/P06/P09/P87 values.
 
-echo
-echo "========== BYTE-IDENTICAL RAW VIRTUAL_READ =========="
-"$DBG" request "raw;4105000100F80806" --timeout 10
-
-echo
-echo "========== RAW KMBUS_RAM_READ 0x41 =========="
-"$DBG" request "raw;4105004100F80846" --timeout 12
-
-echo
-echo "========== REQUEST WARNINGS =========="
-journalctl -u optolink-splitter.service --since "5 minutes ago" --no-pager \
-  | grep -Ei 'unknown command|request|timeout|nack|error' \
-  | tail -n 100 || true
-~~~
-
-The second raw frame is the same no-write 0x41 read request encoded directly:
-
-~~~text
-41 05 00 41 00 F8 08 46
-~~~
-
-where `46` is the modulo-256 VS2 checksum.
-
-Interpretation:
-
-- raw 0x01 succeeds + raw 0x41 succeeds -> live controller path is fine;
-  generic `request` dispatcher/version is the problem;
-- raw 0x01 succeeds + raw 0x41 fails -> generic dispatcher is not the only
-  issue; re-evaluate current 0x41 controller state/transport;
-- live module lacks `request/req` branch -> deployed splitter is older or
-  otherwise different from the source version previously analyzed.
+Do **not** change `vs1protocol=True` permanently and do not feed P300 raw
+frames through the live VS1 MQTT command path.
 
 ## Follow-up phases
 
