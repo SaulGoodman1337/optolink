@@ -1,6 +1,6 @@
 # WB2A stock splitter permanent-VS1 smoke gate
 
-Status: **prepared; live execution pending.**
+Status: **prepared; first live attempt stopped safely at preflight because the migrated installation has no `.git` metadata. v1.0.1 now supports exact runtime-file hash verification as a fallback. Live VS1 execution still pending.**
 
 This is the final read-path gate before adding production GFA polling to the splitter.
 
@@ -27,35 +27,40 @@ config/optolink-splitter/wb2a-stock-vs1-smoke.py
 Version:
 
 ```text
-1.0.0
+1.0.1
 ```
 
 Pinned commit:
 
 ```text
-af582f24b144863221d0a1e3137ce27eeb47d1ba
+cd0d02b93cc24f901e6799a822b48c02dfb12025
 ```
 
 Git blob:
 
 ```text
-2a53de0c41e2a1adcb17b5025113e7b09b647149
+d521182fb32570800733a71ce77633faee16ae05
 ```
 
 SHA256:
 
 ```text
-a9cd4a1b1750d650573d8718a85e940fffa231c4bff62500265b2215f07241c3
+9ba6821e066e6c4217117929c99d11f233ff62bd0a55f92b4628e8a9622dcef6
 ```
 
-The helper's nine offline logic tests cover settings patching, missing-setting refusal, literal setting parsing, poll-topic extraction, disabled groups, MQTT topic formatting/collision detection, journal success/error classification and duration bounds.
+The helper's ten embedded offline logic tests cover settings patching, missing-setting refusal, literal setting parsing, poll-topic extraction, disabled groups, MQTT topic formatting/collision detection, journal success/error classification, Git-blob hashing and duration bounds.
 
 ## Stock-code requirement
 
-The gate refuses live execution unless:
+The first live attempt on 2026-09-24 stopped safely before any settings/service change because the migrated `/opt/optolink` installation does not contain Git metadata. The v1.0.0 gate required `git rev-parse HEAD` and therefore exited with code 128. No device command, temporary settings write or service stop occurred in that attempt.
 
-- `/opt/optolink` HEAD equals its local `origin/main`;
-- the checkout has no tracked modifications;
+v1.0.1 accepts either of two strict stock-source verification modes:
+
+1. **Git mode:** `/opt/optolink` is a Git checkout, HEAD equals local `origin/main`, and no tracked files are modified.
+2. **Migrated-install fallback:** if `.git` is absent, 14 critical runtime Python files must match exact Git-blob IDs from upstream commit `c1ee204a1421447721603c5f21c6da7337fdac97`. These include the main splitter, VS1/VS2 transports, request/poll/settings/MQTT/HA modules and supporting runtime helpers. Any missing or differing file aborts before changes.
+
+The gate additionally refuses live execution unless:
+
 - `homeassistant_poll_list.py` exists;
 - legacy `poll_list.py` is absent;
 - `port_vitoconnect is None`;
@@ -164,7 +169,10 @@ Do not manually stop services and do not edit settings first.
 A successful tail should include approximately:
 
 ```text
-TRACKED_CHECKOUT=clean_origin_main
+STOCK_VERIFY_MODE=git-clean-origin-main
+# or on a migrated installation:
+STOCK_VERIFY_MODE=runtime-blob-manifest
+RUNTIME_BLOB_MANIFEST=match files=14
 EXPECTED_CYCLE0_MQTT_TOPICS=<n>
 JOURNAL_VS1_INITIALIZED=yes
 JOURNAL_MAIN_LOOP=yes
