@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "evidence_level": "hardware_observation",
+  "scope": "Same-address PrefixRead P-N-P discriminator for KMBUS_EEPROM_READ 0x43 on local WB2A / VDensHO1 / 20C2.",
+  "live_run": {
+    "started_at": "2026-09-24T22:59:45.974+02:00",
+    "ended_at": "2026-09-24T22:59:54.712+02:00",
+    "log": "/root/wb2a-kmbus-prefix-ab-20260924-225945-205870.log",
+    "order": "prefixed -> no-prefix -> prefixed",
+    "prefix_read": "030000000101",
+    "p300_identity_control": "PASS: 0x00F8/8 -> 20c2000300000103",
+    "results": [
+      {
+        "address": "0x0001",
+        "length": 1,
+        "p1": "88",
+        "no_prefix": "87",
+        "p2": "88",
+        "classification": "PREFIX_EFFECT_OBSERVED"
+      },
+      {
+        "address": "0x000A",
+        "length": 5,
+        "p1": "4000000000",
+        "no_prefix": "4000000000",
+        "p2": "4000000000",
+        "classification": "NO_PREFIX_EFFECT_OBSERVED"
+      },
+      {
+        "address": "0x0078",
+        "length": 8,
+        "p1": "5497549754975497",
+        "no_prefix": "5497549754975497",
+        "p2": "d301d301d301d301",
+        "classification": "DYNAMIC_OR_INCONCLUSIVE"
+      },
+      {
+        "address": "0x00A0",
+        "length": 10,
+        "p1": "54985498549854985498",
+        "no_prefix": "f201f201f201f201f201",
+        "p2": "54975497549754975497",
+        "classification": "DYNAMIC_OR_INCONCLUSIVE"
+      }
+    ],
+    "prefix_effect_count": 1,
+    "no_prefix_effect_count": 1,
+    "inconclusive_count": 2,
+    "services_restored": true,
+    "vs1_restored": true,
+    "execution_result": "PASS"
+  },
+  "conclusions": [
+    "At 0x0001/1 the presence of the exact six-byte PrefixRead materially changed the response in a controlled sub-second P-N-P sequence: 88 -> 87 -> 88. This is direct local evidence that the extra request bytes are not universally ignored.",
+    "At 0x000A/5 no PrefixRead effect was observed: all three results were 4000000000.",
+    "The higher-address blocks remain unsuitable for EEPROM interpretation: 0x0078 and 0x00A0 continued to return repeated two-byte words that changed during the P-N-P sequence.",
+    "The 0x0078 sequence changed from repeated 5497 to repeated d301 even though both prefixed requests were nominally identical, proving that this response class can change on sub-second timescales.",
+    "The 0x00A0 sequence returned repeated 5498, then repeated f201 without prefix, then repeated 5497 with prefix. Because the two prefixed controls disagree, the no-prefix difference cannot be attributed solely to PrefixRead.",
+    "The strongest justified statement is now: PrefixRead can affect at least one local 0x43 transaction, but its exact semantics (routing selector, mode selector, or another request parameter) are not yet proven."
+  ],
+  "next_step": [
+    "Repeat only 0x0001/1 in isolated fresh P300 sessions with a balanced prefixed/no-prefix order so protocol-session carryover and sequence bias are removed.",
+    "Do not expand the 0x43 address map until the isolated 0x0001 effect is reproduced.",
+    "Deprioritize semantic decoding of repeated high-address words until their transaction/state mechanism is understood."
+  ]
+}
