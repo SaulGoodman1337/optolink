@@ -101,6 +101,13 @@ class MaintenanceApi:
         if message.topic != self.command_topic:
             return
 
+        # Commands are transactional events, never state. Refuse retained
+        # commands so a broker cannot replay an old write/reset after service
+        # restart or resubscription.
+        if getattr(message, "retain", False):
+            log("WARNING: ignoring retained maintenance command")
+            return
+
         raw = message.payload.decode(errors="replace")
         try:
             self.actions.put_nowait(raw)
