@@ -115,7 +115,28 @@
     "active_gfa_vector": "00 63 15 01 14 0c 04 d6 02 00",
     "active_gfa_vector_present_in_spare1_chip1": false,
     "active_gfa_vector_present_in_spare2_chip1": false,
-    "key_gfa_subsequences_present": false
+    "key_gfa_subsequences_present": false,
+    "mirrored_literal_candidates": {
+      "qualification": "candidate only; same raw byte can have unrelated semantics",
+      "P100_63": [
+        "0x02B/0x07D",
+        "0x046/0x098"
+      ],
+      "P102_01": [
+        "0x01B/0x06D"
+      ],
+      "P104_0C": [
+        "0x01D/0x06F"
+      ],
+      "P107_02": [
+        "0x003/0x05D"
+      ],
+      "absent_in_both_spare_chip1": [
+        "15",
+        "14",
+        "D6"
+      ]
+    }
   },
   "hypotheses": [
     {
@@ -147,6 +168,12 @@
       "confidence": "strong",
       "statement": "The regulation-side 0x7656 summary and GFA coding-plug diagnostics share identity/revision byte values.",
       "basis": "Live 0x7656 is 20 15 02 01; GFA P101=15, P102=01 and P107=02 in the same operating configuration. Exact 0x7656 byte-field positions remain unresolved."
+    },
+    {
+      "id": "H6",
+      "confidence": "moderate",
+      "statement": "Parts of the GFA coding-plug view may be derived from fields inside the mirrored 82-byte record rather than stored as one contiguous P90-P108 block.",
+      "basis": "Live values 63, 01, 0C and 02 occur at identical corresponding offsets in both logical mirror copies and both spare chip1 images, while identity/date/CRC bytes 15, 14 and D6 are absent. This pattern is compatible with shared parameters plus plug-specific/transformed metadata but is not a field mapping proof."
     }
   ],
   "next_read_only_targets": [
