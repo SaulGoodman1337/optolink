@@ -178,8 +178,10 @@ Current evidence:
   with inner payload `05`. Matching cross-profile Virtual_READ controls
   returned Error Message payload `01`. All source XRAM rows have empty
   PrefixRead, so omitted prefix data does not explain the rejection.
-- [ ] Move to one exact source-defined **prefixed**
+- [~] Move to one exact source-defined **prefixed**
   `KMBUS_EEPROM_READ 0x43` request before any further 0x43 probing.
+  Guarded helper prepared from Vitosoft-v6 event 578:
+  `0x43 / 0x0001 / len 1 / PrefixRead 030000000101`.
 - [ ] Reconstruct one real Vitosoft-defined 0x43 request including prefix before
   considering another local EEPROM-style read.
 - [ ] Keep all work read-only; no broad blind sweep and no KBUS/KMBUS writes.
