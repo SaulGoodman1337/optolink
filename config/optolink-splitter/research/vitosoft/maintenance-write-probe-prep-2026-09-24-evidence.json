@@ -88,7 +88,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "MAINTENANCE_BACKEND_SET_HOURS_WRITE_VERIFIED_REFERENCE_SIDE_EFFECT_GUARDED",
+  "current_status": "MAINTENANCE_BACKEND_SET_MONTHS_WRITE_PATH_LIVE_VERIFIED",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -365,6 +365,47 @@
         "A real later CLI write made the side effect visible: enabling a nonzero burner-hours threshold can restart the burner-hours maintenance reference.",
         "The CLI must require explicit acknowledgement before any actual 0x5721 write.",
         "Do not describe (0x08A7-0x7570)/3600 as proof of elapsed time since a physical maintenance event; it is elapsed burner runtime since the current maintenance reference."
+      ]
+    },
+    "set_months_write_path": {
+      "date": "2026-09-24",
+      "status": "live-verified",
+      "baseline": {
+        "interval_raw": "00",
+        "interval_reference_raw": "107cb56a",
+        "interval_reference_uint_le": 1790278672,
+        "burner_reference_raw": "134cce03",
+        "burner_reference_seconds": 63851539
+      },
+      "set_1_month": {
+        "write_command": "w;0x5723;1;1",
+        "write_ack": "1;0x5723;1",
+        "readback_raw": "01",
+        "interval_reference_after_raw": "5987b56a",
+        "interval_reference_after_uint_le": 1790281561,
+        "finding": "0x756C was re-baselined while 0x7570 remained unchanged."
+      },
+      "restore_0_months": {
+        "write_command": "w;0x5723;1;0",
+        "write_ack": "1;0x5723;0",
+        "readback_raw": "00",
+        "interval_reference_after_raw": "5f87b56a",
+        "interval_reference_after_uint_le": 1790281567,
+        "reference_delta_counts": 6,
+        "finding": "Restoring 0x5723 to zero re-baselined 0x756C again."
+      },
+      "unchanged": {
+        "hours_threshold_raw": "00",
+        "maintenance_state_raw": "00",
+        "burner_reference_raw": "134cce03",
+        "burner_total_raw": "154cce03",
+        "burner_starts_raw": "d46f0700"
+      },
+      "conclusions": [
+        "The guarded CLI set-months path is live-verified for write, readback and restore.",
+        "Every actual 0x5723 write re-baselines only the LastCheckInterval reference at 0x756C.",
+        "0x7570 remains unchanged by 0x5723 changes.",
+        "The reference advanced by 6 counts across the approximately 6-second set-to-zero restore interval, reinforcing seconds-like behavior without asserting a wall-clock epoch."
       ]
     }
   }
