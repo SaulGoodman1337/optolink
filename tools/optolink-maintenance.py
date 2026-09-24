@@ -127,7 +127,7 @@ def request(
     prefix = label or command
 
     if verbose:
-        print(f"{prefix:<24} -> {settings.mqtt_listen}: {command}")
+        print(f"{prefix:<24} -> {settings.mqtt_listen}: {command}", file=sys.stderr)
 
     session.client.publish(settings.mqtt_listen, command).wait_for_publish()
 
@@ -137,7 +137,10 @@ def request(
             candidate = session.responses.pop(0)
             if expected_addr is None or _response_addr(candidate) == expected_addr:
                 if verbose:
-                    print(f"{prefix:<24} <- {settings.mqtt_respond}: {candidate}")
+                    print(
+                        f"{prefix:<24} <- {settings.mqtt_respond}: {candidate}",
+                        file=sys.stderr,
+                    )
                 return candidate
         time.sleep(0.05)
 
@@ -221,6 +224,44 @@ def write_byte(
     )
 
 
+def _restore_byte(
+    session: MqttSession,
+    address: int,
+    old_value: int,
+    *,
+    timeout: float,
+    settle: float,
+    verbose: bool,
+) -> str:
+    ack_error: Exception | None = None
+    try:
+        write_byte(session, address, old_value, timeout=timeout, verbose=verbose)
+    except Exception as exc:  # noqa: BLE001 - readback is authoritative
+        ack_error = exc
+
+    time.sleep(settle)
+    try:
+        restored, _ = read_uint_le(
+            session, address, 1, timeout=timeout, verbose=verbose
+        )
+    except Exception as read_exc:  # noqa: BLE001
+        if ack_error is not None:
+            return f"rollback ACK failed ({ack_error}) and readback failed ({read_exc})"
+        return f"rollback readback failed ({read_exc})"
+
+    if restored == old_value:
+        if ack_error is not None:
+            return f"rollback verified despite ACK error ({ack_error})"
+        return f"rollback verified ({restored})"
+
+    if ack_error is not None:
+        return (
+            f"rollback ACK failed ({ack_error}); readback={restored}, "
+            f"expected={old_value}"
+        )
+    return f"rollback readback={restored}, expected={old_value}"
+
+
 def write_verify_byte(
     session: MqttSession,
     address: int,
@@ -231,28 +272,54 @@ def write_verify_byte(
     settle: float,
     verbose: bool,
 ) -> int:
-    write_byte(session, address, new_value, timeout=timeout, verbose=verbose)
+    ack_error: Exception | None = None
+    try:
+        write_byte(session, address, new_value, timeout=timeout, verbose=verbose)
+    except Exception as exc:  # noqa: BLE001 - controller may still have written
+        ack_error = exc
+
     time.sleep(settle)
-    actual, _ = read_uint_le(
-        session, address, 1, timeout=timeout, verbose=verbose
-    )
+
+    try:
+        actual, _ = read_uint_le(
+            session, address, 1, timeout=timeout, verbose=verbose
+        )
+    except Exception as read_exc:  # noqa: BLE001
+        rollback_note = ""
+        if old_value is not None:
+            rollback_note = "; " + _restore_byte(
+                session,
+                address,
+                old_value,
+                timeout=timeout,
+                settle=settle,
+                verbose=verbose,
+            )
+        raise MaintenanceError(
+            f"0x{address:04X}: write could not be verified "
+            f"(ACK error={ack_error!s}; readback error={read_exc!s}){rollback_note}"
+        ) from read_exc
+
     if actual == new_value:
+        # A missing/late ACK is acceptable only when the independent readback
+        # proves the requested controller state.
         return actual
 
     rollback_note = ""
     if old_value is not None:
-        try:
-            write_byte(session, address, old_value, timeout=timeout, verbose=verbose)
-            time.sleep(settle)
-            restored, _ = read_uint_le(
-                session, address, 1, timeout=timeout, verbose=verbose
-            )
-            rollback_note = f"; rollback readback={restored}"
-        except Exception as exc:  # noqa: BLE001 - preserve primary failure
-            rollback_note = f"; rollback also failed: {exc}"
+        rollback_note = "; " + _restore_byte(
+            session,
+            address,
+            old_value,
+            timeout=timeout,
+            settle=settle,
+            verbose=verbose,
+        )
 
+    ack_note = f"; ACK error={ack_error}" if ack_error is not None else ""
     raise MaintenanceError(
-        f"0x{address:04X}: readback {actual} != requested {new_value}{rollback_note}"
+        f"0x{address:04X}: readback {actual} != requested {new_value}"
+        f"{ack_note}{rollback_note}"
     )
 
 
