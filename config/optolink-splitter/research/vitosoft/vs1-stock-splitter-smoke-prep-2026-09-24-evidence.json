@@ -9,11 +9,11 @@
   },
   "helper": {
     "file": "config/optolink-splitter/wb2a-stock-vs1-smoke.py",
-    "version": "1.0.0",
-    "commit": "af582f24b144863221d0a1e3137ce27eeb47d1ba",
-    "git_blob": "2a53de0c41e2a1adcb17b5025113e7b09b647149",
-    "sha256": "a9cd4a1b1750d650573d8718a85e940fffa231c4bff62500265b2215f07241c3",
-    "local_logic_tests": "9/9 PASS before publication; final signal-handling patch changes cleanup arm timing only",
+    "version": "1.0.1",
+    "commit": "cd0d02b93cc24f901e6799a822b48c02dfb12025",
+    "git_blob": "d521182fb32570800733a71ce77633faee16ae05",
+    "sha256": "9ba6821e066e6c4217117929c99d11f233ff62bd0a55f92b4628e8a9622dcef6",
+    "local_logic_tests": "10/10 embedded tests; v1.0.1 adds Git-blob hash helper test",
     "default_seconds": 30,
     "duration_bounds_seconds": [
       20,
@@ -45,7 +45,16 @@
     },
     "source_patch": false,
     "gfa_poll_patch": false,
-    "direct_optolink_write_by_helper": false
+    "direct_optolink_write_by_helper": false,
+    "stock_verification": {
+      "preferred": "clean Git checkout with HEAD == origin/main and no tracked modifications",
+      "fallback_for_migrated_installation": {
+        "mode": "critical runtime Git-blob manifest",
+        "upstream_ref": "c1ee204a1421447721603c5f21c6da7337fdac97",
+        "files": 14,
+        "behavior": "If .git is absent, all 14 pinned runtime Python files must match exact upstream Git blob IDs before any service/settings change."
+      }
+    }
   },
   "validation": {
     "process": [
@@ -77,5 +86,13 @@
     "long-duration FF behavior",
     "catastrophic interruption recovery such as SIGKILL/power/storage failure"
   ],
-  "next_after_pass": "Implement a narrow update-safe structured GFA_READ path under the splitter's single VS1 serial owner, then stage P06/P09/P87/P80 diagnostic polling."
+  "next_after_pass": "Implement a narrow update-safe structured GFA_READ path under the splitter's single VS1 serial owner, then stage P06/P09/P87/P80 diagnostic polling.",
+  "first_attempt": {
+    "timestamp_local": "2026-09-24T12:21:20+02:00",
+    "result": "FAIL_PRECONDITION",
+    "reason": "/opt/optolink is not a Git working tree; git rev-parse HEAD exited 128",
+    "device_or_settings_changes": false,
+    "services_changed": false,
+    "note": "Failure occurred before backup creation, service stop, MQTT subscriber start, or temporary settings write."
+  }
 }
