@@ -116,18 +116,34 @@ the source entities.
 Do not solve this by deleting the aliases and relying on Home Assistant to
 re-enable historical registry entries.
 
-### UI redesign
+### UI implementation and deferred refinement
 
-Replace the current large Markdown table with a presentation consistent with
-the rest of the Diagnose cockpit:
+The fault-history section has now been converted from the original wide raw
+table to a compact chronology layout:
 
-- separate **Systemfehler** and **GFA-Archiv** visually;
-- system entries should show code, verified text when known, and timestamp;
-- use restrained semantic fault coloring;
-- keep each useful entry accessible for normal Home Assistant more-info where
-  practical;
-- make empty/unused history slots visually quiet rather than equally prominent;
-- avoid turning the section back into a long plain entity list.
+- **Systemfehler** and **GFA-Archiv** are separated visually;
+- system entries show slot number, code, verified text where known and
+  timestamp;
+- the GFA archive remains a compact two-column raw-code/timestamp view;
+- a small status row above the history shows current GFA state, the newest
+  system-history code and the newest GFA-history code;
+- repeated historical entries are intentionally **not** summarized or counted
+  by code.
+
+The current chronology is functional and accepted as the working baseline for
+now, but its visual presentation is **not considered final**.
+
+Deferred TODO:
+
+- revisit spacing, typography, column proportions and visual hierarchy after
+  the higher-priority dashboard/data work is complete;
+- evaluate whether the system chronology should use a more purpose-built
+  timeline/list presentation while remaining compact;
+- keep historical entries visually distinct from currently active faults so a
+  stored old fault is never presented as a live alarm;
+- preserve the separate GFA code space and do not add guessed GFA descriptions;
+- do **not** add a repeated-code/frequency summary unless explicitly revisited
+  later.
 
 ### GFA fault history remains a separate code space
 
@@ -260,9 +276,9 @@ Before propagating the visual design to other pages, finish Diagnose in this
 order:
 
 1. fix/verify intermittent color/background rendering;
-2. fix fault-history alias decoding;
-3. replace the plain fault-history Markdown table with the cockpit-style
-   presentation;
+2. fix fault-history alias decoding; **implemented**;
+3. keep the current compact fault chronology as the accepted baseline and
+   revisit its visual/UX design later;
 4. add the effective boiler target `0x555A`;
 5. add selected already-polled status values where they improve diagnosis;
 6. add a pump request/output process presentation only if labels remain
@@ -306,8 +322,9 @@ verification before using the pattern on the next view.
 
 - [ ] Apply deterministic color handling to the three Diagnose short-history cards.
 - [ ] Cold-load test Diagnose without switching views.
-- [ ] Copy verified system-fault decoding into the `*_anzeige` aliases.
-- [ ] Redesign Systemfehler/GFA history presentation.
+- [x] Copy verified system-fault decoding into the `*_anzeige` aliases.
+- [x] Replace the original raw fault-history table with the compact chronology baseline.
+- [ ] Revisit fault-history visual/UX design later; current chronology is accepted for now and no repeated-code summary is wanted.
 - [ ] Add `kessel_solltemperatur_effektiv`.
 - [ ] Decide which of exhaust temperature, DHW flow, economy, frost and holiday
       state belong in the top-level Diagnose view.
