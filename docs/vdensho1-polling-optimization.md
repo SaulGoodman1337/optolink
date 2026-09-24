@@ -191,3 +191,39 @@ FAST cycles as configured.
 
 The next controlled experiment is `olbreath=0.10` with the identical passive
 observer and journal-error check. The 150 ms run is the comparison baseline.
+
+
+## Live 100 ms cadence test
+
+A second passive 180-second observation was recorded after changing only
+`olbreath` from 0.15 s to 0.10 s. The phased scheduler and poll profile were
+unchanged.
+
+Measured FAST cadence:
+
+| Datapoint | Median | P95 | Max |
+|---|---:|---:|---:|
+| Kesseltemperatur | 3.541 s | 3.768 s | 3.830 s |
+| Brenner Modulationsgrad | 3.542 s | 3.744 s | 3.832 s |
+| GFA P06 blower RPM | 3.508 s | 3.720 s | 3.800 s |
+| GFA P09 modulation setpoint | 3.514 s | 3.721 s | 3.807 s |
+| GFA P87 raw status | 3.496 s | 3.725 s | 3.816 s |
+
+Measured NORMAL cadence:
+
+| Datapoint | Median | P95 | Max |
+|---|---:|---:|---:|
+| Außentemperatur | 17.517 s | 18.191 s | 18.244 s |
+| GFA P80 identity | 17.598 s | 18.226 s | 18.355 s |
+
+No `FF` quarantine, `OL Error`, restart or traceback was observed since the
+restart used for this test.
+
+Relative to the 150 ms baseline, median cadence improved by about 26 percent
+for P06 and Kesseltemperatur and about 27 percent for Außentemperatur.
+
+Result: **PASS**.
+
+The next controlled step is 50 ms. If that also passes the short gate, perform
+a longer soak including at least one burner start before changing the profile
+helper's permanent timing from the conservative 150 ms setting.
