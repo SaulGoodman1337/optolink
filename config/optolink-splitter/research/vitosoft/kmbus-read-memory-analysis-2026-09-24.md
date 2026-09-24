@@ -480,6 +480,43 @@ Potentially useful for:
 
 Do not equate it with the boiler coding-plug EEPROM. No such link is proven.
 
+## Local proof: PrefixRead makes source-shaped 0x43 access succeed
+
+The first exact Vitosoft-shaped prefixed KMBUS EEPROM request was tested locally:
+
+~~~text
+event 578
+KMBUS_EEPROM_READ / 0x43
+address 0x0001
+block length 1
+PrefixRead 030000000101
+~~~
+
+Wire result:
+
+~~~text
+TX 41 0B 00 43 00 01 01 03 00 00 00 01 01 55
+RX 06
+RX 41 06
+RX 01 43 00 01 01 88 D4
+~~~
+
+So the local 20C2 returns a normal successful response with raw data `88`.
+This closes an important protocol question: for this path, `PrefixRead` is
+indeed transmitted selector/routing data and materially changes the useful
+0x43 transaction shape.
+
+Do not yet interpret `88` as the GWG_BT2/LGM27 `Kennung (Prog1)`; only the
+request shape is source-derived. Local subordinate-device identity remains to
+be correlated.
+
+The v6 slice contains a bounded family of additional exact 0x43 block shapes
+using the same prefix, including `0x000A/5`, `0x000F/8`, `0x0064/2`,
+`0x006A/6`, `0x0070/7`, `0x0078/5|8`, `0x0083/4`, `0x0091/1`,
+and the fault-history blocks `0x00A0/10`, `0x00AA/10`, `0x00B4/10`.
+Those are the justified next read-only targets; do not infer a contiguous
+EEPROM map beyond them.
+
 ### 3. 0x31 XRAM_READ - high conceptual value, local applicability unknown
 
 The 12 definitions are now fully enumerated. They expose volatile objects such
