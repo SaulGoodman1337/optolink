@@ -353,7 +353,7 @@ are useful, but they must not be presented as live physical measurements.
 
 ### Wartung view implementation
 
-Status: **staging isolation + MQTT Discovery live-verified / first frontend render reviewed / compact action-card fix committed**
+Status: **staging isolation + MQTT Discovery + corrected Wartung frontend render live-verified / HA interaction test pending**
 
 The new `Wartung` dashboard view uses the guarded maintenance MQTT API rather
 than raw Optolink writes. Two discovered MQTT Number entities are staging
@@ -385,6 +385,12 @@ the two Apply actions and the reset action. This was a presentation-only bug:
 the underlying entities and API states were correct. The dashboard now uses
 dedicated compact maintenance action templates with fixed icon geometry and a
 compact Mushroom safety-information card.
+
+The corrected Wartung render was then reviewed live. The two configuration
+columns render symmetrically, Apply actions are compact, the reset action is
+visually separated with a warning accent, and the safety information no longer
+overlaps the action area. Entity states are visible and coherent with the
+verified backend state.
 
 ## 5. Diagnose view completion plan
 
@@ -496,7 +502,8 @@ verification before using the pattern on the next view.
 - [x] Add editable Service / Wartung controls in HA using staged MQTT numbers and confirmed API actions.
 - [x] Live-verify that Wartung staging does not write the controller.
 - [x] Live-verify all new Wartung MQTT Discovery entities and stage/state topics.
-- [ ] Live-verify the Wartung view itself: layout, entity rendering, confirmation dialogs and displayed readbacks must match the controller.
+- [x] Live-verify the corrected Wartung layout and entity rendering.
+- [ ] Live-verify HA interaction: staging from the Number controls, confirmation dialogs, Apply action and displayed post-action readback.
 - [x] Run `wb2a-schedule-probe snapshot` and preserve the 21 raw day blocks.
 - [x] Verify 0/1/2/4 interval writes, slot clearing, 24:00 and byte-exact restore.
 - [x] Implement guarded schedule-manager writes and the full Zeitprogramme editor.
