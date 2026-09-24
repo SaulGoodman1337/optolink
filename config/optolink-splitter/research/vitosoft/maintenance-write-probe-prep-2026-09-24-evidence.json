@@ -88,7 +88,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "MAINTENANCE_BACKEND_ALL_CLI_PATHS_LIVE_VERIFIED_CONDITIONAL_7570_RESET_EFFECT",
+  "current_status": "MAINTENANCE_MQTT_API_READ_ONLY_PATH_LIVE_VERIFIED",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -447,6 +447,50 @@
         "0x7570 remained unchanged in this reset capture while the configured burner-hours threshold 0x5721 was 0 h.",
         "The earlier reset capture initialized 0x7570 from zero, so the burner-reference effect of 0x5724 is not unconditional and must be reported as controller-state/configuration dependent.",
         "0x08A7 and 0x088A did not decrease or reset."
+      ]
+    }
+  },
+  "api_validation": {
+    "initial_status_path": {
+      "date": "2026-09-24",
+      "status": "live-verified",
+      "service": {
+        "unit": "optolink-maintenance-api.service",
+        "active": true,
+        "enabled": true,
+        "user": "optolink"
+      },
+      "files": {
+        "shared_lock": "/opt/optolink/.maintenance.lock",
+        "lock_mode": "0660",
+        "lock_owner": "optolink:optolink",
+        "core": "/opt/optolink/optolink_maintenance_core.py",
+        "cli": "/usr/local/bin/optolink-maintenance",
+        "api": "/usr/local/bin/optolink-maintenance-api"
+      },
+      "mqtt": {
+        "command_topic": "openv/maintenance/cmnd",
+        "result_topic": "openv/maintenance/result",
+        "request_action": "status",
+        "request_id": "manual-status-58e3b88cb404",
+        "ok": true,
+        "deduplicated": false
+      },
+      "returned_status": {
+        "hours_threshold_hours": 0,
+        "interval_months": 0,
+        "maintenance_state": "Grundzustand",
+        "interval_reference_raw": "c988b56a",
+        "interval_reference_uint_le": 1790281929,
+        "burner_reference_raw": "134cce03",
+        "burner_reference_seconds": 63851539,
+        "burner_total_seconds": 63851541,
+        "burner_starts": 487380
+      },
+      "conclusions": [
+        "End-to-end read-only MQTT API path is live-verified: client -> maintenance command topic -> API service -> shared core -> splitter -> result topic.",
+        "The CLI still returns the same maintenance status after the core refactor.",
+        "The shared maintenance lock is provisioned with permissions usable by both root CLI and the optolink API service."
       ]
     }
   }
