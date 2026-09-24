@@ -36,6 +36,10 @@ Write verification on this exact appliance:
     0x2306=21 C and 0x2323=2. Native physical Party still tracks through 0x2303.
   0x6300 DHW target: R/W, current configured range 10..60 C
   0x6773 circulation interval: R/W verified for values 0 and 7
+  0x2000..0x2230 schedule blocks: complete 8-byte daily writes hardware-
+    verified for 0/1/2/4 intervals, FF FF slot clearing and 24:00 end boundary.
+    Production HA writes are routed through the guarded schedule manager with
+    strict validation and byte-exact post-write readback.
 
 Writable selects expose the complete VDensHO1 source-documented enums.
 Hardware write tests on this exact appliance have so far covered 0x2323
@@ -1715,8 +1719,18 @@ poll_list = {
         },
 
         # -----------------------------------------------------------------
-        # Time programs - read only in this HA draft.
-        # schedvdens is supported by current optolink-splitter.
+        # Time programs.
+        #
+        # Read path:
+        #   complete 8-byte daily blocks, now refreshed at SLOW cadence so
+        #   changes made on the physical control panel eventually reach HA.
+        #
+        # Write path:
+        #   the MQTT text editors below DO NOT write to openv/cmnd directly.
+        #   Commands go to optolink-schedule-manager, which strictly validates
+        #   0..4 ordered/non-overlapping 10-minute intervals, writes the whole
+        #   eight-byte block, performs byte-exact readback and restores the
+        #   original block if verification fails.
         # -----------------------------------------------------------------
         {
             "domain": "sensor",
@@ -1724,29 +1738,159 @@ poll_list = {
             "enabled_by_default": True,
             "icon": "mdi:calendar-clock",
             "poll": [
-                ("ONCE", "heizkreis_m1_zeitprogramm_montag",     0x2000, 8, "schedvdens"),
-                ("ONCE", "heizkreis_m1_zeitprogramm_dienstag",   0x2008, 8, "schedvdens"),
-                ("ONCE", "heizkreis_m1_zeitprogramm_mittwoch",   0x2010, 8, "schedvdens"),
-                ("ONCE", "heizkreis_m1_zeitprogramm_donnerstag", 0x2018, 8, "schedvdens"),
-                ("ONCE", "heizkreis_m1_zeitprogramm_freitag",    0x2020, 8, "schedvdens"),
-                ("ONCE", "heizkreis_m1_zeitprogramm_samstag",    0x2028, 8, "schedvdens"),
-                ("ONCE", "heizkreis_m1_zeitprogramm_sonntag",    0x2030, 8, "schedvdens"),
+                ("SLOW", "heizkreis_m1_zeitprogramm_montag", 0x2000, 8, "schedvdens"),
+                ("SLOW", "heizkreis_m1_zeitprogramm_dienstag", 0x2008, 8, "schedvdens"),
+                ("SLOW", "heizkreis_m1_zeitprogramm_mittwoch", 0x2010, 8, "schedvdens"),
+                ("SLOW", "heizkreis_m1_zeitprogramm_donnerstag", 0x2018, 8, "schedvdens"),
+                ("SLOW", "heizkreis_m1_zeitprogramm_freitag", 0x2020, 8, "schedvdens"),
+                ("SLOW", "heizkreis_m1_zeitprogramm_samstag", 0x2028, 8, "schedvdens"),
+                ("SLOW", "heizkreis_m1_zeitprogramm_sonntag", 0x2030, 8, "schedvdens"),
 
-                ("ONCE", "warmwasser_zeitprogramm_montag",       0x2100, 8, "schedvdens"),
-                ("ONCE", "warmwasser_zeitprogramm_dienstag",     0x2108, 8, "schedvdens"),
-                ("ONCE", "warmwasser_zeitprogramm_mittwoch",     0x2110, 8, "schedvdens"),
-                ("ONCE", "warmwasser_zeitprogramm_donnerstag",   0x2118, 8, "schedvdens"),
-                ("ONCE", "warmwasser_zeitprogramm_freitag",      0x2120, 8, "schedvdens"),
-                ("ONCE", "warmwasser_zeitprogramm_samstag",      0x2128, 8, "schedvdens"),
-                ("ONCE", "warmwasser_zeitprogramm_sonntag",      0x2130, 8, "schedvdens"),
+                ("SLOW", "warmwasser_zeitprogramm_montag", 0x2100, 8, "schedvdens"),
+                ("SLOW", "warmwasser_zeitprogramm_dienstag", 0x2108, 8, "schedvdens"),
+                ("SLOW", "warmwasser_zeitprogramm_mittwoch", 0x2110, 8, "schedvdens"),
+                ("SLOW", "warmwasser_zeitprogramm_donnerstag", 0x2118, 8, "schedvdens"),
+                ("SLOW", "warmwasser_zeitprogramm_freitag", 0x2120, 8, "schedvdens"),
+                ("SLOW", "warmwasser_zeitprogramm_samstag", 0x2128, 8, "schedvdens"),
+                ("SLOW", "warmwasser_zeitprogramm_sonntag", 0x2130, 8, "schedvdens"),
 
-                ("ONCE", "zirkulation_zeitprogramm_montag",      0x2200, 8, "schedvdens"),
-                ("ONCE", "zirkulation_zeitprogramm_dienstag",    0x2208, 8, "schedvdens"),
-                ("ONCE", "zirkulation_zeitprogramm_mittwoch",    0x2210, 8, "schedvdens"),
-                ("ONCE", "zirkulation_zeitprogramm_donnerstag",  0x2218, 8, "schedvdens"),
-                ("ONCE", "zirkulation_zeitprogramm_freitag",     0x2220, 8, "schedvdens"),
-                ("ONCE", "zirkulation_zeitprogramm_samstag",     0x2228, 8, "schedvdens"),
-                ("ONCE", "zirkulation_zeitprogramm_sonntag",     0x2230, 8, "schedvdens"),
+                ("SLOW", "zirkulation_zeitprogramm_montag", 0x2200, 8, "schedvdens"),
+                ("SLOW", "zirkulation_zeitprogramm_dienstag", 0x2208, 8, "schedvdens"),
+                ("SLOW", "zirkulation_zeitprogramm_mittwoch", 0x2210, 8, "schedvdens"),
+                ("SLOW", "zirkulation_zeitprogramm_donnerstag", 0x2218, 8, "schedvdens"),
+                ("SLOW", "zirkulation_zeitprogramm_freitag", 0x2220, 8, "schedvdens"),
+                ("SLOW", "zirkulation_zeitprogramm_samstag", 0x2228, 8, "schedvdens"),
+                ("SLOW", "zirkulation_zeitprogramm_sonntag", 0x2230, 8, "schedvdens"),
+            ],
+        },
+
+        {
+            "domain": "text",
+            "icon": "mdi:calendar-edit",
+            "mode": "text",
+            "optimistic": False,
+            "value_template": "{% set ns = namespace(items=[]) %}{% for slot in value.split(',') %}{% set s = slot | trim %}{% if s and 'na' not in s | lower %}{% set ns.items = ns.items + [s] %}{% endif %}{% endfor %}{{ ns.items | join(',') if ns.items | length else 'none' }}",
+            "nopoll": [
+                {
+                    "name": "heizkreis_m1_zeitprogramm_montag_editor",
+                    "state_topic": "{mqtt_base}/heizkreis_m1_zeitprogramm_montag",
+                    "command_topic": "{mqtt_base}/schedule/set/heating/montag",
+                },
+                {
+                    "name": "heizkreis_m1_zeitprogramm_dienstag_editor",
+                    "state_topic": "{mqtt_base}/heizkreis_m1_zeitprogramm_dienstag",
+                    "command_topic": "{mqtt_base}/schedule/set/heating/dienstag",
+                },
+                {
+                    "name": "heizkreis_m1_zeitprogramm_mittwoch_editor",
+                    "state_topic": "{mqtt_base}/heizkreis_m1_zeitprogramm_mittwoch",
+                    "command_topic": "{mqtt_base}/schedule/set/heating/mittwoch",
+                },
+                {
+                    "name": "heizkreis_m1_zeitprogramm_donnerstag_editor",
+                    "state_topic": "{mqtt_base}/heizkreis_m1_zeitprogramm_donnerstag",
+                    "command_topic": "{mqtt_base}/schedule/set/heating/donnerstag",
+                },
+                {
+                    "name": "heizkreis_m1_zeitprogramm_freitag_editor",
+                    "state_topic": "{mqtt_base}/heizkreis_m1_zeitprogramm_freitag",
+                    "command_topic": "{mqtt_base}/schedule/set/heating/freitag",
+                },
+                {
+                    "name": "heizkreis_m1_zeitprogramm_samstag_editor",
+                    "state_topic": "{mqtt_base}/heizkreis_m1_zeitprogramm_samstag",
+                    "command_topic": "{mqtt_base}/schedule/set/heating/samstag",
+                },
+                {
+                    "name": "heizkreis_m1_zeitprogramm_sonntag_editor",
+                    "state_topic": "{mqtt_base}/heizkreis_m1_zeitprogramm_sonntag",
+                    "command_topic": "{mqtt_base}/schedule/set/heating/sonntag",
+                },
+                {
+                    "name": "warmwasser_zeitprogramm_montag_editor",
+                    "state_topic": "{mqtt_base}/warmwasser_zeitprogramm_montag",
+                    "command_topic": "{mqtt_base}/schedule/set/dhw/montag",
+                },
+                {
+                    "name": "warmwasser_zeitprogramm_dienstag_editor",
+                    "state_topic": "{mqtt_base}/warmwasser_zeitprogramm_dienstag",
+                    "command_topic": "{mqtt_base}/schedule/set/dhw/dienstag",
+                },
+                {
+                    "name": "warmwasser_zeitprogramm_mittwoch_editor",
+                    "state_topic": "{mqtt_base}/warmwasser_zeitprogramm_mittwoch",
+                    "command_topic": "{mqtt_base}/schedule/set/dhw/mittwoch",
+                },
+                {
+                    "name": "warmwasser_zeitprogramm_donnerstag_editor",
+                    "state_topic": "{mqtt_base}/warmwasser_zeitprogramm_donnerstag",
+                    "command_topic": "{mqtt_base}/schedule/set/dhw/donnerstag",
+                },
+                {
+                    "name": "warmwasser_zeitprogramm_freitag_editor",
+                    "state_topic": "{mqtt_base}/warmwasser_zeitprogramm_freitag",
+                    "command_topic": "{mqtt_base}/schedule/set/dhw/freitag",
+                },
+                {
+                    "name": "warmwasser_zeitprogramm_samstag_editor",
+                    "state_topic": "{mqtt_base}/warmwasser_zeitprogramm_samstag",
+                    "command_topic": "{mqtt_base}/schedule/set/dhw/samstag",
+                },
+                {
+                    "name": "warmwasser_zeitprogramm_sonntag_editor",
+                    "state_topic": "{mqtt_base}/warmwasser_zeitprogramm_sonntag",
+                    "command_topic": "{mqtt_base}/schedule/set/dhw/sonntag",
+                },
+                {
+                    "name": "zirkulation_zeitprogramm_montag_editor",
+                    "state_topic": "{mqtt_base}/zirkulation_zeitprogramm_montag",
+                    "command_topic": "{mqtt_base}/schedule/set/circulation/montag",
+                },
+                {
+                    "name": "zirkulation_zeitprogramm_dienstag_editor",
+                    "state_topic": "{mqtt_base}/zirkulation_zeitprogramm_dienstag",
+                    "command_topic": "{mqtt_base}/schedule/set/circulation/dienstag",
+                },
+                {
+                    "name": "zirkulation_zeitprogramm_mittwoch_editor",
+                    "state_topic": "{mqtt_base}/zirkulation_zeitprogramm_mittwoch",
+                    "command_topic": "{mqtt_base}/schedule/set/circulation/mittwoch",
+                },
+                {
+                    "name": "zirkulation_zeitprogramm_donnerstag_editor",
+                    "state_topic": "{mqtt_base}/zirkulation_zeitprogramm_donnerstag",
+                    "command_topic": "{mqtt_base}/schedule/set/circulation/donnerstag",
+                },
+                {
+                    "name": "zirkulation_zeitprogramm_freitag_editor",
+                    "state_topic": "{mqtt_base}/zirkulation_zeitprogramm_freitag",
+                    "command_topic": "{mqtt_base}/schedule/set/circulation/freitag",
+                },
+                {
+                    "name": "zirkulation_zeitprogramm_samstag_editor",
+                    "state_topic": "{mqtt_base}/zirkulation_zeitprogramm_samstag",
+                    "command_topic": "{mqtt_base}/schedule/set/circulation/samstag",
+                },
+                {
+                    "name": "zirkulation_zeitprogramm_sonntag_editor",
+                    "state_topic": "{mqtt_base}/zirkulation_zeitprogramm_sonntag",
+                    "command_topic": "{mqtt_base}/schedule/set/circulation/sonntag",
+                },
+            ],
+        },
+
+        {
+            "domain": "sensor",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "icon": "mdi:calendar-check",
+            "nopoll": [
+                {
+                    "name": "zeitprogramm_schreibstatus",
+                    "state_topic": "{mqtt_base}/schedule_manager/status",
+                    "value_template": "{% set s = value_json.state | default('unknown') %}{% if s == 'idle' %}Bereit{% elif s == 'writing' %}Schreibt …{% elif s == 'ok' %}OK{% elif s == 'error' %}Fehler{% else %}{{ s }}{% endif %}",
+                    "json_attributes_topic": "{mqtt_base}/schedule_manager/status",
+                },
             ],
         },
     ],
