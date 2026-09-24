@@ -144,12 +144,19 @@ path, even if the first write ACK or subsequent readback fails.
 After the sequence it verifies:
 
 - `0x5724` returned to `Grundzustand`;
-- `0x756C` contains a new nonzero `LastCheckInterval` reference;
-- `0x7570` contains a plausible new burner-runtime reference;
+- whether `0x756C` changed;
+- whether `0x7570` changed;
+- that any existing burner-runtime reference remains plausible;
 - total burner runtime and total burner starts did not decrease.
 
-The reset updates the maintenance references but leaves the configured
-`0x5721` and `0x5723` thresholds intact.
+Live testing shows that the reference effects are not perfectly symmetric:
+`0x756C` is re-baselined by the reset, while `0x7570` is
+controller-state/configuration dependent. An early reset initialized a zero
+`0x7570` reference; a later end-to-end CLI reset with `0x5721 = 0 h`
+left an existing `0x7570` reference unchanged. The CLI therefore reports the
+two reference changes separately instead of claiming that both always reset.
+
+The configured `0x5721` and `0x5723` thresholds remain intact.
 
 ## Guard rails
 
@@ -196,8 +203,10 @@ The production CLI paths have been verified on the local controller for:
 - `0x756C` re-baselining on both actual `0x5723` writes while `0x7570`
   remained unchanged.
 
-The guarded `reset` implementation is source- and raw-protocol-verified; a
-final end-to-end CLI reset-path verification is the remaining live CLI check.
+The guarded `reset` path is also live-verified end-to-end. The observed
+`0x5724` transition was `00 -> 01 -> 00`; `0x756C` changed, while
+`0x7570` remained unchanged with the burner-hours threshold configured to
+0 h. The CLI now reports these reference effects independently.
 
 
 ### Note on `LastCheckInterval`
