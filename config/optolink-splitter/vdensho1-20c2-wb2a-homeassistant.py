@@ -216,6 +216,59 @@ poll_list = {
         },
 
         # -----------------------------------------------------------------
+        # Maintenance / service diagnostics
+        #
+        # Exact VDensHO1 metadata + local read-only validation on 2026-09-24:
+        #   0x5721 len1: maintenance burner-runtime threshold, raw * 100 h
+        #   0x5723 len1: maintenance interval in months
+        #   0x5724 len1: maintenance status, 0=Grundzustand / 1=Wartung
+        #   0x756C len4: elapsed time since last maintenance, months
+        #   0x7570 len4: burner runtime since last maintenance, hours
+        #
+        # Vitosoft also contains maintenance reset/write paths. Production
+        # intentionally exposes READS ONLY: no command_topic/reset control.
+        # Local baseline was zero for all five values.
+        # -----------------------------------------------------------------
+        {
+            "domain": "sensor",
+            "unit_of_measurement": "h",
+            "device_class": "duration",
+            "state_class": "measurement",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "icon": "mdi:wrench-clock",
+            "suggested_display_precision": 0,
+            "poll": [
+                ("RARE", "wartung_brennerstunden_grenzwert", 0x5721, 1, 100, False),
+                ("RARE", "wartung_brennerstunden_seit_letzter_wartung", 0x7570, 4, 1, False),
+            ],
+        },
+        {
+            "domain": "sensor",
+            "unit_of_measurement": "Monate",
+            "state_class": "measurement",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "icon": "mdi:calendar-clock",
+            "suggested_display_precision": 0,
+            "poll": [
+                ("RARE", "wartung_zeitintervall", 0x5723, 1, 1, False),
+                ("RARE", "wartung_vergangene_zeit_seit_letzter_wartung", 0x756C, 4, 1, False),
+            ],
+        },
+        {
+            "domain": "binary_sensor",
+            "payload_on": "1",
+            "payload_off": "0",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "icon": "mdi:wrench",
+            "poll": [
+                ("RARE", "wartung_status", 0x5724, 1, 1, False),
+            ],
+        },
+
+        # -----------------------------------------------------------------
         # Binary status: numeric 0/1
         # -----------------------------------------------------------------
         {
