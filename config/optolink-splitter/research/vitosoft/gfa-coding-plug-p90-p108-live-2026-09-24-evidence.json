@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "evidence_level": "hardware_observation",
+  "scope": "Read-only correlation of regulation-side coding-plug objects with GFA P90/P100-P108.",
+  "regulation_side": {
+    "0x1010": {"raw": "37 38 33 33 39 37 31", "ascii": "7833971"},
+    "0x7656": {"raw": "20 15 02 01", "notation": "2015:0201"}
+  },
+  "gfa_guard": {"opening_P80": "20", "closing_P80": "20", "branch": "GFA"},
+  "gfa_values": {
+    "P90_0x405A": "00",
+    "P100_0x4064": {"raw": "63", "decimal": 99, "factor": 0.3922, "converted_percent": 38.8278},
+    "P101_0x4065": "15",
+    "P102_0x4066": "01",
+    "P103_0x4067": "14",
+    "P104_0x4068": "0C",
+    "P105_0x4069": "04",
+    "P106_0x406A": "D6",
+    "P107_0x406B": "02",
+    "P108_0x406C": "00"
+  },
+  "raw_vector": "00 63 15 01 14 0C 04 D6 02 00",
+  "correlations": [
+    "0x7656 contains 20 15 02 01; the values 15, 01 and 02 recur in P101, P102 and P107 respectively.",
+    "Exact byte-position mapping of the four 0x7656 source fields is still unresolved, so the repeated values are evidence of correlation, not yet a field-by-field identity proof.",
+    "P103/P104/P105 are source-labelled day/month/year. Direct numeric interpretation gives 20/12/4; BCD interpretation gives 14/12/04. Encoding/year-base remains unresolved.",
+    "P106=0xD6 remains a CRC diagnostic value; no checksum algorithm is claimed."
+  ],
+  "physical_spare_chip1_comparison": {
+    "patterns_checked": [
+      "00 63 15 01 14 0C 04 D6 02 00",
+      "63 15 01 14 0C 04 D6 02 00",
+      "15 01",
+      "14 0C 04",
+      "20 12 04",
+      "D6 02 00"
+    ],
+    "spare_1_exact_hits": 0,
+    "spare_2_exact_hits": 0,
+    "interpretation": "No simple contiguous 1:1 copy of the active GFA vector is present in either captured spare chip1 image. This does not assign EEPROM domain or exclude transformed/mirrored storage."
+  },
+  "result": "PASS"
+}
