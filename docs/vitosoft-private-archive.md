@@ -21,11 +21,11 @@ The original archive is 319,029,638 bytes. Matching counts and hashes do not est
 
 ## Publication boundary
 
-**Initial status on 2026-09-24: documentation, selected small reports and tools are committed to the private repository; the complete 7z payload is not yet uploaded.** Do not mistake the source catalog for the actual source bytes.
+**Verified status on 2026-09-24: the complete 7z payload is uploaded as private Release asset and `catalog/import-receipt.json` records `uploaded_verified`.** GitHub reports the expected 319,029,638-byte asset with SHA256 `50f8215ea74b1d507c78d28294814db1a5fc65683b3308f23057a2fce8bb4daa`.
 
-The private repository includes `tools/Publish-VitosoftArchive.ps1` for a one-time authenticated upload of the existing archive as a private release asset. It checks repository privacy, size and hash, verifies a fresh asset download, and writes `catalog/import-receipt.json`. No new collector run is needed.
+The private repository retains `tools/Publish-VitosoftArchive.ps1` as the reproducible upload verifier and now also contains the complete Collector implementation under `collector/tools/`. The hardened archival entry point is `collect-vitosoft-private-archive-v4.ps1`; historical generations and SQL/metadata helpers are preserved there.
 
-For later status, check that receipt and the actual asset under tag `collector-20260923-205048`. A release asset is separate from normal Git history and `git clone`. The text-only ChatGPT GitHub connection does not automatically make large binary assets readable; use appropriate authenticated local access or targeted text extracts with provenance.
+For status, check that receipt and the actual asset under tag `collector-20260923-205048`. A release asset is separate from normal Git history and `git clone`. The text-only ChatGPT GitHub connection does not automatically make large binary assets readable; use appropriate authenticated local access or targeted text extracts with provenance.
 
 ## Entry points in the private repository
 
