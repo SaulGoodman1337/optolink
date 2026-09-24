@@ -227,3 +227,41 @@ Result: **PASS**.
 The next controlled step is 50 ms. If that also passes the short gate, perform
 a longer soak including at least one burner start before changing the profile
 helper's permanent timing from the conservative 150 ms setting.
+
+
+## Live 50 ms cadence test
+
+A third passive 180-second observation was recorded after changing only
+`olbreath` from 0.10 s to 0.05 s.
+
+Measured FAST cadence improved substantially:
+
+| Datapoint | Median | P95 | Max |
+|---|---:|---:|---:|
+| Kesseltemperatur | 2.134 s | 2.341 s | 2.428 s |
+| Brenner Modulationsgrad | 2.152 s | 2.303 s | 2.390 s |
+| GFA P06 blower RPM | 2.128 s | 2.334 s | 2.404 s |
+| GFA P09 modulation setpoint | 2.137 s | 2.323 s | 4.151 s |
+| GFA P87 raw status | 2.129 s | 2.307 s | 2.439 s |
+
+Measured NORMAL cadence was about 10.6 s.
+
+However, the journal recorded one GFA P09 transport failure during the test:
+
+```text
+GFA_READ 0x4009 returned FF; quarantined
+OL Error do_poll_item 16, Addr 4009, RetCode 255, Data ?
+```
+
+The P09 maximum interval of 4.151 s is consistent with one missed FAST poll.
+
+The test gate therefore failed and the test script automatically restored
+`olbreath=0.10`.
+
+Result: **FAIL for production use at 50 ms**.
+
+This single event does not prove that 50 ms is the sole physical cause, but it
+is sufficient to reject 50 ms as the current production setting. The fastest
+clean tested value remains 100 ms. A longer 100 ms soak including a burner
+cycle should be completed before optionally exploring an intermediate 75 ms
+setting.
