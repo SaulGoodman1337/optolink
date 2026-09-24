@@ -278,8 +278,28 @@ The five values are now exposed in the production HA profile as slow-changing
 - `wartung_brennerstunden_seit_letzter_wartung`.
 
 No command/reset entity is exposed even though Vitosoft contains maintenance
-write/reset paths. A future compact **Service / Wartung** dashboard group may
-use these entities after live HA discovery is confirmed.
+write/reset paths.
+
+### Deferred HA task: editable maintenance configuration
+
+In a later Home Assistant dashboard session, build a compact **Service /
+Wartung** section around these entities. The intended end state is to allow the
+maintenance interval and burner-runtime threshold to be configured from Home
+Assistant, with a separately protected maintenance-reset action.
+
+This UI work is explicitly **deferred** until the splitter workstream has
+verified the real controller operations for:
+
+- writing `0x5721` including the x100 h conversion and valid range;
+- writing `0x5723` including the valid month range;
+- interpreting and, if applicable, resetting `0x5724`;
+- determining the reset/write semantics associated with `0x756C` and
+  `0x7570`;
+- read-after-write / read-after-reset behavior and persistence;
+- a rollback/recovery path.
+
+Until that verification is complete, the dashboard must remain read-only for
+maintenance data.
 
 Other metadata candidates include controller identity, remote/KM-BUS software
 indices and communication topology. These are lower priority for normal
@@ -397,5 +417,6 @@ verification before using the pattern on the next view.
       state belong in the top-level Diagnose view.
 - [ ] Design the logical-pump -> A1 output -> internal-pump chain.
 - [x] Read-only verify maintenance/service candidates and add read-only diagnostic entities.
+- [ ] After splitter write/reset verification, add editable Service / Wartung controls in HA.
 - [ ] Verify all changed cards on desktop and mobile.
 - [ ] Only after Diagnose is stable, start the **Pumpen** page redesign.
