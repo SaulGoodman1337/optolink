@@ -146,6 +146,9 @@ chown root:root /etc/systemd/system/optolink-maintenance-api.service
 cs_repo_fetch config/optolink-splitter/vcontrol-mapping.md /root/optolink-vcontrol-mapping.md
 
 chown optolink:optolink /opt/optolink/settings_ini.py /opt/optolink/homeassistant_poll_list.py
+touch /opt/optolink/.maintenance.lock
+chown optolink:optolink /opt/optolink/.maintenance.lock
+chmod 660 /opt/optolink/.maintenance.lock
 chmod 640 /opt/optolink/settings_ini.py /opt/optolink/homeassistant_poll_list.py
 msg_ok "Prepared VDensHO1/20C2 Home Assistant configuration"
 
