@@ -10,6 +10,7 @@ Verified controller semantics:
   0x5723  R/W maintenance interval, raw months (0..24)
            IMPORTANT: every write re-baselines 0x756C
   0x5724  maintenance state; verified maintenance reset sequence 1 -> 0
+           0x756C is re-baselined; 0x7570 reset behavior is state-dependent
   0x756C  read-only LastCheckInterval 32-bit reference; exact Vitosoft conversion unresolved
   0x7570  read-only LastBurnerCheck baseline (burner-runtime seconds)
   0x08A7  total burner runtime, seconds
@@ -672,28 +673,54 @@ def command_reset(session: MqttSession, args: argparse.Namespace) -> dict[str, A
     if after["burner_starts"]["count"] < before["burner_starts"]["count"]:
         warnings.append("total burner-start counter decreased unexpectedly")
 
-    burner_ref = after["burner_reference"]["burner_seconds_baseline"]
+    burner_ref_before = before["burner_reference"]["burner_seconds_baseline"]
+    burner_ref_after = after["burner_reference"]["burner_seconds_baseline"]
     burner_total = after["burner_total"]["seconds"]
-    if burner_ref <= 0 or burner_ref > burner_total:
-        warnings.append("new burner maintenance reference is not plausible")
-    elif burner_total - burner_ref > 300:
+    burner_reference_changed = burner_ref_after != burner_ref_before
+
+    if burner_ref_after <= 0 or burner_ref_after > burner_total:
+        warnings.append("burner maintenance reference is not plausible")
+    elif burner_total - burner_ref_after > 300:
         warnings.append(
-            "new burner maintenance reference is more than 300 s behind total runtime"
+            "burner maintenance reference is more than 300 s behind total runtime"
         )
 
     ref_after = after["interval_reference"]["raw_uint_le"]
     ref_before = before["interval_reference"]["raw_uint_le"]
+    interval_reference_changed = ref_after != ref_before
     if ref_after <= 0:
         warnings.append("new interval reference is not set")
-    elif ref_after == ref_before:
+    elif not interval_reference_changed:
         warnings.append("interval reference did not change during maintenance reset")
+
+    notes: list[str] = []
+    if burner_reference_changed:
+        notes.append("0x7570 burner reference was re-baselined")
+    elif before["hours_threshold"]["hours"] == 0:
+        notes.append(
+            "0x7570 burner reference remained unchanged while the burner-hours "
+            "maintenance threshold was 0 h; this is an observed valid controller state"
+        )
+    else:
+        notes.append(
+            "0x7570 burner reference remained unchanged despite a nonzero "
+            "burner-hours maintenance threshold"
+        )
+
+    if interval_reference_changed:
+        notes.append("0x756C interval reference was re-baselined")
 
     return {
         "action": "reset",
         "changed": True,
         "sequence": "0x5724: 1 -> 0",
+        "reference_changes": {
+            "interval_0x756C": interval_reference_changed,
+            "burner_0x7570": burner_reference_changed,
+        },
         "before": before,
         "after": after,
+        "notes": notes,
         "warnings": warnings,
     }
 
@@ -762,7 +789,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     reset = sub.add_parser(
         "reset",
-        help="reset maintenance references using verified 0x5724 1 -> 0 sequence",
+        help="execute verified 0x5724 1 -> 0 maintenance reset and report reference effects",
     )
     reset.add_argument(
         "--confirm",
@@ -809,6 +836,9 @@ def main() -> int:
             print(f"{action}: {'OK' if changed else 'NO-OP'}")
             if result.get("reason"):
                 print(f"  {result['reason']}")
+            if result.get("notes"):
+                for note in result["notes"]:
+                    print(f"  INFO: {note}")
             if result.get("warnings"):
                 for warning in result["warnings"]:
                     print(f"  WARN: {warning}")
