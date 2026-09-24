@@ -353,7 +353,7 @@ are useful, but they must not be presented as live physical measurements.
 
 ### Wartung view implementation
 
-Status: **staging isolation live-verified / frontend view verification pending**
+Status: **staging isolation + MQTT Discovery live-verified / frontend view verification pending**
 
 The new `Wartung` dashboard view uses the guarded maintenance MQTT API rather
 than raw Optolink writes. Two discovered MQTT Number entities are staging
@@ -374,6 +374,11 @@ Live staging verification on 2026-09-24 proved that staging `100 h` and
 `1 month` left the actual controller configuration at `0 h / 0 months`.
 The stage values were then returned to `0 / 0`. This confirms that the
 Number entities are isolated drafts rather than controller writes.
+
+MQTT Discovery was subsequently verified live: both Number entities point only
+to the guarded `maintenance/stage/*/set` topics, all five new entities are
+published, the stage states are retained at `0 / 0`, and API availability is
+`online`.
 
 ## 5. Diagnose view completion plan
 
@@ -484,7 +489,8 @@ verification before using the pattern on the next view.
 - [x] Read-only verify maintenance/service candidates and add read-only diagnostic entities.
 - [x] Add editable Service / Wartung controls in HA using staged MQTT numbers and confirmed API actions.
 - [x] Live-verify that Wartung staging does not write the controller.
-- [ ] Live-verify the Wartung view itself: entities, confirmation dialogs and displayed readbacks must match the controller.
+- [x] Live-verify all new Wartung MQTT Discovery entities and stage/state topics.
+- [ ] Live-verify the Wartung view itself: layout, entity rendering, confirmation dialogs and displayed readbacks must match the controller.
 - [x] Run `wb2a-schedule-probe snapshot` and preserve the 21 raw day blocks.
 - [x] Verify 0/1/2/4 interval writes, slot clearing, 24:00 and byte-exact restore.
 - [x] Implement guarded schedule-manager writes and the full Zeitprogramme editor.
