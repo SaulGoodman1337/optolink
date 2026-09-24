@@ -447,9 +447,9 @@ def print_status(data: dict[str, Any]) -> None:
 
     since = data["burner_since_maintenance"]["hours"]
     if since is None:
-        print("  Brenner seit Wartung     : nicht ableitbar (Referenz nicht gesetzt)")
+        print("  Brenner seit Referenz    : nicht ableitbar (Referenz nicht gesetzt)")
     else:
-        print(f"  Brenner seit Wartung     : {since:.3f} h")
+        print(f"  Brenner seit Referenz    : {since:.3f} h")
 
     print(f"  Brennerstarts gesamt     : {data['burner_starts']['count']}")
 
