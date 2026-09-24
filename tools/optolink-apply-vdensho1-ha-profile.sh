@@ -465,6 +465,11 @@ try:
     node_id = ha_device["node_id"]
     obsolete_discovery = [
         ("sensor", "geblaesedrehzahl"),
+        # Superseded after live maintenance write testing proved that 0x756C
+        # and 0x7570 are custom reference registers, not direct month/hour
+        # measurements.
+        ("sensor", "wartung_vergangene_zeit_seit_letzter_wartung"),
+        ("sensor", "wartung_brennerstunden_seit_letzter_wartung"),
     ]
     for domain, name_id in obsolete_discovery:
         topic = f"{ha_prefix}/{domain}/{node_id}/{name_id}/config"
