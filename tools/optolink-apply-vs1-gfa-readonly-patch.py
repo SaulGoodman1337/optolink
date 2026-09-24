@@ -25,7 +25,7 @@ import sys
 import tempfile
 import time
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 ROOT = Path("/opt/optolink")
 UPSTREAM_REF = "c1ee204a1421447721603c5f21c6da7337fdac97"
 
@@ -98,7 +98,17 @@ def patch_optolinkvs1(text: str) -> str:
         "",
         "    ser.reset_input_buffer()",
         "    ser.write(outbuff)",
-        "    return receive_resp_telegr(rdlen, addr, ser)",
+        "    retcode, retaddr, data = receive_resp_telegr(rdlen, addr, ser)",
+        "",
+        "    # Earlier long-run GFA captures showed isolated 0xFF acquisitions",
+        "    # that must not become physical values (for example P06 => 7650 rpm).",
+        "    # Polling publishes only retcode 0x01, so quarantine FF as a failed",
+        "    # acquisition with no data payload.",
+        "    if retcode == 0x01 and len(data) == 1 and data[0] == 0xFF:",
+        "        logger.warning(f\"GFA_READ 0x{addr:04X} returned FF; quarantined\")",
+        "        return 0xFF, retaddr, bytearray()",
+        "",
+        "    return retcode, retaddr, data",
         "",
         "",
     ])
@@ -309,6 +319,13 @@ def self_test() -> int:
             self.assertIn('elif(cmnd in ["write", "w"]):', out)
             self.assertEqual(patch_requests(out), out)
 
+        def test_ff_quarantine_is_present(self):
+            src = "def write_datapoint(addr:int, data:bytes, ser:serial.Serial) -> bool:\n    pass\n"
+            out = patch_optolinkvs1(src)
+            self.assertIn("data[0] == 0xFF", out)
+            self.assertIn("returned FF; quarantined", out)
+            self.assertIn("return 0xFF, retaddr, bytearray()", out)
+
         def test_patch_contains_no_new_write_function(self):
             sample = (
                 '        elif((cmnd in ["read", "r"]) or ispollitem):  # "read;0x0804;1;0.1;False"\n'
@@ -328,7 +345,7 @@ def self_test() -> int:
         unittest.defaultTestLoader.loadTestsFromTestCase(Tests)
     )
     if result.wasSuccessful():
-        print("VS1_GFA_READONLY_PATCH_TESTS=5/5")
+        print("VS1_GFA_READONLY_PATCH_TESTS=6/6")
         return 0
     return 1
 
