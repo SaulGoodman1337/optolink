@@ -69,13 +69,15 @@ install_repo_file config/optolink-splitter/wb2a-e7-persistence-probe.py   /usr/l
 install_repo_file config/optolink-splitter/wb2a-pump-divergence-watch.py   /usr/local/bin/wb2a-pump-divergence-watch 0755
 ln -sf /usr/local/bin/wb2a-e7-persistence-probe /usr/bin/wb2a-e7-persistence-probe
 
+install_repo_file config/optolink-splitter/optolink-splitter.service   /etc/systemd/system/optolink-splitter.service 0644
 install_repo_file config/optolink-splitter/optolink-party-emulator.service   /etc/systemd/system/optolink-party-emulator.service 0644
 
 install_repo_file config/optolink-splitter/vcontrol-mapping.md   /root/optolink-vcontrol-mapping.md 0644
 
 systemctl daemon-reload
+systemctl enable optolink-splitter.service >/dev/null 2>&1 || true
 systemctl enable optolink-party-emulator.service >/dev/null 2>&1 || true
-chown root:root   /usr/local/bin/optolink-apply-vdensho1-ha-profile   /usr/local/bin/optolink-apply-vscotho1-profile   /usr/local/bin/optolink-party-test   /usr/local/bin/optolink-debug   /usr/local/bin/optolink-party-emulator   /usr/local/bin/wb2a-single-session-logger   /usr/local/bin/wb2a-rkr-cycle-logger   /usr/local/bin/wb2a-pump-start-logger   /usr/local/bin/wb2a-e7-persistence-probe   /etc/systemd/system/optolink-party-emulator.service   /root/optolink-vcontrol-mapping.md
+chown root:root   /usr/local/bin/optolink-apply-vdensho1-ha-profile   /usr/local/bin/optolink-apply-vscotho1-profile   /usr/local/bin/optolink-party-test   /usr/local/bin/optolink-debug   /usr/local/bin/optolink-party-emulator   /usr/local/bin/wb2a-single-session-logger   /usr/local/bin/wb2a-rkr-cycle-logger   /usr/local/bin/wb2a-pump-start-logger   /usr/local/bin/wb2a-e7-persistence-probe   /etc/systemd/system/optolink-splitter.service   /etc/systemd/system/optolink-party-emulator.service   /root/optolink-vcontrol-mapping.md
 ok "Helpers refreshed"
 
 info "Activating VDensHO1/20C2 Home Assistant profile"
