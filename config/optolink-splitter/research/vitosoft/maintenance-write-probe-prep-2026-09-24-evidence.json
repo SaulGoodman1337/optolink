@@ -77,7 +77,7 @@
       "temporary_value": "10000 h / raw 100 decimal / 0x64",
       "required_sequence": "baseline reads -> write raw 100 -> readback and side-effect reads -> restore raw 0 -> final reads",
       "stop_condition": "Do not run until 0x5724 reset behavior and 0x7570 LastBurnerCheck side effects are bounded.",
-      "status": "ready"
+      "status": "completed"
     }
   ],
   "excluded_operations": [
@@ -87,7 +87,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "0x5723_WRITE_VERIFIED_0x5724_REFERENCE_RESET_VERIFIED_0x5721_WRITE_READY",
+  "current_status": "MAINTENANCE_READ_WRITE_RESET_CAPABILITIES_LOCALLY_VERIFIED",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -167,6 +167,49 @@
         "0x7570 stores a burner-runtime reference matching the total-runtime register within two seconds.",
         "0x08A7 and 0x088A remained unchanged."
       ]
+    },
+    "phase_B_0x5721": {
+      "status": "completed",
+      "baseline_raw": {
+        "0x5721": "00",
+        "0x5723": "00",
+        "0x5724": "00",
+        "0x756C": "107cb56a",
+        "0x7570": "fb4bce03",
+        "0x08A7": "fd4bce03",
+        "0x088A": "d36f0700"
+      },
+      "temporary_setting": {
+        "requested_decimal_raw": 100,
+        "expected_register_raw_hex": "64",
+        "engineering_value": "10000 h"
+      },
+      "after_write_raw": {
+        "0x5721": "64",
+        "0x5723": "00",
+        "0x5724": "00",
+        "0x756C": "107cb56a",
+        "0x7570": "fb4bce03",
+        "0x08A7": "fd4bce03",
+        "0x088A": "d36f0700"
+      },
+      "after_restore_raw": {
+        "0x5721": "00",
+        "0x5723": "00",
+        "0x5724": "00",
+        "0x756C": "107cb56a",
+        "0x7570": "fb4bce03",
+        "0x08A7": "fd4bce03",
+        "0x088A": "d36f0700"
+      },
+      "conclusions": [
+        "0x5721 is locally verified read/write.",
+        "Decimal raw write value 100 produced register byte 0x64, corresponding to 10000 h via raw * 100 h.",
+        "Restore to raw 0 was successful.",
+        "Changing 0x5721 does not reset or alter 0x756C or 0x7570.",
+        "Changing 0x5721 does not alter total burner runtime 0x08A7 or burner starts 0x088A.",
+        "0x5721 and 0x5723 are independently configurable maintenance thresholds; maintenance reference reset remains a separate 0x5724 sequence."
+      ]
     }
   },
   "reset_source": {
@@ -189,5 +232,33 @@
       "0x088A burner starts raw"
     ],
     "expected_research_value": "If 0x7570 snapshots 0x08A7 when 24 is reset, LastBurnerCheck can be modeled as current total burner runtime minus stored maintenance baseline."
+  },
+  "verified_capabilities": {
+    "read": {
+      "0x5721": "configured burner-runtime threshold",
+      "0x5723": "configured time interval",
+      "0x5724": "maintenance state",
+      "0x756C": "LastCheckInterval reference",
+      "0x7570": "LastBurnerCheck reference"
+    },
+    "write": {
+      "0x5721": "verified R/W, raw 0..100 corresponds to 0..10000 h in 100 h steps",
+      "0x5723": "verified R/W, raw 0..24 corresponds to 0..24 months",
+      "0x5724": "verified writable state 0/1"
+    },
+    "reset": {
+      "sequence": "0x5724 = 1, then 0x5724 = 0",
+      "effect": "updates 0x756C and 0x7570 maintenance references",
+      "does_not_reset": [
+        "0x08A7 total burner runtime",
+        "0x088A total burner starts",
+        "0x5721 threshold",
+        "0x5723 interval"
+      ]
+    },
+    "read_only_references": {
+      "0x756C": "little-endian Unix-seconds time reference for LastCheckInterval",
+      "0x7570": "burner-runtime seconds baseline for LastBurnerCheck"
+    }
   }
 }
