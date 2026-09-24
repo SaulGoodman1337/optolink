@@ -432,12 +432,12 @@ Recommended implementation order:
    - separate automation state, timing, demand logic and currently effective
      setpoints.
 5. **Zeitprogramme**
-   - compact read-only weekly view is now implemented;
-   - exact 8-byte day-block structure and splitter codec are documented;
-   - local write/readback/restore verification is the current gate before
-     enabling editing;
-   - after that gate, build the full editor/timeline directly on the verified
-     block contract.
+   - complete daily 8-byte block semantics are hardware-verified;
+   - guarded schedule-manager write/readback/restore path is implemented;
+   - 21 non-optimistic HA text editors are exposed through MQTT discovery;
+   - the dashboard is now a three-lane weekly cockpit with 24 h bars,
+     active-now indication and tap-to-edit weekday rows;
+   - first live Home Assistant editor write after deployment is still pending.
 6. **Graphen**
    - make the existing ApexCharts page visually consistent;
    - remove graphs that merely duplicate contextual graphs elsewhere.
@@ -458,8 +458,9 @@ verification before using the pattern on the next view.
 - [ ] Design the logical-pump -> A1 output -> internal-pump chain.
 - [x] Read-only verify maintenance/service candidates and add read-only diagnostic entities.
 - [ ] Add editable Service / Wartung controls in HA using the verified splitter semantics.
-- [ ] Run `wb2a-schedule-probe snapshot` and preserve the 21 raw day blocks.
-- [ ] Run one guarded non-current-day schedule write/readback/restore probe.
-- [ ] After schedule-write PASS, expose validated writable schedule entities/API and build the full Zeitprogramme editor.
+- [x] Run `wb2a-schedule-probe snapshot` and preserve the 21 raw day blocks.
+- [x] Verify 0/1/2/4 interval writes, slot clearing, 24:00 and byte-exact restore.
+- [x] Implement guarded schedule-manager writes and the full Zeitprogramme editor.
+- [ ] Live-test one Home Assistant weekday edit and verify status/readback presentation.
 - [ ] Verify all changed cards on desktop and mobile.
 - [ ] Only after Diagnose is stable, start the **Pumpen** page redesign.
