@@ -1,6 +1,6 @@
 # GFA live checkpoint - 2026-09-23
 
-**Current status: P87/P09 temporal ordering is resolved, and the read-only mixed VS1 compatibility test has now passed. On the exact VDensHO1 / 20C2 appliance, stable Virtual_READ values were byte-identical P300 -> VS1/F7 -> P300 while P80/P06/P09/P87 GFA 6B reads were interleaved in the same persistent VS1 session at 150-ms pacing. The next gate is the stock splitter itself running the existing HA read poll list in temporary permanent-VS1 mode before any GFA production patch is enabled.**
+**Current status: P87/P09 temporal ordering is resolved, and the read-only mixed VS1 compatibility test has now passed. On the exact VDensHO1 / 20C2 appliance, stable Virtual_READ values were byte-identical P300 -> VS1/F7 -> P300 while P80/P06/P09/P87 GFA 6B reads were interleaved in the same persistent VS1 session at 150-ms pacing. The next gate is now prepared as a guarded stock-splitter smoke test: the existing HA read poll list runs for 30 seconds in temporary permanent-VS1 mode, with MQTT/TCP write ingress disabled, Party stopped, MQTT outputs counted, and settings restored byte-exactly before returning to VS2/300.**
 
 Read the [P87/P09 high-resolution correlation](gfa-p87-p09-hires.md) for the latest completed live timing result. The next bounded experiment is the [mixed VS1 Virtual/GFA compatibility probe](vs1-mixed-gfa-integration.md): stable Virtual_READ values are compared P300 -> VS1 F7 -> P300 while P80/P06/P09/P87 GFA_READs are interleaved in the same VS1 session. It is read-only and does not change production settings. The earlier [long-run FF investigation](gfa-cycle-ff-investigation.md) remains relevant to acquisition quality.
 
@@ -16,6 +16,23 @@ Evidence:
 - [Static variant/scaling definitions](../config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-evidence.json).
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
+
+## 0xxxxx. Stock splitter permanent-VS1 smoke gate prepared - 2026-09-24
+
+The next gate is implemented in [`vs1-stock-splitter-smoke.md`](vs1-stock-splitter-smoke.md). It requires a clean tracked `/opt/optolink` checkout at `origin/main`, leaves splitter source unmodified, and temporarily changes only:
+
+```text
+vs1protocol=True
+mqtt_listen=None
+tcpip_port=None
+olbreath=0.15
+```
+
+The helper stops Party, runs the stock splitter for 30 seconds, requires a stable MainPID plus `VS1/KW protocol initialized` and `enter main loop`, and subscribes to the existing MQTT base topic. Every current Home Assistant poll item enabled on cycle 0 must publish at least once; retained pre-test messages do not count.
+
+The original `settings_ini.py` is saved and later restored byte-for-byte, including mode/uid/gid. SIGINT/SIGTERM/SIGHUP cleanup is armed before any service/settings change. The normal splitter and Party state are restored, and the baseline splitter must log `VS2/300 protocol initialized` again.
+
+Preparation evidence: [stock VS1 smoke gate](../config/optolink-splitter/research/vitosoft/vs1-stock-splitter-smoke-prep-2026-09-24-evidence.json).
 
 ## 0xxxx. Mixed VS1 F7/6B hardware compatibility PASS - 2026-09-24
 
