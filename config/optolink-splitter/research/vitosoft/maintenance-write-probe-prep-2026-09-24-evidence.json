@@ -87,7 +87,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "MAINTENANCE_BACKEND_LIVE_NOOP_GUARDS_VERIFIED",
+  "current_status": "MAINTENANCE_BACKEND_GUARDS_LIVE_VERIFIED_READY_FOR_CLI_WRITE_PATH",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -287,6 +287,43 @@
         "interval_reference_after": "107cb56a",
         "note": "Only reads were issued; no WRITE 0x5723 occurred and the LastCheckInterval reference was preserved."
       }
+    },
+    "rejection_guards": {
+      "date": "2026-09-24",
+      "status": "live-verified",
+      "cases": [
+        {
+          "command": "optolink-maintenance --verbose set-hours 50",
+          "expected": "reject invalid 100 h step",
+          "result": "ERROR: set-hours accepts 0..10000 h in exact 100 h steps",
+          "write_observed": false
+        },
+        {
+          "command": "optolink-maintenance --verbose set-hours 10100",
+          "expected": "reject value above 10000 h",
+          "result": "ERROR: set-hours accepts 0..10000 h in exact 100 h steps",
+          "write_observed": false
+        },
+        {
+          "command": "optolink-maintenance --verbose set-months 25",
+          "expected": "reject value above 24 months",
+          "result": "ERROR: set-months accepts 0..24 months",
+          "write_observed": false
+        },
+        {
+          "command": "optolink-maintenance --verbose set-months 1",
+          "expected": "require explicit acknowledgement of 0x756C re-baselining",
+          "result": "ERROR: changing 0x5723 re-baselines the maintenance time reference at 0x756C; repeat with --confirm-reference-reset RESET-ZEITREFERENZ",
+          "write_observed": false,
+          "read_observed": "0x5723 only"
+        },
+        {
+          "command": "optolink-maintenance --verbose reset",
+          "expected": "require explicit reset confirmation",
+          "result": "ERROR: maintenance reset requires --confirm RESET-WARTUNG",
+          "write_observed": false
+        }
+      ]
     }
   }
 }
