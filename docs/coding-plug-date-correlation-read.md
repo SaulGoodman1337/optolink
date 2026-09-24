@@ -43,6 +43,36 @@ echo "=== GFA date confirmation ==="
 /usr/local/bin/optolink-debug request "gfaread;0x4050;1;raw;False"
 ```
 
+## Live result - PASS / negative correlation 2026-09-24
+
+The bounded read completed successfully:
+
+```text
+0x1020 = 00 00 FF FF FF 00 00 00 00 00 00 00 00 00 00 00
+
+P80 opening = 20
+P103 = 14
+P104 = 0C
+P105 = 04
+P80 closing = 20
+```
+
+The source-defined GWG date positions are therefore:
+
+```text
+0x1020[2] day   = FF
+0x1020[3] month = FF
+0x1020[4] year  = FF
+```
+
+They do **not** match the GFA triplet `14 0C 04`. Because `FF` is not a valid calendar day or month, the normal GWG date slots are not populated with a usable date on this active plug. The exact vendor sentinel meaning of `FF` is not asserted.
+
+This rejects the earlier hypothesis that `0x1020[2:5]` and P103-P105 are two views of the same raw date. On this appliance the GWG/main-regulation and GFA/fire-control date fields are separate datasets.
+
+As a consequence, `0x1020` cannot decide whether GFA `P103=14` is displayed as decimal 20 or BCD 14. P103-P105 remain source-labelled day/month/year with raw `14 0C 04`; their final calendar rendering and year base need independent source/display evidence.
+
+Evidence: [coding-plug-date-separation-2026-09-24-evidence.json](../config/optolink-splitter/research/vitosoft/coding-plug-date-separation-2026-09-24-evidence.json).
+
 ## Acceptance and interpretation
 
 - Opening and closing P80 must both be `20`.

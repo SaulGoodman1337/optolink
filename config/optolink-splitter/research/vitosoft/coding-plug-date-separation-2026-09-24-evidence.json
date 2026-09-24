@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "evidence_level": "hardware_observation",
+  "scope": "Read-only comparison of the normal GWG coding-plug date block at 0x1020 with GFA P103-P105.",
+  "gwg_main_regulation": {
+    "address": "0x1020",
+    "length": 16,
+    "raw": "00 00 FF FF FF 00 00 00 00 00 00 00 00 00 00 00",
+    "source_defined_fields": {
+      "day_byte_2": "FF",
+      "month_byte_3": "FF",
+      "year_byte_4": "FF"
+    },
+    "interpretation": "The source-defined date slots do not contain a valid calendar day/month triplet on this active plug. Exact vendor sentinel semantics for FF are not claimed."
+  },
+  "gfa": {
+    "opening_P80": "20",
+    "P103_day": "14",
+    "P104_month": "0C",
+    "P105_year": "04",
+    "closing_P80": "20"
+  },
+  "comparison": {
+    "byte_identical": false,
+    "gwg_triplet": "FF FF FF",
+    "gfa_triplet": "14 0C 04",
+    "result": "GWG and GFA coding-plug date views are separate datasets on this appliance.",
+    "consequence": "The earlier plan to use 0x1020 to choose between direct-integer and BCD interpretation of P103-P105 is rejected."
+  },
+  "gfa_date_status": {
+    "source_labels": "P103 day, P104 month, P105 year",
+    "raw": "14 0C 04",
+    "candidate_direct_integer": "20 / 12 / 4",
+    "candidate_bcd": "14 / 12 / 04",
+    "status": "calendar display/year base still unresolved independently of 0x1020"
+  },
+  "physical_spare_chip1_context": {
+    "P103_14_present": false,
+    "P104_0C_present_in_mirrored_record": true,
+    "P105_04_present_somewhere": true,
+    "note": "This remains only weak correlation because the spares are different plug instances and the saved chip1 side is not physically labelled f01/f02."
+  },
+  "result": "PASS_NEGATIVE_CORRELATION"
+}
