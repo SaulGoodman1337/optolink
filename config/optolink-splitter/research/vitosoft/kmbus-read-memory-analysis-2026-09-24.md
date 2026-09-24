@@ -491,6 +491,61 @@ They are **not linked to VDensHO1**, so do not send 0x31 blindly on the WB2A.
 Use the source semantics as architectural evidence and prioritize the already
 verified local 0x41 path first.
 
+### 3a. Local XRAM_READ 0x31 result - source-derived GWG shapes rejected
+
+A guarded P300 run tested **all six unique address/length request shapes** from
+the 12 Vitosoft-v6 XRAM definitions:
+
+~~~text
+0x0000 / 1
+0x003A / 2
+0x003D / 2
+0x0040 / 2
+0x0042 / 2
+0x0088 / 2
+~~~
+
+The normal P300 identity control passed first:
+
+~~~text
+0x01 / 0x00F8 / 8 -> 20c2000300000103
+~~~
+
+Every 0x31 request then returned a valid VS2 **Error Message** rather than data.
+The response command remained `0x31`, and the one-byte inner error payload was
+consistently `05`.
+
+Examples:
+
+~~~text
+TX 41 05 00 31 00 3a 02 72
+RX 03 31 00 3a 01 05 7a
+
+TX 41 05 00 31 00 88 02 c0
+RX 03 31 00 88 01 05 c8
+~~~
+
+The matching Virtual_READ 0x01 controls at these cross-profile addresses also
+returned Error Messages, but consistently with inner payload `01`.
+
+Important boundaries:
+
+- all 12 source XRAM events are GWG-family definitions, not VDensHO1;
+- all 12 use **empty PrefixRead**, so the local 0x31 rejection is not explained
+  by a missing source-defined prefix;
+- no source-backed mapping for the inner error payload values `01` or `05`
+  has been recovered, so do not assign semantic names to them;
+- the result proves that the six known Vitosoft XRAM request shapes are not
+  directly usable on local VDensHO1/20C2;
+- it does **not** mathematically prove that every possible 0x31 address is
+  unsupported, but there is now no source-derived local success target.
+
+Decision: deprioritize blind XRAM probing and move to the next source-shaped
+read path, prefixed `0x43 KMBUS_EEPROM_READ`.
+
+Evidence:
+[xram-read-live-2026-09-24-evidence.json](xram-read-live-2026-09-24-evidence.json).
+
 ### 4. 0x55 KBUS_TRANSPARENT_READ - very high protocol value
 
 There are **850 definitions**, by far the richest KBus read family in the
