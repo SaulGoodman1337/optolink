@@ -64,8 +64,8 @@
   },
   "production_policy": {
     "enable_persistent_vs1_now": false,
-    "reason": "VS1 F4 Virtual_WRITE remains unvalidated while current HA profile contains writable entities.",
-    "next_gate": "Apply patch in a controlled staging run with write ingress disabled and temporary GFA poll items, then validate P80/P06/P09/P87 publication before any permanent profile/updater activation."
+    "reason": "Read-side production path is now validated, including mixed F7/6B GFA polling. Existing writable HA entities would use VS1 F4 Virtual_WRITE, which still requires a separate hardware gate.",
+    "next_gate": "Bounded ordinary VS1 F4 setpoint write/readback/restore test."
   },
   "check_only_live": {
     "result": "PASS",
@@ -90,5 +90,68 @@
       "Validates P300/F7 identity 20c2, P80=20, numeric P06/P09, raw non-FF P87, stable MainPID, VS1 initialization/main loop, and no quarantined FF samples.",
       "Restores runtime source files to their exact base blobs, removes the temporary poll override, restores settings, confirms VS2/300, and restores Party state."
     ]
+  },
+  "live_staging_smoke": {
+    "timestamp_local": "2026-09-24T13:11:49+02:00",
+    "result": "PASS",
+    "helper": {
+      "patcher_version": "1.0.1",
+      "patcher_self_tests": "6/6",
+      "smoke_self_tests": "4/4"
+    },
+    "runtime_patch": {
+      "files": {
+        "optolinkvs1.py": "04646df49ea69ba0484eef5807d6583540f243ef",
+        "vs12_adapter.py": "82461ad5e61c015d311c9eb1413551c9e49035d8",
+        "requests_util.py": "838f370d6950b8abfc10e3baed6f3e6b57baa4bc"
+      },
+      "temporary_only": true,
+      "restored_to_base": true
+    },
+    "temporary_poll": {
+      "items": 8,
+      "ordinary_f7_reads": 4,
+      "gfa_6b_reads": 4
+    },
+    "splitter": {
+      "main_pid": 194790,
+      "vs1_initialized": true,
+      "main_loop": true,
+      "unexpected_restart": false
+    },
+    "gfa": {
+      "ff_quarantined": 0,
+      "samples": {
+        "P80_raw": "20",
+        "P06_rpm": 0,
+        "P09_percent": 0,
+        "P87_raw": "00"
+      }
+    },
+    "f7_samples": {
+      "identity_00F8": "20c2",
+      "day_setpoint_2306_raw": "15",
+      "operating_mode_2323_raw": "02",
+      "dhw_setpoint_6300_raw": "37"
+    },
+    "mqtt": {
+      "expected": 8,
+      "seen": 8,
+      "missing": 0
+    },
+    "recovery": {
+      "settings_restored": true,
+      "temporary_poll_removed": true,
+      "runtime_restored_to_base": true,
+      "baseline_protocol": "VS2/300",
+      "backups_removed_after_verified_restore": true
+    },
+    "conclusion": [
+      "The actual optolink-splitter production polling path can interleave ordinary VS1 Virtual_READ/F7 and read-only GFA_READ/0x6B in one persistent VS1 session on the exact VDensHO1/20C2 appliance.",
+      "All eight temporary MQTT topics were published, including P80/P06/P09/P87 through the patched production path.",
+      "No one-byte FF acquisition occurred in this bounded run; the integration also contains an FF quarantine to prevent publishing a false numeric value.",
+      "The temporary runtime patch, poll override and settings were fully removed/restored and VS2/300 baseline was re-established."
+    ],
+    "next_gate": "Validate ordinary VS1 F4 Virtual_WRITE with one bounded non-safety setpoint change, readback, exact restore, and post-restore verification before any permanent VS1 production activation with writable HA entities."
   }
 }
