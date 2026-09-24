@@ -818,6 +818,53 @@ Next work:
 - check retained discovery cleanup for the removed false blower-rpm entity;
 - revise naming/text during the diagnostics-page redesign if necessary.
 
+## Possible upstream contribution: conditional/adaptive polling
+
+Status: **possible TODO / not started**
+
+Investigate moving conditional/adaptive polling out of the local runtime patch
+model and into an upstream-capable implementation for
+`philippoo66/optolink-splitter`.
+
+Proposed workflow:
+
+- create a fork such as `SaulGoodman1337/optolink-splitter`;
+- implement the feature on a dedicated branch as a generic,
+  backwards-compatible scheduler capability rather than a WB2A/GFA-specific
+  special case;
+- allow poll items to switch between an active cadence and a slower idle cadence
+  depending on the cached state of another datapoint;
+- support an optional hold/debounce period after the dependency becomes
+  inactive so short state transitions do not cause poll-mode flapping;
+- retain an occasional idle/control poll instead of disabling dependent values
+  permanently;
+- keep existing poll profiles fully unchanged when no dependency configuration
+  is present;
+- add tests for dependency lookup, active/idle switching, hold behavior,
+  unknown source state and interaction with the existing phased scheduler;
+- use the fork in production while the upstream pull request is open, pinned to
+  an exact tested commit;
+- submit a focused pull request to the original repository containing only the
+  generic conditional/adaptive polling capability, not the local WB2A/GFA
+  patches;
+- if merged upstream, move production back to the original repository and
+  remove the corresponding local scheduler patch.
+
+Initial WB2A use case:
+
+- keep the already-required burner/start-state source polled FAST;
+- poll GFA P06/P09/P87 FAST only while burner/start activity is present;
+- after activity ends, keep them FAST for a short hold window and then reduce
+  them to a much slower idle cadence;
+- do not use flame-on alone as the activation source because blower/pre-purge
+  activity begins before established flame.
+
+Desired outcome:
+
+- reduce unnecessary Optolink traffic while the appliance is idle;
+- retain high temporal resolution during burner starts and active operation;
+- upstream the generic mechanism so less local patch maintenance is required.
+
 ## Repository maintenance
 
 A separate cleanup plan is maintained in
