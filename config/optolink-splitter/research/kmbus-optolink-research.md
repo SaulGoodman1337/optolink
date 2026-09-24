@@ -880,6 +880,44 @@ for distinct spaces:
    Vitosoft request;
 3. `0x55/0x5F/0x63` structured KBus reads after prefix/participant decoding.
 
+## XRAM_READ 0x31 local result - no source target succeeded
+
+After closing the dynamic 0x41 mirror question, the next guarded P300 run tested
+all six unique XRAM request shapes derived from the verified Vitosoft-v6
+metadata.
+
+Result:
+
+~~~text
+0x0000/1 -> 0x31 Error Message payload 05
+0x003A/2 -> 0x31 Error Message payload 05
+0x003D/2 -> 0x31 Error Message payload 05
+0x0040/2 -> 0x31 Error Message payload 05
+0x0042/2 -> 0x31 Error Message payload 05
+0x0088/2 -> 0x31 Error Message payload 05
+~~~
+
+The corresponding 0x01 Virtual_READ controls at these addresses also failed,
+with inner payload `01`.
+
+All 12 Vitosoft XRAM definitions are GWG-family rows and have empty
+`PrefixRead`. Therefore a missing prefix is not a plausible explanation for
+this local result.
+
+The helper completed and restored VS1/Party successfully; its historical
+`RESULT=PASS` meant **probe execution/restoration passed**, not that XRAM
+reads succeeded. The helper has now been corrected to print separate fields:
+
+~~~text
+XRAM_SUCCESS_COUNT=...
+XRAM_CAPABILITY=...
+EXECUTION_RESULT=...
+~~~
+
+Decision: the known Vitosoft XRAM shapes are closed as a direct local path.
+Do not blind-scan 0x31. Continue with an exact source-defined prefixed
+`KMBUS_EEPROM_READ 0x43`.
+
 ## Research questions
 
 The project should answer these in order:
