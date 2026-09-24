@@ -94,11 +94,19 @@ chmod 755 /usr/local/bin/optolink-apply-vdensho1-ha-profile
 cs_repo_fetch tools/optolink-apply-vscotho1-profile.sh /usr/local/bin/optolink-apply-vscotho1-profile
 chmod 755 /usr/local/bin/optolink-apply-vscotho1-profile
 
-# Guarded maintenance write/reset interface. Restrict execution to root/group.
+# Shared maintenance core plus guarded CLI/API frontends.
+cs_repo_fetch config/optolink-splitter/optolink_maintenance_core.py /opt/optolink/optolink_maintenance_core.py
+chmod 644 /opt/optolink/optolink_maintenance_core.py
+chown optolink:optolink /opt/optolink/optolink_maintenance_core.py
+
 cs_repo_fetch tools/optolink-maintenance.py /usr/local/bin/optolink-maintenance
 chmod 750 /usr/local/bin/optolink-maintenance
 chown root:root /usr/local/bin/optolink-maintenance
 ln -sf /usr/local/bin/optolink-maintenance /usr/bin/optolink-maintenance
+
+cs_repo_fetch tools/optolink-maintenance-api.py /usr/local/bin/optolink-maintenance-api
+chmod 750 /usr/local/bin/optolink-maintenance-api
+chown root:optolink /usr/local/bin/optolink-maintenance-api
 
 cs_repo_fetch tools/wb2a-schedule-probe.py /usr/local/bin/wb2a-schedule-probe
 chmod 750 /usr/local/bin/wb2a-schedule-probe
@@ -131,6 +139,10 @@ cs_repo_fetch config/optolink-splitter/optolink-schedule-manager.service /etc/sy
 chmod 644 /etc/systemd/system/optolink-schedule-manager.service
 chown root:root /etc/systemd/system/optolink-schedule-manager.service
 
+cs_repo_fetch config/optolink-splitter/optolink-maintenance-api.service /etc/systemd/system/optolink-maintenance-api.service
+chmod 644 /etc/systemd/system/optolink-maintenance-api.service
+chown root:root /etc/systemd/system/optolink-maintenance-api.service
+
 cs_repo_fetch config/optolink-splitter/vcontrol-mapping.md /root/optolink-vcontrol-mapping.md
 
 chown optolink:optolink /opt/optolink/settings_ini.py /opt/optolink/homeassistant_poll_list.py
@@ -155,6 +167,9 @@ chmod 755 /usr/local/bin/optolink-ports
 
 systemctl daemon-reload
 systemctl enable optolink-splitter.service
+# Fresh installs intentionally start with mqtt_broker=None. Install the API
+# unit now but leave it disabled until MQTT is configured and the updater runs.
+systemctl disable --now optolink-maintenance-api.service >/dev/null 2>&1 || true
 
 msg_info "Activating validated VDensHO1 permanent-VS1 profile"
 if COMMUNITY_SCRIPTS_REPO="$CS_REPO" \
