@@ -12,6 +12,7 @@ import threading
 import time
 from collections import deque
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 APP_DIR = "/opt/optolink"
@@ -231,12 +232,20 @@ class MaintenanceApi:
     def handle_stage(self, kind: str, raw: str) -> None:
         try:
             text = raw.strip()
-            if not re.fullmatch(r"-?[0-9]+", text):
+            try:
+                numeric = Decimal(text)
+            except InvalidOperation as exc:
+                raise MaintenanceError(
+                    "staged value must be numeric",
+                    code="invalid_stage_value",
+                ) from exc
+
+            if not numeric.is_finite() or numeric != numeric.to_integral_value():
                 raise MaintenanceError(
                     "staged value must be an integer",
                     code="invalid_stage_value",
                 )
-            value = int(text, 10)
+            value = int(numeric)
 
             if kind == "stage_hours":
                 if value < 0 or value > 10000 or value % 100 != 0:
