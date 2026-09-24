@@ -390,3 +390,47 @@ exercised and the short gate lasted only three minutes.
 Next gate: 30-60 minute soak including normal burner activity, while counting
 first-attempt FF events, successful retry recoveries, second FF/failures and
 splitter restarts separately.
+
+
+## Fast-first 25 ms GFA short gate
+
+The experimental GFA patch v1.0.5 was tested with:
+
+```text
+global olbreath = 0.025 s
+GFA first-attempt gap = 0.025 s
+GFA retry gap = 0.150 s
+raw GFA FF retry count = 1
+```
+
+The 180-second passive cadence gate produced:
+
+| Datapoint | Median | P95 | Max |
+|---|---:|---:|---:|
+| Kesseltemperatur | 1.477 s | 1.625 s | 1.691 s |
+| Brenner Modulationsgrad | 1.485 s | 1.617 s | 1.681 s |
+| GFA P06 blower RPM | 1.482 s | 1.620 s | 1.751 s |
+| GFA P09 modulation setpoint | 1.488 s | 1.655 s | 1.747 s |
+| GFA P87 raw status | 1.492 s | 1.592 s | 1.706 s |
+| Außentemperatur | 7.424 s | 7.602 s | 7.709 s |
+| GFA P80 identity | 7.393 s | 7.699 s | 7.781 s |
+
+Retry/error telemetry:
+
+```text
+GFA_FAST_FIRST_FF=0
+GFA_RETRY_RECOVERED=0
+P80_OK=1
+SERVICE_OK=1
+HARD_ERRORS=none
+RESULT=PASS_CLEAN
+```
+
+This is about 69 percent faster in FAST median cadence than the original
+approximately 4.72 s 150 ms global baseline. It is also materially faster than
+the approximately 1.88 s median measured with global 25 ms but a 150 ms GFA
+first-attempt gap.
+
+No FF occurred in this short gate, so the conservative 150 ms retry path was
+not exercised during this run. A 30-60 minute soak including burner activity
+is required before making this configuration permanent.
