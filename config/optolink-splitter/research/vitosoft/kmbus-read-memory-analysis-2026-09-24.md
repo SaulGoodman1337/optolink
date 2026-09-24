@@ -551,6 +551,36 @@ that those bytes are consumed as a selector. A same-address P-N-P comparison is
 required. The prepared helper compares prefixed -> no-prefix -> prefixed at
 0x0001, 0x000A, 0x0078 and 0x00A0.
 
+## Local PrefixRead discriminator result
+
+The same-address P-N-P experiment materially narrows the 0x43 interpretation.
+
+At `0x0001/1`:
+
+~~~text
+prefixed   -> 88
+no-prefix  -> 87
+prefixed   -> 88
+~~~
+
+This is direct local evidence that the six extra source bytes can alter an
+0x43 result; they are not always ignored by the controller.
+
+At `0x000A/5`, however, the result was unchanged
+(`4000000000` for P/N/P). At the repeated-word addresses
+`0x0078/8` and `0x00A0/10`, the two prefixed controls themselves changed
+within the same short run, so those blocks remain transaction/state-dependent
+and cannot isolate PrefixRead semantics.
+
+The strongest current statement is therefore:
+
+> `PrefixRead=030000000101` has a reproducible candidate effect at
+> `0x0001/1`, but the exact semantics as routing, target selection or another
+> request parameter are not yet proven.
+
+The next experiment must reset P300 between every `0x0001/1` sample and use
+a balanced deterministic P/N order.
+
 ### 3. 0x31 XRAM_READ - high conceptual value, local applicability unknown
 
 The 12 definitions are now fully enumerated. They expose volatile objects such
