@@ -5,6 +5,8 @@ on:
     paths:
       - "config/optolink-splitter/optolink_maintenance_core.py"
       - "config/optolink-splitter/optolink-maintenance-api.service"
+      - "config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py"
+      - "config/optolink-splitter/homeassistant-dashboard.yaml"
       - "tools/optolink-maintenance.py"
       - "tools/optolink-maintenance-api.py"
       - "tools/optolink-splitter-update.sh"
@@ -15,6 +17,8 @@ on:
     paths:
       - "config/optolink-splitter/optolink_maintenance_core.py"
       - "config/optolink-splitter/optolink-maintenance-api.service"
+      - "config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py"
+      - "config/optolink-splitter/homeassistant-dashboard.yaml"
       - "tools/optolink-maintenance.py"
       - "tools/optolink-maintenance-api.py"
       - "tools/optolink-splitter-update.sh"
@@ -30,7 +34,23 @@ jobs:
 
       - name: Compile Python
         run: |
-          python3 -m py_compile             config/optolink-splitter/optolink_maintenance_core.py             tools/optolink-maintenance.py             tools/optolink-maintenance-api.py
+          python3 -m py_compile \
+            config/optolink-splitter/optolink_maintenance_core.py \
+            config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py \
+            tools/optolink-maintenance.py \
+            tools/optolink-maintenance-api.py
+
+      - name: Validate dashboard YAML
+        run: |
+          python3 -m pip install --disable-pip-version-check pyyaml
+          python3 - <<'PY'
+          import yaml
+          from pathlib import Path
+          path = Path("config/optolink-splitter/homeassistant-dashboard.yaml")
+          with path.open(encoding="utf-8") as handle:
+              yaml.safe_load(handle)
+          print("dashboard YAML OK")
+          PY
 
       - name: Validate shell syntax
         run: |
