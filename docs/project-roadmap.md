@@ -6,6 +6,16 @@ Last reviewed: 2026-09-24
 
 The purpose of this file is to keep cross-project work in one place. For WB2A reverse-engineering execution order, completion criteria and research TODOs, use [research-plan-2026-09-24.md](research-plan-2026-09-24.md). Historical roadmap sections below are retained for context and may contain superseded next-step text.
 
+## Home Assistant dashboard checkpoint - 2026-09-24
+
+A detailed implementation checkpoint is available at
+[`docs/homeassistant-dashboard-checkpoint-2026-09-24.md`](homeassistant-dashboard-checkpoint-2026-09-24.md).
+
+It records the intermittent Diagnose color/background-rendering issue, the
+verified fault-history alias decoding problem, currently unused but already
+polled HA values, source-backed maintenance candidates, and the agreed order
+for redesigning the remaining dashboard views.
+
 ## Priority: next session
 
 ### Handoff for the next chat — Home Assistant dashboard
