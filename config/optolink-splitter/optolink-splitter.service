@@ -1,0 +1,19 @@
+[Unit]
+Description=Optolink Switch/Splitter
+Documentation=https://github.com/philippoo66/optolink-splitter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=optolink
+Group=optolink
+SupplementaryGroups=dialout
+WorkingDirectory=/opt/optolink
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/optolink/venv/bin/python /opt/optolink/optolinkvs2_switch.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
