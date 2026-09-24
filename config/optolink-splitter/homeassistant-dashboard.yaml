@@ -2225,10 +2225,10 @@ views:
     max_columns: 4
     sections:
       - type: grid
-        column_span: 2
+        column_span: 4
         cards:
           - type: heading
-            heading: Heizkreis & interne Pumpe
+            heading: Pumpen & Hydraulik
             heading_style: title
             icon: mdi:pump
             badges:
@@ -2239,7 +2239,7 @@ views:
                 show_icon: true
               - type: entity
                 entity: sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl
-                name: HK %
+                name: HK
                 show_state: true
                 show_icon: false
               - type: entity
@@ -2249,37 +2249,229 @@ views:
                 show_icon: true
               - type: entity
                 entity: sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
-                name: Intern %
+                name: Intern
                 show_state: true
                 show_icon: false
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
+                name: Ventil
+                show_state: true
+                show_icon: false
+
+          - type: custom:mushroom-chips-card
+            alignment: start
+            chips:
+              - type: template
+                entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_logisch
+                icon: mdi:source-branch
+                content: >-
+                  Anforderung {{ 'AN' if is_state('binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_logisch', 'on') else 'AUS' }}
+                icon_color: >-
+                  {{ 'green' if is_state('binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_logisch', 'on') else 'grey' }}
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: binary_sensor.vitodens_200_wb2a_speicherladepumpe_status
+                icon: mdi:water-pump
+                content: >-
+                  Speicher {{ 'AN' if is_state('binary_sensor.vitodens_200_wb2a_speicherladepumpe_status', 'on') else 'AUS' }}
+                icon_color: >-
+                  {{ 'cyan' if is_state('binary_sensor.vitodens_200_wb2a_speicherladepumpe_status', 'on') else 'grey' }}
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: binary_sensor.vitodens_200_wb2a_zirkulationspumpe_status
+                icon: mdi:pump
+                content: >-
+                  Zirkulation {{ 'AN' if is_state('binary_sensor.vitodens_200_wb2a_zirkulationspumpe_status', 'on') else 'AUS' }}
+                icon_color: >-
+                  {{ 'blue' if is_state('binary_sensor.vitodens_200_wb2a_zirkulationspumpe_status', 'on') else 'grey' }}
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.vitodens_200_wb2a_km_fehler_pumpe_a1
+                icon: mdi:access-point-network
+                content: >-
+                  KM A1 {{ states('sensor.vitodens_200_wb2a_km_fehler_pumpe_a1') }}
+                icon_color: >-
+                  {% set s = states('sensor.vitodens_200_wb2a_km_fehler_pumpe_a1') | lower %}
+                  {{ 'green' if s == 'ok' or 'kein fehler' in s else 'red' }}
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.vitodens_200_wb2a_km_fehler_interne_pumpe
+                icon: mdi:access-point-network
+                content: >-
+                  KM Intern {{ states('sensor.vitodens_200_wb2a_km_fehler_interne_pumpe') }}
+                icon_color: >-
+                  {% set s = states('sensor.vitodens_200_wb2a_km_fehler_interne_pumpe') | lower %}
+                  {{ 'green' if s == 'ok' or 'kein fehler' in s else 'red' }}
+                tap_action:
+                  action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  padding: 2px 4px 4px;
+                }
+            grid_options:
+              columns: full
+
+      - type: grid
+        column_span: 2
+        cards:
           - type: heading
-            heading: Pumpenparameter
+            heading: Heizkreis M1
             heading_style: subtitle
-            icon: mdi:cog-outline
+            icon: mdi:radiator
+
+          - type: custom:background-graph-entities
+            title: Heizkreispumpe
+            tile_style: true
+            hours_to_show: 3
+            points_per_hour: 12
+            update_interval: 60
+            line_width: 2
+            line_opacity: 0.24
+            line_length: short
+            curve: spline
+            show_gaps: true
+            entities:
+              - entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_ausgang
+                name: A1 Ausgang
+                icon: mdi:pump
+                graph_entity: sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl
+                show_graph_entity_state: true
+                extra_value_entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
+                extra_value_name: VL
+                overwrite_graph_appearance: true
+                graph_min: 0
+                graph_max: 100
+              - entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_logisch
+                name: Logische Anforderung
+                icon: mdi:source-branch
+            grid_options:
+              columns: full
+
+          - type: custom:button-card
+            template: diag_active
+            entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_logisch
+            name: Anforderung
+            icon: mdi:source-branch
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_active
+            entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_ausgang
+            name: A1 Ausgang
+            icon: mdi:electric-switch
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_research
+            entity: sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl
+            name: Drehzahl
+            icon: mdi:speedometer
+            grid_options:
+              columns: 4
+              rows: 1
+
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Interne Kesselpumpe
+            heading_style: subtitle
+            icon: mdi:pump
+
+          - type: custom:background-graph-entities
+            title: Interne Pumpe / Hydraulik
+            tile_style: true
+            hours_to_show: 3
+            points_per_hour: 12
+            update_interval: 60
+            line_width: 2
+            line_opacity: 0.24
+            line_length: short
+            curve: spline
+            show_gaps: true
+            entities:
+              - entity: binary_sensor.vitodens_200_wb2a_interne_pumpe_status
+                name: Interne Pumpe
+                icon: mdi:pump
+                graph_entity: sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
+                show_graph_entity_state: true
+                extra_value_entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
+                extra_value_name: Ventil
+                overwrite_graph_appearance: true
+                graph_min: 0
+                graph_max: 100
+              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
+                name: Vorlauf
+                icon: mdi:thermometer-chevron-up
+                extra_value_entity: sensor.vitodens_200_wb2a_kesseltemperatur
+                extra_value_name: Kessel
+            grid_options:
+              columns: full
+
+          - type: custom:button-card
+            template: diag_active
+            entity: binary_sensor.vitodens_200_wb2a_interne_pumpe_status
+            name: Status
+            icon: mdi:pump
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_research
+            entity: sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
+            name: Drehzahl
+            icon: mdi:speedometer
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_status
+            entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
+            name: Umschaltventil
+            icon: mdi:valve
+            grid_options:
+              columns: 4
+              rows: 1
+
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Heizkreis-Regelparameter
+            heading_style: title
+            icon: mdi:tune-variant
             badges:
               - type: entity
                 entity: sensor.vitodens_200_wb2a_interne_pumpe_kennung_30_anzeige
-                name: Pumpentyp
+                name: Interne Pumpe
                 show_state: true
                 show_icon: false
+
+          - type: heading
+            heading: Drehzahlgrenzen
+            heading_style: subtitle
+            icon: mdi:speedometer
+
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_pumpe_min_drehzahl_e7_einstellung
-            name: Minimale Drehzahl E7
-            icon: mdi:pump
+            name: Minimum E7
+            icon: mdi:speedometer-slow
             show_entity_picture: false
             vertical: false
             features:
               - type: numeric-input
                 style: slider
             features_position: bottom
-            grid_options:
-              columns: 10
-              rows: 2
-          - type: button
-            icon: mdi:information-outline
-            show_name: false
-            show_icon: true
             tap_action:
+              action: more-info
+            hold_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
@@ -2290,39 +2482,33 @@ views:
                     type: markdown
                     content: |
                       **Funktion:** Untere Drehzahlgrenze der geregelten Heizkreispumpe im normalen Heizbetrieb.
-                      
+
                       **Bereich:** 0–100 %
-                      
+
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_min_drehzahl_e7_einstellung') }} %
-                      
-                      Die Regelung darf oberhalb von E7 selbst eine höhere Drehzahl vorgeben. E7 = 100 % erzwingt zusammen mit E6 = 100 % die maximale Pumpendrehzahl.
-                      
-                      **Bei dieser WB2A gemessen:** E7 30 % → reale Drehzahl etwa 32–35 %, E7 60 % → etwa 62 %, E7 100 % → 100 %.
-                      
+
+                      Die Regelung darf oberhalb von E7 selbst eine höhere Drehzahl vorgeben.
+
+                      **Lokal gemessen:** E7 30 % → reale Drehzahl etwa 32–35 %, E7 60 % → etwa 62 %, E7 100 % → 100 %.
+
                       Datenpunkt: `0x27E7`
-            hold_action:
-              action: none
             grid_options:
-              columns: 2
+              columns: 6
               rows: 2
+
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_pumpe_max_drehzahl_e6_einstellung
-            name: Maximale Drehzahl E6
-            icon: mdi:pump
+            name: Maximum E6
+            icon: mdi:speedometer
             show_entity_picture: false
             vertical: false
             features:
               - type: numeric-input
                 style: slider
             features_position: bottom
-            grid_options:
-              columns: 10
-              rows: 2
-          - type: button
-            icon: mdi:information-outline
-            show_name: false
-            show_icon: true
             tap_action:
+              action: more-info
+            hold_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
@@ -2333,31 +2519,23 @@ views:
                     type: markdown
                     content: |
                       **Funktion:** Obere Drehzahlgrenze der geregelten Heizkreispumpe.
-                      
+
                       **Bereich:** 0–100 %
-                      
+
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_max_drehzahl_e6_einstellung') }} %
-                      
-                      E6 = 100 % bedeutet, dass die Regelung bis 100 % fahren darf. Es bedeutet **nicht**, dass die Pumpe beim Brennerstart automatisch auf 100 % geht.
-                      
+
+                      E6 = 100 % erlaubt maximal 100 %. Es bedeutet **nicht**, dass die Pumpe beim Brennerstart automatisch auf 100 % geht.
+
                       Datenpunkt: `0x27E6`
-            hold_action:
-              action: none
             grid_options:
-              columns: 2
+              columns: 6
               rows: 2
+
           - type: custom:mushroom-select-card
             entity: select.vitodens_200_wb2a_heizkreis_m1_pumpe_nebenbetrieb_e8_einstellung
-            name: Pumpendrehzahl reduziert E8
-            icon: mdi:pump
-            grid_options:
-              columns: 10
-              rows: 2
-          - type: button
-            icon: mdi:information-outline
-            show_name: false
-            show_icon: true
-            tap_action:
+            name: Reduzierter Betrieb E8
+            icon: mdi:call-split
+            hold_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
@@ -2367,39 +2545,31 @@ views:
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Legt fest, welche Pumpendrehzahl im reduzierten Heizbetrieb verwendet wird.
-                      
-                      **Aktuell:** {{ states('select.vitodens_200_wb2a_heizkreis_m1_pumpe_nebenbetrieb_e8_einstellung') }}
-                      
-                      - **Minimum nach E7:** Im reduzierten Betrieb gilt die Mindestdrehzahl aus E7.
-                      - **Reduziert nach E9:** Im reduzierten Betrieb wird die separate Drehzahl E9 verwendet.
-                      
+                      **Funktion:** Wählt die Pumpendrehzahl im reduzierten Heizbetrieb.
+
+                      - **Minimum nach E7:** Mindestdrehzahl aus E7.
+                      - **Reduziert nach E9:** separate Drehzahl E9.
+
                       E8 ist kein Brennerstart- oder Pumpenboost-Parameter.
-                      
+
                       Datenpunkt: `0x27E8`
-            hold_action:
-              action: none
             grid_options:
-              columns: 2
+              columns: 6
               rows: 2
+
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_e9_einstellung
-            name: Reduzierte Drehzahl E9
-            icon: mdi:pump
+            name: Reduziert E9
+            icon: mdi:weather-night
             show_entity_picture: false
             vertical: false
             features:
               - type: numeric-input
                 style: slider
             features_position: bottom
-            grid_options:
-              columns: 10
-              rows: 2
-          - type: button
-            icon: mdi:information-outline
-            show_name: false
-            show_icon: true
             tap_action:
+              action: more-info
+            hold_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
@@ -2410,37 +2580,36 @@ views:
                     type: markdown
                     content: |
                       **Funktion:** Separate Pumpendrehzahl für den reduzierten Heizbetrieb.
-                      
+
                       **Bereich:** 0–100 %
-                      
+
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_e9_einstellung') }} %
-                      
-                      E9 wird für diese Funktion nur verwendet, wenn E8 auf **„Reduziert nach E9“** steht.
-                      
+
+                      E9 wird verwendet, wenn E8 auf **„Reduziert nach E9“** steht.
+
                       Datenpunkt: `0x27E9`
-            hold_action:
-              action: none
             grid_options:
-              columns: 2
+              columns: 6
               rows: 2
+
+          - type: heading
+            heading: Zeit / interne Pumpe
+            heading_style: subtitle
+            icon: mdi:timer-cog-outline
+
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_a9_einstellung
-            name: Pumpenstillstandzeit A9
-            icon: mdi:timer-cog-outline
+            name: Stillstandzeit A9
+            icon: mdi:timer-pause-outline
             show_entity_picture: false
             vertical: false
             features:
               - type: numeric-input
                 style: slider
             features_position: bottom
-            grid_options:
-              columns: 10
-              rows: 2
-          - type: button
-            icon: mdi:information-outline
-            show_name: false
-            show_icon: true
             tap_action:
+              action: more-info
+            hold_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
@@ -2450,25 +2619,22 @@ views:
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Pumpenstillstandzeit nach einer Sollwertänderung des Heizkreises.
-                      
-                      Die Heizkreispumpe wird für die eingestellte Zeit abgeschaltet, wenn sich der Sollwert durch einen **Wechsel der Betriebsart** oder durch eine **Änderung der Raum-Solltemperatur** ändert.
-                      
+                      **Funktion:** Pumpenstillstandzeit nach einer Sollwertänderung des Heizkreises durch Betriebsartwechsel oder Änderung der Raum-Solltemperatur.
+
                       **Bereich:** 0–15 min
-                      
+
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_a9_einstellung') }} min
-                      
-                      A9 = 0 deaktiviert die Pumpenstillstandzeit. A9 = 1–15 legt die Stillstandzeit in Minuten fest.
-                      
+
+                      A9 = 0 deaktiviert die Stillstandzeit.
+
                       Datenpunkt: `0x27A9`
-            hold_action:
-              action: none
             grid_options:
-              columns: 2
+              columns: 6
               rows: 2
+
           - type: tile
             entity: number.vitodens_200_wb2a_interne_pumpe_solldrehzahl_31_einstellung
-            name: Interne Pumpe Solldrehzahl 31
+            name: Interne Pumpe 31
             icon: mdi:pump
             show_entity_picture: false
             vertical: false
@@ -2476,14 +2642,9 @@ views:
               - type: numeric-input
                 style: slider
             features_position: bottom
-            grid_options:
-              columns: 10
-              rows: 2
-          - type: button
-            icon: mdi:information-outline
-            show_name: false
-            show_icon: true
             tap_action:
+              action: more-info
+            hold_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
@@ -2494,21 +2655,18 @@ views:
                     type: markdown
                     content: |
                       **Funktion:** Konfigurationswert für die Drehzahl der internen Pumpe.
-                      
+
                       **Bereich:** 0–100 %
-                      
+
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_interne_pumpe_solldrehzahl_31_einstellung') }} %
-                      
-                      **Wichtig bei dieser Anlage:** 31 = 100 % bedeutet nicht automatisch 100 % reale Pumpendrehzahl im Heizbetrieb. Wir haben 31 = 100 % bei gleichzeitig nur etwa 50 % tatsächlicher interner Pumpendrehzahl gemessen.
-                      
-                      Daher nicht als direkten Laufzeit-Sollwert interpretieren.
-                      
+
+                      **Wichtig:** 31 = 100 % ist bei dieser Anlage nicht gleichbedeutend mit 100 % realer Pumpendrehzahl im Heizbetrieb. Der Wert ist daher nicht als direkter Laufzeit-Sollwert beschriftet.
+
                       Datenpunkt: `0x5731`
-            hold_action:
-              action: none
             grid_options:
-              columns: 2
+              columns: 6
               rows: 2
+
       - type: grid
         column_span: 2
         cards:
@@ -2518,44 +2676,73 @@ views:
             icon: mdi:water-pump
             badges:
               - type: entity
-                entity: binary_sensor.vitodens_200_wb2a_zirkulationspumpe_status
-                name: Zirkulation
-                show_state: true
-                show_icon: true
-              - type: entity
-                entity: binary_sensor.vitodens_200_wb2a_speicherladepumpe_status
-                name: Speicher
-                show_state: true
-                show_icon: true
-              - type: entity
                 entity: sensor.vitodens_200_wb2a_warmwasser_ladestatus
                 name: Ladestatus
                 show_state: true
                 show_icon: false
+
+          - type: custom:button-card
+            template: diag_active
+            entity: binary_sensor.vitodens_200_wb2a_speicherladepumpe_status
+            name: Speicherladepumpe
+            icon: mdi:water-pump
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_active
+            entity: binary_sensor.vitodens_200_wb2a_zirkulationspumpe_status
+            name: Zirkulation
+            icon: mdi:pump
+            grid_options:
+              columns: 4
+              rows: 1
+          - type: custom:button-card
+            template: diag_research
+            entity: sensor.vitodens_200_wb2a_warmwasser_ladestatus
+            name: Ladestatus
+            icon: mdi:water-thermometer
+            grid_options:
+              columns: 4
+              rows: 1
+
           - type: custom:mushroom-select-card
             entity: select.vitodens_200_wb2a_zirkulation_intervall
             name: Zirkulationsmodus
             icon: mdi:clock-outline
+            grid_options:
+              columns: full
+
+          - type: custom:button-card
+            template: diag_group3_green
+            name: Warmwasser-Regelung
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_warmwasser_sollbereich_56_anzeige
+                  name: Sollbereich
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_warmwasser_einschalt_offset_59_anzeige
+                  name: Einschaltpunkt
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_umschaltventil_bauart_65_anzeige
+                  name: Ventil
+            grid_options:
+              columns: full
+
           - type: heading
-            heading: Regelparameter
+            heading: Speicherladung
             heading_style: subtitle
-            icon: mdi:tune-variant
-            badges:
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_warmwasser_sollbereich_56_anzeige
-                name: Sollbereich
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_warmwasser_einschalt_offset_59_anzeige
-                name: Einschaltpunkt
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_umschaltventil_bauart_65_anzeige
-                name: Ventil
-                show_state: true
-                show_icon: false
+            icon: mdi:water-boiler
+
           - type: tile
             entity: number.vitodens_200_wb2a_warmwasser_kessel_offset_60_einstellung
             name: Kessel-Offset 60
@@ -2566,14 +2753,9 @@ views:
               - type: numeric-input
                 style: slider
             features_position: bottom
-            grid_options:
-              columns: 10
-              rows: 2
-          - type: button
-            icon: mdi:information-outline
-            show_name: false
-            show_icon: true
             tap_action:
+              action: more-info
+            hold_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
@@ -2583,22 +2765,17 @@ views:
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Überhöhung der Kessel- bzw. Vorlauf-Solltemperatur gegenüber der Warmwasser-Solltemperatur während der Speicherladung.
-                      
+                      **Funktion:** Überhöhung der Kessel-/Vorlauf-Solltemperatur gegenüber Warmwasser-Soll während der Speicherladung.
+
                       **Bereich:** 5–25 K
-                      
+
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_warmwasser_kessel_offset_60_einstellung') }} K
-                      
-                      **Beispiel:** Warmwasser-Soll 50 °C + Offset 20 K → Kessel-Soll ungefähr 70 °C während der Warmwasserbereitung.
-                      
-                      Der Parameter betrifft die Warmwasserbereitung, nicht den normalen Heizbetrieb.
-                      
+
                       Datenpunkt: `0x6760`
-            hold_action:
-              action: none
             grid_options:
-              columns: 2
+              columns: 6
               rows: 2
+
           - type: tile
             entity: number.vitodens_200_wb2a_warmwasser_pumpennachlauf_62_einstellung
             name: Pumpennachlauf 62
@@ -2609,14 +2786,9 @@ views:
               - type: numeric-input
                 style: slider
             features_position: bottom
-            grid_options:
-              columns: 10
-              rows: 2
-          - type: button
-            icon: mdi:information-outline
-            show_name: false
-            show_icon: true
             tap_action:
+              action: more-info
+            hold_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
@@ -2627,34 +2799,76 @@ views:
                     type: markdown
                     content: |
                       **Funktion:** Nachlaufzeit der Speicherladepumpe nach Ende der Warmwasser-Speicherladung.
-                      
+
                       **Bereich:** 0–15 min
-                      
+
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_warmwasser_pumpennachlauf_62_einstellung') }} min
-                      
-                      Damit kann nach dem Brennerende noch Wärme aus dem Kessel in den Warmwasserspeicher übertragen werden.
-                      
+
                       Datenpunkt: `0x6762`
-            hold_action:
-              action: none
             grid_options:
-              columns: 2
+              columns: 6
               rows: 2
+
+          - type: custom:button-card
+            template: diag_group2_blue
+            name: Zirkulation bei WW-Soll
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_zirkulation_bei_ww_soll1_71_anzeige
+                  name: Soll 1
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_zirkulation_bei_ww_soll2_72_anzeige
+                  name: Soll 2
+            grid_options:
+              columns: full
+
+      - type: grid
+        column_span: 4
+        cards:
           - type: heading
-            heading: Zirkulation bei Warmwasser-Soll
+            heading: Technik / Diagnose
             heading_style: subtitle
+            icon: mdi:tools
+
+          - type: custom:button-card
+            template: diag_health
+            entity: sensor.vitodens_200_wb2a_km_fehler_pumpe_a1
+            name: KM Heizkreispumpe
+            icon: mdi:access-point-network
+            grid_options:
+              columns: 3
+              rows: 1
+          - type: custom:button-card
+            template: diag_health
+            entity: sensor.vitodens_200_wb2a_km_fehler_interne_pumpe
+            name: KM interne Pumpe
+            icon: mdi:access-point-network
+            grid_options:
+              columns: 3
+              rows: 1
+          - type: custom:button-card
+            template: diag_status
+            entity: sensor.vitodens_200_wb2a_interne_pumpe_kennung_30_anzeige
+            name: Pumpentyp
             icon: mdi:pump
-            badges:
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_zirkulation_bei_ww_soll1_71_anzeige
-                name: Soll 1
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_zirkulation_bei_ww_soll2_72_anzeige
-                name: Soll 2
-                show_state: true
-                show_icon: false
+            grid_options:
+              columns: 3
+              rows: 1
+          - type: custom:button-card
+            template: diag_status
+            entity: sensor.vitodens_200_wb2a_umschaltventil_bauart_65_anzeige
+            name: Ventiltyp
+            icon: mdi:valve
+            grid_options:
+              columns: 3
+              rows: 1
+
     cards: []
 
   - title: Nachtabsenkung
