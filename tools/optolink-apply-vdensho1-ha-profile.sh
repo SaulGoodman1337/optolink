@@ -3,7 +3,7 @@ set -euo pipefail
 
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
-HELPER_REV="2026-09-24-r7-phased-poll"
+HELPER_REV="2026-09-24-r8-fast25-gfa-retry"
 APP_DIR="/opt/optolink"
 VALIDATED_UPSTREAM_REF="c1ee204a1421447721603c5f21c6da7337fdac97"
 
@@ -128,6 +128,59 @@ if ! "$APP_DIR/venv/bin/python" "$gfa_patcher_tmp" --apply; then
   exit 1
 fi
 
+# Production timing contract for the locally validated read-only GFA path:
+# first attempt follows the fast global VS1 cadence; a raw-FF recovery retry
+# gets a conservative 150 ms gap. Fail closed if a future patcher revision no
+# longer provides exactly this behavior.
+python3 - "$APP_DIR/optolinkvs1.py" <<'PY'
+import ast
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+src = path.read_text()
+tree = ast.parse(src)
+
+values = {}
+for node in tree.body:
+    if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+        continue
+    targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+    if len(targets) != 1 or not isinstance(targets[0], ast.Name):
+        continue
+    name = targets[0].id
+    if name not in {"GFA_FIRST_GAP_SECONDS", "GFA_RETRY_GAP_SECONDS"}:
+        continue
+    try:
+        values[name] = ast.literal_eval(node.value)
+    except Exception:
+        pass
+
+expected = {
+    "GFA_FIRST_GAP_SECONDS": 0.025,
+    "GFA_RETRY_GAP_SECONDS": 0.15,
+}
+if values != expected:
+    raise SystemExit(
+        "Unexpected GFA timing contract after patch: "
+        f"{values!r}, expected {expected!r}"
+    )
+
+required = (
+    "returned FF on fast attempt; ",
+    "recovered on FF retry",
+    "quarantined after retry",
+)
+missing = [marker for marker in required if marker not in src]
+if missing:
+    raise SystemExit(f"Missing GFA retry/quarantine markers: {missing!r}")
+
+print(
+    "GFA timing contract OK: first=0.025s retry=0.15s "
+    "with one raw-FF recovery retry"
+)
+PY
+
 echo "Applying phased poll scheduler..."
 if ! "$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --apply; then
   echo "Phased poll scheduler integration failed." >&2
@@ -135,7 +188,7 @@ if ! "$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --apply; then
   exit 1
 fi
 
-echo "Enabling validated permanent VS1 timing..."
+echo "Enabling permanent VS1 timing (global 25 ms; GFA retry 150 ms)..."
 python3 - "$APP_DIR/settings_ini.py" <<'PY'
 import ast
 from pathlib import Path
@@ -167,7 +220,7 @@ if set(nodes) != {"vs1protocol", "olbreath"}:
     raise SystemExit("Could not uniquely locate vs1protocol and olbreath settings.")
 
 lines = src.splitlines(keepends=True)
-for name, value in (("vs1protocol", True), ("olbreath", 0.15)):
+for name, value in (("vs1protocol", True), ("olbreath", 0.025)):
     node = nodes[name]
     if node.lineno != getattr(node, "end_lineno", node.lineno):
         raise SystemExit(f"{name} must be a one-line top-level assignment.")
