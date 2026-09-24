@@ -563,8 +563,13 @@ MQTT Discovery is now live-verified as well: all five new maintenance entities
 are published, the two Number entities use only guarded staging topics, stage
 state is `0 / 0`, and API availability is `online`.
 
-The remaining task is frontend verification of the new Wartung view, including
-layout, entity rendering, confirmation dialogs and displayed post-action readbacks.
+The first live Wartung render confirmed entity availability but exposed a
+presentation issue: the default button-card layout rendered oversized action
+icons/cards. A compact maintenance action template and compact safety card are
+now committed and YAML-validated.
+
+The remaining task is frontend verification of the corrected Wartung view,
+including confirmation dialogs and displayed post-action readbacks.
 
 ## WB2A reverse engineering: open items
 
