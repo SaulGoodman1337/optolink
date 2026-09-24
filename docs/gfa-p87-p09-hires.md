@@ -1,6 +1,6 @@
 # WB2A GFA P87/P09 high-resolution correlation
 
-Status: **prepared; local syntax and 9/9 new logic tests pass. Live execution pending.**
+Status: **live run completed successfully; temporal ordering resolved. P87 bit 1 becomes set before P09 leaves the high-start plateau. Causality and manufacturer bit semantics remain unresolved.**
 
 ## Why this probe exists
 
@@ -30,6 +30,90 @@ The inspected private Vitosoft archive contains no value table, enum, or bit def
 Therefore P87 bit 1 must remain **unnamed**. The live association with plateau release is not a manufacturer-defined semantic label.
 
 [Machine-readable static/probe evidence](../config/optolink-splitter/research/vitosoft/gfa-p87-static-and-hires-2026-09-24-evidence.json).
+
+## Live result - temporal ordering resolved
+
+Source: `Eingefügter Text(20260924-090716).txt`, 139565 bytes, 707 lines, SHA256:
+
+```text
+7300d9dc272e8668c0ab2d518826a9f04037cb09dbba47f97dd382570b3ce946
+```
+
+The 35-second run completed cleanly:
+
+- 29 accepted P80-guarded blocks;
+- 58 accepted P87/P09 pairs;
+- zero rejected blocks;
+- zero reconnections;
+- no observed FF;
+- all expected P80 identity checks remained `20`;
+- temporary 37 C setpoint and exact restore to 21 C were both readback-verified;
+- P300 20C2 and services were restored;
+- final result `PASS`.
+
+### Critical non-overlapping transition windows
+
+P87 bit 1:
+
+```text
+last confirmed clear: P87=0x60 at 11:06:06.897
+first confirmed set:  P87=0x62 at 11:06:07.392
+transition bracket:   (11:06:06.897, 11:06:07.392]
+width:                495 ms
+```
+
+P09 high-start plateau:
+
+```text
+last confirmed plateau: P09=0x93 at 11:06:07.649
+first confirmed lower:  P09=0x91 at 11:06:08.139
+transition bracket:     (11:06:07.649, 11:06:08.139]
+width:                  490 ms
+```
+
+The intervals **do not overlap**. The latest possible time of the P87 bit-1 transition is 11:06:07.392, while the earliest possible P09 release is after the last confirmed `0x93` sample at 11:06:07.649. There is therefore a **minimum 257-ms separation** between the two transition windows.
+
+The critical block makes this directly visible:
+
+```text
+11:06:06.897  P87 = 0x60
+11:06:07.392  P87 = 0x62   bit 1 now set
+11:06:07.649  P09 = 0x93   plateau still present
+11:06:07.856  P87 = 0x62
+11:06:08.139  P09 = 0x91   plateau has begun to fall
+```
+
+Thus this run establishes **temporal ordering**:
+
+> **P87 bit 1 becomes set before P09 leaves the high-start modulation plateau.**
+
+This is stronger than the previous four-channel run, where the two event windows overlapped.
+
+It still does **not** establish:
+
+- that P87 bit 1 causes the P09 release;
+- that bit 1 is a flame-detection signal;
+- that bit 1 means "flame stabilized", "stabilization complete" or "regulation enabled";
+- any manufacturer-defined semantic name.
+
+The correct current description is an **unnamed GFA status precursor/marker that precedes release of the high-start P09 plateau**.
+
+Relative to the 37 C trigger:
+
+| Observation | Time after trigger |
+| --- | ---: |
+| last P87 bit-1 clear | 21.502 s |
+| first P87 bit-1 set | 21.997 s |
+| last P09 `0x93` plateau sample | 22.254 s |
+| first P09 below plateau | 22.744 s |
+
+The first observed P87=`60` occurred 12.640 s after the trigger. This narrower run observed P87 `20->50->60->62`; omission of the earlier `40` state does not supersede the prior wider capture, which observed `20->40->50->60->62`.
+
+The same-channel receive interval was typically about 0.5 seconds (median approximately 497 ms for P87 and 496 ms for P09). No faster polling is required merely to establish ordering.
+
+At cleanup, the original 21 C setpoint was restored and verified. Immediate `0x55DC=0x29` (41 decimal) again showed that restoring the room setpoint does not imply immediate burner shutdown.
+
+[Machine-readable live evidence](../config/optolink-splitter/research/vitosoft/gfa-p87-p09-hires-run-2026-09-24-evidence.json).
 
 ## Probe design
 
@@ -138,9 +222,9 @@ new local logic tests: 9/9 PASS
 
 The isolated build environment did not contain the pinned parent files, so it could not re-run the inherited chain there. On the appliance, `--self-test` first runs the 9 new tests and then the complete pinned triggered-parent self-test chain before live execution.
 
-Live hardware behavior of this new sampling arrangement is not yet established.
+Live hardware behavior is now established for the successful 35-second run above.
 
-## First live run
+## Reproduction command
 
 The burner must be off before the trigger. The helper enforces `0x55DC=0`; if it is still running after the previous experiment, it aborts before writing 37 C.
 
@@ -184,13 +268,6 @@ If the precondition reports `0x55DC != 0`, no trigger write is sent; wait for a 
 
 If `SETPOINT_RESTORED=NOT_VERIFIED` appears, verify/reset the day setpoint manually before doing anything else.
 
-## Analysis target
+## Analysis conclusion
 
-The next analysis will construct independent brackets for:
-
-1. last P87 sample with bit 1 clear;
-2. first P87 sample with bit 1 set;
-3. last P09 sample on the high-start plateau;
-4. first P09 sample below the plateau.
-
-If those two transition intervals do not overlap, we can establish observed temporal ordering. If they still overlap, the correct conclusion remains correlation without strict ordering; the pacing should not be reduced merely to force a desired result.
+The requested brackets are now measured and do not overlap. Temporal ordering is resolved for this run: P87 bit 1 is set before P09 leaves the high-start plateau. No additional faster polling is justified solely for ordering. Future work should focus on static/vendor semantics and production-safe access/integration rather than increasing diagnostic bus load.
