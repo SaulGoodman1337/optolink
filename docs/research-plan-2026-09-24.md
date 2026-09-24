@@ -149,18 +149,27 @@ Current evidence:
 
 **TODO:**
 
-- [ ] Extract a small derived KBus-read slice from the already captured v6
-  `all-events.csv` / `all-lowlevel-access.csv`; no full Collector rerun.
-- [ ] Group exact PrefixRead/parameter/address/length patterns per read family.
-- [ ] Resolve all 12 XRAM_READ definitions and the exceptional 1/91 KMBUS
+- [x] Extract a small derived KBus-read slice from the already captured v6
+  `all-events.csv`; result: 2,055 read-event rows, committed in the private
+  source repo under `collector-output/20260924-143439/kmbus-read-slice/`.
+- [x] Group exact PrefixRead/parameter/address/length patterns per read family.
+- [x] Resolve all 12 XRAM_READ definitions and the exceptional 1/91 KMBUS
   EEPROM prefix row.
-- [ ] Cluster the 850 transparent, 500 EEPROM_LT and 232 virtual KBus reads by
-  participant/device family.
+- [ ] Continue semantic clustering of the 850 transparent, 500 EEPROM_LT and
+  232 virtual KBus reads by participant/device family; structural prefix
+  distributions are already extracted.
 - [ ] Build a bounded `Virtual_READ` vs. `0x41` correlation matrix for known
   dynamic objects such as `0x0A3C`, `0x7660` and `0x7663`.
 - [ ] Reconstruct one real Vitosoft-defined 0x43 request including prefix before
   considering another local EEPROM-style read.
 - [ ] Keep all work read-only; no broad blind sweep and no KBUS/KMBUS writes.
+
+The exact slice additionally shows that `XRAM_READ` is used on GWG families
+for volatile timers/external-state/water-pressure objects; 90 prefixed
+`KMBUS_EEPROM_READ` rows describe persistent **LGM27 burner-control**
+parameters; and `KBUS_INDIRECT_READ` event names prove the 1-byte prefix is
+the participant number. `Virtual_MBUS` is a separate external meter-M-Bus
+family, not KM-BUS.
 
 **Firmware boundary:** RAM-like views may expose hidden state, timers,
 mailboxes and selector variables and are therefore highly useful for firmware
