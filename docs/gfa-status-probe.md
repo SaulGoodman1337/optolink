@@ -1,6 +1,6 @@
 # WB2A GFA status/startup probe
 
-Status: **first live status run completed; it started already in P84=06, so the actual burner start was missed. A guarded 37 C trigger follow-up is prepared and offline-tested.**
+Status: **the guarded 37 C trigger run completed successfully. It captured P84/P87/P06/P09 through startup, verified the temporary 37 C write and exact restore to 21 C, and strongly correlates P87 bit 1 with release of the high-start modulation plateau. P84/P87 manufacturer semantics remain unproven.**
 
 This helper follows the successful continuous startup capture documented in [GFA pacing comparison](gfa-paced-comparison.md). Its purpose is narrowly defined: observe raw GFA phase/status bytes around a normal startup without assigning undocumented semantics.
 
@@ -137,6 +137,76 @@ Compilation and plan-only invocation passed. `--self-test` passes **143 offline 
 The new tests cover fixed alternating banks, exact read framing, no write functions, 150-ms pacing, raw bit views, XOR bit-change reporting, P84-only phase-change counting, FF quarantine on every runtime position, bounded re-entry, wrong P80, timeout, trailing data, unknown addresses, scheduler stalls, inactive party behavior, duration bounds and simulated 60-second completion.
 
 These are simulated tests; they do not establish the live status-byte semantics.
+
+## Successful triggered startup result - 2026-09-24
+
+Input: `Eingefügter Text(20260924-084636).txt`, 196251 bytes, 1004 lines, SHA256:
+
+```text
+61fa75e4b256dde5706088f1d6e00f682080d83c08870e49a278bf7168b7e337
+```
+
+Helper v1.0.1 completed the full guarded sequence:
+
+- original A1 normal/day setpoint `0x2306 = 21 C`;
+- pre-trigger `0x55DC = 0`;
+- temporary `0x2306 = 37 C` write acknowledged and read back as 37;
+- 50/50 accepted GFA rounds, zero rejected rounds, zero reconnects and no FF;
+- four P80 checks all returned `20`;
+- exact restore `0x2306 = 21 C` acknowledged and read back as 21;
+- P300 restored to `20C2`, splitter and party emulator restored;
+- `RESULT=PASS`.
+
+The first same-session P80 was available 4.352 s after the setpoint trigger. The first P84 sample followed 4.793 s after the trigger, so this run still misses the earliest several seconds of startup. It begins in P84 raw `02`; unlike the earlier natural-start trace it does not sample the short P84=`04` state.
+
+### P84 / P87 sequence
+
+Observed first samples:
+
+| Parameter/state | First receive | Time after 37 C trigger |
+| --- | --- | ---: |
+| P84 `02` | 10:42:08.273 | 4.793 s |
+| P87 `20` bits [5] | 10:42:08.554 | 5.074 s |
+| P87 `40` bits [6] | 10:42:14.456 | 10.976 s |
+| P84 `05` | 10:42:15.451 | 11.971 s |
+| P87 `50` bits [4,6] | 10:42:15.658 | 12.178 s |
+| P84 `06` | 10:42:16.657 | 13.177 s |
+| P87 `60` bits [5,6] | 10:42:16.939 | 13.459 s |
+| P87 `62` bits [1,5,6] | 10:42:26.805 | 23.325 s |
+
+The P87 progression is therefore:
+
+```text
+20 -> 40 -> 50 -> 60 -> 62
+ b5    b6   b4+b6 b5+b6 b1+b5+b6
+```
+
+These are raw observations only. Do not assign manufacturer names to bits 1/4/5/6.
+
+### Strongest timing correlation so far: P87 bit 1 and plateau release
+
+P09 remained at raw `93` = 57.6534% through the high-start plateau. P87 remained `60` through that hold. In round 16:
+
+- P87 was first observed as `62` at **10:42:26.805**, adding bit 1;
+- P09 was first observed below the plateau at **10:42:27.302**, raw `91` = 56.8690%.
+
+The observed sample times differ by only **0.497 s**. Because the channels are sequential, strict event ordering is not proven. The true P87 transition is bracketed by its `60` sample at 10:42:25.522 and `62` sample at 10:42:26.805. The true P09 release is bracketed by `93` at 10:42:26.019 and `91` at 10:42:27.302. Those windows overlap from **10:42:26.019 to 10:42:26.805**.
+
+This establishes a substantially stronger statement than the earlier timing-only lead:
+
+> **P87 bit 1 is a strong candidate marker associated with release/end of the high-start modulation plateau.**
+
+It does **not** yet establish that bit 1 means "flame stabilized", "regulation enabled" or any other manufacturer-defined term.
+
+Relative to first observed P84=`06`, P87=`62` appears 10.148 s later. Relative to first P87=`60`, it appears 9.866 s later. That closely reproduces the short post-start hold identified in the previous capture.
+
+Fan response is consistent with the same transition but less sharply aligned: P06 stays around 4.4 krpm through the plateau and its first sustained fall after P87=`62` is 4320 rpm at 10:42:29.455.
+
+### Restore behavior
+
+At cleanup the script restored `0x2306=21` and verified the readback. Immediately afterwards `0x55DC` was raw `0x21` = 33, so restoring the normal setpoint does **not** imply immediate burner shutdown. A future repeated trigger must still wait for `0x55DC=0`, as the helper already requires.
+
+[Machine-readable triggered-startup evidence](../config/optolink-splitter/research/vitosoft/gfa-triggered-startup-2026-09-24-evidence.json).
 
 ## Triggered follow-up - capture the real start
 
