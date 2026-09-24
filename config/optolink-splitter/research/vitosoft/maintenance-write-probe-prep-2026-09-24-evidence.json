@@ -87,7 +87,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "0x5723_WRITE_VERIFIED_READY_FOR_SOURCE_BACKED_0x5724_RESET_PROBE",
+  "current_status": "0x5723_WRITE_VERIFIED_0x5724_MAINTENANCE_REFERENCE_UPDATE_VERIFIED",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -128,6 +128,44 @@
         "0x756C changed to a little-endian Unix-seconds reference timestamp on both setting changes.",
         "0x756C is therefore not a plain elapsed-month integer.",
         "0x5724 stayed at Grundzustand and 0x7570 stayed zero."
+      ]
+    },
+    "phase_C_0x5724": {
+      "status": "completed",
+      "baseline_raw": {
+        "0x5724": "00",
+        "0x756C": "7b7ab56a",
+        "0x7570": "00000000",
+        "0x08A7": "fd4bce03",
+        "0x088A": "d36f0700"
+      },
+      "after_state_1_raw": {
+        "0x5724": "01",
+        "0x756C": "7b7ab56a",
+        "0x7570": "00000000",
+        "0x08A7": "fd4bce03",
+        "0x088A": "d36f0700"
+      },
+      "after_state_0_raw": {
+        "0x5724": "00",
+        "0x756C": "107cb56a",
+        "0x7570": "fb4bce03",
+        "0x08A7": "fd4bce03",
+        "0x088A": "d36f0700"
+      },
+      "decoded": {
+        "interval_reference_utc": "2026-09-24T19:37:52Z",
+        "total_burner_seconds": 63851517,
+        "stored_burner_reference_seconds": 63851515,
+        "reference_delta_seconds": 2,
+        "total_burner_starts": 487379
+      },
+      "conclusions": [
+        "0x5724 readback followed 00 -> 01 -> 00.",
+        "The transition back to 00 updated both maintenance reference registers.",
+        "0x756C stores a time reference.",
+        "0x7570 stores a burner-runtime reference matching the total-runtime register within two seconds.",
+        "0x08A7 and 0x088A remained unchanged."
       ]
     }
   },
