@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "source": {
+    "upload_name": "Eingefügter Text(20260924-065914).txt",
+    "sha256": "82ebdb19ac94f62b2f1f4ee2976c88be2c7630a561b501ab815bde0beb4cf137",
+    "size_bytes": 178381,
+    "lines": 908,
+    "combined_capture_files": [
+      "wb2a-gfa-paced-20260924-085615-187318.log",
+      "wb2a-gfa-paced-20260924-085615-187318.jsonl"
+    ]
+  },
+  "helper": {
+    "name": "wb2a-gfa-paced-probe.py",
+    "experiment_version": "1.0.0",
+    "minimum_reply_gap_ms": 150,
+    "seconds_requested": 60
+  },
+  "result": {
+    "result": "PASS",
+    "observation_complete": true,
+    "attempted_rounds": 49,
+    "confirmed_rounds": 49,
+    "rejected_rounds": 0,
+    "reconnections": 0,
+    "continuous_session": true,
+    "nonzero_rounds": 41,
+    "phase_changes_reported": 4,
+    "p80_confirmed": true,
+    "p300_restored": true,
+    "splitter_restarted": true,
+    "ff_replies_in_measurement_rounds": 0
+  },
+  "phase_sequence": [
+    {
+      "phase_raw": "00",
+      "first_rx": "2026-09-24T08:56:27.250+02:00",
+      "rx_elapsed_s": 1.152677
+    },
+    {
+      "phase_raw": "02",
+      "first_rx": "2026-09-24T08:56:37.119+02:00",
+      "rx_elapsed_s": 11.021125
+    },
+    {
+      "phase_raw": "04",
+      "first_rx": "2026-09-24T08:56:45.655+02:00",
+      "rx_elapsed_s": 19.557753
+    },
+    {
+      "phase_raw": "05",
+      "first_rx": "2026-09-24T08:56:46.766+02:00",
+      "rx_elapsed_s": 20.668636
+    },
+    {
+      "phase_raw": "06",
+      "first_rx": "2026-09-24T08:56:47.934+02:00",
+      "rx_elapsed_s": 21.836313
+    }
+  ],
+  "startup_milestones": {
+    "first_nonzero_modulation_setpoint": {
+      "round": 10,
+      "raw_hex": "93",
+      "pct": 57.6534,
+      "rx_time": "2026-09-24T08:56:37.895+02:00",
+      "rx_elapsed_s": 11.796897
+    },
+    "first_nonzero_pwm": {
+      "round": 10,
+      "raw_hex": "58",
+      "pct": 35.2,
+      "rx_time": "2026-09-24T08:56:38.104+02:00",
+      "rx_elapsed_s": 12.005953
+    },
+    "first_nonzero_fan_actual": {
+      "round": 11,
+      "raw_hex": "16",
+      "rpm": 660,
+      "rx_time": "2026-09-24T08:56:38.882+02:00",
+      "rx_elapsed_s": 12.784589
+    },
+    "first_4500_rpm": {
+      "round": 13,
+      "raw_hex": "96",
+      "rpm": 4500,
+      "rx_time": "2026-09-24T08:56:41.339+02:00",
+      "rx_elapsed_s": 15.241437
+    },
+    "fan_ramp_660_to_4500_s": 2.456848,
+    "first_modulation_decline_after_plateau": {
+      "round": 26,
+      "raw_hex": "91",
+      "pct": 56.869,
+      "rx_time": "2026-09-24T08:56:57.302+02:00",
+      "rx_elapsed_s": 31.204575,
+      "seconds_after_first_phase_06": 9.368262
+    },
+    "first_fan_below_4410_after_phase_06": {
+      "round": 27,
+      "rpm": 4380,
+      "rx_elapsed_s": 32.198231,
+      "seconds_after_first_phase_06": 10.361918
+    },
+    "final_round": {
+      "round": 49,
+      "rpm": 2790,
+      "modulation_setpoint_pct": 34.9058,
+      "fan_pwm_setpoint_pct": 33.2,
+      "phase_raw": "06"
+    }
+  },
+  "timing": {
+    "reply_to_next_request_gap_ms": {
+      "min": 150.103,
+      "mean": 150.268176,
+      "max": 153.026
+    },
+    "p06_to_p06_interval_ms": {
+      "min": 1079.993,
+      "mean": 1226.573125,
+      "max": 1303.824
+    },
+    "p06_to_p84_span_ms": {
+      "min": 654.986,
+      "mean": 734.348735,
+      "max": 791.748
+    }
+  },
+  "interpretation": {
+    "continuous_nonzero_runtime_confirmed": true,
+    "complete_startup_like_transition_captured": true,
+    "flame_polled": false,
+    "manufacturer_phase_names_known": false,
+    "phase_06_is_not_named_flame_or_regulation": true,
+    "stabilization_lead": "After raw P84 changes to 06, P09 remains at 57.6534% for about 9.37 s before its first decrease; P06 first drops below 4410 rpm about 10.36 s after the first 06. This is a strong timing lead for the previously observed short startup hold, but not proof of flame-recognition semantics.",
+    "ff_cause_resolved": false,
+    "production_ha_ready": false
+  }
+}
