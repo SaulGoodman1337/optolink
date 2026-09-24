@@ -81,11 +81,13 @@ The read transport is already production-verified. The missing identity fields a
 
 ## P1 - Coding-plug physical/software correlation
 
+**Hardware status:** blocked until **2026-09-25** because the replacement EEPROM reader/programmer is still in transit. Do not schedule more bench-dump work before the new reader is available.
+
 **Goal:** map the two physical 24C04-class EEPROMs to the controller-visible GWG and GFA coding-plug domains without writing either EEPROM.
 
 **TODO:**
 
-- [ ] Label future captures explicitly as PCB side `f01/ST` or `f02/Microchip`.
+- [ ] **Resume 2026-09-25 or later when the new EEPROM reader is available.** Label future captures explicitly as PCB side `f01/ST` or `f02/Microchip`.
 - [ ] Capture both EEPROMs of one spare three times each and compare repeatability.
 - [ ] Capture both EEPROMs of the second spare where practical.
 - [ ] Capture the active coding plug last, preserving its identity/revision and keeping the boiler unpowered/disconnected from the plug during bench reads.
