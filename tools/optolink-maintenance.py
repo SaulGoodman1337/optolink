@@ -9,7 +9,7 @@ Verified controller semantics:
   0x5723  R/W maintenance interval, raw months (0..24)
            IMPORTANT: every write re-baselines 0x756C
   0x5724  maintenance state; verified maintenance reset sequence 1 -> 0
-  0x756C  read-only LastCheckInterval reference (little-endian Unix seconds)
+  0x756C  read-only LastCheckInterval 32-bit reference; exact Vitosoft conversion unresolved
   0x7570  read-only LastBurnerCheck baseline (burner-runtime seconds)
   0x08A7  total burner runtime, seconds
   0x088A  total burner starts
@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import datetime as dt
 import fcntl
 import json
 import os
@@ -323,15 +322,6 @@ def write_verify_byte(
     )
 
 
-def _utc_iso_from_epoch(value: int) -> str | None:
-    if value <= 0:
-        return None
-    try:
-        return dt.datetime.fromtimestamp(value, tz=dt.timezone.utc).isoformat().replace("+00:00", "Z")
-    except (OverflowError, OSError, ValueError):
-        return None
-
-
 def snapshot(
     session: MqttSession,
     *,
@@ -389,8 +379,9 @@ def snapshot(
         "interval_reference": {
             "address": "0x756C",
             "raw_hex": interval_reference_hex,
-            "unix_seconds": interval_reference,
-            "utc": _utc_iso_from_epoch(interval_reference),
+            "raw_uint_le": interval_reference,
+            "conversion": "LastCheckInterval",
+            "note": "32-bit reference storage; exact wall-clock conversion is not yet reconstructed",
         },
         "burner_reference": {
             "address": "0x7570",
@@ -431,14 +422,16 @@ def print_status(data: dict[str, Any]) -> None:
     )
 
     interval_ref = data["interval_reference"]
-    print(
-        "  Intervall-Referenz       : "
-        + (
-            f"{interval_ref['utc']} (raw 0x{interval_ref['raw_hex'].upper()})"
-            if interval_ref["utc"]
-            else f"nicht gesetzt (raw 0x{interval_ref['raw_hex'].upper()})"
+    if interval_ref["raw_uint_le"] == 0:
+        print(
+            f"  Intervall-Referenz       : nicht gesetzt "
+            f"(raw 0x{interval_ref['raw_hex'].upper()})"
         )
-    )
+    else:
+        print(
+            f"  Intervall-Referenz       : {interval_ref['raw_uint_le']} "
+            f"(raw 0x{interval_ref['raw_hex'].upper()}, LastCheckInterval)"
+        )
 
     burner_ref = data["burner_reference"]
     print(
@@ -554,13 +547,11 @@ def command_set_months(session: MqttSession, args: argparse.Namespace) -> dict[s
         "months": months,
         "interval_reference_before": {
             "raw_hex": before_ref_hex,
-            "unix_seconds": before_ref,
-            "utc": _utc_iso_from_epoch(before_ref),
+            "raw_uint_le": before_ref,
         },
         "interval_reference_after": {
             "raw_hex": after_ref_hex,
-            "unix_seconds": after_ref,
-            "utc": _utc_iso_from_epoch(after_ref),
+            "raw_uint_le": after_ref,
         },
         "status": snapshot(session, timeout=args.timeout, verbose=args.verbose),
     }
@@ -661,13 +652,12 @@ def command_reset(session: MqttSession, args: argparse.Namespace) -> dict[str, A
             "new burner maintenance reference is more than 300 s behind total runtime"
         )
 
-    ref_epoch = after["interval_reference"]["unix_seconds"]
-    if ref_epoch <= 0:
+    ref_after = after["interval_reference"]["raw_uint_le"]
+    ref_before = before["interval_reference"]["raw_uint_le"]
+    if ref_after <= 0:
         warnings.append("new interval reference is not set")
-    elif abs(time.time() - ref_epoch) > 300:
-        warnings.append(
-            "new interval reference differs from system time by more than 300 s"
-        )
+    elif ref_after == ref_before:
+        warnings.append("interval reference did not change during maintenance reset")
 
     return {
         "action": "reset",
