@@ -48,5 +48,10 @@
     "Repeat 0x0001/1 to establish stability of 0x88.",
     "Read the remaining bounded GWG_BT2 source-defined blocks using the same prefix and exact source lengths.",
     "Cross-correlate any stable identity/configuration bytes with local GFA P80/P81/P82/P83 and known burner/coding data without importing GWG_BT2 semantics prematurely."
-  ]
+  ],
+  "post_map_caveat": {
+    "status": "INTERPRETATION_TIGHTENED",
+    "reason": "The subsequent 13-block run reproduced the same repeated two-byte 0x54/0x98-style pattern seen in earlier prefix-less 0x43 reads.",
+    "consequence": "Acceptance of a frame carrying PrefixRead proves that shape is tolerated, but not yet that the six bytes materially alter routing. Same-address prefix-present vs prefix-absent A/B is required."
+  }
 }
