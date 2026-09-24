@@ -88,7 +88,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "MAINTENANCE_API_LIFECYCLE_FIX_READY_FOR_DEPLOYMENT",
+  "current_status": "MAINTENANCE_API_LIFECYCLE_LIVE_VERIFIED_HA_INTERACTION_TEST_PENDING",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -681,6 +681,21 @@
         ]
       },
       "conclusion": "The MQTT maintenance API must remain lifecycle-independent from transient splitter restarts; it can fail controller requests closed while the splitter is unavailable."
+    },
+    "service_lifecycle_restart_test": {
+      "date": "2026-09-24",
+      "status": "live-verified",
+      "before": {
+        "splitter": "active",
+        "maintenance_api": "active"
+      },
+      "action": "systemctl restart optolink-splitter.service",
+      "after": {
+        "splitter": "active",
+        "maintenance_api": "active",
+        "availability": "online"
+      },
+      "conclusion": "The decoupled maintenance API now survives an independent splitter restart and remains available over MQTT."
     }
   }
 }
