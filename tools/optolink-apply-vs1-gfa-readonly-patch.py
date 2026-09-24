@@ -25,7 +25,7 @@ import sys
 import tempfile
 import time
 
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 ROOT = Path("/opt/optolink")
 UPSTREAM_REF = "c1ee204a1421447721603c5f21c6da7337fdac97"
 
@@ -161,7 +161,25 @@ def patch_requests(text: str) -> str:
         '                    gfa_format = marker[4:] or "raw"',
         "",
         "            if gfa_format is not None:",
-        "                retcode, addr, data = vs12_adapter.read_gfa_ext(addr, int(parts[2]), serViDev)",
+        "                # P80 (0x4050) is the local GFA branch identity.",
+        "                global _community_gfa_p80_ok",
+        "                try:",
+        "                    gfa_p80_ok = _community_gfa_p80_ok",
+        "                except NameError:",
+        "                    _community_gfa_p80_ok = False",
+        "                    gfa_p80_ok = False",
+        "                if addr != 0x4050 and not gfa_p80_ok:",
+        "                    retcode, data = 0xAF, bytearray()",
+        "                else:",
+        "                    retcode, addr, data = vs12_adapter.read_gfa_ext(addr, int(parts[2]), serViDev)",
+        "                if addr == 0x4050:",
+        "                    _community_gfa_p80_ok = (",
+        "                        retcode == 1 and len(data) == 1 and data[0] == 0x20",
+        "                    )",
+        "                    if retcode == 1 and not _community_gfa_p80_ok:",
+        "                        logger.warning(",
+        "                            \"GFA P80 identity mismatch; suppressing productive GFA reads\"",
+        "                        )",
         "                if retcode == 1:",
         "                    signd = utils.get_bool(parts[4]) if numelms > 4 else False",
         "                    val = get_value(data, gfa_format, signd)",
@@ -319,6 +337,18 @@ def self_test() -> int:
             self.assertIn('elif(cmnd in ["write", "w"]):', out)
             self.assertEqual(patch_requests(out), out)
 
+        def test_p80_identity_guard_is_present(self):
+            src = (
+                '        elif((cmnd in ["read", "r"]) or ispollitem):  # "read;0x0804;1;0.1;False"\n'
+                '            OLD\n'
+                '        elif(cmnd in ["write", "w"]):\n'
+                '            WRITE\n'
+            )
+            out = patch_requests(src)
+            self.assertIn('_community_gfa_p80_ok', out)
+            self.assertIn('addr != 0x4050 and not gfa_p80_ok', out)
+            self.assertIn('data[0] == 0x20', out)
+
         def test_ff_quarantine_is_present(self):
             src = "def write_datapoint(addr:int, data:bytes, ser:serial.Serial) -> bool:\n    pass\n"
             out = patch_optolinkvs1(src)
@@ -345,7 +375,7 @@ def self_test() -> int:
         unittest.defaultTestLoader.loadTestsFromTestCase(Tests)
     )
     if result.wasSuccessful():
-        print("VS1_GFA_READONLY_PATCH_TESTS=6/6")
+        print("VS1_GFA_READONLY_PATCH_TESTS=7/7")
         return 0
     return 1
 
