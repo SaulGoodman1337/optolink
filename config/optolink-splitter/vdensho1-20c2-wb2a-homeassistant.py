@@ -218,16 +218,22 @@ poll_list = {
         # -----------------------------------------------------------------
         # Maintenance / service diagnostics
         #
-        # Exact VDensHO1 metadata + local read-only validation on 2026-09-24:
+        # Exact VDensHO1 metadata + local validation on 2026-09-24:
         #   0x5721 len1: maintenance burner-runtime threshold, raw * 100 h
-        #   0x5723 len1: maintenance interval in months
+        #   0x5723 len1: maintenance interval in months; local R/W verified
         #   0x5724 len1: maintenance status, 0=Grundzustand / 1=Wartung
-        #   0x756C len4: elapsed time since last maintenance, months
-        #   0x7570 len4: burner runtime since last maintenance, hours
+        #   0x756C len4: read-only LastCheckInterval reference storage
+        #   0x7570 len4: read-only LastBurnerCheck reference storage
         #
-        # Vitosoft also contains maintenance reset/write paths. Production
-        # intentionally exposes READS ONLY: no command_topic/reset control.
-        # Local baseline was zero for all five values.
+        # Important correction from the live 0x5723 write probe:
+        # 0x756C is NOT a plain elapsed-month counter. It changed to a
+        # little-endian Unix-seconds reference timestamp whenever 0x5723 was
+        # changed. 0x7570 likewise has a Vitosoft custom conversion and must
+        # not be exposed as direct elapsed hours until LastBurnerCheck is
+        # reconstructed.
+        #
+        # Production remains READ ONLY for maintenance control: no command
+        # topic and no maintenance-reset control yet.
         # -----------------------------------------------------------------
         {
             "domain": "sensor",
@@ -240,7 +246,6 @@ poll_list = {
             "suggested_display_precision": 0,
             "poll": [
                 ("RARE", "wartung_brennerstunden_grenzwert", 0x5721, 1, 100, False),
-                ("RARE", "wartung_brennerstunden_seit_letzter_wartung", 0x7570, 4, 1, False),
             ],
         },
         {
@@ -253,7 +258,16 @@ poll_list = {
             "suggested_display_precision": 0,
             "poll": [
                 ("RARE", "wartung_zeitintervall", 0x5723, 1, 1, False),
-                ("RARE", "wartung_vergangene_zeit_seit_letzter_wartung", 0x756C, 4, 1, False),
+            ],
+        },
+        {
+            "domain": "sensor",
+            "entity_category": "diagnostic",
+            "enabled_by_default": False,
+            "icon": "mdi:database-clock",
+            "poll": [
+                ("RARE", "wartung_intervall_referenz_raw", 0x756C, 4, "raw", False),
+                ("RARE", "wartung_brenner_referenz_raw", 0x7570, 4, "raw", False),
             ],
         },
         {
