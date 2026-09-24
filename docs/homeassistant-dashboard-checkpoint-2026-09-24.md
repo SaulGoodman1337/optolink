@@ -245,11 +245,41 @@ The most promising next group is **maintenance/service status**:
 | Betriebsstunden Brenner seit letzter Wartung | `0x7570` |
 | vergangene Zeit seit letzter Wartung | `0x756C` |
 
-These addresses/names are source-backed for the exact VDensHO1 profile, but
-their local values, scaling and practical semantics should be checked read-only
-before exposing them as polished HA entities.
+These addresses/names are source-backed for the exact VDensHO1 profile.
 
-If verified, they are suitable for a compact **Service / Wartung** group.
+### Maintenance live validation completed
+
+Read-only validation on the local **VDensHO1 / 20C2 / SW03** appliance on
+2026-09-24 returned:
+
+| Address | Raw | Verified interpretation |
+| --- | --- | --- |
+| `0x5721` | `00` | configured burner-runtime maintenance threshold = 0 h; source conversion is raw x 100 h |
+| `0x5723` | `00` | configured maintenance interval = 0 months |
+| `0x5724` | `00` | maintenance status = `Grundzustand` |
+| `0x756C` | `00000000` | elapsed time since last maintenance = 0 months |
+| `0x7570` | `00000000` | burner runtime since last maintenance = 0 h |
+
+All five reads succeeded with their source-backed block lengths. No write or
+maintenance-reset command was issued.
+
+The zero configuration at `0x5721` / `0x5723` should be described
+conservatively as **no nonzero maintenance threshold/interval currently
+configured**. It must not be presented as evidence for when the appliance was
+last serviced.
+
+The five values are now exposed in the production HA profile as slow-changing
+`RARE` read-only diagnostic entities:
+
+- `wartung_brennerstunden_grenzwert`;
+- `wartung_zeitintervall`;
+- `wartung_status`;
+- `wartung_vergangene_zeit_seit_letzter_wartung`;
+- `wartung_brennerstunden_seit_letzter_wartung`.
+
+No command/reset entity is exposed even though Vitosoft contains maintenance
+write/reset paths. A future compact **Service / Wartung** dashboard group may
+use these entities after live HA discovery is confirmed.
 
 Other metadata candidates include controller identity, remote/KM-BUS software
 indices and communication topology. These are lower priority for normal
@@ -366,6 +396,6 @@ verification before using the pattern on the next view.
 - [ ] Decide which of exhaust temperature, DHW flow, economy, frost and holiday
       state belong in the top-level Diagnose view.
 - [ ] Design the logical-pump -> A1 output -> internal-pump chain.
-- [ ] Read-only verify maintenance/service candidates before creating entities.
+- [x] Read-only verify maintenance/service candidates and add read-only diagnostic entities.
 - [ ] Verify all changed cards on desktop and mobile.
 - [ ] Only after Diagnose is stable, start the **Pumpen** page redesign.
