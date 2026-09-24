@@ -144,6 +144,33 @@
         "value_c": 50,
         "conversion": "div100"
       }
+    },
+    {
+      "address": "0xA400",
+      "raw": "FF",
+      "meaning": "nviHCC1 ApplicMode",
+      "decoded": {
+        "value": 255,
+        "label": "HVAC_NUL"
+      }
+    },
+    {
+      "address": "0xA440",
+      "raw": "FF",
+      "meaning": "nviHCC2 ApplicMode",
+      "decoded": {
+        "value": 255,
+        "label": "HVAC_NUL"
+      }
+    },
+    {
+      "address": "0xA3C2",
+      "raw": "FF",
+      "meaning": "nviDHWC ApplicMode",
+      "decoded": {
+        "value": 255,
+        "label": "HVAC_NUL"
+      }
     }
   ],
   "conclusions": [
@@ -152,7 +179,9 @@
     "A403 is not a mirror of the active internal A1 flow target: 0x2544 was 0.0 C while A403 was 20.00 C.",
     "A3C0 is not a mirror of either tested local DHW target representation: configured user target 0x6300 was 45 C, current/effective target 0x6500 was 5.0 C, while A3C0 remained 50.00 C.",
     "Viessmann LON documentation states that nviDHWCSetpt is only functional when the DHWC ApplicMode explicitly selects the external LON DHW setpoint path; therefore the raw 50.00 C value must not be presented as an active local DHW target without the ApplicMode.",
-    "The internal pump is the only populated pump software-index block among the sampled pump identities: 0x0A54 is nonzero while 0x0A4C and 0x0A50 are all zero."
+    "The internal pump is the only populated pump software-index block among the sampled pump identities: 0x0A54 is nonzero while 0x0A4C and 0x0A50 are all zero.",
+    "The local HCC1, HCC2 and DHWC LON ApplicMode objects all read 0xFF = HVAC_NUL, confirming that the corresponding LON nvi setpoints are not authoritative on this controller at the sampled time.",
+    "The local LON setpoint investigation is closed: HCC nvi values are fallback/default inputs, DHWC nviDHWCSetpt is inactive under HVAC_NUL, and local controller setpoints remain authoritative."
   ],
   "hypotheses": {
     "HCC_nvi_default": {
@@ -169,14 +198,14 @@
       "confidence": "rejected",
       "statement": "A401 is not a direct mirror of 0x2321.",
       "basis": "0x2321=0 C while A401=20.00 C."
+    },
+    "LON_local_authority": {
+      "confidence": "confirmed_by_hardware_plus_vendor_protocol_documentation",
+      "statement": "Local HCC1/HCC2/DHWC LON setpoint paths are inactive/non-authoritative under ApplicMode HVAC_NUL.",
+      "basis": "A400=A440=A3C2=0xFF (HVAC_NUL) plus Viessmann LON semantics for nvi setpoint applicability."
     }
   },
-  "next_read_only": [
-    "0xA400 / 1 nviHCC1 ApplicMode",
-    "0xA440 / 1 nviHCC2 ApplicMode",
-    "0xA3C2 / 1 nviDHWC ApplicMode",
-    "Interpret 0x00 and 0xFF conservatively as internal/default/non-overriding states because catalog/manual naming differs, while both leave the related nvi setpoint non-authoritative."
-  ],
+  "next_read_only": [],
   "safety": {
     "writes_performed": false
   },
@@ -191,5 +220,6 @@
       "nviDHWCSetpt": "SNVT_temp_p; used only when nviDHWCApplicMd selects HVAC_HEAT.",
       "default_internal_control": "For HVAC_AUTO/HVAC_NUL-style internal control, the nviDHWC setpoint is not functional and internal DHW control applies."
     }
-  }
+  },
+  "status": "CLOSED_FOR_LOCAL_CONTROLLER_2026-09-24"
 }
