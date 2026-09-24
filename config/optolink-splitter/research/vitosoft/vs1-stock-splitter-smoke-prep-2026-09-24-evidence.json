@@ -9,11 +9,11 @@
   },
   "helper": {
     "file": "config/optolink-splitter/wb2a-stock-vs1-smoke.py",
-    "version": "1.0.2",
-    "commit": "1a58ddef9306b704a6921b03939df1a6febf6f30",
-    "git_blob": "abdc8c0be377926e60659a5c52452b48d9ee2f03",
-    "sha256": "6aa2394d5d93121fefd6718ba625b1d63ed19e41d5418da961c8ca8e32edf732",
-    "embedded_logic_tests": "11/11",
+    "version": "1.0.3",
+    "commit": "421b72c0578a31a4e67865385a59d1b04054e6f5",
+    "git_blob": "3a81d4f1d3c856a3d03b176f4d1ca11c63efd27f",
+    "sha256": "26d4435b69353794d704526a0a5204b858df0871c13d9409876ecd060a943145",
+    "embedded_logic_tests": "13/13",
     "default_seconds": 30,
     "duration_bounds_seconds": [
       20,
@@ -57,6 +57,17 @@
       "git_mode": {
         "behavior": "If .git exists, invoke Git with per-process -c safe.directory=/opt/optolink, require HEAD == origin/main and no tracked modifications.",
         "persistent_git_config_modified": false
+      },
+      "allowed_profile_drift": {
+        "exact_paths": [
+          "homeassistant_publish.py",
+          "mqtt_util.py"
+        ],
+        "exact_git_blobs": [
+          "49107392ee71af629e6af8eafec337852d6340aa",
+          "b5173ee7a4e04e9ada50b0ed708d65accc10ca46"
+        ],
+        "any_other_tracked_modification": "hard fail"
       }
     }
   },
@@ -98,5 +109,26 @@
     "device_or_settings_changes": false,
     "services_changed": false,
     "note": "Failure occurred before backup creation, service stop, MQTT subscriber start, or temporary settings write."
+  },
+  "second_attempt": {
+    "timestamp_local": "2026-09-24T12:26:28+02:00",
+    "result": "FAIL_PRECONDITION",
+    "reason": "Git checkout is at expected stock base but has two local tracked modifications: homeassistant_publish.py and mqtt_util.py",
+    "device_or_settings_changes": false,
+    "services_changed": false,
+    "interpretation": "These are intentional VDensHO1 profile-helper patches, not arbitrary drift."
+  },
+  "intentional_profile_patches": {
+    "helper": "tools/optolink-apply-vdensho1-ha-profile.sh",
+    "files": {
+      "homeassistant_publish.py": {
+        "purpose": "expand {mqtt_base} and %mqtt_listen% placeholders for generated discovery strings",
+        "expected_git_blob": "49107392ee71af629e6af8eafec337852d6340aa"
+      },
+      "mqtt_util.py": {
+        "purpose": "staged writable readback delays (0.25, 1.0, 2.5, 5.0 seconds)",
+        "expected_git_blob": "b5173ee7a4e04e9ada50b0ed708d65accc10ca46"
+      }
+    }
   }
 }
