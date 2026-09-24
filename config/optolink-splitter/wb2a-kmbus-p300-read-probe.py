@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/optolink/venv/bin/python
 """Read-only WB2A KMBUS/P300 correlation probe while production remains VS1.
 
 Production prerequisite:
