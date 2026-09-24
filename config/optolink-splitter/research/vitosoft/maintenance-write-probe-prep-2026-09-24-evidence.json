@@ -88,7 +88,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "MAINTENANCE_MQTT_API_LOCK_LIVE_VERIFIED_FINAL_WRITE_TEST_PENDING",
+  "current_status": "MAINTENANCE_BACKEND_FULLY_LIVE_VERIFIED_READY_FOR_HOME_ASSISTANT",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -538,6 +538,59 @@
         "The root CLI and unprivileged MQTT API contend on the same advisory lock.",
         "Both frontends fail closed with a busy error while the lock is held.",
         "Normal CLI access resumes immediately after the lock is released."
+      ]
+    },
+    "final_bounded_write": {
+      "date": "2026-09-24",
+      "status": "live-verified",
+      "action": "set_months",
+      "baseline": {
+        "interval_raw": "00",
+        "interval_reference_raw": "c988b56a",
+        "interval_reference_uint_le": 1790281929,
+        "hours_threshold_raw": "00",
+        "maintenance_state_raw": "00",
+        "burner_reference_raw": "134cce03",
+        "burner_total_raw": "154cce03",
+        "burner_starts_raw": "d46f0700"
+      },
+      "set_1_month": {
+        "ok": true,
+        "changed": true,
+        "previous_months": 0,
+        "months": 1,
+        "interval_reference_before_raw": "c988b56a",
+        "interval_reference_after_raw": "3f90b56a",
+        "interval_reference_before_uint_le": 1790281929,
+        "interval_reference_after_uint_le": 1790283839,
+        "interval_reference_changed": true
+      },
+      "restore_0_months": {
+        "ok": true,
+        "changed": true,
+        "previous_months": 1,
+        "months": 0,
+        "interval_reference_before_raw": "3f90b56a",
+        "interval_reference_after_raw": "4490b56a",
+        "interval_reference_before_uint_le": 1790283839,
+        "interval_reference_after_uint_le": 1790283844,
+        "interval_reference_changed": true
+      },
+      "final": {
+        "interval_raw": "00",
+        "interval_reference_raw": "4490b56a",
+        "interval_reference_uint_le": 1790283844,
+        "hours_threshold_raw": "00",
+        "maintenance_state_raw": "00",
+        "burner_reference_raw": "134cce03",
+        "burner_total_raw": "154cce03",
+        "burner_starts_raw": "d46f0700"
+      },
+      "conclusions": [
+        "The MQTT API write path is live-verified end-to-end with a bounded set_months write and restore.",
+        "Both writes were independently read back and both re-baselined only 0x756C.",
+        "0x7570, 0x5721, 0x5724, 0x08A7 and 0x088A remained unchanged throughout the API write/restore test.",
+        "The maintenance backend is ready for Home Assistant integration; no further backend write experiments are required."
       ]
     }
   }
