@@ -1,6 +1,6 @@
 # VDensHO1 / WB2A deep Vitosoft and firmware research
 
-Status: active research, 2026-09-23
+Status: active research, updated 2026-09-24
 
 ## Goal
 
@@ -166,9 +166,7 @@ index. The meaning of the remaining three bytes must remain unresolved for this
 controller. Similar four-byte decompositions from other Vitosoft device
 families must not be imported into VDensHO1 without hardware evidence.
 
-`0x778C` and `0x778D` are a new, exact-profile route to the regulation
-software version and should be read individually before assigning a combined
-numeric/version notation.
+`0x778C` and `0x778D` have now been read locally as `01` and `03`. Preserve the pair as raw regulation-software bytes `0x0103`; no official release-name mapping has been recovered.
 
 ### Fire-control / GFA layer
 
@@ -187,7 +185,7 @@ High-value examples include:
 | `0x4054` | P84 GFA phase |
 | `0x4055..0x4058` | GFA status 1..4 |
 | `0x4006` | P06 blower actual speed, raw * 30 rpm |
-| `0x4009` | P09 blower speed setpoint, raw * 30 rpm |
+| `0x4009` | P09 local GFA-branch modulation setpoint, raw * 0.3922 % |
 | `0x400A` | P10 blower PWM setpoint, raw * 0.4 % |
 | `0x4011` | P17 flame formation time, raw / 10 s |
 | `0x0008` | C08 offset of gas-flow-ramp start value |
@@ -218,14 +216,10 @@ WB2A firmware flashing interface.
 
 Current conclusion:
 
-- **controller software identification:** source-supported, pending direct reads
-  of `0x778C/0x778D`;
-- **GFA software identification:** source-supported via `GFA_READ`, pending
-  local read-only validation;
-- **full WB2A firmware read through known Vitosoft/Optolink metadata:** no
-  supporting evidence found;
-- **full firmware acquisition:** still a board/MCU identification and hardware
-  dump question unless a presently unknown service path is discovered.
+- **controller software identification:** locally completed at the raw level: `0x00FB=03`, `0x778C=01`, `0x778D=03`;
+- **GFA software identification:** locally completed at the raw level under `P80=20`: `P81=02`, `P82=06`, `P83=76`;
+- **full WB2A firmware read through known Vitosoft/Optolink metadata:** no supporting evidence found; no `FLASH_READ`, `ROM_READ` or target-linked bootloader read function exists in the recovered function inventory;
+- **full firmware acquisition:** now explicitly blocked on hardware architecture evidence: readable regulation/GFA MCU markings, memories and service/debug pads. No suitable regulation-board photographs are currently stored in the repository.
 
 
 ## Why actual firmware would matter
@@ -267,14 +261,11 @@ a separate research target.
 
 ## Current priority order
 
-1. Read the exact main-controller software version at `0x778C/0x778D`.
-2. Validate the VDensHO1 `GFA_READ` identity/version objects
-   `0x4050..0x4053` read-only on the local appliance.
-3. If supported, validate the high-value GFA runtime objects for blower
-   actual/setpoint/PWM and flame-formation time.
-4. Keep firmware-image extraction separate: identify the WB2A regulation and
-   burner-control MCUs, memories and service/debug headers from hardware.
-5. Continue the pump/KM-BUS work as a separate runtime-control workstream.
+1. Obtain high-resolution photographs of both sides of the WB2A regulation/control board and, separately, the burner/GFA electronics where safely accessible.
+2. Record exact board part numbers and readable IC markings for the main MCU/CPU, external flash/EEPROM and likely debug/programming interfaces.
+3. Identify any JTAG/BDM/serial/programming pads only after the MCU family is known; do not probe unknown headers electrically.
+4. Keep main-regulation firmware, GFA firmware and coding-plug EEPROM as separate storage domains.
+5. Continue pump/KM-BUS runtime work separately; the Vitosoft/host layer has not exposed the hidden selector upstream of `0x0A3C`.
 
 ## External context
 
@@ -285,9 +276,9 @@ products) use downloadable firmware/update packages. Those facts must not be
 generalised to the older WB2A controller without device-specific evidence.
 
 
-## Open task: read controller software version and firmware image
+## Open task: software identity complete; firmware image acquisition blocked on MCU/board identification
 
-Status: **open / high-value future research**
+Status: **software identity completed / full firmware readout still open**
 
 Determine whether the installed Vitodens 200-W WB2A / VDensHO1 can expose its
 software revision and, separately, whether an executable controller firmware
