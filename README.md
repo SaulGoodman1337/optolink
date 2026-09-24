@@ -49,7 +49,8 @@ Do not remove the Optolink files from the old `community-scripts` repository unt
 
 ## Documentation
 
-- [GFA quality-aware logger and FF checkpoint - 2026-09-24](docs/gfa-quality-logger.md) - raw FF contexts received; bounded re-identification helper prepared, hardware validation pending. Read before older GFA log-retrieval/retry instructions.
+- [GFA measured quality-run result and pacing comparison - 2026-09-24](docs/gfa-paced-comparison.md) - three re-identifications succeeded; a fourth FF hit the cap. Complete logs analyzed. Next: explicit 150-ms reply-gap experiment, not raising retry limits. Read before older GFA next-action sections.
+- [GFA quality-aware logger and FF checkpoint - 2026-09-24](docs/gfa-quality-logger.md) - original quality/re-entry implementation and prior raw-FF analysis; the newer measured result above supersedes its pending-hardware-test wording.
 - [Collector research checkpoint - 2026-09-23](docs/collector-research-checkpoint.md) - current cross-topic results and next actions; read before older collector-related roadmap entries.
 - [Private archive analysis and evidence](config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-analysis.md) - verified archive/SQL coverage, variant-specific GFA map, corrected firmware and pump assumptions; derived information only.
 - [Project roadmap](docs/project-roadmap.md)
