@@ -88,7 +88,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "MAINTENANCE_MQTT_API_READ_ONLY_PATH_LIVE_VERIFIED",
+  "current_status": "MAINTENANCE_MQTT_API_SAFE_BEHAVIOR_LIVE_VERIFIED_LOCK_TEST_PENDING",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -492,6 +492,23 @@
         "The CLI still returns the same maintenance status after the core refactor.",
         "The shared maintenance lock is provisioned with permissions usable by both root CLI and the optolink API service."
       ]
+    },
+    "safe_behavior_suite": {
+      "date": "2026-09-24",
+      "status": "live-verified",
+      "deduplication": "Repeated request_id returned the cached result with deduplicated=true.",
+      "noops": "set_hours 0 and set_months 0 returned changed=false.",
+      "guards": "set_hours 100, set_months 1 and reset were rejected without confirmation.",
+      "baseline_final_match": true,
+      "preserved": {
+        "0x5721": "00",
+        "0x5723": "00",
+        "0x5724": "00",
+        "0x756C": "c988b56a",
+        "0x7570": "134cce03",
+        "0x08A7": "154cce03",
+        "0x088A": "d46f0700"
+      }
     }
   }
 }
