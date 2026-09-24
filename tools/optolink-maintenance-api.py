@@ -308,6 +308,25 @@ class MaintenanceApi:
             retain=True,
         )
 
+        # Keep the already-discovered read-only maintenance entities fresh
+        # immediately after API operations instead of waiting for the RARE
+        # poll group. These values come from the same verified snapshot.
+        self.client.publish(
+            f"{self.base_topic}/wartung_brennerstunden_grenzwert",
+            str(state["hours_threshold"]),
+            retain=False,
+        )
+        self.client.publish(
+            f"{self.base_topic}/wartung_zeitintervall",
+            str(state["interval_months"]),
+            retain=False,
+        )
+        self.client.publish(
+            f"{self.base_topic}/wartung_status",
+            str(state["maintenance_state"]),
+            retain=False,
+        )
+
     def parse_request(self, raw: str) -> dict[str, Any]:
         if len(raw) > 16384:
             raise MaintenanceError(
