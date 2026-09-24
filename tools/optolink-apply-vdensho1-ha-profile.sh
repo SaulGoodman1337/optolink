@@ -432,6 +432,19 @@ if [[ "$mqtt_enabled" == "1" && -c /dev/ttyUSB0 ]]; then
     fi
   fi
 
+  if systemctl cat optolink-schedule-manager.service >/dev/null 2>&1; then
+    echo "Starting guarded schedule manager..."
+    systemctl enable optolink-schedule-manager.service >/dev/null 2>&1 || true
+    systemctl restart optolink-schedule-manager.service
+    sleep 2
+    if systemctl is-active --quiet optolink-schedule-manager.service; then
+      echo "Schedule manager is active."
+    else
+      echo "WARNING: Schedule manager did not stay active." >&2
+      journalctl -u optolink-schedule-manager.service -n 30 --no-pager >&2 || true
+    fi
+  fi
+
   echo "Publishing Home Assistant MQTT discovery (timeout 120s)..."
   # Discovery publishing is intentionally non-fatal: the Optolink service
   # remains useful even if Home Assistant/MQTT is temporarily unavailable.
