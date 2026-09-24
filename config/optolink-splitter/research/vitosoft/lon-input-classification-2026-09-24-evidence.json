@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "evidence_level": "hardware_observation",
+  "scope": "Read-only classification of LON/HCC/DHWC nvi setpoint objects and KM-BUS participant identity blocks on the local VDensHO1/20C2 WB2A.",
+  "measurements": [
+    {
+      "address": "0x2306",
+      "raw": "15",
+      "meaning": "BedienRTSolltemperaturA1M1",
+      "decoded": {
+        "value_c": 21,
+        "conversion": "NoConversion"
+      }
+    },
+    {
+      "address": "0xA401",
+      "raw": "d007",
+      "meaning": "nviHCC1 SpaceSetpt",
+      "decoded": {
+        "little_endian_decimal": 2000,
+        "value_c": 20,
+        "conversion": "div100"
+      }
+    },
+    {
+      "address": "0x2544",
+      "raw": "0000",
+      "meaning": "internal A1 flow target",
+      "decoded": {
+        "little_endian_decimal": 0,
+        "value_c": 0,
+        "conversion": "div10"
+      }
+    },
+    {
+      "address": "0xA403",
+      "raw": "d007",
+      "meaning": "nviHCC1 FlowSetpt",
+      "decoded": {
+        "little_endian_decimal": 2000,
+        "value_c": 20,
+        "conversion": "div100"
+      }
+    },
+    {
+      "address": "0xA441",
+      "raw": "d007",
+      "meaning": "nviHCC2 SpaceSetpt",
+      "decoded": {
+        "little_endian_decimal": 2000,
+        "value_c": 20,
+        "conversion": "div100"
+      }
+    },
+    {
+      "address": "0xA443",
+      "raw": "d007",
+      "meaning": "nviHCC2 FlowSetpt",
+      "decoded": {
+        "little_endian_decimal": 2000,
+        "value_c": 20,
+        "conversion": "div100"
+      }
+    },
+    {
+      "address": "0x6500",
+      "raw": "3200",
+      "meaning": "WW SolltemperaturAktuell",
+      "decoded": {
+        "little_endian_decimal": 50,
+        "value_c": 5,
+        "conversion": "div10"
+      }
+    },
+    {
+      "address": "0xA3C0",
+      "raw": "8813",
+      "meaning": "nviDHWC Setpt",
+      "decoded": {
+        "little_endian_decimal": 5000,
+        "value_c": 50,
+        "conversion": "div100"
+      }
+    },
+    {
+      "address": "0x0A54",
+      "raw": "01110101",
+      "meaning": "internal-pump software-index block",
+      "decoded": {
+        "software_index_byte3": 1
+      }
+    },
+    {
+      "address": "0x0A4C",
+      "raw": "00000000",
+      "meaning": "A1-pump software-index block",
+      "decoded": {
+        "software_index_byte3": 0
+      }
+    },
+    {
+      "address": "0x0A50",
+      "raw": "00000000",
+      "meaning": "M2-pump software-index block",
+      "decoded": {
+        "software_index_byte3": 0
+      }
+    }
+  ],
+  "conclusions": [
+    "A401/A403/A441/A443 all read exactly 20.00 C. Because M2 is absent locally yet its HCC2 nvi values equal the HCC1 nvi values, 20.00 C is strongly consistent with an inactive/default network-input value rather than a live local controller target.",
+    "A401 does not track the configured A1 room target in this snapshot: local 0x2306 was 21 C while A401 was 20.00 C.",
+    "A403 does not track the active internal A1 flow target: 0x2544 was 0.0 C while A403 was 20.00 C.",
+    "A3C0 was 50.00 C while 0x6500 current DHW target was 5.0 C. Therefore A3C0 is not a mirror of the currently effective DHW target. The configured user DHW target 0x6300 was not sampled in this run and is the correct next comparison.",
+    "The internal pump is the only populated pump software-index block among the three sampled pump identities: 0x0A54 is nonzero while 0x0A4C and 0x0A50 are all zero."
+  ],
+  "hypotheses": {
+    "HCC_nvi_default": {
+      "confidence": "strong",
+      "statement": "The HCC1/HCC2 nvi setpoint objects are inactive/default LON input-side values on this installation.",
+      "basis": "All four HCC nvi objects equal 20.00 C despite different local topology and active A1 values; absent M2 provides a control."
+    },
+    "DHWC_nvi_mapping": {
+      "confidence": "open",
+      "statement": "A3C0 may correspond to the configured DHW user setpoint rather than the currently effective 0x6500 value.",
+      "next_test": "Read 0x6300 and compare it with A3C0 in the same window."
+    },
+    "HCC_external_room_mapping": {
+      "confidence": "open",
+      "statement": "A401 may correspond to or feed the external room-setpoint object 0x2321 rather than the normal user room setpoint 0x2306.",
+      "next_test": "Read 0x2321 and compare it with A401 in the same window."
+    }
+  },
+  "next_read_only": [
+    "0x2321 / 1 ExternRTSolltemperaturA1M1 vs 0xA401 / 2 nviHCC1 SpaceSetpt",
+    "0x6300 / 1 configured DHW target vs 0xA3C0 / 2 nviDHWC Setpt",
+    "Optional repeat of 0x6500 to preserve current/effective DHW target context"
+  ],
+  "safety": {
+    "writes_performed": false
+  }
+}

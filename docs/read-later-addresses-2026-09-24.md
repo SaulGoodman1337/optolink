@@ -69,10 +69,10 @@ These exact-profile datapoints are still not in the production HA poll definitio
 
 | Priority | Address | Read | Source meaning | Why it matters |
 | --- | --- | --- | --- | --- |
-| A | `0xA401` | 2 bytes | `nviHCC1 SpaceSetpt` | /100 °C; compare with local A1 room setpoint to determine whether the LON/HCC input block is active or defaulted |
-| A | `0xA441` | 2 bytes | `nviHCC2 SpaceSetpt` | /100 °C; M2 is absent, useful default/inactive control sample |
-| A | `0xA443` | 2 bytes | `nviHCC2 FlowSetpt` | /100 °C; M2 is absent, useful default/inactive control sample |
-| A | `0xA3C0` | 2 bytes | `nviDHWC Setpt` | /100 °C; compare with local DHW target to classify LON input behavior |
+| [x] | `0xA401` | 2 bytes | `nviHCC1 SpaceSetpt` | live `20.00 °C`; differs from configured A1 room target `0x2306=21 °C` |
+| [x] | `0xA441` | 2 bytes | `nviHCC2 SpaceSetpt` | live `20.00 °C`; M2 is absent, strong default/inactive control evidence |
+| [x] | `0xA443` | 2 bytes | `nviHCC2 FlowSetpt` | live `20.00 °C`; M2 is absent, strong default/inactive control evidence |
+| [x] | `0xA3C0` | 2 bytes | `nviDHWC Setpt` | live `50.00 °C`; differs from current/effective `0x6500=5.0 °C`; compare next with configured user target `0x6300` |
 | B | `0x0A50` | 4 bytes | M2 pump software-index block | byte 3 is SW index; expected absent/empty in local topology |
 | B | `0x0A44` | 4 bytes | mixer software-index block | byte 3 SW index |
 | B | `0x0A40` | 4 bytes | solar-controller software-index block | byte 3 SW index |
@@ -82,20 +82,43 @@ These exact-profile datapoints are still not in the production HA poll definitio
 
 ### Suggested next bounded read-later batch
 
-The next useful batch is not another generic KM scan. It specifically tests whether the LON/HCC `nvi*` setpoints are active values or fixed/default inputs:
+The HCC classification is now largely settled: `A401/A403/A441/A443` all read 20.00 °C, including the absent M2 path. The next batch only closes the two remaining mapping questions:
 
 ```bash
-/usr/local/bin/optolink-debug request "r;0x2306;1;raw;False"
+echo "=== External A1 room-setpoint mapping ==="
+/usr/local/bin/optolink-debug request "r;0x2321;1;raw;False"
 /usr/local/bin/optolink-debug request "r;0xA401;2;raw;False"
-/usr/local/bin/optolink-debug request "r;0x2544;2;raw;False"
-/usr/local/bin/optolink-debug request "r;0xA403;2;raw;False"
-/usr/local/bin/optolink-debug request "r;0xA441;2;raw;False"
-/usr/local/bin/optolink-debug request "r;0xA443;2;raw;False"
+
+echo
+echo "=== Configured vs current vs LON DHW target ==="
+/usr/local/bin/optolink-debug request "r;0x6300;1;raw;False"
 /usr/local/bin/optolink-debug request "r;0x6500;2;raw;False"
 /usr/local/bin/optolink-debug request "r;0xA3C0;2;raw;False"
 ```
 
-No writes are involved. If the inactive M2 objects and A1/DHW LON inputs all sit at generic/default values instead of tracking local setpoints, that strongly classifies `A401/A403/A3C0` as network-input-side objects rather than internal controller outputs.
+No writes are involved. Current evidence already strongly classifies the HCC1/HCC2 `nvi*` objects as network-input-side/default values. The remaining questions are whether `A401` maps to the explicit external-room-setpoint object `0x2321` and whether `A3C0` mirrors the configured user DHW setpoint `0x6300` rather than the current/effective `0x6500`.
+
+### Live HCC/DHWC classification result
+
+```text
+0x2306 = 15       -> 21 °C normal A1 room setpoint
+0xA401 = D0 07    -> 20.00 °C nviHCC1 SpaceSetpt
+
+0x2544 = 00 00    -> 0.0 °C current A1 flow target
+0xA403 = D0 07    -> 20.00 °C nviHCC1 FlowSetpt
+
+0xA441 = D0 07    -> 20.00 °C nviHCC2 SpaceSetpt
+0xA443 = D0 07    -> 20.00 °C nviHCC2 FlowSetpt
+
+0x6500 = 32 00    -> 5.0 °C current/effective DHW target
+0xA3C0 = 88 13    -> 50.00 °C nviDHWC Setpt
+```
+
+Because the absent M2 HCC objects carry the same 20.00 °C as the A1 HCC objects, the HCC `nvi*` values are strongly consistent with inactive/default LON inputs rather than live internal controller targets.
+
+The DHW case is different: 50.00 °C is plausible as a configured user setpoint. Compare `A3C0` next with `0x6300` before classifying it as default or synchronized.
+
+Machine evidence: [lon-input-classification-2026-09-24-evidence.json](../config/optolink-splitter/research/vitosoft/lon-input-classification-2026-09-24-evidence.json).
 
 ### Special note on 0xA403
 

@@ -191,9 +191,10 @@ The previous E7 100->99->100 test proved mutation/readback/restore, not RAM-only
 
 **TODO:**
 
-- [ ] Read `0xA401/A403` together with local A1 setpoints and `0xA441/A443` as absent-M2 controls.
-- [ ] Read `0xA3C0 nviDHWC Setpt` together with local DHW target `0x6500`.
-- [ ] If these `nvi*` objects remain at default values instead of tracking local controller targets, classify them as inactive/external LON input-side variables and do not add them to normal HA polling.
+- [x] Read `0xA401/A403` together with local A1 setpoints and `0xA441/A443` as absent-M2 controls. Result: all four HCC `nvi*` objects are `20.00 °C`; A1 local values differ and M2 is absent. Strong evidence for inactive/default external LON inputs.
+- [x] Read `0xA3C0 nviDHWC Setpt` with current/effective DHW target `0x6500`. Result: `A3C0=50.00 °C`, `0x6500=5.0 °C`; they are not the same runtime target.
+- [ ] Read `0x2321 ExternRTSolltemperaturA1M1` vs `A401` and configured DHW target `0x6300` vs `A3C0` to close the remaining mapping questions.
+- [x] Do not add HCC `nvi*` objects to normal HA polling; current evidence supports them as external/default LON input-side variables.
 - [x] Do not interpret `0xA403=20.00 °C` as an actual physical flow target without correlation; the same-window mismatch to `0x2544` disproves that shortcut.
 
 ## P2 - KM-BUS / Vitotrol
