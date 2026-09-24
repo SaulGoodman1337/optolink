@@ -341,3 +341,52 @@ Implementation commit:
 
 This is an experimental timing optimization and still requires live validation
 with global `olbreath=0.05`.
+
+
+## Mixed 50 ms global / 150 ms GFA short gate
+
+The GFA-specific pacing patch v1.0.4 was applied and tested with:
+
+```text
+global olbreath = 0.05 s
+GFA_MIN_GAP_SECONDS = 0.15 s
+raw GFA FF retry count = 1
+```
+
+Only `optolinkvs1.py` changed during the upgrade; the adapter and
+`requests_util.py` were already current.
+
+The 180-second passive cadence gate produced:
+
+| Datapoint | Median | P95 | Max |
+|---|---:|---:|---:|
+| Kesseltemperatur | 2.480 s | 2.750 s | 2.839 s |
+| Brenner Modulationsgrad | 2.493 s | 2.761 s | 2.883 s |
+| GFA P06 blower RPM | 2.483 s | 2.692 s | 2.756 s |
+| GFA P09 modulation setpoint | 2.480 s | 2.706 s | 2.769 s |
+| GFA P87 raw status | 2.470 s | 2.709 s | 2.767 s |
+| Außentemperatur | 12.416 s | 12.992 s | 13.016 s |
+| GFA P80 identity | 12.491 s | 12.943 s | 13.155 s |
+
+Retry telemetry:
+
+```text
+GFA_FIRST_FF=0
+GFA_RETRY_RECOVERED=0
+HARD_ERRORS=none
+P80_OK=1
+SERVICE_OK=1
+RESULT=PASS_CLEAN
+```
+
+This is the first clean gate combining the upstream 50 ms timing for ordinary
+VS1 traffic with a separate 150 ms minimum gap for direct GFA_READ 0x6B.
+
+The result strongly supports the hypothesis that the shorter-timing failures
+are specific to the GFA_READ path rather than VS1/F7/F4 generally. It is not
+yet sufficient for permanent deployment because the retry path was not
+exercised and the short gate lasted only three minutes.
+
+Next gate: 30-60 minute soak including normal burner activity, while counting
+first-attempt FF events, successful retry recoveries, second FF/failures and
+splitter restarts separately.
