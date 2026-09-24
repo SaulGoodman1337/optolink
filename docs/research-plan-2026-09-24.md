@@ -182,16 +182,20 @@ Current evidence:
   `KMBUS_EEPROM_READ 0x43` request. Event 578 shape
   `0x43 / 0x0001 / len 1 / PrefixRead 030000000101` succeeded locally and
   returned raw byte `0x88`; the wire response echoed function `0x43`.
-  This hardware-verifies PrefixRead as operational request/routing data.
+  This proves the frame shape is accepted; later P-N-P evidence shows the six
+  bytes can affect the 0x0001 result, but their exact routing semantics remain
+  unproven.
 - [x] Expand to the bounded 13 exact Vitosoft-v6 GWG_BT2 0x43 block shapes:
   **13/13 successful responses**, but most higher-address blocks collapse to a
   repeated two-byte `54 98` pattern. This is not a validated EEPROM dump.
   Low blocks `0x0001=88`, `0x000A=4000000000`,
   `0x000F=1f00000000000000` remain structurally distinct.
-- [~] Isolate whether `PrefixRead=030000000101` materially affects the local
-  transaction. Guarded P-N-P helper prepared for same-address prefixed ->
-  no-prefix -> prefixed comparison on `0x0001/1`, `0x000A/5`,
-  `0x0078/8`, `0x00A0/10`.
+- [x] Run same-session P-N-P PrefixRead discriminator. Clean effect at
+  `0x0001/1`: `88 -> 87 -> 88`; no effect at `0x000A/5`;
+  `0x0078/8` and `0x00A0/10` remain dynamic/inconclusive.
+- [~] Re-run only `0x0001/1` with a **fresh P300 session per trial** and a
+  balanced deterministic P/N order to remove session carry-over and sequence
+  bias before assigning stronger PrefixRead semantics.
 - [ ] Reconstruct one real Vitosoft-defined 0x43 request including prefix before
   considering another local EEPROM-style read.
 - [ ] Keep all work read-only; no broad blind sweep and no KBUS/KMBUS writes.
