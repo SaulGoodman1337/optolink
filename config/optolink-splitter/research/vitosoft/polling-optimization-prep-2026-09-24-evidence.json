@@ -74,7 +74,7 @@
     "normal_cadence_seconds": "approximately 20-30 s",
     "goal": "Eliminate periodic 15-20 s FAST latency spikes before any olbreath reduction."
   },
-  "next_step": "Measure natural MQTT inter-arrival intervals for FAST and NORMAL entities under olbreath=0.15; only then test lower olbreath as a separate controlled change.",
+  "next_step": "Test olbreath=0.10 with the same 180-second passive cadence observer and compare latency plus journal communication errors; only then consider 0.05.",
   "first_live_apply_attempt": {
     "timestamp_local": "2026-09-24T14:17:06+02:00",
     "result": "ABORTED_BEFORE_SCHEDULER_APPLY",
@@ -148,6 +148,93 @@
       "The phased poll scheduler is now live on the production splitter.",
       "The optimized VDensHO1 profile is active and Home Assistant discovery completed successfully.",
       "The next measurement must be passive MQTT cadence observation without forcepoll, before changing olbreath."
+    ]
+  },
+  "cadence_baseline_olbreath_015": {
+    "timestamp_local": "2026-09-24T14:30+02:00",
+    "duration_seconds": 180,
+    "passive_only": true,
+    "mqtt_no_redundant": false,
+    "olbreath_seconds": 0.15,
+    "poll_interval": 0,
+    "poll_list_items": 216,
+    "measurements": {
+      "kesseltemperatur": {
+        "group": "FAST",
+        "phase": 0,
+        "messages": 38,
+        "min_s": 4.327,
+        "median_s": 4.763,
+        "p95_s": 4.974,
+        "max_s": 5.045,
+        "last": "36.5"
+      },
+      "brenner_modulationsgrad": {
+        "group": "FAST",
+        "phase": 0,
+        "messages": 37,
+        "min_s": 4.342,
+        "median_s": 4.745,
+        "p95_s": 4.975,
+        "max_s": 5.031,
+        "last": "0.0"
+      },
+      "geblaesedrehzahl_gfa_p06": {
+        "group": "FAST",
+        "phase": 0,
+        "messages": 38,
+        "min_s": 4.432,
+        "median_s": 4.722,
+        "p95_s": 4.958,
+        "max_s": 5.094,
+        "last": "0"
+      },
+      "gfa_modulationssollwert_p09": {
+        "group": "FAST",
+        "phase": 0,
+        "messages": 38,
+        "min_s": 4.435,
+        "median_s": 4.732,
+        "p95_s": 4.945,
+        "max_s": 5.101,
+        "last": "0.0"
+      },
+      "gfa_status3_p87": {
+        "group": "FAST",
+        "phase": 0,
+        "messages": 38,
+        "min_s": 4.459,
+        "median_s": 4.713,
+        "p95_s": 4.945,
+        "max_s": 4.967,
+        "last": "00"
+      },
+      "aussentemperatur": {
+        "group": "NORMAL",
+        "phase": 0,
+        "messages": 8,
+        "min_s": 22.984,
+        "median_s": 23.949,
+        "p95_s": 24.354,
+        "max_s": 24.461,
+        "last": "19.5"
+      },
+      "gfa_p80_typ": {
+        "group": "NORMAL",
+        "phase": 4,
+        "messages": 8,
+        "min_s": 22.992,
+        "median_s": 23.972,
+        "p95_s": 24.401,
+        "max_s": 24.515,
+        "last": "20"
+      }
+    },
+    "conclusion": [
+      "Phased scheduling removed the previously observed 15-20 second FAST latency spikes.",
+      "All measured FAST signals, including P06/P09/P87, have a stable approximately 4.7 second median cadence at olbreath=0.15.",
+      "NORMAL group cadence is approximately 24 seconds, matching five FAST cycles.",
+      "This measurement is the baseline for controlled olbreath reduction."
     ]
   }
 }
