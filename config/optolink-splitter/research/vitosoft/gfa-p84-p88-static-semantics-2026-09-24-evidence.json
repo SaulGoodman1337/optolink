@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "source_snapshot": {
+    "private_repository": "SaulGoodman1337/Viessmann-Vitosoft-300-SID1",
+    "collector_release": "collector-20260924-143439",
+    "asset": "vitosoft-private-archive-20260924-143439.7z",
+    "asset_sha256": "3d31380d6dfabf8ede9e305b115e847fb0670511e253a4ed4e59feef2f7adfee"
+  },
+  "archive_search": {
+    "workflow_run": 36043680425,
+    "scanned_text_like_files": 1134,
+    "matched_files": 62,
+    "artifact_digest": "sha256:858776a1c7fd53697b25db2896c0967f222ee5d7686e79e3c9a2954f47d49fce"
+  },
+  "sql_followup": {
+    "workflow_run": 36044871950,
+    "artifact_digest": "sha256:1494f0415c6792bc7e1b32256bfb95f2eabb914e718de3d580d9092db8d9faf2"
+  },
+  "events": [
+    {
+      "event_id": 8208,
+      "parameter": "P84",
+      "address": "0x4054",
+      "label_de": "GFA Betriebsphase",
+      "label_en": "GBCU operating phase"
+    },
+    {
+      "event_id": 8209,
+      "parameter": "P85",
+      "address": "0x4055",
+      "label_de": "GFA Status 1",
+      "label_en": "GBCU status 1"
+    },
+    {
+      "event_id": 8210,
+      "parameter": "P86",
+      "address": "0x4056",
+      "label_de": "GFA Status 2",
+      "label_en": "GBCU status 2"
+    },
+    {
+      "event_id": 8211,
+      "parameter": "P87",
+      "address": "0x4057",
+      "label_de": "GFA Status 3",
+      "label_en": "GBCU status 3"
+    },
+    {
+      "event_id": 8212,
+      "parameter": "P88",
+      "address": "0x4058",
+      "label_de": "GFA Status 4",
+      "label_en": "GBCU status 4"
+    }
+  ],
+  "common_metadata": {
+    "enum_type": false,
+    "conversion": "NoConversion",
+    "lowlevel_parameter": "Byte",
+    "sdk_data_type": "Int",
+    "access_mode": "Read",
+    "fc_read": "GFA_READ",
+    "fc_write": "undefined",
+    "event_value_type_id": 12927,
+    "event_value_type_name": "Allgemein_Int",
+    "event_value_type_storage_type": "Int",
+    "event_value_type_has_value_labels": false
+  },
+  "static_semantics_result": {
+    "manufacturer_phase_enum_found": false,
+    "manufacturer_status_bit_table_found": false,
+    "conclusion": "The installed Vitosoft corpus models P84-P88 as raw integer bytes and contains no recovered enum/bit naming for their values.",
+    "strength": "strong negative result within Collector-v6 Vitosoft corpus, not proof that no external GFA vendor documentation exists"
+  },
+  "nearby_contrast": {
+    "P83_description": "Gerätekonfiguration FA0...7 includes an explicit bit-position description in the same Vitosoft translation corpus.",
+    "P89_CES_description": "Nearby CES/common P89 includes explicit bit mapping b0=FA9, b1=FA11, b2=FA8.",
+    "implication": "Vitosoft stores bit descriptions when available; their absence from P84-P88 is therefore meaningful.",
+    "P83_local_raw": "0x76",
+    "P83_local_set_bits": [
+      1,
+      2,
+      4,
+      5,
+      6
+    ],
+    "caution": "Do not fully decode P83 yet because the retained P83 description itself labels bit4 as 0/reserved while the local raw value has bit4 set."
+  },
+  "live_context": {
+    "P84_observed": [
+      "00",
+      "02",
+      "04",
+      "05",
+      "06"
+    ],
+    "P87_observed": [
+      "20",
+      "40",
+      "50",
+      "60",
+      "62"
+    ],
+    "P87_bit1_timing": "hardware timing shows bit1 sets before P09 leaves the high-start plateau; semantic name remains unknown"
+  },
+  "next_boundary": [
+    "Do not assign manufacturer names to P84 values or P85-P88 bits from Vitosoft alone.",
+    "Stop repeated static searches of the same Vitosoft corpus for P84-P88 enums unless new source material appears.",
+    "Use independent live correlations and/or later GFA firmware/vendor documentation for semantic naming."
+  ]
+}

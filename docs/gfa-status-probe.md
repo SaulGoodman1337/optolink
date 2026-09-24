@@ -1,6 +1,6 @@
 # WB2A GFA status/startup probe
 
-Status: **the guarded 37 C trigger run completed successfully. It captured P84/P87/P06/P09 through startup, verified the temporary 37 C write and exact restore to 21 C, and strongly correlates P87 bit 1 with release of the high-start modulation plateau. P84/P87 manufacturer semantics remain unproven.**
+Status: **the guarded 37 C trigger run completed successfully and strongly correlates P87 bit 1 with release of the high-start modulation plateau. A complete Collector-v6 static search now confirms that Vitosoft itself exposes P84-P88 only as raw integer values; no manufacturer phase enum or status-bit table was recovered.**
 
 This helper follows the successful continuous startup capture documented in [GFA pacing comparison](gfa-paced-comparison.md). Its purpose is narrowly defined: observe raw GFA phase/status bytes around a normal startup without assigning undocumented semantics.
 
@@ -21,6 +21,39 @@ The locally confirmed VDensHO1 / 20C2 burner variant is GFA (P80 = 0x20). Derive
 A public Vitosoft-derived export in MorrisonHB/Optolink_02 independently contains the same generic P12 and P84-P88 labels. It supplies no P84 enum and no P12/P85-P88 bit table, so the helper deliberately does not invent names such as flame, ignition, gas valve or safety chain.
 
 [Machine-readable target evidence](../config/optolink-splitter/research/vitosoft/gfa-status-targets-2026-09-24-evidence.json) records the branch constraints, public corroboration and exclusions.
+
+### Collector-v6 static semantic search - completed
+
+A dedicated search covered 1,134 text-like Collector-v6 artifacts, including normalized metadata, SQL exports, translations, XML and IL-derived text. It was followed by an exact SQL relation check for events 8208-8212.
+
+All five events resolve to the same generic value type:
+
+```text
+EventValueType 12927 = Allgemein_Int
+storage type         = Int
+EnumType             = False
+conversion           = NoConversion
+low-level parameter  = Byte
+SDK type             = Int
+FCRead                = GFA_READ
+FCWrite               = undefined
+```
+
+The German and English resource text adds only:
+
+```text
+P84 = GFA Betriebsphase / GBCU operating phase
+P85 = GFA Status 1 / GBCU status 1
+P86 = GFA Status 2 / GBCU status 2
+P87 = GFA Status 3 / GBCU status 3
+P88 = GFA Status 4 / GBCU status 4
+```
+
+No phase-value table and no bit names for P85-P88 were recovered. This is a strong negative result **within the installed Vitosoft corpus**, not proof that no burner-controller vendor document or firmware can define them.
+
+The absence is meaningful because adjacent Vitosoft parameters do carry explicit bit descriptions when available: P83 has a FA0...FA7 bit-position description and the CES/common P89 definition explicitly names FA9/FA11/FA8 bits. Therefore repeated searches of the same Vitosoft corpus for a hidden P84-P88 enum are now closed.
+
+Evidence: [P84-P88 static semantic boundary](../config/optolink-splitter/research/vitosoft/gfa-p84-p88-static-semantics-2026-09-24-evidence.json).
 
 ### Important variant exclusions
 
