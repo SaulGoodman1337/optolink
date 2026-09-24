@@ -1,0 +1,131 @@
+{
+  "format": 1,
+  "date": "2026-09-24",
+  "purpose": "Cross-correlate physical spare coding-plug EEPROM captures with Optolink/Vitosoft-derived coding-plug views.",
+  "physical_samples": {
+    "spare-1-chip1": {
+      "size": 512,
+      "sha256": "3dd583723661ea765f4e57405628def121bf78f1bc7d09dc1dfb51fec362f386"
+    },
+    "spare-2-chip1": {
+      "size": 512,
+      "sha256": "554d890e5c5158893ca44b10e0503f38f8c6de4f01de0fb2b9e55211a3e48946"
+    },
+    "common_prefix": {
+      "range": "0x000..0x0E1",
+      "length": 226,
+      "identical": true,
+      "sha256": "301bdb0ef23df9602e2e807dd6590549ea8fffd8d4b106f6c86f96d931521997"
+    },
+    "logical_mirror": {
+      "copy_a_segments": [
+        "0x001..0x00B",
+        "0x014..0x05A"
+      ],
+      "copy_b_range": "0x05B..0x0AC",
+      "length": 82,
+      "identical": true,
+      "sha256": "740df5bdd0fcfe2d162616689a1a3b2fab93fef6cf6baf44663077d6e3a5b0c3",
+      "inserted_between_copy_a_segments": {
+        "range": "0x00C..0x013",
+        "hex": "00 ff 12 03 08 04 04 fb",
+        "observed_complement_pairs": [
+          "00/ff",
+          "04/fb"
+        ]
+      }
+    }
+  },
+  "repository_views": {
+    "main_regulation_gwg": {
+      "objects": {
+        "0x1010": "coding-plug part number",
+        "0x1020": "commissioning year/month/day",
+        "0x1030": "GWG30/GWG32/GWG34 plus protected/unlabelled slots",
+        "0x1040": "coding-plug identifier",
+        "0x1050": "GWG50/51/53/58/59/5A/5B/5C/5D",
+        "0x1060": "GWG60..GWG67",
+        "0x1070": "GWG70..GWG76",
+        "0x1080": "GWG80..GWG88",
+        "0x1090": "GWG91..GWG9A",
+        "0x10A0": "Viessmann diverter-valve profile",
+        "0x10B0": "Wilo diverter-valve profile",
+        "0x10C0": "Grundfos diverter-valve profile"
+      },
+      "active_1030": {
+        "raw": "41 be 1d e2 03 fc 51 ae 64 9b 00 ff 00 ff 00 ff",
+        "structure": "eight value/bitwise-complement pairs",
+        "labelled_primary_values": {
+          "GWG30": 65,
+          "GWG32": 29,
+          "GWG34": 3
+        }
+      },
+      "active_10c0": {
+        "raw": "5a 32 2d c8 5a 32 02 32 02 32 00 ff ff ff ff ff",
+        "meaning": "Grundfos diverter-valve motion profile"
+      }
+    },
+    "coding_card_summary": {
+      "object": "0x7656",
+      "active_raw": "20 15 02 01",
+      "source_fields": [
+        "coding-card device identification",
+        "coding-card GFA revision",
+        "coding-card GWG revision",
+        "coding-card type"
+      ],
+      "note": "Derived public CSV does not retain member byte positions; do not assign bytes definitively yet."
+    },
+    "gfa_fire_control": {
+      "0x405A": "P90 coding-plug FA type",
+      "0x4064": "P100 minimum-power representation, factor 0.3922",
+      "0x4065": "P101 VI coding-plug identity 1",
+      "0x4066": "P102 VI coding-plug identity 2",
+      "0x4067..0x4069": "P103..P105 coding-plug day/month/year",
+      "0x406A": "P106 VI coding-plug CRC diagnostic",
+      "0x406B..0x406C": "P107..P108 FA40/FA41 identity"
+    }
+  },
+  "direct_flat_match_result": {
+    "ascii_7833971_present": false,
+    "raw_20_15_02_01_present": false,
+    "exact_active_1030_to_1090_blocks_present": false,
+    "exact_active_10c0_present": false,
+    "interpretation": "No direct flat mapping demonstrated. This does not disprove a physical mapping because sample identity/side are unknown and controller-visible objects may be transformed/protected."
+  },
+  "hypotheses": [
+    {
+      "id": "H1",
+      "confidence": "strong",
+      "statement": "The saved chip1 data is a real structured image with internal mirroring/redundancy.",
+      "basis": "Three identical reads per spare, 96.0938% cross-spare identity, identical 226-byte prefix, exact duplicated 82-byte logical record."
+    },
+    {
+      "id": "H2",
+      "confidence": "moderate",
+      "statement": "The two physical EEPROMs may serve separate GWG/regulation and GFA/fire-control coding domains or consumers.",
+      "basis": "Two separate EEPROM faces plus repository-defined separate GFA/GWG revisions and separate GWG versus GFA coding-plug namespaces."
+    },
+    {
+      "id": "H3",
+      "confidence": "moderate",
+      "statement": "Differences at 0x0E2..0x0F0 are per-device/service/manufacturing/state metadata rather than the shared main parameter image.",
+      "basis": "Both spares are identical through 0x0E1 and differ only in the later tail/upper block."
+    },
+    {
+      "id": "H4",
+      "confidence": "uncertain",
+      "statement": "The 0x100 upper-block differences may be intentional data or an addressing/read-path peculiarity.",
+      "basis": "Differences begin exactly at the 24C04 256-byte boundary and bench connection issues were observed later."
+    }
+  ],
+  "next_read_only_targets": [
+    "Label future EEPROM captures explicitly f01/ST or f02/Microchip.",
+    "Capture both EEPROM sides of one spare three times each.",
+    "Capture active plug only after the spare-side matrix is understood.",
+    "Snapshot active 0x1010, 0x1020, 0x1030..0x10C0 and 0x7656.",
+    "Snapshot GFA P90 and P100..P108 using the already recovered read-only GFA path.",
+    "Compare normalized semantic fields and integrity/complement patterns, not only full raw P300 blocks."
+  ]
+}

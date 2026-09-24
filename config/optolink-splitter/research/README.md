@@ -65,6 +65,22 @@ an observation rather than a storage-format conclusion.
 Detailed capture registry and raw-file locations:
 [coding-plug-physical-dumps.md](coding-plug-physical-dumps.md).
 
+The physical dump correlation now has a stronger architectural result:
+
+- both spare chip1 images contain the same **82-byte logical record twice**;
+- the complete `0x000..0x0E1` 226-byte prefix is identical across both
+  spares;
+- the repository exposes separate GWG/main-regulation coding-plug objects,
+  separate GFA coding-plug diagnostics, and separate GFA/GWG revision fields;
+- together with the two physically different f01/SIM1 and f02/SIM2 EEPROMs,
+  this supports a dual-domain EEPROM hypothesis, but no side is yet assigned;
+- the active `0x1030` coding-plug object is eight value/complement pairs,
+  proving that controller-visible P300 blocks need not be literal flat EEPROM
+  images.
+
+See the detailed cross-correlation section in
+[coding-plug-physical-dumps.md](coding-plug-physical-dumps.md).
+
 Spare-2 adds a second repeatable chip1 image with SHA256
 `554d890e5c5158893ca44b10e0503f38f8c6de4f01de0fb2b9e55211a3e48946`.
 It is **96.0938 % byte-identical** to spare-1: 492 of 512 bytes match and

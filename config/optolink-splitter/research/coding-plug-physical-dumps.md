@@ -260,6 +260,235 @@ not be given semantic meaning solely from the `A5 5A` pattern.
 The lower-block differences at `0x0E2..0x0F0` are not affected by that
 256-byte boundary and are therefore the stronger cross-sample evidence.
 
+## Cross-correlation with Optolink/Vitosoft metadata
+
+The physical dumps can now be compared against three distinct coding-plug
+views already present in this repository. Keeping those views separate is
+important because none of them is proven to be a byte-for-byte view of either
+physical EEPROM.
+
+### 1. Main-regulation / GWG view
+
+The Vitosoft-derived event inventory exposes the controller-side
+`GWG_Codierstecker_*` family through structured P300 objects:
+
+| Object | Source-defined content |
+| --- | --- |
+| `0x1010` | coding-plug part number / Sachnummer |
+| `0x1020` | commissioning year, month, day |
+| `0x1030` | GWG30, GWG32, GWG34 plus additional unlabeled protected slots |
+| `0x1040` | coding-plug identifier / Kennziffer |
+| `0x1050` | GWG50/51/53/58/59/5A/5B/5C/5D |
+| `0x1060` | GWG60..GWG67 |
+| `0x1070` | GWG70..GWG76 |
+| `0x1080` | GWG80..GWG88 |
+| `0x1090` | GWG91..GWG9A burner characteristic |
+| `0x10A0` | Viessmann diverter-valve motion profile |
+| `0x10B0` | Wilo diverter-valve motion profile |
+| `0x10C0` | Grundfos diverter-valve motion profile |
+
+For the currently installed plug, the repository already contains
+hardware-verified blocks through `0x1090` and the relevant Grundfos
+`0x10C0` block.
+
+A crucial structural result is the active `0x1030` image:
+
+```text
+41 BE 1D E2 03 FC 51 AE 64 9B 00 FF 00 FF 00 FF
+```
+
+It consists entirely of eight `value / bitwise-complement` pairs. The first
+three source-labelled primary values are:
+
+```text
+41 / BE -> GWG30 = 65
+1D / E2 -> GWG32 = 29
+03 / FC -> GWG34 = 3
+```
+
+The remaining primary values are not all source-labelled in the retained
+VDensHO1 metadata. In particular, the `64 / 9B` pair structurally occupies
+the position previously discussed as a possible GWG38-like slot, but its
+semantic name is still unproven.
+
+This protected representation is important for physical-dump work: an exact
+16-byte P300-object match is **not required** for a real physical mapping.
+The controller may synthesize complement/integrity bytes or copy fields into a
+different runtime structure.
+
+The active Grundfos diverter-valve block is also now part of the correlation
+baseline:
+
+```text
+0x10C0 =
+5A 32 2D C8 5A 32 02 32 02 32 00 FF FF FF FF FF
+```
+
+No exact copy of that block or its distinctive multi-byte profile is present
+in either current spare/chip1 image.
+
+### 2. Coding-card summary view
+
+The exact VDensHO1 event set defines four coding-card diagnostics over the same
+`0x7656` array:
+
+- coding-card device identification;
+- coding-card **GFA revision**;
+- coding-card **GWG revision**;
+- coding-card type.
+
+The currently installed boiler returns:
+
+```text
+0x7656 = 20 15 02 01
+```
+
+The public derived event CSV does not retain the original member byte-position
+metadata, so it is not yet safe to declare a definitive byte-to-name mapping.
+However, the existence of **separate GFA and GWG revision fields** is strong
+evidence that the coding card has at least two logical configuration/revision
+domains.
+
+The raw value must continue to be described as revision notation
+`2015:0201`, not as a calendar date. Vitosoft exposes separate coding-plug
+day/month/year diagnostics elsewhere.
+
+### 3. GFA / fire-control view
+
+The recovered VSKO/GFA catalog exposes a second coding-plug namespace:
+
+| GFA address | Parameter | Meaning |
+| --- | --- | --- |
+| `0x405A` | P90 | coding-plug FA type |
+| `0x4064` | P100 | minimum-power representation, factor 0.3922 |
+| `0x4065` | P101 | VI coding-plug identity 1 |
+| `0x4066` | P102 | VI coding-plug identity 2 |
+| `0x4067..0x4069` | P103..P105 | coding-plug day/month/year |
+| `0x406A` | P106 | VI coding-plug CRC diagnostic |
+| `0x406B..0x406C` | P107..P108 | FA40/FA41 coding-plug identity |
+
+These objects are distinct from the normal `0x10x0` GWG structures. They
+provide a high-value future read-only correlation target because one physical
+EEPROM may map more directly to the GFA/FA domain than to the normal
+controller/GWG domain.
+
+### Dual-EEPROM architecture hypothesis
+
+The photographs show two different 24C04 implementations on separate PCB
+faces/contacts:
+
+- f01 / SIM1: ST `24C04W6`;
+- f02 / SIM2: Microchip `24LC04B`.
+
+The repository independently shows:
+
+- separate GWG coding-plug structures;
+- separate GFA coding-plug diagnostics;
+- separate GFA and GWG coding-card revision fields.
+
+Taken together, this supports a **working hypothesis** that the two physical
+EEPROMs may serve different coding domains/consumers, for example a
+regulation/GWG side and a fire-control/GFA side.
+
+This is **not yet a side assignment**. There is currently no evidence proving
+that f01 is GWG or GFA, or that f02 is the other domain. Both EEPROMs must be
+captured with their PCB side explicitly recorded before making that claim.
+
+## Stronger mirror structure in both spare dumps
+
+The first analysis described two repeated regions separately. They can in fact
+be combined into one exact **82-byte logical mirror record**.
+
+For both spare-1 and spare-2:
+
+```text
+logical copy A =
+  physical 0x001..0x00B
+  +
+  physical 0x014..0x05A
+
+logical copy B =
+  physical 0x05B..0x0AC
+
+copy A == copy B
+length = 82 bytes
+SHA256 = 740df5bdd0fcfe2d162616689a1a3b2fab93fef6cf6baf44663077d6e3a5b0c3
+```
+
+Between the two pieces of copy A sits an 8-byte area that is not part of the
+mirrored logical record:
+
+```text
+0x00C..0x013 = 00 FF 12 03 08 04 04 FB
+```
+
+That 8-byte area itself contains two obvious complement pairs:
+
+```text
+00 / FF
+04 / FB
+```
+
+Both spare plugs have the same logical mirror record and the same 8-byte
+insert. In fact their complete first **226 bytes** are identical:
+
+```text
+0x000..0x0E1 identical
+SHA256 of common 226-byte prefix:
+301bdb0ef23df9602e2e807dd6590549ea8fffd8d4b106f6c86f96d931521997
+```
+
+This substantially strengthens the interpretation that the saved data is a
+real structured EEPROM image rather than unstable programmer output.
+
+The exact duplicate is consistent with redundancy/integrity storage, but the
+purpose is still unproven. It could be a primary/backup parameter record, two
+consumer copies, a validation mirror, or another manufacturer-specific
+layout.
+
+### Direct mapping result so far
+
+No flat/direct mapping has yet been demonstrated between spare/chip1 and the
+currently installed 7833971 / 2015:0201 plug:
+
+- ASCII `7833971` is absent;
+- raw `20 15 02 01` is absent;
+- common BCD/integer encodings tested for those identities are absent;
+- exact active `0x1030..0x1090` blocks are absent;
+- exact active Grundfos `0x10C0` is absent.
+
+The lack of an exact match is now less surprising because:
+
+1. the spares have not yet been proven to be the same external part/revision
+   as the active 7833971 plug;
+2. the captured package has not yet been tied to f01/ST or f02/Microchip;
+3. the second EEPROM has not been captured;
+4. at least one controller-side object (`0x1030`) demonstrably uses a
+   protected value/complement representation rather than a simple flat field
+   list;
+5. the GFA exposes a second, separate coding-plug view.
+
+Accordingly, the current result is **no direct flat mapping found**, not
+"physical EEPROM is unrelated to the Optolink coding plug".
+
+### Best next read-only correlation targets
+
+When bench access is resumed, the highest-value sequence is:
+
+1. explicitly label each read as `f01/ST` or `f02/Microchip`;
+2. capture both sides of one spare three times;
+3. compare the two sides before reading more plugs;
+4. capture the currently installed plug last;
+5. snapshot the active controller's complete normal coding-plug view,
+   especially `0x1010`, `0x1020`, `0x1030..0x10C0` and `0x7656`;
+6. through the already recovered read-only GFA path, snapshot P90 and
+   P100..P108;
+7. compare **semantic field vectors** and complement/integrity patterns rather
+   than requiring a whole 16-byte P300 object to occur literally in EEPROM.
+
+A machine-readable summary of this correlation is stored as
+`coding-plug-dumps/repo-correlation-2026-09-24.json`.
+
 ## Repository files
 
 Raw captures are stored unchanged under:

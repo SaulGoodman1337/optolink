@@ -746,6 +746,16 @@ Physical bench update (2026-09-24):
   are concentrated near the tail / `0x100` 24C04 block boundary;
 - next comparison set: capture chip2 where possible, then the **currently
   active** coding plug last, keeping the whole campaign read-only.
+- repository correlation now shows three distinct software views of the coding
+  plug: normal GWG `0x10x0` objects, coding-card summary `0x7656`, and
+  GFA P90/P100..P108 diagnostics; the two physical EEPROMs may map to separate
+  domains, but this is not yet proven;
+- both spare chip1 images contain an exact 82-byte logical mirror record and
+  share an identical 226-byte prefix, substantially strengthening confidence
+  in the saved reads;
+- future active-plug correlation should snapshot `0x1010`, `0x1020`,
+  `0x1030..0x10C0`, `0x7656`, plus GFA P90/P100..P108 read-only, then
+  compare semantic field vectors rather than only literal 16-byte blocks.
 
 
 Determine whether the Kesselcodierstecker can be read or modified beyond the
