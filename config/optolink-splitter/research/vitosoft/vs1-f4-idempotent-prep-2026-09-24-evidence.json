@@ -43,5 +43,39 @@
     "No GFA_WRITE 0x68.",
     "No coding/EEPROM/process/safety/actuator write."
   ],
-  "interpretation": "PASS validates the stock VS1/F4 transport handshake and same-value readback on this appliance. A separate value-changing +/-1 C test is still required before claiming that F4 state mutation is fully validated."
+  "interpretation": "PASS validates the stock VS1/F4 transport handshake and same-value readback on this appliance. A separate value-changing +/-1 C test is still required before claiming that F4 state mutation is fully validated.",
+  "live_run": {
+    "timestamp_local": "2026-09-24T13:16:35+02:00",
+    "result": "PASS",
+    "helper_version": "1.0.1",
+    "self_tests": "5/5",
+    "stock_vs1_blob": "cff6b4d8d52ca4ee1f79c310dd9377dba1a18270",
+    "device_identity": "20c2",
+    "target": "0x2306",
+    "baseline_raw": "15",
+    "baseline_celsius": 21,
+    "write": {
+      "opcode": "F4",
+      "requested_raw": "15",
+      "requested_celsius": 21,
+      "response_retcode": "01",
+      "response_address": "2306",
+      "response_payload": "00"
+    },
+    "readback": {
+      "raw": "15",
+      "celsius": 21,
+      "unchanged": true
+    },
+    "final_vs1_raw": "15",
+    "p300_restored": true,
+    "splitter_restarted": true,
+    "conclusion": [
+      "The stock upstream VS1/F4 transport is accepted on this exact VDensHO1/20C2 appliance for an idempotent one-byte write to ordinary setpoint 0x2306.",
+      "The one-byte F4 response payload was 00; it is therefore not an echo of the written value.",
+      "A following F7 readback is required to verify the effective controller value.",
+      "This run does not yet prove that a changed value is applied; it proves transport/acknowledgement plus unchanged-value readback."
+    ],
+    "next_gate": "Bounded 0x2306 value-changing test: baseline -> +/-1 C -> baseline, with F7 verification after both writes and P300 post-restore verification."
+  }
 }
