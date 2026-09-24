@@ -88,7 +88,7 @@
     "No reset command.",
     "No Home Assistant command topic until live change/readback/restore semantics are verified."
   ],
-  "current_status": "MAINTENANCE_BACKEND_FULLY_LIVE_VERIFIED_READY_FOR_HOME_ASSISTANT",
+  "current_status": "MAINTENANCE_BACKEND_AND_HA_STAGING_LIVE_VERIFIED_FRONTEND_VIEW_PENDING",
   "live_results": {
     "phase_A_0x5723": {
       "status": "completed",
@@ -591,6 +591,34 @@
         "Both writes were independently read back and both re-baselined only 0x756C.",
         "0x7570, 0x5721, 0x5724, 0x08A7 and 0x088A remained unchanged throughout the API write/restore test.",
         "The maintenance backend is ready for Home Assistant integration; no further backend write experiments are required."
+      ]
+    },
+    "home_assistant_staging": {
+      "date": "2026-09-24",
+      "status": "live-verified",
+      "staged": {
+        "burner_hours": 100,
+        "interval_months": 1
+      },
+      "controller_after_staging": {
+        "hours_threshold_raw": "00",
+        "hours_threshold_hours": 0,
+        "interval_raw": "00",
+        "interval_months": 0,
+        "maintenance_state_raw": "00",
+        "interval_reference_raw": "4490b56a",
+        "burner_reference_raw": "134cce03",
+        "burner_total_raw": "154cce03",
+        "burner_starts_raw": "d46f0700"
+      },
+      "reset_stage_to": {
+        "burner_hours": 0,
+        "interval_months": 0
+      },
+      "conclusions": [
+        "Home Assistant staging topics are live-verified to be non-writing.",
+        "Changing staged maintenance targets does not acquire a controller write path and leaves 0x5721/0x5723 unchanged.",
+        "The staged values were subsequently returned to 0 h / 0 months."
       ]
     }
   }
