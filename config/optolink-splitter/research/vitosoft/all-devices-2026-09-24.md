@@ -133,3 +133,10 @@ The cross-profile graph is most useful for:
 5. generating read-only hypotheses without pretending metadata membership is runtime proof.
 
 Machine-readable derived evidence is in [all-devices-2026-09-24-evidence.json](all-devices-2026-09-24-evidence.json).
+
+
+## v6 reproduction check
+
+The later successful v6 snapshot `vitosoft-private-archive-20260924-143439.7z` (SHA256 `3d31380d6dfabf8ede9e305b115e847fb0670511e253a4ed4e59feef2f7adfee`) completed Deep, SQL and All-Devices successfully. All 16 files in `derived/all-devices/` are byte-identical to the v5 snapshot used for the cross-profile findings above.
+
+Therefore v6 adds stronger provenance and successful collector completion, but **does not change the cross-profile semantic conclusions** in this document.
