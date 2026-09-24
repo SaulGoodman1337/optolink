@@ -413,7 +413,7 @@ Do not treat the M-Bus Slave Click choice as a completed implementation yet.
 
 ### Maintenance configuration / reset via Home Assistant
 
-Status: **future HA task / splitter read+write+reset verification completed**
+Status: **splitter verification complete / guarded CLI implemented / future HA task pending**
 
 A future Home Assistant dashboard session should add a compact **Service /
 Wartung** area that not only displays the verified maintenance diagnostics but,
@@ -448,6 +448,18 @@ Splitter verification is now complete for the maintenance control path:
 The Home Assistant implementation remains deliberately deferred to the
 dashboard/HA workstream. It should build only on these verified semantics and
 keep the maintenance reset separate from burner-fault unlock/reset logic.
+
+Guarded splitter backend now available:
+
+- `optolink-maintenance status`;
+- `optolink-maintenance set-hours <0..10000>`;
+- `optolink-maintenance set-months <0..24> --confirm-reference-reset RESET-ZEITREFERENZ`;
+- `optolink-maintenance reset --confirm RESET-WARTUNG`;
+- `--json` output for a future wrapper/service.
+
+The CLI performs range checks, independent readback, rollback attempts for
+ambiguous writes, no-op suppression, a process lock and a safety restore to
+`0x5724=0` during reset.
 
 ## WB2A reverse engineering: open items
 
