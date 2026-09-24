@@ -521,5 +521,34 @@
       "This does not prove olbreath is the sole cause; a long 150 ms baseline is still required to estimate the background error rate."
     ],
     "production_decision": "Reject 0.10 as production timing pending further evidence."
+  },
+  "gfa_specific_timing_experiment": {
+    "prepared_at_local": "2026-09-24",
+    "status": "PREPARED_NOT_YET_LIVE_TESTED",
+    "rationale": [
+      "Observed short-timing failures have so far occurred on direct GFA_READ 0x6B only: P09/0x4009 at global 50 ms and P87/0x4057 during the 100 ms long soak.",
+      "The existing GFA layer already recognizes a successful one-byte raw 0xFF response and quarantines it instead of publishing it as a physical value.",
+      "Ordinary F7/F4 traffic has not shown the same failure signature in the timing gates."
+    ],
+    "design": {
+      "global_olbreath_seconds_for_test": 0.05,
+      "gfa_min_gap_seconds": 0.15,
+      "gfa_raw_ff_retry_count": 1,
+      "ordinary_f7_f4_extra_delay_seconds": 0,
+      "second_ff_behavior": "quarantine and return failure",
+      "failed_retry_behavior": "return failure"
+    },
+    "implementation": {
+      "gfa_patcher_version": "1.0.4",
+      "commit": "06a963948ddbfcca13164ea9c00e8c1a4d2de053",
+      "git_blob": "27d007ec6338355a6f1a7ae3be089dc5bdde945b"
+    },
+    "validation_plan": [
+      "Run patcher self-tests before applying.",
+      "Set global olbreath to 0.05 only for the experiment.",
+      "Observe passive cadence plus first-attempt FF retry/recovery logs.",
+      "Reject on any second FF, failed retry, OL Error, restart or P80 identity failure.",
+      "If short gate passes, run a longer soak before changing the permanent profile helper."
+    ]
   }
 }
