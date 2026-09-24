@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "date": "2026-09-24",
-  "status": "AWAITING_LIVE_RUN",
-  "evidence_level": "planned_hardware_observation",
+  "status": "CONTROL_FAILED_NEEDS_TRANSPORT_DIAGNOSIS",
+  "evidence_level": "hardware_observation",
   "scope": "First bounded read-only Virtual_READ vs KMBUS_RAM_READ 0x41 correlation on local WB2A / VDensHO1 / 20C2.",
   "tracking_issue": 30,
   "safety": {
@@ -14,13 +14,48 @@
     ]
   },
   "targets": [
-    {"address": "0x00F8", "length": 8, "meaning": "controller identity", "role": "positive control"},
-    {"address": "0x0A3C", "length": 1, "meaning": "final internal-pump command shadow", "role": "runtime discriminator"},
-    {"address": "0x7660", "length": 2, "meaning": "internal pump runtime/output", "role": "runtime discriminator"},
-    {"address": "0x7663", "length": 2, "meaning": "A1 runtime/calculated pump request", "role": "runtime discriminator"},
-    {"address": "0x5730", "length": 1, "meaning": "K30 internal-pump identity/capability", "role": "KM-BUS-related static object"},
-    {"address": "0x0A54", "length": 4, "meaning": "internal-pump software-index block", "role": "KM-BUS participant structure"},
-    {"address": "0x27A0", "length": 1, "meaning": "A1/M1 remote-control identification", "role": "independent KM-BUS participant object"}
+    {
+      "address": "0x00F8",
+      "length": 8,
+      "meaning": "controller identity",
+      "role": "positive control"
+    },
+    {
+      "address": "0x0A3C",
+      "length": 1,
+      "meaning": "final internal-pump command shadow",
+      "role": "runtime discriminator"
+    },
+    {
+      "address": "0x7660",
+      "length": 2,
+      "meaning": "internal pump runtime/output",
+      "role": "runtime discriminator"
+    },
+    {
+      "address": "0x7663",
+      "length": 2,
+      "meaning": "A1 runtime/calculated pump request",
+      "role": "runtime discriminator"
+    },
+    {
+      "address": "0x5730",
+      "length": 1,
+      "meaning": "K30 internal-pump identity/capability",
+      "role": "KM-BUS-related static object"
+    },
+    {
+      "address": "0x0A54",
+      "length": 4,
+      "meaning": "internal-pump software-index block",
+      "role": "KM-BUS participant structure"
+    },
+    {
+      "address": "0x27A0",
+      "length": 1,
+      "meaning": "A1/M1 remote-control identification",
+      "role": "independent KM-BUS participant object"
+    }
   ],
   "known_control": {
     "virtual_0x00F8_8": "20c2000300000103",
@@ -35,6 +70,109 @@
     "KMBUS_ONLY",
     "ERROR"
   ],
-  "live_results": null,
-  "conclusion": null
+  "live_results": "All 7 ordinary Virtual_READ requests succeeded; all 7 KMBUS_RAM_READ 0x41 requests produced client-side timeout, including the previously verified 0x00F8/8 positive control.",
+  "conclusion": "No RAM/mirror mapping conclusion is valid from this run. Diagnose generic-request transport/response filtering first, then repeat the correlation matrix.",
+  "live_run": {
+    "started_at": "2026-09-24T22:01:32+02:00",
+    "ended_at": "2026-09-24T22:02:17+02:00",
+    "normal_virtual_reads": [
+      {
+        "address": "0x00F8",
+        "length": 8,
+        "response": "1;0xf8;20c2000300000103",
+        "status": "SUCCESS"
+      },
+      {
+        "address": "0x0A3C",
+        "length": 1,
+        "response": "1;0xa3c;00",
+        "status": "SUCCESS"
+      },
+      {
+        "address": "0x7660",
+        "length": 2,
+        "response": "1;0x7660;0000",
+        "status": "SUCCESS"
+      },
+      {
+        "address": "0x7663",
+        "length": 2,
+        "response": "1;0x7663;0000",
+        "status": "SUCCESS"
+      },
+      {
+        "address": "0x5730",
+        "length": 1,
+        "response": "1;0x5730;01",
+        "status": "SUCCESS"
+      },
+      {
+        "address": "0x0A54",
+        "length": 4,
+        "response": "1;0xa54;01110101",
+        "status": "SUCCESS"
+      },
+      {
+        "address": "0x27A0",
+        "length": 1,
+        "response": "1;0x27a0;00",
+        "status": "SUCCESS"
+      }
+    ],
+    "kmbus_ram_reads": [
+      {
+        "address": "0x00F8",
+        "length": 8,
+        "command": "request;0x41;0x00F8;8;;0x00",
+        "status": "CLIENT_TIMEOUT"
+      },
+      {
+        "address": "0x0A3C",
+        "length": 1,
+        "command": "request;0x41;0x0A3C;1;;0x00",
+        "status": "CLIENT_TIMEOUT"
+      },
+      {
+        "address": "0x7660",
+        "length": 2,
+        "command": "request;0x41;0x7660;2;;0x00",
+        "status": "CLIENT_TIMEOUT"
+      },
+      {
+        "address": "0x7663",
+        "length": 2,
+        "command": "request;0x41;0x7663;2;;0x00",
+        "status": "CLIENT_TIMEOUT"
+      },
+      {
+        "address": "0x5730",
+        "length": 1,
+        "command": "request;0x41;0x5730;1;;0x00",
+        "status": "CLIENT_TIMEOUT"
+      },
+      {
+        "address": "0x0A54",
+        "length": 4,
+        "command": "request;0x41;0x0A54;4;;0x00",
+        "status": "CLIENT_TIMEOUT"
+      },
+      {
+        "address": "0x27A0",
+        "length": 1,
+        "command": "request;0x41;0x27A0;1;;0x00",
+        "status": "CLIENT_TIMEOUT"
+      }
+    ]
+  },
+  "control_assessment": {
+    "result": "FAILED",
+    "reason": "The known-positive 0x41 0x00F8/8 request timed out even though the same request had previously returned 20c2000300000103. Therefore this run cannot classify the tested address mappings.",
+    "normal_transport": "All seven ordinary Virtual_READ requests succeeded.",
+    "important_boundary": "optolink-debug reports timeout after filtering MQTT responses by requested address. A timeout does not prove that the controller emitted no response; an unmatched-address error/response could have been discarded by the helper."
+  },
+  "next_step": {
+    "priority": 1,
+    "action": "Run a narrow transport diagnostic: normal r control, generic request 0x01 control, 0x41 known-positive with longer timeout, and capture unmatched MQTT responses.",
+    "no_semantic_expansion": true
+  }
 }
