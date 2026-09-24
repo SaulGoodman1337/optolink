@@ -1,7 +1,7 @@
 # KBus / KM-BUS research via Optolink
 
 Status: **active research**
-Last updated: **2026-09-23**
+Last updated: **2026-09-24**
 
 This is the canonical research note for all controller-side KBus/KM-BUS access
 through the VS2/P300 Optolink interface on the local Vitodens 200-W WB2A.
@@ -12,6 +12,10 @@ bus state, coding-plug questions and other undocumented functions.
 
 Vitotrol-specific interpretation remains in
 [vitotrol-kbus-optolink-emulation.md](vitotrol-kbus-optolink-emulation.md).
+
+The current deep analysis of the read-only memory/access families is:
+[vitosoft/kmbus-read-memory-analysis-2026-09-24.md](vitosoft/kmbus-read-memory-analysis-2026-09-24.md).
+The corresponding execution task is GitHub issue **#30**.
 
 ## Local system
 
@@ -105,6 +109,52 @@ The Vitosoft-derived function table contains:
 | 0x64 | KBUS_INDIRECT_WRITE | source-analyzed indexed participant/channel writes; **not VDensHO1 / do not live-probe** |
 | 0x65 | KBUS_GATEWAY_READ | no VDensHO1 Vitosoft event; do not prioritize blindly |
 | 0x66 | KBUS_GATEWAY_WRITE | one Vitosoft gateway-control event only; **no raw-frame evidence / do not live-probe** |
+
+### 2026-09-24 read-function inventory checkpoint
+
+The verified Collector-v6 All-Devices export materially changes the read
+research. Across 11,582 events and 38 protocol-function names it contains the
+following read definitions:
+
+~~~text
+KMBUS_RAM_READ             0
+KMBUS_EEPROM_READ         91
+XRAM_READ                 12
+Virtual_MBUS             254
+KBUS_DATAELEMENT_READ      7
+KBUS_TRANSPARENT_READ    850
+KBUS_EEPROM_LT_READ      500
+KBUS_MEMBERLIST_READ       1
+KBUS_VIRTUAL_READ        232
+KBUS_DIRECT_READ          11
+KBUS_INDIRECT_READ        97
+~~~
+
+Functions such as `KBUS_DATABLOCK_READ`, `KBUS_INITIALISATION_READ` and
+`KBUS_GATEWAY_READ` are present in the protocol vocabulary but have no event
+rows in this captured Vitosoft definition set.
+
+The most important negative/positive pair is `KMBUS_RAM_READ`:
+
+- Vitosoft event definitions using it: **0**;
+- local WB2A acceptance of raw function `0x41`: **verified**;
+- local `0x41 / 0x00F8 / 8`: `20c2000300000103`, exactly matching the
+  ordinary Virtual_READ identity block.
+
+Therefore Vitosoft event/profile membership is not a safe capability boundary
+for low-level read functions. Conversely, a successful low-level read does not
+prove the name's literal memory semantics.
+
+The current priority is to mine the already captured v6 `all-events.csv` and
+`all-lowlevel-access.csv` for exact read request shapes. This is especially
+important for `KMBUS_EEPROM_READ`, where 90/91 definitions carry
+`PrefixRead=030000000101`. The earlier local 0x43/F8 experiment omitted this
+selector data and must not be treated as a normal Vitosoft-defined EEPROM
+transaction.
+
+See the dedicated analysis for the full reasoning, memory/firmware boundary and
+read-only experiment sequence:
+[vitosoft/kmbus-read-memory-analysis-2026-09-24.md](vitosoft/kmbus-read-memory-analysis-2026-09-24.md).
 
 ### Write-family semantics from the production Vitosoft set
 
