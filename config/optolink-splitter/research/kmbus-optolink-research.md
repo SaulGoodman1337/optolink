@@ -1062,8 +1062,8 @@ Results:
   -> DYNAMIC_OR_INCONCLUSIVE
 ~~~
 
-The `0x0001/1` result is the first clean local evidence that the six extra
-request bytes are **not universally ignored**: within a sub-second P-N-P
+The earlier same-session `0x0001/1` result initially suggested that the six extra
+request bytes were not universally ignored: within a sub-second P-N-P
 sequence the two prefixed reads agreed at `88`, while the otherwise identical
 no-prefix read returned `87`.
 
@@ -1082,6 +1082,73 @@ before assigning stronger PrefixRead semantics.
 
 Evidence:
 [vitosoft/kmbus-prefix-ab-live-2026-09-24-evidence.json](vitosoft/kmbus-prefix-ab-live-2026-09-24-evidence.json).
+
+## Fresh-session PrefixRead discriminator - NO isolated effect
+
+The apparent same-session PrefixRead effect at `0x0001/1` was retested with a
+stronger design: every single 0x43 request used a **freshly initialized P300
+session**, and the order was balanced:
+
+~~~text
+P N N P N P P N
+~~~
+
+where `P` carries `03 00 00 00 01 01` and `N` carries no extra bytes.
+
+Results:
+
+~~~text
+P values: 81, 81, 81, 87
+N values: 87, 81, 81, 81
+
+P counts: 81 x3, 87 x1
+N counts: 81 x3, 87 x1
+~~~
+
+Classification:
+
+~~~text
+NO_ISOLATED_PREFIX_EFFECT
+~~~
+
+This supersedes the earlier one-session `88 -> 87 -> 88` observation as
+evidence for PrefixRead semantics. The two request forms have the **same
+observed distribution** once session carry-over is removed.
+
+The important correction is therefore:
+
+- local 0x43 accepts frames with extra bytes after BlockLength;
+- those bytes are **not hardware-proven to control routing or target
+  selection** on the local VDensHO1;
+- even `0x0001/1` is dynamic across fresh sessions (`81` / `87`), so it
+  is not a demonstrated static EEPROM byte;
+- the repeated high-address words and the fresh-session low-byte variation now
+  point more strongly to a transaction/status/mailbox-like mechanism than to a
+  direct linear EEPROM view.
+
+Source reassessment also tightens the earlier inference. Public
+InsideViessmannVitosoft code shows:
+
+1. `PrefixRead` is parsed/preserved as event metadata;
+2. the generic `VS2Message` class supports optional `Data` bytes after
+   `BlockSize`;
+3. but no recovered implementation currently proves that the vendor maps
+   `PrefixRead` into those `Data` bytes.
+
+Therefore the mapping
+
+~~~text
+PrefixRead -> trailing VS2 request data
+~~~
+
+remains **plausible but unproven**.
+
+Decision: stop broad live 0x43 expansion and recover the actual Vitosoft
+PrefixRead/PrefixWrite serialization path offline before further semantic
+claims.
+
+Evidence:
+[vitosoft/kmbus-prefix-isolated-live-2026-09-24-evidence.json](vitosoft/kmbus-prefix-isolated-live-2026-09-24-evidence.json).
 
 ## Research questions
 
