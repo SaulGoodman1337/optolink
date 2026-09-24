@@ -456,7 +456,7 @@ Do not treat the M-Bus Slave Click choice as a completed implementation yet.
 
 ### Maintenance configuration / reset via Home Assistant
 
-Status: **maintenance backend + HA staging + MQTT Discovery + Wartung render + API lifecycle live-verified / HA interaction test pending**
+Status: **maintenance backend + HA staging + MQTT Discovery + Wartung render + API lifecycle + HA month Apply live-verified / HA restore verification pending**
 
 A future Home Assistant dashboard session should add a compact **Service /
 Wartung** area that not only displays the verified maintenance diagnostics but,
@@ -569,10 +569,13 @@ icons/cards. A compact maintenance action template and compact safety card are
 now committed and YAML-validated.
 
 The corrected Wartung view has now been reviewed live: layout and entity
-rendering are good after the compact action-card fix. The remaining task is the
-Home Assistant interaction test: stage values from the UI, verify that staging
-does not change the controller, then verify one confirmed Apply action and its
-displayed post-action readback.
+rendering are good after the compact action-card fix. The Home Assistant interaction path is now live-verified through a real month
+Apply action: staged 1 month became the verified current value, API status
+reported OK, and the independently staged 100 h burner-hours value remained
+unapplied at an actual 0 h threshold.
+
+The remaining maintenance validation step is restoring the month interval to
+0 from Home Assistant and confirming the final displayed/controller state.
 
 The first UI interaction attempt then exposed an API lifecycle defect:
 `PartOf=optolink-splitter.service` caused the maintenance API to be stopped
