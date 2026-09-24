@@ -46,7 +46,7 @@ import sys
 import time
 import types
 
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 PARENT_NAME = "wb2a-gfa-triggered-status-probe.py"
 PARENT_SHA256 = "6d5810e1595ba6e464452dcd927259e9bade8f550a92b492fd40c2a27972604b"
 
@@ -166,6 +166,7 @@ def make_runtime(trigger):
     status_parent = trigger.load_parent()
     status, base, ParentWire, run_triggered = trigger.make_runtime(status_parent)
     ProbeError = status.ProbeError
+    SuspectFF = status.SuspectFF
 
     virtual_frames = {
         virtual_frame(address, length)
@@ -288,6 +289,7 @@ def make_runtime(trigger):
             )
 
             previous = None
+            startup_activity_seen = False
             try:
                 while self.clock() < stop_at:
                     if self.attempts >= status.quality.MAX_ROUNDS:
@@ -296,11 +298,20 @@ def make_runtime(trigger):
                     attempt = self.attempts
                     self.partial, self.pending = [], None
 
-                    p84 = self.read_session(P84, attempt)
-                    d3 = self.read_virtual(D3, D3_LEN, attempt)
-                    p87 = self.read_session(P87, attempt)
-                    dd = self.read_virtual(DD, DD_LEN, attempt)
-                    guard = self.read_session(P80, attempt)
+                    try:
+                        p84 = self.read_session(P84, attempt)
+                        d3 = self.read_virtual(D3, D3_LEN, attempt)
+                        p87 = self.read_session(P87, attempt)
+                        dd = self.read_virtual(DD, DD_LEN, attempt)
+                        guard = self.read_session(P80, attempt)
+                    except SuspectFF as exc:
+                        self.reject(exc)
+                        self.reconnect(stop_at)
+                        previous = None
+                        continue
+                    except BaseException as exc:
+                        self.reject(exc)
+                        raise
 
                     p84["quality"] = "accepted_by_policy_not_independently_verified"
                     p87["quality"] = "accepted_by_policy_not_independently_verified"
@@ -318,6 +329,15 @@ def make_runtime(trigger):
                         "lockout_55d3": decoded_d3["lockout"],
                         "fine_control_raw": decoded_d3["fine_control_raw"],
                     }
+                    if (
+                        state["p84"] != 0
+                        or state["p87"] != 0
+                        or state["flame_55d3"]
+                        or state["flame_55dd"]
+                        or state["lockout_55d3"]
+                        or state["fine_control_raw"] != 0
+                    ):
+                        startup_activity_seen = True
                     changes = []
                     if previous is not None:
                         for key, value in state.items():
@@ -369,9 +389,22 @@ def make_runtime(trigger):
                 if self.rounds == 0:
                     raise ProbeError("No complete flame-correlation round captured.")
                 self.observation_complete = True
+                self.emit({
+                    "kind": "flame_correlation_summary",
+                    "startup_activity_seen": startup_activity_seen,
+                    "accepted_rounds": self.rounds,
+                    "rejected_rounds": self.rejected_rounds,
+                    "reconnections_attempted": self.reconnects,
+                    "reconnections_succeeded": self.reconnects_succeeded,
+                })
                 self.log(
                     f"OBSERVATION_COMPLETE=yes ACCEPTED_ROUNDS={self.rounds} "
-                    f"REJECTED_ROUNDS={self.rejected_rounds}"
+                    f"REJECTED_ROUNDS={self.rejected_rounds} "
+                    f"RECONNECTIONS={self.reconnects_succeeded}"
+                )
+                self.log(
+                    "STARTUP_ACTIVITY_SEEN="
+                    + ("yes" if startup_activity_seen else "no")
                 )
             finally:
                 self.elapsed = self.clock() - self.started
@@ -473,7 +506,7 @@ def self_test() -> int:
     if parent.self_test() != 0:
         return 1
     make_runtime(parent)
-    print("LOCAL_FLAME_TESTS=9/9; PINNED_TRIGGER_PARENT_TESTS=PASS")
+    print("LOCAL_FLAME_TESTS=9/9; PINNED_TRIGGER_PARENT_TESTS=PASS; FF_REENTRY_PATH=INHERITED_TESTED_POLICY")
     return 0
 
 
