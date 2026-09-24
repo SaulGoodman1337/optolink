@@ -104,6 +104,16 @@
         "date_encoding_status": "unresolved: direct byte values 20/12/4 vs BCD-style 14/12/04",
         "crc_status": "diagnostic byte d6; algorithm unresolved"
       }
+    },
+    "cross_view_live_identity": {
+      "summary_raw": "20 15 02 01",
+      "gfa_sequence": "P80 P101 P107 P102",
+      "gfa_sequence_raw": "20 15 02 01",
+      "summary_exact_match": true,
+      "identifier_raw": "02 15",
+      "identifier_gfa_sequence": "P107 P101",
+      "identifier_gfa_raw": "02 15",
+      "identifier_exact_match": true
     }
   },
   "direct_flat_match_result": {
