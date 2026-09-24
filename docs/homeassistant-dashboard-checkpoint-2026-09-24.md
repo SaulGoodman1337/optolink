@@ -353,7 +353,7 @@ are useful, but they must not be presented as live physical measurements.
 
 ### Wartung view implementation
 
-Status: **staging isolation + MQTT Discovery live-verified / frontend view verification pending**
+Status: **staging isolation + MQTT Discovery live-verified / first frontend render reviewed / compact action-card fix committed**
 
 The new `Wartung` dashboard view uses the guarded maintenance MQTT API rather
 than raw Optolink writes. Two discovered MQTT Number entities are staging
@@ -379,6 +379,12 @@ MQTT Discovery was subsequently verified live: both Number entities point only
 to the guarded `maintenance/stage/*/set` topics, all five new entities are
 published, the stage states are retained at `0 / 0`, and API availability is
 `online`.
+
+The first live Wartung render exposed oversized default button-card icons on
+the two Apply actions and the reset action. This was a presentation-only bug:
+the underlying entities and API states were correct. The dashboard now uses
+dedicated compact maintenance action templates with fixed icon geometry and a
+compact Mushroom safety-information card.
 
 ## 5. Diagnose view completion plan
 
