@@ -50,7 +50,7 @@ Do not remove the Optolink files from the old `community-scripts` repository unt
 ## Documentation
 
 - [Private Vitosoft source archive](docs/vitosoft-private-archive.md) - private companion repository, verified collector coverage and explicit full-payload import status; no raw proprietary files in this repository.
-- [GFA measured quality-run result and pacing comparison - 2026-09-24](docs/gfa-paced-comparison.md) - three re-identifications succeeded; a fourth FF hit the cap. Complete logs analyzed. Next: explicit 150-ms reply-gap experiment, not raising retry limits. Read before older GFA next-action sections.
+- [GFA measured 150-ms pacing result - 2026-09-24](docs/gfa-paced-comparison.md) - 2 FF replies in 1130 measurement-round reads versus 4 in 804 at the earlier spacing; descriptive improvement, not a fix. Final abort was due to insufficient re-entry time; P300/services restored. Next: unchanged helper, one 60-second naturally established firing observation. Read before older GFA next-action sections.
 - [GFA quality-aware logger and FF checkpoint - 2026-09-24](docs/gfa-quality-logger.md) - original quality/re-entry implementation and prior raw-FF analysis; the newer measured result above supersedes its pending-hardware-test wording.
 - [Collector research checkpoint - 2026-09-23](docs/collector-research-checkpoint.md) - current cross-topic results and next actions; read before older collector-related roadmap entries.
 - [Private archive analysis and evidence](config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-analysis.md) - verified archive/SQL coverage, variant-specific GFA map, corrected firmware and pump assumptions; derived information only.
