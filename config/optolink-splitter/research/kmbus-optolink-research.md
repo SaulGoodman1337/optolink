@@ -918,6 +918,60 @@ Decision: the known Vitosoft XRAM shapes are closed as a direct local path.
 Do not blind-scan 0x31. Continue with an exact source-defined prefixed
 `KMBUS_EEPROM_READ 0x43`.
 
+## Prefixed KMBUS_EEPROM_READ 0x43 - LOCAL SUCCESS
+
+The exact source-defined Vitosoft request shape from event 578 was executed in
+a guarded temporary P300 window:
+
+~~~text
+source profile: GWG_BT2
+source label:   Kennung (Prog1)
+function:       KMBUS_EEPROM_READ / 0x43
+address:        0x0001
+read length:    1
+PrefixRead:     03 00 00 00 01 01
+~~~
+
+Wire request:
+
+~~~text
+41 0B 00 43 00 01 01 03 00 00 00 01 01 55
+~~~
+
+Local response:
+
+~~~text
+41 06 01 43 00 01 01 88 D4
+~~~
+
+Decoded:
+
+~~~text
+message type = normal Response Message
+function     = 0x43
+address      = 0x0001
+length       = 1
+data         = 0x88
+~~~
+
+This is the first clean hardware proof that the six-byte Vitosoft
+`PrefixRead=030000000101` is operational request data on the local controller.
+With the prefix supplied, the source-shaped 0x43 access succeeds instead of
+producing the ambiguous prefix-less F8 behavior.
+
+Evidence boundary: `0x88` is preserved as raw data. The metadata label
+`Kennung (Prog1)` and its LGM27/GWG_BT2 interpretation are source semantics
+for another profile and are **not yet assigned to the local WB2A**.
+
+The result strongly supports a routed subordinate persistent-memory namespace,
+but does not demonstrate access to main-regulation program flash.
+
+Evidence:
+[vitosoft/kmbus-eeprom-prefixed-live-2026-09-24-evidence.json](vitosoft/kmbus-eeprom-prefixed-live-2026-09-24-evidence.json).
+
+Decision: expand only to the remaining exact Vitosoft-defined 0x43 block
+shapes sharing the same prefix; no blind EEPROM sweep.
+
 ## Research questions
 
 The project should answer these in order:
