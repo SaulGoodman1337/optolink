@@ -37,44 +37,69 @@ These were initially rediscovered from the exact catalog, but the production pro
 
 **Consequence:** especially `0x0816` Abgastemperatur does not need a new poll item. Dashboard work should reuse the existing HA entity.
 
-## B. Genuine high-value read-later candidates
+## B. Newly hardware-verified candidates
 
-These exact-profile datapoints are not currently in the production HA poll definition and are worth a bounded read.
+The first bounded read-only batch has now been executed successfully.
+
+| Address | Hardware result | Interpretation |
+| --- | --- | --- |
+| `0x8853` | `02` | source-defined burner type = **modulating**; consistent with the locally observed modulating GFA behavior |
+| `0xA403` | `D0 07` = 2000 / 100 = **20.00 °C** | source label `nviHCC1 FlowSetpt`; same-window `0x2544=0.0 °C`, so it is **not** simply a mirror of the internal A1 flow target |
+| `0x0A4C` | `00 00 00 00` | A1 pump software-index block empty/zero; consistent with local `E5=0` and no separate A1 KM-BUS pump |
+| `0x0A31` | `00` | no KM error code reported for mixer object |
+| `0x0A32` | `00` | no KM error code reported for external-extension object |
+| `0x0A34` | `00` | no KM error code reported for M2-pump object |
+| `0x0A36` | `00` | no KM error code reported for Vitocom object |
+| `0x6550` | `00` | no KM error code reported for Vitosolic object |
+
+The zero KM error bytes do **not** prove that optional participants are installed; on this appliance several of those subsystems are known absent.
+
+Same-window thermal context for the A403 comparison:
+
+- `0x2544 = 0000` -> 0.0 °C A1 flow target;
+- `0x555A = 3200` -> 5.0 °C effective boiler target;
+- `0x0810 = FE01` -> 51.0 °C boiler temperature;
+- `0x0816 = 7C01` -> 38.0 °C exhaust temperature.
+
+Machine evidence: [new-readonly-addresses-2026-09-24-evidence.json](../config/optolink-splitter/research/vitosoft/new-readonly-addresses-2026-09-24-evidence.json).
+
+## B1. Remaining genuine read-later candidates
+
+These exact-profile datapoints are still not in the production HA poll definition and remain worth bounded reads.
 
 | Priority | Address | Read | Source meaning | Why it matters |
 | --- | --- | --- | --- | --- |
-| A | `0x8853` | 1 byte | burner type | 0 single-stage, 1 two-stage, 2 modulating; useful identity consistency check |
-| A | `0xA403` | 2 bytes | `nviHCC1 FlowSetpt` | /100 °C; separate A1/HCC flow-setpoint view worth comparing with verified `0x2544` |
-| A | `0x0A4C` | 4 bytes | A1 pump software-index block | byte 3 is SW index; topology check against E5=0 |
+| A | `0xA401` | 2 bytes | `nviHCC1 SpaceSetpt` | /100 °C; compare with local A1 room setpoint to determine whether the LON/HCC input block is active or defaulted |
+| A | `0xA441` | 2 bytes | `nviHCC2 SpaceSetpt` | /100 °C; M2 is absent, useful default/inactive control sample |
+| A | `0xA443` | 2 bytes | `nviHCC2 FlowSetpt` | /100 °C; M2 is absent, useful default/inactive control sample |
+| A | `0xA3C0` | 2 bytes | `nviDHWC Setpt` | /100 °C; compare with local DHW target to classify LON input behavior |
 | B | `0x0A50` | 4 bytes | M2 pump software-index block | byte 3 is SW index; expected absent/empty in local topology |
-| B | `0x0A31` | 1 byte | KM error - mixer | participant/topology diagnostic |
-| B | `0x0A32` | 1 byte | KM error - external extension | participant/topology diagnostic |
-| B | `0x0A34` | 1 byte | KM error - M2 pump | participant/topology diagnostic |
-| B | `0x0A36` | 1 byte | KM error - Vitocom | participant/topology diagnostic |
-| B | `0x6550` | 1 byte | KM error - Vitosolic | participant/topology diagnostic |
 | B | `0x0A44` | 4 bytes | mixer software-index block | byte 3 SW index |
 | B | `0x0A40` | 4 bytes | solar-controller software-index block | byte 3 SW index |
 | B | `0x0A58` | 4 bytes | Vitocom software-index block | byte 3 SW index |
 | B | `0x0A5C` | 4 bytes | remote-control A1 software-index block | byte 3 SW index |
 | B | `0x0A60` | 4 bytes | remote-control M2 software-index block | byte 3 SW index |
 
-### Suggested first bounded read-later batch
+### Suggested next bounded read-later batch
+
+The next useful batch is not another generic KM scan. It specifically tests whether the LON/HCC `nvi*` setpoints are active values or fixed/default inputs:
 
 ```bash
-/usr/local/bin/optolink-debug request "r;0x8853;1;raw;False"
+/usr/local/bin/optolink-debug request "r;0x2306;1;raw;False"
+/usr/local/bin/optolink-debug request "r;0xA401;2;raw;False"
+/usr/local/bin/optolink-debug request "r;0x2544;2;raw;False"
 /usr/local/bin/optolink-debug request "r;0xA403;2;raw;False"
-/usr/local/bin/optolink-debug request "r;0x0A4C;4;raw;False"
-/usr/local/bin/optolink-debug request "r;0x0A31;1;raw;False"
-/usr/local/bin/optolink-debug request "r;0x0A32;1;raw;False"
-/usr/local/bin/optolink-debug request "r;0x0A34;1;raw;False"
-/usr/local/bin/optolink-debug request "r;0x0A36;1;raw;False"
+/usr/local/bin/optolink-debug request "r;0xA441;2;raw;False"
+/usr/local/bin/optolink-debug request "r;0xA443;2;raw;False"
+/usr/local/bin/optolink-debug request "r;0x6500;2;raw;False"
+/usr/local/bin/optolink-debug request "r;0xA3C0;2;raw;False"
 ```
 
-This is read-only. Do not promote the addresses to normal polling until local support and usefulness are established.
+No writes are involved. If the inactive M2 objects and A1/DHW LON inputs all sit at generic/default values instead of tracking local setpoints, that strongly classifies `A401/A403/A3C0` as network-input-side objects rather than internal controller outputs.
 
 ### Special note on 0xA403
 
-The exact catalog calls `0xA403` **`nviHCC1 FlowSetpt`**, 2 bytes with `div100` and °C. This is not automatically the same semantic object as the already verified A1 flow target `0x2544`. The useful experiment is a same-window read of both values across different heating states.
+The exact catalog calls `0xA403` **`nviHCC1 FlowSetpt`**, 2 bytes with `div100` and °C, under `LON Objekte / HCCObjektA1M1`. Hardware now proves it can differ from the internal `0x2544` value: A403 was 20.00 °C while 2544 was 0.0 °C. Treat A403 as a distinct LON/HCC input-side object until a broader correlation proves otherwise.
 
 ## C. Coding-plug blocks to preserve for tomorrow's EEPROM correlation
 
