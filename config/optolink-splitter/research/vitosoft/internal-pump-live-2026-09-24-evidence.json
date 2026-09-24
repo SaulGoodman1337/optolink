@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "evidence_level": "hardware_observation",
+  "scope": "Read-only internal-pump capability/configuration and same-window runtime snapshot on the local VDensHO1/20C2 WB2A.",
+  "raw_reads": {
+    "0x5730": "01",
+    "0x5731": "64",
+    "0x7752": "00",
+    "0x27E5": "00",
+    "0x27E6": "64",
+    "0x27E7": "1E",
+    "0x27E8": "00",
+    "0x27E9": "64",
+    "0x0A54": "01 11 01 01",
+    "0x0A3C": "00",
+    "0x7660": "00 00",
+    "0x7663": "00 00"
+  },
+  "decoded": {
+    "K30_internal_pump_capability": "1 = speed-controlled / drehzahlgeregelt",
+    "K31_internal_pump_target_percent": 100,
+    "K52_hydraulic_separator_sensor": "0 = not configured/present",
+    "E5_A1_pump_identification": "0 = staged/no separate speed-controlled A1 pump",
+    "E6_A1_max_percent": 100,
+    "E7_A1_min_percent": 30,
+    "E8_reduced_mode_selector": "0 = minimum according to E7",
+    "E9_reduced_percent": 100,
+    "internal_pump_software_index": 1,
+    "internal_pump_software_index_block": "01 11 01 01",
+    "runtime_state": "pump inactive at sample: A3C=0, internal=0, A1=0"
+  },
+  "conclusions": [
+    "The controller identifies the installed internal pump as speed-controlled, not as the K30=2 volume-flow-capable variant.",
+    "The direct local topology has no hydraulic-separator sensor configured (K52=0).",
+    "The A1 configuration path is active/configured with E6=100 and E7=30; E8=0 selects the E7 minimum for reduced/secondary operation.",
+    "0x0A54 byte 3 is the source-defined internal-pump software index and is 0x01. Bytes 0..2 remain raw/undefined by this event.",
+    "The same-window runtime values were all zero because no pump request was active at the sample time.",
+    "A dedicated search for mandatory volume-flow telemetry is deprioritized for this local installation because K30=1, not K30=2."
+  ],
+  "discrepancy": {
+    "field": "E9 / 0x27E9",
+    "current_raw": "0x64",
+    "current_percent": 100,
+    "prior_documented_raw": "0x32",
+    "prior_documented_percent": 50,
+    "status": "UNRESOLVED_CONFIGURATION_DELTA",
+    "action": "Do not write. Re-read and establish provenance before treating 100% as the intended baseline."
+  },
+  "safety": {
+    "writes_performed": false,
+    "recommended_next_step": "read-only verification of E9 and then continue controller-firmware/KM-BUS selector research"
+  }
+}
