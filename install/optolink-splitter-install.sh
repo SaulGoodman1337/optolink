@@ -136,6 +136,18 @@ chmod 755 /usr/local/bin/optolink-ports
 
 systemctl daemon-reload
 systemctl enable optolink-splitter.service
+
+msg_info "Activating validated VDensHO1 permanent-VS1 profile"
+if COMMUNITY_SCRIPTS_REPO="$CS_REPO" \
+   COMMUNITY_SCRIPTS_REF="$CS_REF" \
+   COMMUNITY_SCRIPTS_GITHUB_TOKEN="${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}" \
+   /usr/local/bin/optolink-apply-vdensho1-ha-profile; then
+  msg_ok "Activated validated VDensHO1 permanent-VS1 profile"
+else
+  msg_error "Could not activate validated VDensHO1 permanent-VS1 profile"
+  exit 1
+fi
+
 # The Party emulator is enabled by the VDensHO1 profile helper once MQTT is
 # configured. The fresh installation intentionally leaves it disabled because
 # mqtt_broker defaults to None.
