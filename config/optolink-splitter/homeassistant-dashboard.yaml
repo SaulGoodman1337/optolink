@@ -123,6 +123,59 @@ button_card_templates:
       card:
         - border-color: var(--primary-color)
 
+  maintenance_action:
+    section_mode: true
+    show_name: true
+    show_state: false
+    show_label: true
+    show_icon: true
+    size: 22px
+    styles:
+      card:
+        - min-height: 66px
+        - border-radius: 14px
+        - border: 1px solid var(--divider-color)
+        - box-shadow: none
+        - padding: 9px 12px
+        - background: color-mix(in srgb, var(--primary-color) 7%, var(--ha-card-background, var(--card-background-color)))
+      grid:
+        - grid-template-areas: '"i n" "i l"'
+        - grid-template-columns: 34px 1fr
+        - grid-template-rows: min-content min-content
+        - column-gap: 10px
+        - row-gap: 3px
+      img_cell:
+        - width: 32px
+        - height: 32px
+        - justify-self: center
+        - align-self: center
+      icon:
+        - width: 22px
+        - color: var(--primary-color)
+      name:
+        - justify-self: start
+        - align-self: end
+        - font-size: 13px
+        - font-weight: 700
+        - line-height: 1.2
+      label:
+        - justify-self: start
+        - align-self: start
+        - color: var(--secondary-text-color)
+        - font-size: 10px
+        - font-weight: 500
+        - line-height: 1.25
+        - white-space: normal
+
+  maintenance_danger:
+    template: maintenance_action
+    styles:
+      card:
+        - background: color-mix(in srgb, var(--warning-color) 7%, var(--ha-card-background, var(--card-background-color)))
+        - border-color: color-mix(in srgb, var(--warning-color) 55%, var(--divider-color))
+      icon:
+        - color: var(--warning-color)
+
   diag_process:
     template: diag_status
     styles:
@@ -4789,23 +4842,15 @@ views:
               rows: 2
 
           - type: custom:button-card
+            template: maintenance_action
             entity: number.vitodens_200_wb2a_wartung_brennerstunden_sollwert
             name: Brennerstunden übernehmen
             icon: mdi:check-circle-outline
-            show_state: true
             label: |
               [[[
                 const current = states['sensor.vitodens_200_wb2a_wartung_brennerstunden_grenzwert']?.state ?? '?';
                 return 'Aktuell ' + current + ' h · Entwurf ' + (entity?.state ?? '?') + ' h';
               ]]]
-            show_label: true
-            styles:
-              card:
-                - border: 1px solid var(--divider-color)
-                - border-radius: 14px
-                - background: color-mix(in srgb, var(--primary-color) 8%, var(--ha-card-background, var(--card-background-color)))
-              icon:
-                - color: var(--primary-color)
             tap_action:
               action: perform-action
               perform_action: mqtt.publish
@@ -4831,7 +4876,7 @@ views:
                   ]]]
             grid_options:
               columns: full
-              rows: 2
+              rows: 1
 
       - type: grid
         column_span: 1
@@ -4875,23 +4920,15 @@ views:
               rows: 2
 
           - type: custom:button-card
+            template: maintenance_action
             entity: number.vitodens_200_wb2a_wartung_zeitintervall_sollwert
             name: Zeitintervall übernehmen
             icon: mdi:calendar-arrow-right
-            show_state: true
             label: |
               [[[
                 const current = states['sensor.vitodens_200_wb2a_wartung_zeitintervall']?.state ?? '?';
                 return 'Aktuell ' + current + ' Monate · Entwurf ' + (entity?.state ?? '?') + ' Monate';
               ]]]
-            show_label: true
-            styles:
-              card:
-                - border: 1px solid var(--divider-color)
-                - border-radius: 14px
-                - background: color-mix(in srgb, var(--primary-color) 8%, var(--ha-card-background, var(--card-background-color)))
-              icon:
-                - color: var(--primary-color)
             tap_action:
               action: perform-action
               perform_action: mqtt.publish
@@ -4917,7 +4954,7 @@ views:
                   ]]]
             grid_options:
               columns: full
-              rows: 2
+              rows: 1
 
       - type: grid
         column_span: 2
@@ -4928,21 +4965,11 @@ views:
             icon: mdi:shield-alert-outline
 
           - type: custom:button-card
+            template: maintenance_danger
             entity: binary_sensor.vitodens_200_wb2a_wartung_status
             name: Wartung zurücksetzen
             icon: mdi:wrench-clock
-            show_state: true
-            label: Kontrollierter Reset der Wartungsreferenz
-            show_label: true
-            styles:
-              card:
-                - border: 1px solid color-mix(in srgb, var(--warning-color) 55%, var(--divider-color))
-                - border-radius: 14px
-                - background: color-mix(in srgb, var(--warning-color) 8%, var(--ha-card-background, var(--card-background-color)))
-              icon:
-                - color: var(--warning-color)
-              name:
-                - font-weight: 700
+            label: Geschützt · Referenzen bewusst neu setzen
             tap_action:
               action: perform-action
               perform_action: mqtt.publish
@@ -4966,17 +4993,24 @@ views:
                   ]]]
             grid_options:
               columns: full
-              rows: 2
+              rows: 1
 
-          - type: markdown
-            content: |
-              **Sicherheitsmodell**
-
-              Home Assistant sendet keine rohen Optolink-Schreibbefehle. Alle Aktionen laufen über openv/maintenance/cmnd und den gemeinsam mit dem CLI verwendeten Maintenance-Core.
-
-              Bei einem Write-Fehler wird der Konfigurationswert nach Möglichkeit zurückgerollt. Eine bereits ausgelöste Referenzänderung ist dadurch jedoch nicht garantiert reversibel.
+          - type: custom:mushroom-template-card
+            primary: Sicherheitsmodell
+            secondary: >-
+              Keine rohen Optolink-Writes aus Home Assistant. Alle Aktionen
+              laufen über die abgesicherte Maintenance-API mit Lock,
+              Validierung und Readback. Ein Konfigurations-Rollback kann eine
+              bereits ausgelöste Referenzänderung nicht garantiert rückgängig
+              machen.
+            icon: mdi:shield-lock-outline
+            icon_color: blue
+            multiline_secondary: true
+            tap_action:
+              action: none
             grid_options:
               columns: full
+              rows: 2
 
   - title: Zeitprogramme
     path: zeitprogramme
