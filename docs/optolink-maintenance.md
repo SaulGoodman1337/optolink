@@ -184,6 +184,21 @@ verified contract, but should preserve the same constraints:
 The CLI's `--json` mode is intended to make a future wrapper/service easier
 without requiring Home Assistant to construct raw `w;0x....` requests.
 
+## Live CLI verification status
+
+The production CLI paths have been verified on the local controller for:
+
+- no-op suppression for `set-hours 0` and `set-months 0`;
+- range and confirmation guards with no write leakage;
+- `set-hours 100` plus readback and restore to zero;
+- explicit protection for the discovered `0x7570` re-baseline side effect;
+- `set-months 1` plus readback and restore to zero;
+- `0x756C` re-baselining on both actual `0x5723` writes while `0x7570`
+  remained unchanged.
+
+The guarded `reset` implementation is source- and raw-protocol-verified; a
+final end-to-end CLI reset-path verification is the remaining live CLI check.
+
 
 ### Note on `LastCheckInterval`
 
