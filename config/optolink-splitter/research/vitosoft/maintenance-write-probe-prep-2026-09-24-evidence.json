@@ -42,7 +42,7 @@
       "access": "read-only (Vitosoft Type 1)",
       "block_length": 4,
       "conversion": "LastCheckInterval",
-      "interpretation": "custom reference-time storage; not a plain month counter",
+      "interpretation": "custom 32-bit LastCheckInterval reference; not a plain month counter; exact wall-clock conversion remains unresolved",
       "write_policy": "do not write"
     },
     "0x7570": {
@@ -118,14 +118,13 @@
       },
       "interval_reference_decode": {
         "first_little_endian_decimal": 1790278257,
-        "first_utc": "2026-09-24T19:30:57Z",
         "second_little_endian_decimal": 1790278267,
-        "second_utc": "2026-09-24T19:31:07Z",
-        "delta_seconds": 10
+        "delta_seconds": 10,
+        "note": "Little-endian integers differed by exactly 10 over a 10-second interval. Do not treat them as verified Unix timestamps."
       },
       "conclusions": [
         "0x5723 is locally verified read/write for the source-backed 0..24 month range.",
-        "0x756C changed to a little-endian Unix-seconds reference timestamp on both setting changes.",
+        "0x756C changed to a new seconds-like 32-bit LastCheckInterval reference on both setting changes; exact wall-clock conversion is unresolved.",
         "0x756C is therefore not a plain elapsed-month integer.",
         "0x5724 stayed at Grundzustand and 0x7570 stayed zero."
       ]
@@ -154,11 +153,11 @@
         "0x088A": "d36f0700"
       },
       "decoded": {
-        "interval_reference_utc": "2026-09-24T19:37:52Z",
         "total_burner_seconds": 63851517,
         "stored_burner_reference_seconds": 63851515,
         "reference_delta_seconds": 2,
-        "total_burner_starts": 487379
+        "total_burner_starts": 487379,
+        "interval_reference_raw_uint_le": 1790278672
       },
       "conclusions": [
         "0x5724 readback followed 00 -> 01 -> 00.",
@@ -257,8 +256,15 @@
       ]
     },
     "read_only_references": {
-      "0x756C": "little-endian Unix-seconds time reference for LastCheckInterval",
+      "0x756C": "32-bit LastCheckInterval reference; seconds-like behavior verified, exact wall-clock conversion unresolved",
       "0x7570": "burner-runtime seconds baseline for LastBurnerCheck"
     }
-  }
+  },
+  "corrections": [
+    {
+      "date": "2026-09-24",
+      "subject": "0x756C LastCheckInterval wall-clock interpretation",
+      "finding": "Earlier notes called the little-endian value a Unix timestamp. Live CLI output exposed a wall-clock mismatch, and public Vitosoft reverse-engineering documentation lists LastCheckInterval as a special converter whose algorithm is not implemented. Keep the field raw until the converter is reconstructed."
+    }
+  ]
 }
