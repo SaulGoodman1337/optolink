@@ -74,7 +74,7 @@
     "normal_cadence_seconds": "approximately 20-30 s",
     "goal": "Eliminate periodic 15-20 s FAST latency spikes before any olbreath reduction."
   },
-  "next_step": "Run a 30-60 minute soak at global 25 ms / GFA first 25 ms / retry 150 ms, preferably including one or more burner starts. Record retry events by GFA address and reject on second-FF/failed retry/OL Error/restart.",
+  "next_step": "No further timing benchmark requested. Treat 25 ms global / 25 ms GFA first / 150 ms GFA retry as the configured production target; investigate only if runtime telemetry shows repeated second-FF, OL Error, restart, or other instability.",
   "first_live_apply_attempt": {
     "timestamp_local": "2026-09-24T14:17:06+02:00",
     "result": "ABORTED_BEFORE_SCHEDULER_APPLY",
@@ -833,6 +833,35 @@
       "Fast 25 ms GFA first attempts plus a 150 ms recovery retry passed the 180 s gate cleanly.",
       "The short gate supports keeping the optimistic first attempt fast while reserving conservative timing for recovery only.",
       "Long-soak validation is still required before permanent deployment."
+    ]
+  },
+  "permanent_timing_integration": {
+    "timestamp_local": "2026-09-24",
+    "decision": "PROMOTED_TO_PERMANENT_PROFILE",
+    "operator_requested_no_further_soak": true,
+    "production_contract": {
+      "global_olbreath_seconds": 0.025,
+      "gfa_first_attempt_gap_seconds": 0.025,
+      "gfa_retry_gap_seconds": 0.15,
+      "raw_ff_retry_count": 1,
+      "second_ff_behavior": "quarantine and return failure"
+    },
+    "helper": {
+      "revision": "2026-09-24-r8-fast25-gfa-retry",
+      "integration_commit": "0060396fb498278f7310237386742c3795125251",
+      "rollback_hardening_commit": "a14f73bb0a816b0f29fd820e2be99b56a533bb5e",
+      "git_blob": "53f142f686bf6b214f296bf47bcfa158dbca6b48"
+    },
+    "update_install_behavior": [
+      "Installer fetches and executes the VDensHO1 profile helper.",
+      "Dedicated updater refreshes the helper and executes it after resetting upstream source.",
+      "Helper reapplies GFA v1.0.5, phased scheduler, global olbreath=0.025 and validates the 0.025/0.15 GFA timing contract.",
+      "Helper backs up and restores all five patched runtime files on activation failure."
+    ],
+    "validation_basis": [
+      "180 s fast-first 25 ms gate passed clean with FAST median about 1.48 s.",
+      "A prior run independently exercised the raw-FF retry path and recovered successfully.",
+      "No further soak was performed before promotion by explicit operator choice."
     ]
   }
 }
