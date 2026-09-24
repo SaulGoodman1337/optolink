@@ -302,8 +302,8 @@ the timing-margin hypothesis, but it does not yet prove that `olbreath` is
 the sole cause. A long 150 ms baseline is required before drawing that stronger
 conclusion.
 
-Current conservative production target remains 150 ms. If a long 150 ms soak
-is clean, 125 ms may be tested as an optional intermediate value.
+At that checkpoint the conservative production target remained 150 ms. This
+was later superseded by the GFA-specific retry design documented below.
 
 
 ## GFA-specific pacing and FF retry experiment
@@ -432,5 +432,40 @@ the approximately 1.88 s median measured with global 25 ms but a 150 ms GFA
 first-attempt gap.
 
 No FF occurred in this short gate, so the conservative 150 ms retry path was
-not exercised during this run. A 30-60 minute soak including burner activity
-is required before making this configuration permanent.
+not exercised during this run. A 30-60 minute soak had been recommended; the
+operator subsequently chose to promote this configuration without another
+soak, based on the clean gate plus the separately validated successful FF
+recovery path.
+
+
+## Permanent production timing
+
+The production profile helper now deliberately installs the fast-first timing
+configuration requested after the successful short gate:
+
+```text
+global olbreath = 0.025 s
+GFA first-attempt gap = 0.025 s
+GFA retry gap = 0.150 s
+raw GFA FF retry count = 1
+second FF / failed retry = quarantine + failure
+```
+
+The permanent helper revision is:
+
+```text
+2026-09-24-r8-fast25-gfa-retry
+```
+
+The helper also validates the GFA timing contract after applying the runtime
+patch and rolls back the profile/runtime patch set if that contract is not
+present. This makes the configuration reproducible after installer/update runs
+that reset the upstream splitter checkout.
+
+Permanent-helper integration commits:
+
+- `0060396fb498278f7310237386742c3795125251`: set global 25 ms timing and validate the GFA 25/150 retry contract;
+- `a14f73bb0a816b0f29fd820e2be99b56a533bb5e`: include patched runtime files in helper rollback.
+
+The runtime remains read-only for direct GFA access; no GFA_WRITE, combustion,
+coding, actuator or EEPROM write path is introduced by this timing change.
