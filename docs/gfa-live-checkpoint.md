@@ -1,6 +1,6 @@
 # GFA live checkpoint - 2026-09-23
 
-**Current status: P80, snapshots, same-session access and a continuous 60-second burner-start trace are hardware-confirmed. The paced startup trace completed 49/49 rounds with no FF replies or reconnects, captured P84 raw 00->02->04->05->06, fan speed 0->4500 rpm and the subsequent modulation-down ramp. Intermittent FF replies from longer captures remain unresolved.**
+**Current status: P80, snapshots, same-session access and a continuous 60-second burner-start trace are hardware-confirmed. The first self-triggered status attempt exposed and corrected the WB2A Virtual_WRITE response format: a successful write reply acknowledges the written byte count without echoing the value. No GFA startup samples were collected in that failed attempt. Trigger helper v1.0.1 now passes 168/168 offline tests; manual 0x2306/0x55DC baseline verification is required before rerun.**
 
 Read the [paced comparison and startup trace](gfa-paced-comparison.md) for the latest live result. The next bounded experiment is the [GFA status/startup probe](gfa-status-probe.md): P84/P12 every round, alternating P85/P86 and P87/P88, with P80 guarding every round. It records raw bits only; no flame/status semantics are assigned. The earlier [long-run FF investigation](gfa-cycle-ff-investigation.md) remains relevant to acquisition quality.
 
@@ -16,6 +16,16 @@ Evidence:
 - [Static variant/scaling definitions](../config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-evidence.json).
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
+
+## 0a. Triggered-status attempt - write ACK parser corrected, 2026-09-24
+
+The first self-triggered helper read `0x2306=21` and `0x55DC=0`, confirmed P80=20 twice, then sent the bounded temporary write `0x2306=37`. The WB2A returned `41 05 01 02 23 06 01 32`. Version 1.0.0 misparsed the final payload byte as a data-length field and aborted before the required readback or any GFA observation.
+
+Cleanup sent the original 21 C value three times; all three writes received the same successful one-byte Virtual_WRITE acknowledgement. Because the parser aborted before readback, that run did not independently verify the final setpoint value. P300 20C2 was restored and both services restarted.
+
+Version 1.0.1 corrects this specific response grammar while retaining exact Virtual_READ verification of the requested value. Commit `8259cd5f3c07c4d46939e17e7bc87dc47378717f`, SHA256 `6d5810e1595ba6e464452dcd927259e9bade8f550a92b492fd40c2a27972604b`; 168/168 offline tests pass, including the exact live ACK frame.
+
+Evidence: [failed triggered-status run](../config/optolink-splitter/research/vitosoft/gfa-triggered-status-failed-run-2026-09-24-evidence.json).
 
 ## 0. Latest live result - continuous startup trace, 2026-09-24
 
