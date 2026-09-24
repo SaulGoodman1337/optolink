@@ -74,7 +74,7 @@
     "normal_cadence_seconds": "approximately 20-30 s",
     "goal": "Eliminate periodic 15-20 s FAST latency spikes before any olbreath reduction."
   },
-  "next_step": "Run a 30-60 minute soak with global 0.05 s and GFA minimum gap 0.15 s, preferably including a full burner start/modulation cycle. Track first-FF/retry recovery and hard errors separately.",
+  "next_step": "Experiment with GFA first-attempt gap 25 ms and retry gap 150 ms, keeping global olbreath at 25 ms; reject on any second FF/failed retry/OL error.",
   "first_live_apply_attempt": {
     "timestamp_local": "2026-09-24T14:17:06+02:00",
     "result": "ABORTED_BEFORE_SCHEDULER_APPLY",
@@ -651,6 +651,64 @@
       "Ordinary F7/F4 traffic can remain at the 50 ms upstream timing while direct GFA_READ 0x6B is paced to at least 150 ms.",
       "No FF occurred, therefore the new retry path was not exercised in this gate.",
       "A longer soak with burner activity is still required before making this permanent."
+    ]
+  },
+  "mixed_global_0025_gfa_015_short_gate": {
+    "timestamp_local": "2026-09-24T15:52+02:00",
+    "duration_seconds": 180,
+    "result": "PASS_WITH_RECOVERED_GFA_RETRY",
+    "global_olbreath_seconds": 0.025,
+    "gfa_min_gap_seconds": 0.15,
+    "measurements": {
+      "kesseltemperatur": {
+        "median_s": 1.875,
+        "p95_s": 2.062,
+        "max_s": 2.28
+      },
+      "brenner_modulationsgrad": {
+        "median_s": 1.874,
+        "p95_s": 2.085,
+        "max_s": 2.295
+      },
+      "geblaesedrehzahl_gfa_p06": {
+        "median_s": 1.876,
+        "p95_s": 2.085,
+        "max_s": 2.206
+      },
+      "gfa_modulationssollwert_p09": {
+        "median_s": 1.882,
+        "p95_s": 2.057,
+        "max_s": 2.276
+      },
+      "gfa_status3_p87": {
+        "median_s": 1.895,
+        "p95_s": 2.027,
+        "max_s": 2.201
+      },
+      "aussentemperatur": {
+        "median_s": 9.385,
+        "p95_s": 9.903,
+        "max_s": 9.966
+      },
+      "gfa_p80_typ": {
+        "median_s": 9.365,
+        "p95_s": 9.964,
+        "max_s": 9.99,
+        "last": "20"
+      }
+    },
+    "retry_telemetry": {
+      "first_ff": 1,
+      "recovered_on_retry": 1,
+      "hard_errors": 0,
+      "p80_ok": true,
+      "service_ok": true
+    },
+    "conclusion": [
+      "Global 25 ms with GFA-specific 150 ms pacing passed the short gate.",
+      "One raw GFA FF occurred despite the 150 ms GFA minimum gap and recovered on the single retry.",
+      "This validates the live retry path and suggests raw FF is not explained solely by insufficient GFA inter-request spacing.",
+      "A useful next experiment is a fast first GFA attempt at 25 ms with a conservative 150 ms retry gap."
     ]
   }
 }
