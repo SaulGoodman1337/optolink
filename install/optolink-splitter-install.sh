@@ -105,6 +105,10 @@ chmod 750 /usr/local/bin/wb2a-schedule-probe
 chown root:root /usr/local/bin/wb2a-schedule-probe
 ln -sf /usr/local/bin/wb2a-schedule-probe /usr/bin/wb2a-schedule-probe
 
+cs_repo_fetch tools/optolink-schedule-manager.py /usr/local/bin/optolink-schedule-manager
+chmod 755 /usr/local/bin/optolink-schedule-manager
+chown root:root /usr/local/bin/optolink-schedule-manager
+
 cs_repo_fetch tools/optolink-party-emulator.py /usr/local/bin/optolink-party-emulator
 chmod 755 /usr/local/bin/optolink-party-emulator
 chown root:root /usr/local/bin/optolink-party-emulator
@@ -122,6 +126,10 @@ ln -sf /usr/local/bin/wb2a-e7-persistence-probe /usr/bin/wb2a-e7-persistence-pro
 cs_repo_fetch config/optolink-splitter/optolink-party-emulator.service /etc/systemd/system/optolink-party-emulator.service
 chmod 644 /etc/systemd/system/optolink-party-emulator.service
 chown root:root /etc/systemd/system/optolink-party-emulator.service
+
+cs_repo_fetch config/optolink-splitter/optolink-schedule-manager.service /etc/systemd/system/optolink-schedule-manager.service
+chmod 644 /etc/systemd/system/optolink-schedule-manager.service
+chown root:root /etc/systemd/system/optolink-schedule-manager.service
 
 cs_repo_fetch config/optolink-splitter/vcontrol-mapping.md /root/optolink-vcontrol-mapping.md
 
