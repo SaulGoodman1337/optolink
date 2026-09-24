@@ -58,5 +58,42 @@
       "If baseline or settings restoration cannot be verified, splitter and Party are left stopped fail-closed and the settings backup is retained.",
       "On normal success the splitter must re-establish VS2/300 before Party is restored."
     ]
-  }
+  },
+  "live_run": {
+    "timestamp_local": "2026-09-24T13:30:03+02:00",
+    "result": "PASS",
+    "helper_version": "1.0.1",
+    "self_tests": "5/5",
+    "temporary_mqtt_base": "openv_vs1writegate_133003_195477",
+    "splitter_main_pid": 195489,
+    "device_path": "real running optolink-splitter",
+    "write_route": "MQTT /set -> mqtt_util.handle_set_topic -> cmnd_queue -> requests_util.response_to_request -> vs12_adapter.write_datapoint_ext -> stock optolinkvs1.write_datapoint_ext/F4",
+    "target": "0x2306",
+    "baseline_raw": "15",
+    "baseline_celsius": 21,
+    "target_raw": "16",
+    "target_celsius": 22,
+    "change_response": "1;0x2306;22",
+    "changed_state": "22",
+    "restore_response": "1;0x2306;21",
+    "restored_state": "21",
+    "final_splitter_f7_raw": "15",
+    "journal_vs1_initialized": true,
+    "unexpected_restart": false,
+    "main_pid_stable": true,
+    "settings_sha256_original": "afb2beeddbdde21b6bbfdf0a66ec3be0f77998a7c1f50c32d7386d5eefe9ea05",
+    "settings_sha256_restored": "afb2beeddbdde21b6bbfdf0a66ec3be0f77998a7c1f50c32d7386d5eefe9ea05",
+    "settings_restored": true,
+    "restored_baseline_protocol": "VS2/300",
+    "direct_fallback_used": false,
+    "backup_removed": true,
+    "conclusion": [
+      "The actual production MQTT /set write path through the running splitter successfully changed 0x2306 from 21 C to 22 C under temporary permanent VS1.",
+      "The normal splitter readback path published the changed value 22 and later the restored value 21.",
+      "The same production /set path restored 0x2306 to 21 C; no direct fallback was needed.",
+      "MainPID remained stable, no unexpected restart occurred, original settings were restored byte-for-byte, and VS2/300 baseline was re-established."
+    ],
+    "note": "The helper printed 'ERROR: 0' before/after the successful run because its outer BaseException handler also catches SystemExit(0). This is a cosmetic helper bug; the process exit status and RESULT were PASS."
+  },
+  "final_conclusion": "No transport-level or splitter-integration blocker remains for permanent VS1 on this exact WB2A/VDensHO1 installation. Remaining work is deployment engineering: persist the read-only GFA 0x6B patch, add guarded P80/P06/P09/P87 polling, switch settings to permanent VS1, and make installer/updater reapply/verify the integration."
 }
