@@ -1,8 +1,8 @@
 # GFA live checkpoint - 2026-09-23
 
-**Current status: the P87/P09 high-resolution run resolved temporal ordering. P87 bit 1 changes 0->1 before P09 leaves the raw-93 / 57.6534% high-start plateau; the measured transition intervals are non-overlapping with at least 257 ms separation. The bit remains manufacturer-semantically unnamed and causality is not proven.**
+**Current status: P87/P09 temporal ordering is resolved: P87 bit 1 changes 0->1 before P09 leaves the raw-93 / 57.6534% high-start plateau, with at least 257 ms between the non-overlapping transition windows. WB2A/VSKO documentation makes first flame recognition (~2-3 s) distinct from a 10-s ionization-monitored start phase, so P87.b1 is currently best treated as an unnamed marker/precursor near the end of that supervised start/stabilization interval. A read-only mixed VS1 F7/GFA 6B compatibility test is now the next hardware step toward production integration.**
 
-Read the [paced comparison and startup trace](gfa-paced-comparison.md) for the latest live result. The next bounded experiment is the [GFA status/startup probe](gfa-status-probe.md): P84/P12 every round, alternating P85/P86 and P87/P88, with P80 guarding every round. It records raw bits only; no flame/status semantics are assigned. The earlier [long-run FF investigation](gfa-cycle-ff-investigation.md) remains relevant to acquisition quality.
+Read the [P87/P09 high-resolution correlation](gfa-p87-p09-hires.md) for the latest completed live timing result. The next bounded experiment is the [mixed VS1 Virtual/GFA compatibility probe](vs1-mixed-gfa-integration.md): stable Virtual_READ values are compared P300 -> VS1 F7 -> P300 while P80/P06/P09/P87 GFA_READs are interleaved in the same VS1 session. It is read-only and does not change production settings. The earlier [long-run FF investigation](gfa-cycle-ff-investigation.md) remains relevant to acquisition quality.
 
 A firing snapshot previously decoded P06 as 4110 rpm. The new continuous trace now independently supports the channel with a coherent 0->660->2490->4500 rpm startup and subsequent ramp down to 2790 rpm. The older isolated P06=FF conversion to 7650 rpm remains invalid as a physical event. Permanent Home Assistant integration remains unverified.
 
@@ -16,6 +16,18 @@ Evidence:
 - [Static variant/scaling definitions](../config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-evidence.json).
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
+
+## 0xxx. P87 semantic bound and production-integration probe - 2026-09-24
+
+Static Vitosoft metadata still supplies only `P87 / GFA Status 3 / 0x4057`; no bit table was recovered. Public WB2A service documentation places first valid ionization at flame formation about 2-3 seconds after gas-valve opening, while a Viessmann Customer-Care VSKO description associates E8 / VSKO 61 and 189 with invalid ionization during a 10-second start phase and separately describes VSKO code 5 as flame loss during stabilization time.
+
+Together with the measured P87.b1 timing, this argues against interpreting bit 1 as first flame recognition. The bounded wording is: **unnamed GFA status marker/precursor near the end of the supervised start/stabilization interval**. Manufacturer semantics and causality remain unresolved.
+
+Upstream splitter inspection at `philippoo66/optolink-splitter` main `c1ee204a1421447721603c5f21c6da7337fdac97` shows that permanent VS1/KW mode already carries ordinary Virtual_READ/WRITE traffic through F7/F4, but structured generic requests are not implemented for VS1 and no structured GFA_READ helper exists in `optolinkvs1.py`.
+
+The prepared [mixed VS1 compatibility probe](vs1-mixed-gfa-integration.md) therefore tests the prerequisite without changing configuration: P300 stable values -> one persistent VS1 session with interleaved F7 and 6B reads -> P300 stable post-check. Only after a PASS should a production splitter patch be designed.
+
+Machine evidence: [P87 semantics / VS1 integration checkpoint](../config/optolink-splitter/research/vitosoft/gfa-p87-semantics-vs1-integration-2026-09-24-evidence.json).
 
 ## 0xx. P87/P09 high-resolution ordering resolved - 2026-09-24
 
