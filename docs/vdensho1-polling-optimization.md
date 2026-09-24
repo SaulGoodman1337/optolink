@@ -304,3 +304,40 @@ conclusion.
 
 Current conservative production target remains 150 ms. If a long 150 ms soak
 is clean, 125 ms may be tested as an optional intermediate value.
+
+
+## GFA-specific pacing and FF retry experiment
+
+The 50 ms and 100 ms failures observed so far were both isolated direct
+`GFA_READ 0x6B` acquisitions:
+
+- 50 ms: P09 / 0x4009 returned raw FF;
+- 100 ms long soak: P87 / 0x4057 returned raw FF.
+
+No equivalent F7/F4 error was observed in those timing gates. This motivates
+decoupling the ordinary VS1 timing from the direct GFA timing instead of
+slowing the entire poll loop.
+
+GFA patch helper v1.0.4 therefore adds:
+
+```text
+global olbreath:                 independent
+GFA_MIN_GAP_SECONDS:             0.15
+raw GFA FF:                      one retry
+second FF / failed retry:        quarantine and return failure
+```
+
+The GFA minimum gap is measured from the VS1 module's `last_comm` timestamp,
+which is updated by successful VS1 responses. Therefore a global 50 ms
+`olbreath` only incurs the extra delay required to reach the 150 ms GFA
+minimum; ordinary F7/F4 traffic remains at the global timing.
+
+The existing FF quarantine remains intact. A raw FF is never converted into a
+physical value. A successful retry is returned normally; a second FF remains
+quarantined.
+
+Implementation commit:
+`06a963948ddbfcca13164ea9c00e8c1a4d2de053`.
+
+This is an experimental timing optimization and still requires live validation
+with global `olbreath=0.05`.
