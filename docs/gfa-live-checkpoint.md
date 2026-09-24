@@ -1,6 +1,6 @@
 # GFA live checkpoint - 2026-09-23
 
-**Current status: the self-triggered 37 C run succeeded end-to-end and strongly correlates P87 bit 1 (60->62) with release of the 57.6534% high-start modulation plateau. Static review found no P87 bit table in the inspected private archive or public Vitosoft-derived export. A narrower P87/P09 high-resolution probe is prepared to test temporal ordering while keeping the existing 150-ms pacing and guarded 37 C trigger/restore.**
+**Current status: the P87/P09 high-resolution run resolved temporal ordering. P87 bit 1 changes 0->1 before P09 leaves the raw-93 / 57.6534% high-start plateau; the measured transition intervals are non-overlapping with at least 257 ms separation. The bit remains manufacturer-semantically unnamed and causality is not proven.**
 
 Read the [paced comparison and startup trace](gfa-paced-comparison.md) for the latest live result. The next bounded experiment is the [GFA status/startup probe](gfa-status-probe.md): P84/P12 every round, alternating P85/P86 and P87/P88, with P80 guarding every round. It records raw bits only; no flame/status semantics are assigned. The earlier [long-run FF investigation](gfa-cycle-ff-investigation.md) remains relevant to acquisition quality.
 
@@ -16,6 +16,28 @@ Evidence:
 - [Static variant/scaling definitions](../config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-evidence.json).
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
+
+## 0xx. P87/P09 high-resolution ordering resolved - 2026-09-24
+
+The 35-second hi-res run completed with 29 accepted P80-guarded blocks / 58 accepted P87-P09 pairs, zero rejected blocks, zero reconnects and no FF. The 37 C trigger and exact 21 C restore were readback-verified; P300 20C2 and both services were restored; result PASS.
+
+Critical brackets:
+
+```text
+P87 bit 1 clear -> set:
+(11:06:06.897, 11:06:07.392]   width 495 ms
+
+P09 plateau 0x93 -> below:
+(11:06:07.649, 11:06:08.139]   width 490 ms
+```
+
+These windows do not overlap. At 11:06:07.392 P87 was already `0x62`, while at 11:06:07.649 P09 was still `0x93`. The minimum separation between the windows is 257 ms. Therefore **P87 bit 1 becomes set before P09 leaves the high-start modulation plateau** in this run.
+
+This establishes temporal ordering, not causality. Bit 1 still must not be named "flame stabilized", "stabilization complete", "regulation enabled" or any other vendor semantic. Static sources still provide only `P87 / GFA Status 3 / 0x4057`.
+
+No faster live polling is required merely to establish ordering. Next work should focus on P87 semantics/source interpretation and production-safe VS1 integration.
+
+Evidence: [hi-res live run](../config/optolink-splitter/research/vitosoft/gfa-p87-p09-hires-run-2026-09-24-evidence.json). Detailed analysis: [P87/P09 high-resolution correlation](gfa-p87-p09-hires.md).
 
 ## 0x. P87 static review and high-resolution follow-up prepared - 2026-09-24
 
