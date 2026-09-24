@@ -1,6 +1,6 @@
 # VDensHO1 polling optimization
 
-Status: prepared for live application on the validated WB2A / VDensHO1 / 20C2 installation.
+Status: LIVE PASS on the validated WB2A / VDensHO1 / 20C2 installation.
 
 ## Why this is needed
 
@@ -137,3 +137,27 @@ Prepared commits:
 - phased scheduler patch: `3856d5afa1c652ee8383f72214ae0c49dfea3574`
 - polling profile rebalance: `ee783069077ffd690c6411b0f12de3e0cffc2b72`
 - profile helper integration: `38ee1a07a00978ebb20219c095f9a0f4b5496dc4`
+
+
+## Live activation result
+
+The corrected deployment completed successfully on 2026-09-24.
+
+Observed:
+
+```text
+VS1_GFA_READONLY_PATCH_TESTS=9/9
+PHASED_POLL_SCHEDULER_TESTS=4/4
+Patcher preflight OK.
+PATCHED_FILES=c_polllist.py,optolinkvs2_switch.py
+RESULT=PASS
+Discovery dry-run OK.
+Party emulation service is active.
+294 entities published successfully.
+MQTT state refresh triggered.
+```
+
+The phased scheduler is therefore active in production while `olbreath`
+remains at the conservative 0.15 s baseline. The next step is observation of
+actual FAST/NORMAL cadence and communication error rate before any timing
+reduction.
