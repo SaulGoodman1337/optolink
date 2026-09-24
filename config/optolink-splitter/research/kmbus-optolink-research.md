@@ -145,15 +145,34 @@ Therefore Vitosoft event/profile membership is not a safe capability boundary
 for low-level read functions. Conversely, a successful low-level read does not
 prove the name's literal memory semantics.
 
-The current priority is to mine the already captured v6 `all-events.csv` and
-`all-lowlevel-access.csv` for exact read request shapes. This is especially
-important for `KMBUS_EEPROM_READ`, where 90/91 definitions carry
-`PrefixRead=030000000101`. The earlier local 0x43/F8 experiment omitted this
-selector data and must not be treated as a normal Vitosoft-defined EEPROM
+The targeted v6 slice has now been completed: **2,055 read-event rows** were
+extracted reproducibly from `all-events.csv`.
+
+Key semantic results:
+
+- 90/91 `KMBUS_EEPROM_READ` definitions use
+  `PrefixRead=030000000101`; the prefixed group consists of persistent
+  **LGM27 burner-control** parameters such as identity, parameter set,
+  modulation values, temperature limits, minimum burner pause/runtime and
+  controller delay.
+- the sole no-prefix exception is event 2190 at `0x0310`,
+  `Geräteidentifikation Schalterblock`, in DEKATEL/VCOM profiles;
+- all 12 `XRAM_READ` events are now resolved and include volatile external
+  demand/blocking, several runtime timers and water pressure in GWG profiles;
+- all 850 `KBUS_TRANSPARENT_READ` rows carry a 2-byte prefix;
+- 227/232 `KBUS_VIRTUAL_READ` rows carry a 2-byte prefix;
+- 96/97 `KBUS_INDIRECT_READ` rows carry a 1-byte prefix, and their event
+  names prove that this byte is the **participant number**;
+- `Virtual_MBUS` is linked to actual external meter profiles and must remain
+  separate from KM-BUS.
+
+These results strengthen the conclusion that `PrefixRead` is operational
+routing/selector data. The earlier local prefix-less 0x43/F8 experiment omitted
+that selector data and must not be treated as a normal Vitosoft-defined EEPROM
 transaction.
 
-See the dedicated analysis for the full reasoning, memory/firmware boundary and
-read-only experiment sequence:
+See the dedicated analysis for the full derived inventory, memory/firmware
+boundary and read-only experiment sequence:
 [vitosoft/kmbus-read-memory-analysis-2026-09-24.md](vitosoft/kmbus-read-memory-analysis-2026-09-24.md).
 
 ### Write-family semantics from the production Vitosoft set
