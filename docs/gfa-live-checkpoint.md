@@ -17,6 +17,37 @@ Evidence:
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
 
+## 0xxxxxxxxxx. Permanent VS1 + read-only GFA production activation - 2026-09-24
+
+Production activation was executed with the validated VDensHO1 helper.
+
+Observed:
+
+```text
+Validated upstream ref: c1ee204a1421447721603c5f21c6da7337fdac97
+VS1_GFA_READONLY_PATCH_TESTS=7/7
+PATCHED_FILES=optolinkvs1.py,vs12_adapter.py,requests_util.py
+RESULT=PASS
+Discovery dry-run OK.
+Restarting Optolink-Splitter with VDensHO1 profile...
+Party emulation service is active.
+```
+
+The new GFA discovery entities were published:
+
+```text
+GFA P80 Typ
+Gebläsedrehzahl GFA P06
+GFA Modulationssollwert P09
+GFA Status3 P87
+```
+
+The final Home Assistant discovery publish exceeded the helper's non-fatal 45 second timeout after already publishing hundreds of entities. This was not a VS1/GFA transport failure; the helper explicitly left Optolink active. The helper timeout was subsequently increased to 120 seconds in commit `fb59dd137656001efe071d31350a058cd5d4ed9b`.
+
+A post-activation verification of live P80/P06/P09/P87 values and the permanent VS1 journal state is the immediate next step.
+
+Evidence: [production activation](../config/optolink-splitter/research/vitosoft/vs1-gfa-production-activation-2026-09-24-evidence.json).
+
 ## 0xxxxxxxxx. Real splitter permanent-VS1 write path PASS - 2026-09-24
 
 The final bounded integration gate passed through the **actual running splitter production path**:
