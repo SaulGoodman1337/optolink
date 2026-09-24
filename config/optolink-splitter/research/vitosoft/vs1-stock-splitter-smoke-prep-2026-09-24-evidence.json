@@ -151,5 +151,29 @@
     "reproduced_exactly_from_profile_helper": true,
     "device_or_settings_changes": false,
     "services_changed": false
+  },
+  "fifth_attempt": {
+    "timestamp_local": "2026-09-24T12:43:03+02:00",
+    "result": "FAIL_PRECONDITION",
+    "preflight_passed": {
+      "stock_verify_mode": "git-origin-main-plus-vdensho1-profile-patches",
+      "stock_verify_ref": "c1ee204a1421447721603c5f21c6da7337fdac97",
+      "profile_patch_blobs_match": 2,
+      "expected_cycle0_mqtt_topics": 212
+    },
+    "reason": "optolink-splitter.service was not active/running; user confirmed the splitter systemd unit was missing",
+    "device_or_settings_changes": false,
+    "services_changed": false,
+    "significance": "The source/profile preflight is now resolved. The remaining blocker is service installation/state, not VS1 transport."
+  },
+  "service_unit_repair": {
+    "root_cause": "Installer historically created optolink-splitter.service inline, while the updater did not reinstall/manage that unit. If the unit disappeared later, update could not self-heal it.",
+    "repository_fix": {
+      "unit_file": "config/optolink-splitter/optolink-splitter.service",
+      "unit_commit": "87f6f37ba6cc875468501632487b0bbbc2995e6b",
+      "updater_commit": "dfdb5613babb6ff1dd840ade4decd33bb4b7362a",
+      "installer_commit": "6c2855deafff9c3016c76b02f776651b068dbc4f"
+    },
+    "policy": "Updater now installs /etc/systemd/system/optolink-splitter.service, daemon-reloads and enables it; installer consumes the same versioned unit file."
   }
 }
