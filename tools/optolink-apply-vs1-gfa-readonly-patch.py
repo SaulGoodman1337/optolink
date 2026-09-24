@@ -26,7 +26,7 @@ import sys
 import tempfile
 import time
 
-VERSION = "1.0.4"
+VERSION = "1.0.5"
 ROOT = Path("/opt/optolink")
 UPSTREAM_REF = "c1ee204a1421447721603c5f21c6da7337fdac97"
 
@@ -81,26 +81,27 @@ def patch_optolinkvs1(text: str) -> str:
     if write_marker not in text:
         raise PatchError("optolinkvs1.py insertion marker not found")
 
-    retry_marker = "community-scripts: GFA-only pacing and FF single retry"
-    if retry_marker in text:
+    fastfirst_marker = "community-scripts: GFA fast-first gap and conservative retry gap"
+    if fastfirst_marker in text:
         return text
 
     block = nl.join([
         "# community-scripts: read-only GFA_READ 0x6B",
-        "# community-scripts: GFA-only pacing and FF single retry",
-        "GFA_MIN_GAP_SECONDS = 0.15",
+        "# community-scripts: GFA fast-first gap and conservative retry gap",
+        "GFA_FIRST_GAP_SECONDS = 0.025",
+        "GFA_RETRY_GAP_SECONDS = 0.15",
         "",
-        "def _wait_gfa_min_gap() -> None:",
+        "def _wait_gfa_gap(gap_seconds: float) -> None:",
         "    # receive_resp_telegr() updates last_comm after every successful VS1",
-        "    # response. Keep only direct GFA_READ requests at the conservative",
-        "    # hardware-validated spacing while ordinary F7/F4 can run faster.",
-        "    remaining = (last_comm + GFA_MIN_GAP_SECONDS) - time.monotonic()",
+        "    # response. First attempts may run at the fast global cadence while",
+        "    # a retry gets the conservative hardware-tested recovery spacing.",
+        "    remaining = (last_comm + gap_seconds) - time.monotonic()",
         "    if remaining > 0:",
         "        time.sleep(remaining)",
         "",
         "",
-        "def _read_gfa_once(addr:int, rdlen:int, ser:serial.Serial) -> tuple[int, int, bytearray]:",
-        "    _wait_gfa_min_gap()",
+        "def _read_gfa_once(addr:int, rdlen:int, ser:serial.Serial, gap_seconds:float) -> tuple[int, int, bytearray]:",
+        "    _wait_gfa_gap(gap_seconds)",
         "    outbuff = bytearray([0x6B, (addr >> 8) & 0xFF, addr & 0xFF, rdlen])",
         "",
         "    if sync_elapsed():",
@@ -119,17 +120,20 @@ def patch_optolinkvs1(text: str) -> str:
         "    if rdlen != 1:",
         "        return 0xFD, addr, bytearray()",
         "",
-        "    retcode, retaddr, data = _read_gfa_once(addr, rdlen, ser)",
+        "    retcode, retaddr, data = _read_gfa_once(",
+        "        addr, rdlen, ser, GFA_FIRST_GAP_SECONDS",
+        "    )",
         "",
-        "    # A raw 0xFF has repeatedly appeared as an isolated acquisition",
-        "    # artifact at shorter global olbreath values. Never publish it as a",
-        "    # physical value. Retry exactly once after the same GFA-only gap.",
+        "    # Never publish raw 0xFF as a physical value. A first-attempt FF gets",
+        "    # exactly one retry, but the retry waits for the conservative gap.",
         "    if retcode == 0x01 and len(data) == 1 and data[0] == 0xFF:",
         "        logger.warning(",
-        "            f\"GFA_READ 0x{addr:04X} returned FF; retrying once after \"",
-        "            f\"{GFA_MIN_GAP_SECONDS:.3f}s GFA gap\"",
+        "            f\"GFA_READ 0x{addr:04X} returned FF on fast attempt; \"",
+        "            f\"retrying once after {GFA_RETRY_GAP_SECONDS:.3f}s recovery gap\"",
         "        )",
-        "        retrycode, retryaddr, retrydata = _read_gfa_once(addr, rdlen, ser)",
+        "        retrycode, retryaddr, retrydata = _read_gfa_once(",
+        "            addr, rdlen, ser, GFA_RETRY_GAP_SECONDS",
+        "        )",
         "        if retrycode == 0x01 and len(retrydata) == 1 and retrydata[0] != 0xFF:",
         "            logger.info(f\"GFA_READ 0x{addr:04X} recovered on FF retry\")",
         "            return retrycode, retryaddr, retrydata",
@@ -147,7 +151,6 @@ def patch_optolinkvs1(text: str) -> str:
     ])
 
     if MARKERS["optolinkvs1.py"] in text:
-        # Upgrade any earlier community GFA block in place.
         start = text.find("# community-scripts: read-only GFA_READ 0x6B")
         end = text.find(write_marker, start)
         if start < 0 or end < 0:
@@ -477,21 +480,25 @@ def self_test() -> int:
             src = "def write_datapoint(addr:int, data:bytes, ser:serial.Serial) -> bool:\n    pass\n"
             out = patch_optolinkvs1(src)
             self.assertIn("data[0] == 0xFF", out)
-            self.assertIn("retrying once", out)
+            self.assertIn("retrying once after", out)
             self.assertIn("quarantined after retry", out)
             self.assertIn("return 0xFF, retryaddr, bytearray()", out)
 
-        def test_gfa_only_pacing_and_retry_are_present(self):
+        def test_gfa_fast_first_and_retry_gaps_are_present(self):
             src = "def write_datapoint(addr:int, data:bytes, ser:serial.Serial) -> bool:\n    pass\n"
             out = patch_optolinkvs1(src)
-            self.assertIn("GFA_MIN_GAP_SECONDS = 0.15", out)
-            self.assertIn("def _wait_gfa_min_gap()", out)
-            self.assertIn("def _read_gfa_once", out)
+            self.assertIn("GFA_FIRST_GAP_SECONDS = 0.025", out)
+            self.assertIn("GFA_RETRY_GAP_SECONDS = 0.15", out)
+            self.assertIn("def _wait_gfa_gap(", out)
+            self.assertIn("GFA_FIRST_GAP_SECONDS", out)
+            self.assertIn("GFA_RETRY_GAP_SECONDS", out)
             self.assertIn("recovered on FF retry", out)
 
-        def test_v103_gfa_block_upgrades_in_place(self):
+        def test_v104_gfa_block_upgrades_in_place(self):
             src = (
                 "# community-scripts: read-only GFA_READ 0x6B\n"
+                "# community-scripts: GFA-only pacing and FF single retry\n"
+                "GFA_MIN_GAP_SECONDS = 0.15\n"
                 "def read_gfa_ext(addr:int, rdlen:int, ser:serial.Serial) -> tuple[int, int, bytearray]:\n"
                 "    return 0xFF, addr, bytearray()\n"
                 "\n"
@@ -499,7 +506,7 @@ def self_test() -> int:
                 "    pass\n"
             )
             out = patch_optolinkvs1(src)
-            self.assertIn("community-scripts: GFA-only pacing and FF single retry", out)
+            self.assertIn("community-scripts: GFA fast-first gap and conservative retry gap", out)
             self.assertEqual(out.count("def read_gfa_ext("), 1)
             self.assertEqual(patch_optolinkvs1(out), out)
 
