@@ -105,6 +105,26 @@ Goals:
 Main file:
 `config/optolink-splitter/homeassistant-dashboard.yaml`
 
+#### Deferred TODO: fault-history presentation
+
+Status: **functional baseline implemented / further visual refinement deferred**
+
+The Diagnose page currently uses a compact chronology for the ten system-fault
+history entries and a separate compact two-column GFA archive. Fault-code
+decoding for the system-history display aliases is implemented for the
+source-backed mappings currently known for this controller.
+
+Keep the current layout for now. Revisit it later with these constraints:
+
+- improve readability/visual hierarchy without returning to 30 separate cards;
+- keep historical faults visually different from an active alarm state;
+- preserve system-fault and GFA code spaces as separate concepts;
+- retain code, known text and timestamp for system history;
+- retain raw code and timestamp for GFA history until an exact supported map is
+  recovered;
+- no frequency/count summary of repeated codes is desired at this time.
+
+
 ### 2. Move time programs to a dedicated Home Assistant tab
 
 Status: **implemented in YAML / Home Assistant visual verification pending**
