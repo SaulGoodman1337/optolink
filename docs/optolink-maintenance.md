@@ -175,6 +175,22 @@ The CLI intentionally contains the following restrictions:
 - ambiguous/failed writes attempt rollback to the previous configuration;
 - maintenance reset is kept separate from burner-fault unlock/reset semantics.
 
+## MQTT API backend
+
+The guarded MQTT service now uses the same shared core as this CLI:
+
+```text
+optolink-maintenance
+        \
+         -> optolink_maintenance_core.py -> splitter MQTT
+        /
+optolink-maintenance-api
+```
+
+See [Optolink maintenance MQTT API](optolink-maintenance-api.md) for the
+request/response schema, retained state topic, request-ID deduplication and
+Home Assistant integration rules.
+
 ## Future Home Assistant use
 
 The Home Assistant/dashboard workstream may build controls on top of this
