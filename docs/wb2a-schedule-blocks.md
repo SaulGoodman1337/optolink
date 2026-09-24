@@ -376,6 +376,56 @@ Behavior:
 
 Choose a weekday other than today for the first test.
 
+## Guarded Home Assistant write path
+
+The production implementation now uses a dedicated
+`optolink-schedule-manager` service instead of exposing raw schedule writes
+from Home Assistant.
+
+Write flow:
+
+~~~text
+MQTT text entity
+  -> openv/schedule/set/<program>/<weekday>
+  -> strict project-side validation
+  -> read original 8-byte block
+  -> complete writeraw block write
+  -> byte-exact readback
+  -> publish verified state
+~~~
+
+If the target readback does not match, the manager writes the previously read
+original block back and verifies that restore byte-for-byte before reporting
+the error.
+
+Accepted editor values are intentionally narrow:
+
+~~~text
+05:00-20:00
+05:00-08:00,16:00-22:00
+05:00-08:00,10:00-12:00,14:00-16:00,18:00-24:00
+none
+~~~
+
+The 21 normal schedule datapoints remain the source of truth. They are now
+refreshed at the `SLOW` poll cadence instead of only at splitter startup so a
+change made at the physical boiler control eventually reaches Home Assistant.
+A successful schedule-manager write additionally republishes the verified
+schedule state immediately.
+
+Home Assistant discovery exposes:
+
+- 21 non-optimistic MQTT `text` editor entities;
+- one diagnostic `zeitprogramm_schreibstatus` sensor with JSON attributes
+  describing the last operation.
+
+The dashboard uses each text entity as both the displayed verified state and
+the edit target. Tapping a weekday opens the native Home Assistant more-info
+editor for that day.
+
+Current integration status: **implemented in repository; first live HA write
+through the schedule manager still needs verification after deployment.**
+
 ## Home Assistant implications after PASS
 
 Once the local probe passes:
@@ -397,4 +447,4 @@ Once the local probe passes:
   - readback confirmation and visible error state;
   - no optimistic UI for controller writes.
 
-Until the remaining multi-slot and boundary write tests pass, the dashboard remains read-only.
+The controller block gate is complete. Home Assistant editing is enabled only through the guarded schedule manager; the first live HA-path write/readback still needs to be observed after deployment.
