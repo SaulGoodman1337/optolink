@@ -9,12 +9,12 @@
   },
   "helper": {
     "file": "config/optolink-splitter/wb2a-stock-vs1-smoke.py",
-    "version": "1.0.5",
-    "commit": "89125f275b6e9cdd935e815b5b60f257bbe1fb03",
-    "git_blob": "a221d961d8b916c6fff8f520f13887e33cd4a61c",
-    "sha256": "22ca88ba1f4a13bd844236bbc55ed16b198f65693b01628344776b3e458688c3",
-    "embedded_logic_tests": "14/14",
-    "default_seconds": 30,
+    "version": "1.0.6",
+    "commit": "25baaca41b58db2d250bb2f5505415d927f4461e",
+    "git_blob": "4626fad29b32664cdcdf94ed2b7bd437d41c08c6",
+    "sha256": "eb94c4eab0e690ac38a53ceaa2389749d2432fb1ed5f49e15a340cf038d9ab35",
+    "embedded_logic_tests": "17/17 expected",
+    "default_seconds": 60,
     "duration_bounds_seconds": [
       20,
       60
@@ -187,5 +187,35 @@
     "exec": "/opt/optolink/venv/bin/python /opt/optolink/optolinkvs2_switch.py",
     "observed_runtime": "P300 polling traffic present in journal immediately after repair",
     "note": "The shown 40-line journal tail contained live RX traffic but not the earlier protocol-init line; the upcoming smoke helper performs its own protocol-init checks."
+  },
+  "sixth_attempt": {
+    "timestamp_local": "2026-09-24T12:48:38+02:00",
+    "result": "FAIL_HARNESS_BEFORE_VS1_START",
+    "progress": [
+      "stock/profile preflight passed",
+      "212 expected cycle-0 MQTT topics identified",
+      "original settings SHA256 captured",
+      "splitter service stopped",
+      "settings were never switched to VS1 because MQTT observer failed first"
+    ],
+    "failure": {
+      "component": "MQTT validation subscriber",
+      "exception": "TypeError: int() argument must be a string, a bytes-like object or a real number, not 'ReasonCode'",
+      "cause": "Paho CallbackAPIVersion.VERSION2 supplies a ReasonCode object; v1.0.5 incorrectly used int(reason_code)."
+    },
+    "cleanup": {
+      "original_settings_sha256": "afb2beeddbdde21b6bbfdf0a66ec3be0f77998a7c1f50c32d7386d5eefe9ea05",
+      "restored_settings_sha256": "afb2beeddbdde21b6bbfdf0a66ec3be0f77998a7c1f50c32d7386d5eefe9ea05",
+      "settings_restored_byte_exact": true,
+      "splitter_service_restored_running": true,
+      "backup_removed_after_restore": true,
+      "baseline_protocol_log_check": "NOT_CONFIRMED because v1.0.5 checked too soon after restart"
+    },
+    "actual_vs1_smoke_started": false
+  },
+  "v1_0_6_changes": {
+    "mqtt": "Uses ReasonCode.is_failure for Paho callback API v2, with integer/value fallback for older callback styles; subscription reason codes are checked as well.",
+    "restore": "After restoring the splitter, waits up to 10 seconds for the VS2/300 protocol initialization journal marker before declaring restore verification failure. Baseline protocol is verified before Party is restarted.",
+    "duration": "Default live window increased from 30 to 60 seconds. With 212 expected cycle-0 topics and olbreath=0.15, the breath delay alone gives a 31.8-second lower bound before serial/MQTT overhead."
   }
 }
