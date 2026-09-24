@@ -280,11 +280,13 @@ Follow-up splitter tests completed the missing semantics:
   current burner-runtime counter; the observed nonzero -> 0 restore did not
   re-baseline it again;
 - `0x5723` is locally verified R/W for 0..24 months;
-- maintenance reset is locally verified as `0x5724 = 1` followed by
-  `0x5724 = 0`;
-- that reset updates the `0x756C` LastCheckInterval reference;
-- that reset updates `0x7570` to the current burner-runtime-seconds baseline;
-- burner runtime since the current maintenance reference is therefore
+- maintenance reset is locally verified end-to-end as `0x5724 = 1`
+  followed by `0x5724 = 0`;
+- that reset re-baselines the `0x756C` LastCheckInterval reference;
+- the `0x7570` effect is conditional: an early reset initialized a zero
+  burner reference, while a later guarded CLI reset with `0x5721 = 0 h`
+  left the existing burner reference unchanged;
+- burner runtime since the current burner maintenance reference is therefore
   `(current 0x08A7 - stored 0x7570) / 3600`;
 - total burner runtime `0x08A7` and burner starts `0x088A` remained
   unchanged during the maintenance reset.
@@ -315,19 +317,19 @@ Wartung** section around these entities. The intended end state is to allow the
 maintenance interval and burner-runtime threshold to be configured from Home
 Assistant, with a separately protected maintenance-reset action.
 
-This UI work is explicitly **deferred** until the splitter workstream has
-verified the real controller operations for:
+The splitter workstream has now verified the real controller write/reset paths
+and the guarded CLI. Home Assistant implementation remains intentionally
+deferred to a dedicated dashboard session.
 
-- writing `0x5721` including the x100 h conversion and valid range;
-- writing `0x5723` including the valid month range;
-- interpreting and, if applicable, resetting `0x5724`;
-- reconstructing the `LastCheckInterval` / `LastBurnerCheck` conversions
-  for read-only `0x756C` and `0x7570`;
-- read-after-write / read-after-reset behavior and persistence;
-- a rollback/recovery path.
+The HA implementation must preserve these verified constraints:
 
-Until that verification is complete, the dashboard must remain read-only for
-maintenance data.
+- `0x5721` writes can re-baseline `0x7570` and require explicit warning;
+- `0x5723` writes re-baseline `0x756C` and require explicit warning;
+- `0x5724: 1 -> 0` is the protected maintenance-reset sequence;
+- the reset reliably re-baselines `0x756C`, but its effect on `0x7570` is
+  conditional and must be reported rather than assumed;
+- `0x756C` and `0x7570` remain read-only;
+- lifetime counters `0x08A7` and `0x088A` must never be reset by this UI.
 
 Other metadata candidates include controller identity, remote/KM-BUS software
 indices and communication topology. These are lower priority for normal
