@@ -304,88 +304,338 @@ button_card_templates:
 
 
   # Static accent variants.
-  # Keep accent styling inside the template itself: instance-level style
-  # overrides on these nested button-cards were not reliable on the first
-  # dashboard mount, but appeared after switching views.
+  # Intentionally self-contained: no inheritance from diag_group2/3.
+  # The inherited base accent could win during the initial button-card merge.
+
   diag_group2_blue:
-    template: diag_group2
+    section_mode: true
+    show_icon: false
+    show_state: false
+    show_name: true
+    show_ripple: false
+    tap_action:
+      action: none
     styles:
       card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
         - border-left: 3px solid #2196f3
+        - box-shadow: none
+        - padding: 8px 7px 7px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: >-
+            "n n" "v1 v2"
+        - grid-template-columns: 1fr 1fr
+        - grid-template-rows: min-content 1fr
+        - row-gap: 5px
       name:
+        - justify-self: start
         - color: #2196f3
+        - font-size: 11px
+        - font-weight: 600
+        - padding-left: 4px
+      custom_fields:
+        v2:
+          - border-left: 1px solid var(--divider-color)
 
   diag_group3_blue:
-    template: diag_group3
+    section_mode: true
+    show_icon: false
+    show_state: false
+    show_name: true
+    show_ripple: false
+    tap_action:
+      action: none
     styles:
       card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
         - border-left: 3px solid #2196f3
+        - box-shadow: none
+        - padding: 8px 7px 7px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: >-
+            "n n n" "v1 v2 v3"
+        - grid-template-columns: 1fr 1fr 1fr
+        - grid-template-rows: min-content 1fr
+        - row-gap: 5px
       name:
+        - justify-self: start
         - color: #2196f3
+        - font-size: 11px
+        - font-weight: 600
+        - padding-left: 4px
+      custom_fields:
+        v2:
+          - border-left: 1px solid var(--divider-color)
+        v3:
+          - border-left: 1px solid var(--divider-color)
 
   diag_group2_green:
-    template: diag_group2
+    section_mode: true
+    show_icon: false
+    show_state: false
+    show_name: true
+    show_ripple: false
+    tap_action:
+      action: none
     styles:
       card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
         - border-left: 3px solid #4caf50
+        - box-shadow: none
+        - padding: 8px 7px 7px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: >-
+            "n n" "v1 v2"
+        - grid-template-columns: 1fr 1fr
+        - grid-template-rows: min-content 1fr
+        - row-gap: 5px
       name:
+        - justify-self: start
         - color: #4caf50
+        - font-size: 11px
+        - font-weight: 600
+        - padding-left: 4px
+      custom_fields:
+        v2:
+          - border-left: 1px solid var(--divider-color)
 
   diag_group3_green:
-    template: diag_group3
+    section_mode: true
+    show_icon: false
+    show_state: false
+    show_name: true
+    show_ripple: false
+    tap_action:
+      action: none
     styles:
       card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
         - border-left: 3px solid #4caf50
+        - box-shadow: none
+        - padding: 8px 7px 7px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: >-
+            "n n n" "v1 v2 v3"
+        - grid-template-columns: 1fr 1fr 1fr
+        - grid-template-rows: min-content 1fr
+        - row-gap: 5px
       name:
+        - justify-self: start
         - color: #4caf50
+        - font-size: 11px
+        - font-weight: 600
+        - padding-left: 4px
+      custom_fields:
+        v2:
+          - border-left: 1px solid var(--divider-color)
+        v3:
+          - border-left: 1px solid var(--divider-color)
 
   diag_group2_purple:
-    template: diag_group2
+    section_mode: true
+    show_icon: false
+    show_state: false
+    show_name: true
+    show_ripple: false
+    tap_action:
+      action: none
     styles:
       card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
         - border-left: 3px solid #9c27b0
+        - box-shadow: none
+        - padding: 8px 7px 7px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: >-
+            "n n" "v1 v2"
+        - grid-template-columns: 1fr 1fr
+        - grid-template-rows: min-content 1fr
+        - row-gap: 5px
       name:
+        - justify-self: start
         - color: #9c27b0
+        - font-size: 11px
+        - font-weight: 600
+        - padding-left: 4px
+      custom_fields:
+        v2:
+          - border-left: 1px solid var(--divider-color)
 
   diag_group3_purple:
-    template: diag_group3
+    section_mode: true
+    show_icon: false
+    show_state: false
+    show_name: true
+    show_ripple: false
+    tap_action:
+      action: none
     styles:
       card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
         - border-left: 3px solid #9c27b0
+        - box-shadow: none
+        - padding: 8px 7px 7px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: >-
+            "n n n" "v1 v2 v3"
+        - grid-template-columns: 1fr 1fr 1fr
+        - grid-template-rows: min-content 1fr
+        - row-gap: 5px
       name:
+        - justify-self: start
         - color: #9c27b0
+        - font-size: 11px
+        - font-weight: 600
+        - padding-left: 4px
+      custom_fields:
+        v2:
+          - border-left: 1px solid var(--divider-color)
+        v3:
+          - border-left: 1px solid var(--divider-color)
 
   diag_group2_cyan:
-    template: diag_group2
+    section_mode: true
+    show_icon: false
+    show_state: false
+    show_name: true
+    show_ripple: false
+    tap_action:
+      action: none
     styles:
       card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
         - border-left: 3px solid #00bcd4
+        - box-shadow: none
+        - padding: 8px 7px 7px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: >-
+            "n n" "v1 v2"
+        - grid-template-columns: 1fr 1fr
+        - grid-template-rows: min-content 1fr
+        - row-gap: 5px
       name:
+        - justify-self: start
         - color: #00bcd4
+        - font-size: 11px
+        - font-weight: 600
+        - padding-left: 4px
+      custom_fields:
+        v2:
+          - border-left: 1px solid var(--divider-color)
 
   diag_group3_cyan:
-    template: diag_group3
+    section_mode: true
+    show_icon: false
+    show_state: false
+    show_name: true
+    show_ripple: false
+    tap_action:
+      action: none
     styles:
       card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
         - border-left: 3px solid #00bcd4
+        - box-shadow: none
+        - padding: 8px 7px 7px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: >-
+            "n n n" "v1 v2 v3"
+        - grid-template-columns: 1fr 1fr 1fr
+        - grid-template-rows: min-content 1fr
+        - row-gap: 5px
       name:
+        - justify-self: start
         - color: #00bcd4
+        - font-size: 11px
+        - font-weight: 600
+        - padding-left: 4px
+      custom_fields:
+        v2:
+          - border-left: 1px solid var(--divider-color)
+        v3:
+          - border-left: 1px solid var(--divider-color)
 
   diag_group2_orange:
-    template: diag_group2
+    section_mode: true
+    show_icon: false
+    show_state: false
+    show_name: true
+    show_ripple: false
+    tap_action:
+      action: none
     styles:
       card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
         - border-left: 3px solid #ff9800
+        - box-shadow: none
+        - padding: 8px 7px 7px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: >-
+            "n n" "v1 v2"
+        - grid-template-columns: 1fr 1fr
+        - grid-template-rows: min-content 1fr
+        - row-gap: 5px
       name:
+        - justify-self: start
         - color: #ff9800
+        - font-size: 11px
+        - font-weight: 600
+        - padding-left: 4px
+      custom_fields:
+        v2:
+          - border-left: 1px solid var(--divider-color)
 
   diag_group3_orange:
-    template: diag_group3
+    section_mode: true
+    show_icon: false
+    show_state: false
+    show_name: true
+    show_ripple: false
+    tap_action:
+      action: none
     styles:
       card:
+        - border-radius: 12px
+        - border: 1px solid var(--divider-color)
         - border-left: 3px solid #ff9800
+        - box-shadow: none
+        - padding: 8px 7px 7px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: >-
+            "n n n" "v1 v2 v3"
+        - grid-template-columns: 1fr 1fr 1fr
+        - grid-template-rows: min-content 1fr
+        - row-gap: 5px
       name:
+        - justify-self: start
         - color: #ff9800
+        - font-size: 11px
+        - font-weight: 600
+        - padding-left: 4px
+      custom_fields:
+        v2:
+          - border-left: 1px solid var(--divider-color)
+        v3:
+          - border-left: 1px solid var(--divider-color)
 
 views:
   - title: Heizung
