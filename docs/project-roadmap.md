@@ -481,38 +481,20 @@ contains **no KBUS/KMBUS FCRead or FCWrite events**. The earlier plan to search
 for special-access KBUS/KMBUS pump events is therefore obsolete for this
 controller profile.
 
-Next hardware task after returning to the appliance:
+Completed result-object correlation:
 
-- validate the newly discovered read-only result objects `0x0A3A` and
-  `0x0A3B` together with `0x0A3C`, `0x7660` and `0x7663`;
-- first take a stable-state snapshot with:
-  ```text
-  0x0A3A / 1   HKP_A1_res
-  0x0A3B / 1   HKP_M2_res
-  0x0A3C / 1   InternePumpeDrehzahl_res
-  0x7660 / 2   internal-pump runtime/output
-  0x7663 / 2   A1 pump runtime/output
-  ```
-- compare at least pump-off, heating/pre-ignition, flame-on and flame-off
-  takt-lock states;
-- determine whether `0x0A3A` tracks the computed A1 pump setpoint while
-  `0x0A3C` represents the later/final internal-pump selection;
-- keep this experiment strictly read-only;
-- the enhanced `wb2a-pump-divergence-watch.py` already includes
-  `0x0A3A` and `0x0A3B`.
+- `0x0A3A` and `0x0A3B` are locally readable but remained zero through the tested heating start;
+- this rejects the earlier hypothesis that `0x0A3A` is the computed A1 request feeding `0x7663`;
+- `0x0A3C` follows the final internal-pump command and matches `0x7660[1]` in a discriminating state where `0x7663[1]` differs;
+- therefore the remaining problem is the hidden controller selection **upstream of `0x0A3C`**, not another A3A/A3B validation pass.
 
-Next work:
+Current next work:
 
-- use `wb2a-pump-start-logger --mode heating` for a complete heating start;
-- use `wb2a-pump-start-logger --mode dhw` for a complete DHW start;
-- compare the local static values of 31, 6C, E6/E7/E8/E9 and GWG75;
-- verify the exact `0x7660` byte layout against the known approximately
-  50 % and 100 % pump states;
-- identify whether the 100 % transition follows DHW mode / diverter-valve
-  selection or a later GG1/GFA burner-start transition;
-- only if `6C` does not explain the 100 % runtime value, search for a
-  separate transient override/state-machine command;
-- remain read-only until the responsible field and write semantics are known.
+- do not repeat the already completed generic heating/DHW startup comparisons;
+- search protected FlowCalibration/embedded resources and any remaining host implementation for the selector feeding `0x0A3C`;
+- use passive natural runs only for specific formula questions, such as an A1 request above the GWG75 floor;
+- keep K34/external-demand semantics separate from a 100% speed claim;
+- if host-side analysis yields no selector, continue this question in the controller-firmware/MCU workstream rather than blind address probing.
 
 Potential relevance:
 

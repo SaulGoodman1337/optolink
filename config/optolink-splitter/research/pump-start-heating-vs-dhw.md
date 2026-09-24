@@ -1,6 +1,8 @@
 # WB2A pump behavior: heating vs DHW
 
-Status: **read-only investigation active**
+Status: **read-only investigation active; exposed-result mapping largely resolved**
+
+Current conclusion (2026-09-24): `0x0A3A`/`0x0A3B` were already validated and are not the local built-in internal-pump selector; `0x0A3C` tracks the final internal-pump command and `0x7660[1]`, including a state where it differs from `0x7663[1]`. The remaining high-value question is the hidden controller logic upstream of `0x0A3C`. See [../../../docs/research-plan-2026-09-24.md](../../../docs/research-plan-2026-09-24.md) for the current TODO order.
 
 Controller under investigation:
 
