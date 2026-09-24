@@ -121,6 +121,54 @@ The read transport is already production-verified. The missing identity fields a
 
 **Completion result:** the host integration and applicability boundary are sufficiently resolved. The protected numerical calibration algorithm itself remains unrecovered, but it is no longer a priority for the current WB2A pump-selector question.
 
+## P1 - KM-BUS/KBus read-memory mapping
+
+**Tracking:** GitHub issue **#30** and
+[kmbus-read-memory-analysis-2026-09-24.md](../config/optolink-splitter/research/vitosoft/kmbus-read-memory-analysis-2026-09-24.md).
+
+The controller-side read functions have become a concrete reverse-engineering
+workstream rather than a generic function-code search.
+
+Current evidence:
+
+- `0x41 KMBUS_RAM_READ` is locally implemented and `0x00F8/8` mirrors the
+  normal identity block exactly.
+- `0x43 KMBUS_EEPROM_READ` is locally implemented, but the prefix-less F8
+  transaction returns a dynamic two-byte result repeated/truncated to requested
+  length and is **not** a demonstrated linear EEPROM view.
+- Collector v6 contains 91 `KMBUS_EEPROM_READ`, 12 `XRAM_READ`, 850
+  `KBUS_TRANSPARENT_READ`, 500 `KBUS_EEPROM_LT_READ`, 232
+  `KBUS_VIRTUAL_READ`, 97 `KBUS_INDIRECT_READ`, 11
+  `KBUS_DIRECT_READ` and 7 `KBUS_DATAELEMENT_READ` event definitions.
+- `KMBUS_RAM_READ` itself has **zero** Vitosoft event definitions even though
+  raw 0x41 works on the local controller. Event/profile membership therefore
+  remains applicability evidence, not a low-level capability boundary.
+- 90/91 `KMBUS_EEPROM_READ` definitions use
+  `PrefixRead=030000000101`; this makes source-derived prefix analysis the
+  next step before any further 0x43 probing.
+
+**TODO:**
+
+- [ ] Extract a small derived KBus-read slice from the already captured v6
+  `all-events.csv` / `all-lowlevel-access.csv`; no full Collector rerun.
+- [ ] Group exact PrefixRead/parameter/address/length patterns per read family.
+- [ ] Resolve all 12 XRAM_READ definitions and the exceptional 1/91 KMBUS
+  EEPROM prefix row.
+- [ ] Cluster the 850 transparent, 500 EEPROM_LT and 232 virtual KBus reads by
+  participant/device family.
+- [ ] Build a bounded `Virtual_READ` vs. `0x41` correlation matrix for known
+  dynamic objects such as `0x0A3C`, `0x7660` and `0x7663`.
+- [ ] Reconstruct one real Vitosoft-defined 0x43 request including prefix before
+  considering another local EEPROM-style read.
+- [ ] Keep all work read-only; no broad blind sweep and no KBUS/KMBUS writes.
+
+**Firmware boundary:** RAM-like views may expose hidden state, timers,
+mailboxes and selector variables and are therefore highly useful for firmware
+reverse engineering. They are not yet a program-flash read path. If the local
+MCU later confirms as M30624FGPFP, its 256-KiB program flash occupies a 20-bit
+address range while the normal VS2 address field is 16 bit; an Optolink
+firmware dump would require an additional bank/prefix/RPC mechanism.
+
 ## P1 - Platinen-Research / local hardware identity
 
 **Tracking:** GitHub issue **#25** and [regulation-board-7424735-pcb-research.md](../config/optolink-splitter/research/regulation-board-7424735-pcb-research.md).
