@@ -121,6 +121,33 @@ The read transport is already production-verified. The missing identity fields a
 
 **Completion result:** the host integration and applicability boundary are sufficiently resolved. The protected numerical calibration algorithm itself remains unrecovered, but it is no longer a priority for the current WB2A pump-selector question.
 
+## P1 - Platinen-Research / local hardware identity
+
+**Tracking:** GitHub issue **#25** and [regulation-board-7424735-pcb-research.md](../config/optolink-splitter/research/regulation-board-7424735-pcb-research.md).
+
+An online comparison board carrying **7424735** has now been researched in depth. Public evidence correlates it with **7424743 / VBC 130-A03.100 / WB2B**, while the local project baseline remains **WB2A / VDensHO1 / 20C2** and WB2A spare-part evidence points to **GG1 / 7825241**. Therefore the comparison board is useful for topology research but must **not** yet be identified as the installed local board.
+
+Current comparison-board findings:
+
+- likely main MCU: **Renesas/Mitsubishi M16C/62P M30624FGPFP**;
+- architecture: 256 KiB program flash, 4 KiB data flash, 20 KiB RAM;
+- unpopulated **X15 has three pads**; earlier four-pad wording is superseded;
+- X15 is worth passive tracing, but three pads are not a complete E8/E8a interface;
+- Renesas flash-ID protection may block readout even when serial programming is physically available;
+- X3/`145` remains a useful KM-BUS physical-layer lead;
+- X10 and the vertical daughterboard remain unidentified.
+
+**TODO:**
+
+- [ ] Photograph the actual installed WB2A board and all labels before transferring any VBC130-specific claim.
+- [ ] Confirm or reject local PCB part number `7424735`.
+- [ ] Identify the exact local main MCU and any external memories.
+- [ ] Trace X15 and X10 passively on the local board.
+- [ ] Map local X3/145 KM-BUS protection/transceiver circuitry.
+- [ ] Identify the daughterboard and burner/GFA MCU separately.
+- [ ] Build a local annotated board map.
+- [ ] Assess a non-destructive firmware-read path only after protection/programmer behavior is understood; never use erase-to-unlock on the production controller.
+
 ## P1 - Firmware architecture, not repeated SQL hunting
 
 The current Vitosoft installation contains no authenticated WB2A firmware image and no target-linked update rows.
