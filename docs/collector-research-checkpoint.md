@@ -40,7 +40,7 @@ Key additions that future research must preserve:
 - The two SQL update tables remain empty, so the new all-device pass does not add a WB2A firmware source.
 - Existing P06/P09/P10 GFA conclusions are confirmed rather than superseded; burner-variant filtering and later live captures remain stronger local evidence.
 
-The v5 archive itself has a known Deep-postprocessing packaging failure after the large Deep inventories were written. That collector-status issue belongs to the private source repository and does not invalidate the completed All-Devices graph, SQL export, tool dumps or outer manifest verification.
+The v5 archive itself has a known Deep-postprocessing packaging failure after the large Deep inventories were written. That collector-status issue belongs to the private source repository and does not invalidate the completed All-Devices graph, SQL export, tool dumps or outer manifest verification. The subsequent v6 full run completed Deep/SQL/All-Devices successfully, and all 16 All-Devices outputs are byte-identical to v5; v6 therefore confirms the metadata results without changing their semantics.
 
 ## Workstream status and next action
 
