@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-24",
+  "prerequisite": {
+    "stock_permanent_vs1_read_gate": "PASS",
+    "mixed_f7_gfa_splitter_poll_gate": "PASS",
+    "idempotent_f4_gate": "PASS"
+  },
+  "idempotent_f4_result": {
+    "target": "0x2306",
+    "baseline_raw": "15",
+    "baseline_celsius": 21,
+    "f4_response_payload": "00",
+    "f7_readback_raw": "15",
+    "value_unchanged": true,
+    "p300_restored": true,
+    "splitter_restarted": true,
+    "evidence_commit": "a61b0a5b954f028a6cea0b3e1a7d63e725a65b62"
+  },
+  "purpose": "Validate an actual one-degree ordinary setpoint change through stock VS1/F4 and exact restoration.",
+  "helper": {
+    "file": "config/optolink-splitter/wb2a-vs1-f4-change-restore-probe.py",
+    "version": "1.0.1",
+    "commit": "a75b490d906f255edc08f83c27d11121384552ac",
+    "git_blob": "c4de43c1ca1ccf6ba5ba9ffce8dc5399e6af6468",
+    "sha256": "b3954687eba1b82b9a5a98dcd3d559005b4b368df16068e809875ab9773d8a4f",
+    "embedded_tests": "6/6 expected"
+  },
+  "target": {
+    "address": "0x2306",
+    "name": "ordinary day room setpoint",
+    "length": 1,
+    "baseline_gate_celsius": [
+      10,
+      30
+    ],
+    "target_policy": "baseline +1 C unless baseline is 30 C, then baseline -1 C"
+  },
+  "sequence": [
+    "Stop Party if active and stop splitter for exclusive serial access.",
+    "Require pinned stock optolinkvs1.py runtime.",
+    "Initialize VS1 and verify 00F8 identity 20C2.",
+    "Read baseline 0x2306 by F7.",
+    "Write bounded target by stock F4.",
+    "After 250 ms verify target by F7.",
+    "In cleanup, after any change-write attempt, write exact baseline via F4 with up to two restore attempts.",
+    "Verify restored baseline by F7.",
+    "Return to P300, verify 00F8/2=20C2 and 2306/1 equals original baseline.",
+    "Restore splitter and Party service state."
+  ],
+  "safety_boundary": [
+    "Only ordinary user setpoint 0x2306 is changed.",
+    "Maximum intentional delta is exactly 1 C.",
+    "No coding, EEPROM, GFA_WRITE, PROCESS_WRITE, burner, gas-valve, actuator or safety write is implemented.",
+    "Restore is attempted even if validation after the target write fails."
+  ],
+  "interpretation": "PASS would establish actual state mutation and exact restoration through stock VS1/F4 on this appliance, removing the remaining transport-level blocker to permanent VS1 with existing ordinary writable HA entities."
+}
