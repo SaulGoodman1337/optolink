@@ -59,6 +59,40 @@ echo "=== P80 closing guard ==="
 /usr/local/bin/optolink-debug request "gfaread;0x4050;1;raw;False"
 ```
 
+## Live result - PASS 2026-09-24
+
+The bounded production read completed successfully:
+
+```text
+0x1010 = 37 38 33 33 39 37 31  -> ASCII 7833971
+0x7656 = 20 15 02 01
+
+P80 opening = 20
+P90  = 00
+P100 = 63
+P101 = 15
+P102 = 01
+P103 = 14
+P104 = 0C
+P105 = 04
+P106 = D6
+P107 = 02
+P108 = 00
+P80 closing = 20
+```
+
+Source-backed conversion of P100 gives `99 * 0.3922 = 38.8278 %`.
+
+Three values from the normal `0x7656 = 20 15 02 01` summary reappear directly in the separate GFA identity registers: `P101=15`, `P102=01`, and `P107=02`. This is strong cross-domain correlation, but the current public extraction does not retain the byte positions of the four `0x7656` subfields, so a field-by-field assignment is not yet claimed.
+
+P103/P104/P105 are source-labelled day/month/year. With direct unsigned-byte interpretation they are `20 / 12 / 4`; a BCD reading would be `14 / 12 / 04`. The exact vendor display encoding and year base remain unresolved, so neither calendar date is promoted to fact yet.
+
+P106 is raw `0xD6`. A bounded check against common CRC-8 presets over the obvious adjacent GFA byte sequences produced no match. That is only a negative heuristic result; it does not identify or exclude a proprietary checksum algorithm.
+
+An exact binary scan of both saved spare-chip1 images found no contiguous occurrence of the full live vector `00 63 15 01 14 0C 04 D6 02 00`, the P100-P108 tail, `15 01`, `14 0C 04`, `20 12 04`, or `D6 02 00`. This rejects a simple flat contiguous copy in those two specific captures, not a transformed/mirrored mapping or a mapping to the still-unread second EEPROM.
+
+Evidence: [gfa-coding-plug-p90-p108-live-2026-09-24-evidence.json](../config/optolink-splitter/research/vitosoft/gfa-coding-plug-p90-p108-live-2026-09-24-evidence.json).
+
 ## Acceptance criteria
 
 - regulation-side reads return success;
