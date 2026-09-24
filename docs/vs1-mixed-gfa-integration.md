@@ -150,7 +150,7 @@ Machine-readable result: [mixed VS1 live evidence](../config/optolink-splitter/r
 
 ## Production direction after a PASS
 
-The PASS justifies a staged implementation, but still not an immediate production flip. The next gate is a guarded run of the **stock splitter itself** in permanent VS1 mode using the existing production Virtual_READ poll list, with write ingress disabled for the test:
+The PASS justifies a staged implementation, but still not an immediate production flip. The next gate is now prepared as [the guarded stock-splitter permanent-VS1 smoke test](vs1-stock-splitter-smoke.md). It runs the **unmodified stock splitter itself** in permanent VS1 mode using the existing production Home Assistant read poll list, with MQTT/TCP write ingress disabled and byte-exact settings restoration:
 
 1. first validate the stock splitter + existing HA read poll list in permanent VS1 mode;
 2. keep one serial owner: the splitter;
