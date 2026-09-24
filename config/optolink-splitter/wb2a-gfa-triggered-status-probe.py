@@ -42,7 +42,7 @@ import sys
 import time
 import types
 
-VERSION = '1.0.0'
+VERSION = '1.0.1'
 PARENT_NAME = 'wb2a-gfa-status-probe.py'
 PARENT_SHA256 = '912de7276ed2a26330abbfb0d7c5778862d171fa5a179ab1b73043fdee9c59bc'
 SETPOINT_ADDR = 0x2306
@@ -91,11 +91,23 @@ def decode_p300_response(frame: bytes, *, function: int, address: int) -> bytes:
         raise ValueError('P300 response is not the requested successful function.')
     if int.from_bytes(frame[4:6], 'big') != address:
         raise ValueError('P300 response address mismatch.')
-    dlen = frame[6]
+    count = frame[6]
     data = frame[7:-1]
-    if len(data) != dlen:
-        raise ValueError('P300 response data-length mismatch.')
-    return data
+    if function == 0x01:
+        if len(data) != count:
+            raise ValueError('P300 READ response data-length mismatch.')
+        return data
+    if function == 0x02:
+        # WB2A Virtual_WRITE success response is:
+        #   41 05 01 02 addr_hi addr_lo written_length crc
+        # The byte after the address is the acknowledged write length. There is
+        # no echoed data byte in this response.
+        if data:
+            raise ValueError('P300 WRITE response has unexpected trailing data.')
+        if count != 1:
+            raise ValueError(f'P300 WRITE acknowledged {count} byte(s), expected 1.')
+        return b''
+    raise ValueError(f'Unsupported P300 response function 0x{function:02x}.')
 
 
 def duration_arg(text: str) -> int:
@@ -199,12 +211,10 @@ def make_runtime(parent):
                 raise ProbeError('Only temporary 37 C and the captured original setpoint are writable.')
             request = p300_write_setpoint_frame(value)
             data = self._p300_exchange(request, function=0x02, address=SETPOINT_ADDR)
-            # Current splitter/protocol behavior echoes the written byte. A zero-length
-            # successful response is tolerated only because exact readback follows.
-            if len(data) not in (0, 1):
-                raise ProbeError('Unexpected Virtual_WRITE response length.')
-            if len(data) == 1 and data[0] != value:
-                raise ProbeError('Virtual_WRITE response did not echo requested setpoint.')
+            # WB2A confirms one written byte but does not echo the value in the
+            # Virtual_WRITE response. Exact value verification is the following readback.
+            if data:
+                raise ProbeError('Unexpected Virtual_WRITE response payload.')
             readback = self.p300_read_byte(SETPOINT_ADDR)
             if readback != value:
                 raise ProbeError(
@@ -648,13 +658,15 @@ def self_test() -> int:
             f = self.response(1, SETPOINT_ADDR, b'\x14')
             self.assertEqual(decode_p300_response(f, function=1, address=SETPOINT_ADDR), b'\x14')
 
-        def test_decode_write_echo_response(self):
-            f = self.response(2, SETPOINT_ADDR, b'\x25')
-            self.assertEqual(decode_p300_response(f, function=2, address=SETPOINT_ADDR), b'\x25')
-
-        def test_decode_zero_length_write_response(self):
-            f = self.response(2, SETPOINT_ADDR, b'')
+        def test_decode_write_count_response_from_live_wb2a(self):
+            f = bytes.fromhex('41 05 01 02 23 06 01 32')
             self.assertEqual(decode_p300_response(f, function=2, address=SETPOINT_ADDR), b'')
+
+        def test_zero_written_length_rejected(self):
+            body = bytes.fromhex('41 05 01 02 23 06 00')
+            f = body + bytes((crc(body),))
+            with self.assertRaises(ValueError):
+                decode_p300_response(f, function=2, address=SETPOINT_ADDR)
 
         def test_bad_checksum_rejected(self):
             f = bytearray(self.response(1, SETPOINT_ADDR, b'\x14'))
@@ -721,6 +733,11 @@ def self_test() -> int:
     def response(function, address, data=b''):
         body = bytes((0x41, 5 + len(data), 0x01, function,
                       address >> 8, address & 0xff, len(data))) + data
+        return body + bytes((crc(body),))
+
+    def write_response(address, written_length=1):
+        body = bytes((0x41, 0x05, 0x01, 0x02,
+                      address >> 8, address & 0xff, written_length))
         return body + bytes((crc(body),))
 
     class Port:
@@ -790,7 +807,7 @@ def self_test() -> int:
                 if value == TRIGGER_C and self.fail_trigger_response:
                     pass
                 else:
-                    self.rx.extend(b'\x06' + response(2, SETPOINT_ADDR, bytes((value,))))
+                    self.rx.extend(b'\x06' + write_response(SETPOINT_ADDR, 1))
             elif data in FOCUS_FRAMES.values():
                 self.bare += 1
                 if self.interrupt_bare is not None and self.bare == self.interrupt_bare:
