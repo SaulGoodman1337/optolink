@@ -25,7 +25,7 @@ import sys
 import tempfile
 import time
 
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 ROOT = Path("/opt/optolink")
 
 BASE_BLOBS = {
@@ -352,20 +352,35 @@ def apply(root: Path) -> Path:
         backup = root / ".phased-poll-test-backup"
     backup.mkdir(mode=0o700, parents=True, exist_ok=False)
 
+    originals = {}
+    patched_texts = {}
     changed = []
+
+    # Build and syntax-check the complete patch set before writing anything.
     for rel, patcher in PATCHERS.items():
         path = root / rel
         shutil.copy2(path, backup / rel)
         original = read_text(path)
+        originals[rel] = original
         patched = patcher(original)
+        compile(patched, str(path), "exec")
+        patched_texts[rel] = patched
         if patched != original:
-            write_text_preserve(path, patched)
             changed.append(rel)
 
-    for rel in PATCHERS:
-        py_compile.compile(str(root / rel), doraise=True)
-        if MARKERS[rel] not in read_text(root / rel):
-            raise PatchError(f"post-patch marker missing in {rel}")
+    try:
+        for rel in changed:
+            write_text_preserve(root / rel, patched_texts[rel])
+
+        for rel in PATCHERS:
+            py_compile.compile(str(root / rel), doraise=True)
+            if MARKERS[rel] not in read_text(root / rel):
+                raise PatchError(f"post-patch marker missing in {rel}")
+    except Exception:
+        # Transactional rollback: never leave only half of the scheduler patch.
+        for rel in PATCHERS:
+            shutil.copy2(backup / rel, root / rel)
+        raise
 
     print("PATCHED_FILES=" + ",".join(changed))
     print("BACKUP=" + str(backup))
