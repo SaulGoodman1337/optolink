@@ -28,7 +28,7 @@ import sys
 import time
 import types
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 ROOT = Path("/opt/optolink")
 PARENT_NAME = "wb2a-gfa-p80-probe.py"
 PARENT_SHA256 = "6de883c422a09c821b342d12e5bb71dd3d518d8115ec2495bdfb202f5a7f50cb"
@@ -179,6 +179,7 @@ def run_probe(parent, vs1, services, opener, log) -> int:
     readback = None
     write_reply = b""
     f4_success = False
+    p300_restored = False
     restarted = set()
 
     try:
@@ -245,6 +246,15 @@ def run_probe(parent, vs1, services, opener, log) -> int:
                                 )
                         except Exception as exc:
                             failures.append("Final VS1 read failed: " + str(exc))
+
+                    try:
+                        log("Restoring P300 and verifying 00F8/2.")
+                        p300_wire = parent.Wire(ser, log)
+                        p300_restored = p300_wire.p300_ident() == b"\x20\xC2"
+                        if not p300_restored:
+                            failures.append("P300 identity after F4 probe is not 20C2.")
+                    except Exception as exc:
+                        failures.append("P300 restoration failed: " + str(exc))
                 finally:
                     try:
                         ser.close()
@@ -269,6 +279,7 @@ def run_probe(parent, vs1, services, opener, log) -> int:
         f4_success
         and baseline is not None
         and readback == baseline
+        and p300_restored
         and splitter_ok
         and not failures
     )
@@ -276,6 +287,7 @@ def run_probe(parent, vs1, services, opener, log) -> int:
     log("F4_SUCCESS=" + ("yes" if f4_success else "no"))
     log("VALUE_UNCHANGED=" + ("yes" if baseline is not None and readback == baseline else "no"))
     log("F4_REPLY=" + (write_reply.hex() or "-"))
+    log("P300_RESTORED=" + ("yes" if p300_restored else "no"))
     log("SPLITTER_RESTARTED=" + ("yes" if splitter_ok else "no"))
     log("RESULT=" + ("PASS" if result_ok else "FAIL"))
     log(
