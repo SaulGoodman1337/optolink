@@ -198,7 +198,9 @@ The previous E7 100->99->100 test proved mutation/readback/restore, not RAM-only
 - [x] Do not interpret `0xA403=20.00 °C` as an actual physical flow target without correlation; the same-window mismatch to `0x2544` disproves that shortcut.
 - [x] Resolve HCC fallback semantics from the Viessmann LON handbook: HCC `nviHCCxSpaceSet` and `nviHCCxFlowTSet` use 20 °C as the documented fallback when their LON value is unavailable, and are not authoritative in the normal internal-control modes.
 - [x] Resolve DHWC authority semantics from the Viessmann LON handbook: `nviDHWCSetpt` is only used when DHWC ApplicMode selects the LON DHW path; otherwise the internal DHW control remains authoritative.
-- [ ] Final read-only LON closure: read `0xA400` HCC1 ApplicMode, `0xA440` HCC2 ApplicMode and `0xA3C2` DHWC ApplicMode. Do not write any of them.
+- [x] Final read-only LON closure completed: `0xA400=FF`, `0xA440=FF`, `0xA3C2=FF`; all three ApplicMode objects are `HVAC_NUL`. Combined with the Viessmann LON semantics, the local HCC1/HCC2/DHWC nvi setpoint paths are non-authoritative/inactive.
+
+**Status: LON/HCC/DHWC input classification closed for the local controller.** The observed HCC 20.00 °C values are source-backed fallback inputs; DHWC nvi setpoint is also inactive because its ApplicMode is HVAC_NUL. Do not promote these nvi values to normal Home Assistant control/state entities.
 
 ## P2 - KM-BUS / Vitotrol
 
