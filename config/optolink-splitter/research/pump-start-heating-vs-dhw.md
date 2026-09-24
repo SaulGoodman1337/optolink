@@ -133,7 +133,7 @@ The `0x0A54` event definition only assigns meaning to byte 3. Therefore `01 11 0
 
 #### E9 configuration discrepancy
 
-The current read shows `E9=100%` (`0x64`). An earlier documented local hardware snapshot recorded `E9=50%` (`0x32`). No change is inferred or corrected automatically. This is now an explicit provenance/readback item: **do not write E9 until the reason for the delta is established**.
+The current read shows `E9=100%` (`0x64`). An earlier documented local hardware snapshot recorded `E9=50%` (`0x32`). The user confirmed that the later 100% value was intentionally set manually, so this is **not** unexplained configuration drift. Preserve 50% as the historical baseline and 100% as the current configured value. With `E8=0`, reduced/secondary operation selects the E7 minimum rather than E9.
 
 ## 0x7660 interpretation boundary
 
