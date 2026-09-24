@@ -125,10 +125,18 @@ function update_script() {
   chmod 755 /usr/local/bin/optolink-debug
   ln -sf /usr/local/bin/optolink-debug /usr/bin/optolink-debug
 
+  cs_repo_fetch config/optolink-splitter/optolink_maintenance_core.py /opt/optolink/optolink_maintenance_core.py
+  chmod 644 /opt/optolink/optolink_maintenance_core.py
+  chown optolink:optolink /opt/optolink/optolink_maintenance_core.py
+
   cs_repo_fetch tools/optolink-maintenance.py /usr/local/bin/optolink-maintenance
   chmod 750 /usr/local/bin/optolink-maintenance
   chown root:root /usr/local/bin/optolink-maintenance
   ln -sf /usr/local/bin/optolink-maintenance /usr/bin/optolink-maintenance
+
+  cs_repo_fetch tools/optolink-maintenance-api.py /usr/local/bin/optolink-maintenance-api
+  chmod 750 /usr/local/bin/optolink-maintenance-api
+  chown root:optolink /usr/local/bin/optolink-maintenance-api
 
   cs_repo_fetch tools/wb2a-schedule-probe.py /usr/local/bin/wb2a-schedule-probe
   chmod 750 /usr/local/bin/wb2a-schedule-probe
@@ -156,6 +164,10 @@ function update_script() {
   chmod 644 /etc/systemd/system/optolink-schedule-manager.service
   chown root:root /etc/systemd/system/optolink-schedule-manager.service
 
+  cs_repo_fetch config/optolink-splitter/optolink-maintenance-api.service /etc/systemd/system/optolink-maintenance-api.service
+  chmod 644 /etc/systemd/system/optolink-maintenance-api.service
+  chown root:root /etc/systemd/system/optolink-maintenance-api.service
+
   systemctl daemon-reload
   systemctl enable optolink-party-emulator.service
 
@@ -169,6 +181,22 @@ function update_script() {
   else
     msg_error "Could not activate VDensHO1 Home Assistant profile; rollback was attempted"
     exit 1
+  fi
+
+  msg_info "Configuring guarded maintenance MQTT API"
+  if runuser -u optolink -- /opt/optolink/venv/bin/python - <<'PY_MAINT_API'
+import sys
+sys.path.insert(0, "/opt/optolink")
+from c_settings_adapter import settings
+raise SystemExit(0 if getattr(settings, "mqtt_broker", None) else 1)
+PY_MAINT_API
+  then
+    systemctl enable optolink-maintenance-api.service >/dev/null 2>&1 || true
+    systemctl restart optolink-maintenance-api.service
+    msg_ok "Maintenance MQTT API active"
+  else
+    systemctl disable --now optolink-maintenance-api.service >/dev/null 2>&1 || true
+    msg_warn "Maintenance MQTT API disabled because mqtt_broker is not configured"
   fi
 
   configure_private_update tools/optolink-splitter-update.sh
@@ -192,5 +220,6 @@ echo -e "${INFO}${YW}Schedule manager:${CL} ${GN}systemctl status optolink-sched
 echo -e "${INFO}${YW}Serial devices:${CL} ${GN}optolink-ports${CL}"
 echo -e "${INFO}${YW}VDensHO1 HA profile:${CL} ${GN}optolink-apply-vdensho1-ha-profile${CL}"
 echo -e "${INFO}${YW}Legacy rollback profile:${CL} ${GN}optolink-apply-vscotho1-profile${CL}"
+echo -e "${INFO}${YW}Maintenance API:${CL} ${GN}systemctl status optolink-maintenance-api${CL}"
 echo -e "${INFO}${YW}Maintenance CLI:${CL} ${GN}optolink-maintenance status${CL}"
 echo -e "${INFO}${YW}Inside the container, run '${GN}update${YW}' to update Optolink-Splitter.${CL}"
