@@ -1,6 +1,6 @@
 # GFA live checkpoint - 2026-09-23
 
-**Current status: P87/P09 temporal ordering is resolved: P87 bit 1 changes 0->1 before P09 leaves the raw-93 / 57.6534% high-start plateau, with at least 257 ms between the non-overlapping transition windows. WB2A/VSKO documentation makes first flame recognition (~2-3 s) distinct from a 10-s ionization-monitored start phase, so P87.b1 is currently best treated as an unnamed marker/precursor near the end of that supervised start/stabilization interval. A read-only mixed VS1 F7/GFA 6B compatibility test is now the next hardware step toward production integration.**
+**Current status: P87/P09 temporal ordering is resolved, and the read-only mixed VS1 compatibility test has now passed. On the exact VDensHO1 / 20C2 appliance, stable Virtual_READ values were byte-identical P300 -> VS1/F7 -> P300 while P80/P06/P09/P87 GFA 6B reads were interleaved in the same persistent VS1 session at 150-ms pacing. The next gate is the stock splitter itself running the existing HA read poll list in temporary permanent-VS1 mode before any GFA production patch is enabled.**
 
 Read the [P87/P09 high-resolution correlation](gfa-p87-p09-hires.md) for the latest completed live timing result. The next bounded experiment is the [mixed VS1 Virtual/GFA compatibility probe](vs1-mixed-gfa-integration.md): stable Virtual_READ values are compared P300 -> VS1 F7 -> P300 while P80/P06/P09/P87 GFA_READs are interleaved in the same VS1 session. It is read-only and does not change production settings. The earlier [long-run FF investigation](gfa-cycle-ff-investigation.md) remains relevant to acquisition quality.
 
@@ -16,6 +16,28 @@ Evidence:
 - [Static variant/scaling definitions](../config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-evidence.json).
 
 This is the current hardware checkpoint. Older collector documents describe static-only work, and older helper/runbook text may describe the state before its first execution. Preserve both the successful short tests and the unsuccessful long observation below.
+
+## 0xxxx. Mixed VS1 F7/6B hardware compatibility PASS - 2026-09-24
+
+The read-only mixed-session probe passed. Seven stable datapoints matched byte-for-byte across P300-before, VS1/F7 and P300-after:
+
+```text
+00F8 20c2
+00FB 03
+2306 15
+2323 02
+6300 37
+6773 00
+778C 0103
+```
+
+Inside the same persistent VS1 session, GFA reads returned P80=`20,20`, P06=`00`, P09=`93`, P87=`20`. No FF occurred. P300 and both previously running services were restored. The intended 150-ms reply-to-next-request spacing was actually observed at 150-151 ms during the mixed block.
+
+This proves the transport primitive needed for a one-owner VS1 design on this appliance. It does not yet validate the complete production poll list, sustained HA freshness, VS1 Virtual_WRITE behavior, long-run FF rate or recovery policy.
+
+Next: run the unmodified upstream splitter temporarily in permanent VS1 mode with the existing HA read poll list, while disabling MQTT/TCP write ingress and stopping the party emulator. Only after that passes should a structured GFA_READ production patch be enabled.
+
+Evidence: [mixed VS1 live run](../config/optolink-splitter/research/vitosoft/vs1-mixed-compat-run-2026-09-24-evidence.json). Runbook: [mixed VS1 integration](vs1-mixed-gfa-integration.md).
 
 ## 0xxx. P87 semantic bound and production-integration probe - 2026-09-24
 
