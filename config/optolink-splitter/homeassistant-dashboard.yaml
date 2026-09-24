@@ -638,6 +638,49 @@ button_card_templates:
         v3:
           - border-left: 1px solid var(--divider-color)
 
+
+  schedule_day:
+    section_mode: true
+    show_icon: false
+    show_name: true
+    show_state: true
+    show_units: false
+    show_ripple: true
+    tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
+    styles:
+      card:
+        - border: none
+        - border-radius: 0
+        - box-shadow: none
+        - background: transparent
+        - padding: 7px 4px
+        - min-height: 38px
+      grid:
+        - grid-template-areas: >-
+            "n s"
+        - grid-template-columns: 86px 1fr
+        - grid-template-rows: min-content
+        - column-gap: 8px
+      name:
+        - justify-self: start
+        - align-self: center
+        - color: var(--secondary-text-color)
+        - font-size: 11px
+        - font-weight: 600
+      state:
+        - justify-self: start
+        - align-self: center
+        - color: var(--primary-text-color)
+        - font-size: 11px
+        - font-weight: 500
+        - line-height: 1.25
+        - white-space: normal
+        - text-align: left
+        - overflow-wrap: anywhere
+
 views:
   - title: Heizung
     path: heizung
@@ -4609,84 +4652,312 @@ views:
             heading: Zeitprogramme
             heading_style: title
             icon: mdi:calendar-clock
-          - type: markdown
-            content: >-
-              Wochenübersicht der im Kessel gespeicherten Schaltzeiten.
-              Anzeige-only: Änderungen werden hier bewusst nicht angeboten,
-              solange die Schreibsemantik der Zeitprogramme nicht vollständig
-              verifiziert ist.
+
+          - type: custom:mushroom-template-card
+            primary: Wochenprogramme im Vitodens
+            secondary: >-
+              Read-only · Die gespeicherten Schaltzeiten werden nur angezeigt.
+              Schreiben bleibt deaktiviert, bis die Zeitprogramm-Semantik vollständig verifiziert ist.
+            icon: mdi:eye-outline
+            icon_color: grey
+            multiline_secondary: true
+            tap_action:
+              action: none
+            grid_options:
+              columns: full
+
+          - type: custom:mushroom-template-card
+            primary: Heute · Heizung
+            secondary: >-
+              {% set d = ['montag','dienstag','mittwoch','donnerstag','freitag','samstag','sonntag'][now().weekday()] %}
+              {{ states('sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_' ~ d ~ '_anzeige') }}
+            icon: mdi:radiator
+            icon_color: orange
+            multiline_secondary: true
+            tap_action:
+              action: none
+            grid_options:
+              columns: 4
+          - type: custom:mushroom-template-card
+            primary: Heute · Warmwasser
+            secondary: >-
+              {% set d = ['montag','dienstag','mittwoch','donnerstag','freitag','samstag','sonntag'][now().weekday()] %}
+              {{ states('sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_' ~ d ~ '_anzeige') }}
+            icon: mdi:water-thermometer
+            icon_color: cyan
+            multiline_secondary: true
+            tap_action:
+              action: none
+            grid_options:
+              columns: 4
+          - type: custom:mushroom-template-card
+            primary: Heute · Zirkulation
+            secondary: >-
+              {% set d = ['montag','dienstag','mittwoch','donnerstag','freitag','samstag','sonntag'][now().weekday()] %}
+              {{ states('sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_' ~ d ~ '_anzeige') }}
+            icon: mdi:pump
+            icon_color: blue
+            multiline_secondary: true
+            tap_action:
+              action: none
+            grid_options:
+              columns: 4
+
       - type: grid
         cards:
           - type: heading
             heading: Heizung
             heading_style: title
             icon: mdi:radiator
-          - type: entities
-            title: Heizkreis M1
-            show_header_toggle: false
-            entities:
-              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_montag_anzeige
-                name: Montag
-              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_dienstag_anzeige
-                name: Dienstag
-              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_mittwoch_anzeige
-                name: Mittwoch
-              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_donnerstag_anzeige
-                name: Donnerstag
-              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_freitag_anzeige
-                name: Freitag
-              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_samstag_anzeige
-                name: Samstag
-              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_sonntag_anzeige
-                name: Sonntag
+- type: custom:button-card
+  section_mode: true
+  show_icon: false
+  show_name: false
+  show_state: false
+  show_ripple: false
+  tap_action:
+    action: none
+  styles:
+    card:
+      - border-radius: 14px
+      - border: 1px solid var(--divider-color)
+      - border-left: '3px solid #ff9800'
+      - box-shadow: none
+      - padding: 3px 8px
+      - background: var(--ha-card-background, var(--card-background-color))
+    grid:
+      - grid-template-areas: >-
+          "d1" "d2" "d3" "d4" "d5" "d6" "d7"
+      - grid-template-columns: 1fr
+      - grid-template-rows: repeat(7, min-content)
+    custom_fields:
+      d2:
+        - border-top: 1px solid var(--divider-color)
+      d3:
+        - border-top: 1px solid var(--divider-color)
+      d4:
+        - border-top: 1px solid var(--divider-color)
+      d5:
+        - border-top: 1px solid var(--divider-color)
+      d6:
+        - border-top: 1px solid var(--divider-color)
+      d7:
+        - border-top: 1px solid var(--divider-color)
+    d1:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_montag_anzeige
+        name: Montag
+    d2:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_dienstag_anzeige
+        name: Dienstag
+    d3:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_mittwoch_anzeige
+        name: Mittwoch
+    d4:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_donnerstag_anzeige
+        name: Donnerstag
+    d5:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_freitag_anzeige
+        name: Freitag
+    d6:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_samstag_anzeige
+        name: Samstag
+    d7:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_sonntag_anzeige
+        name: Sonntag
+  grid_options:
+    columns: full
+
       - type: grid
         cards:
           - type: heading
             heading: Warmwasser
             heading_style: title
             icon: mdi:water-thermometer
-          - type: entities
-            title: Speicherladung
-            show_header_toggle: false
-            entities:
-              - entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_montag_anzeige
-                name: Montag
-              - entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_dienstag_anzeige
-                name: Dienstag
-              - entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_mittwoch_anzeige
-                name: Mittwoch
-              - entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_donnerstag_anzeige
-                name: Donnerstag
-              - entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_freitag_anzeige
-                name: Freitag
-              - entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_samstag_anzeige
-                name: Samstag
-              - entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_sonntag_anzeige
-                name: Sonntag
+- type: custom:button-card
+  section_mode: true
+  show_icon: false
+  show_name: false
+  show_state: false
+  show_ripple: false
+  tap_action:
+    action: none
+  styles:
+    card:
+      - border-radius: 14px
+      - border: 1px solid var(--divider-color)
+      - border-left: '3px solid #00bcd4'
+      - box-shadow: none
+      - padding: 3px 8px
+      - background: var(--ha-card-background, var(--card-background-color))
+    grid:
+      - grid-template-areas: >-
+          "d1" "d2" "d3" "d4" "d5" "d6" "d7"
+      - grid-template-columns: 1fr
+      - grid-template-rows: repeat(7, min-content)
+    custom_fields:
+      d2:
+        - border-top: 1px solid var(--divider-color)
+      d3:
+        - border-top: 1px solid var(--divider-color)
+      d4:
+        - border-top: 1px solid var(--divider-color)
+      d5:
+        - border-top: 1px solid var(--divider-color)
+      d6:
+        - border-top: 1px solid var(--divider-color)
+      d7:
+        - border-top: 1px solid var(--divider-color)
+    d1:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_montag_anzeige
+        name: Montag
+    d2:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_dienstag_anzeige
+        name: Dienstag
+    d3:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_mittwoch_anzeige
+        name: Mittwoch
+    d4:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_donnerstag_anzeige
+        name: Donnerstag
+    d5:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_freitag_anzeige
+        name: Freitag
+    d6:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_samstag_anzeige
+        name: Samstag
+    d7:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_warmwasser_zeitprogramm_sonntag_anzeige
+        name: Sonntag
+  grid_options:
+    columns: full
+
       - type: grid
         cards:
           - type: heading
             heading: Zirkulation
             heading_style: title
             icon: mdi:pump
-          - type: entities
-            title: Zirkulationspumpe
-            show_header_toggle: false
-            entities:
-              - entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_montag_anzeige
-                name: Montag
-              - entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_dienstag_anzeige
-                name: Dienstag
-              - entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_mittwoch_anzeige
-                name: Mittwoch
-              - entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_donnerstag_anzeige
-                name: Donnerstag
-              - entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_freitag_anzeige
-                name: Freitag
-              - entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_samstag_anzeige
-                name: Samstag
-              - entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_sonntag_anzeige
-                name: Sonntag
+- type: custom:button-card
+  section_mode: true
+  show_icon: false
+  show_name: false
+  show_state: false
+  show_ripple: false
+  tap_action:
+    action: none
+  styles:
+    card:
+      - border-radius: 14px
+      - border: 1px solid var(--divider-color)
+      - border-left: '3px solid #2196f3'
+      - box-shadow: none
+      - padding: 3px 8px
+      - background: var(--ha-card-background, var(--card-background-color))
+    grid:
+      - grid-template-areas: >-
+          "d1" "d2" "d3" "d4" "d5" "d6" "d7"
+      - grid-template-columns: 1fr
+      - grid-template-rows: repeat(7, min-content)
+    custom_fields:
+      d2:
+        - border-top: 1px solid var(--divider-color)
+      d3:
+        - border-top: 1px solid var(--divider-color)
+      d4:
+        - border-top: 1px solid var(--divider-color)
+      d5:
+        - border-top: 1px solid var(--divider-color)
+      d6:
+        - border-top: 1px solid var(--divider-color)
+      d7:
+        - border-top: 1px solid var(--divider-color)
+    d1:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_montag_anzeige
+        name: Montag
+    d2:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_dienstag_anzeige
+        name: Dienstag
+    d3:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_mittwoch_anzeige
+        name: Mittwoch
+    d4:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_donnerstag_anzeige
+        name: Donnerstag
+    d5:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_freitag_anzeige
+        name: Freitag
+    d6:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_samstag_anzeige
+        name: Samstag
+    d7:
+      card:
+        type: custom:button-card
+        template: schedule_day
+        entity: sensor.vitodens_200_wb2a_zirkulation_zeitprogramm_sonntag_anzeige
+        name: Sonntag
+  grid_options:
+    columns: full
+
     cards: []
 
   - title: Graphen
