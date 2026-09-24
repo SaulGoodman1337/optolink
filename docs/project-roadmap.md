@@ -127,7 +127,7 @@ Keep the current layout for now. Revisit it later with these constraints:
 
 ### 2. Move time programs to a dedicated Home Assistant tab
 
-Status: **implemented in YAML / Home Assistant visual verification pending**
+Status: **read-only UI implemented / block format understood / local write gate pending**
 
 The weekly time programs currently live at the bottom of the diagnostics page
 and should be moved out of diagnostics into a dedicated, visually polished
@@ -160,6 +160,28 @@ Design goals for the new tab:
 
 Main file:
 `config/optolink-splitter/homeassistant-dashboard.yaml`
+
+
+Current schedule reverse-engineering update (2026-09-24):
+
+- one weekday is one complete eight-byte block containing up to four start/end
+  pairs;
+- time bytes use `(hour << 3) + minute/10`; unused entries are `FF FF`;
+- `24:00` is representable as `C0` and should be accepted only as an end
+  boundary;
+- local readback already confirms `28 A0 FF...` = 05:00-20:00 and
+  `2B A8 FF...` = 05:30-21:00;
+- upstream Optolink-Splitter supports complete-block `writeraw` and
+  `schedvdens` MQTT `/set` conversion;
+- the upstream converter is permissive, so production UI writes must use
+  project-side strict validation rather than accepting arbitrary strings;
+- guarded helper `wb2a-schedule-probe` now provides map/snapshot/decode/
+  encode and an explicit write-readback-restore probe;
+- exact contract and test procedure:
+  `docs/wb2a-schedule-blocks.md`.
+
+Next gate: run a probe on a weekday other than today and require exact test
+readback plus exact restoration before enabling writable HA schedule controls.
 
 The old schedule cards should be removed from the diagnostics page once the
 dedicated tab is in place.
