@@ -1014,7 +1014,7 @@ the installer was statically extracted and contains the original VB6 source,
 compiled DLL, Visual Basic sample project and Excel sample.
 
 Detailed reproducible analysis:
-[v-comm-dll-source-recovery-2026-09-25.md](../v-comm-dll-source-recovery-2026-09-25.md).
+[v-comm-dll-source-recovery-2026-09-25.md](v-comm-dll-source-recovery-2026-09-25.md).
 
 The recovered `v_comm.cls` explicitly supports `VDensHO1 = 0x20C2`, but
 its transport is limited to normal P300 `Virtual_READ / 0x01` and
@@ -1319,7 +1319,7 @@ The historical KarlKoch M30612MC readout claim therefore remains a genuinely
 different mechanism that has not yet been recovered.
 
 Detailed note:
-[v-comm-dll-source-recovery-2026-09-25.md](../v-comm-dll-source-recovery-2026-09-25.md).
+[v-comm-dll-source-recovery-2026-09-25.md](v-comm-dll-source-recovery-2026-09-25.md).
 
 Public evidence commit:
 `e9d1d66c5c214a7dcb8fb7a88c931c273ec7f326`.
