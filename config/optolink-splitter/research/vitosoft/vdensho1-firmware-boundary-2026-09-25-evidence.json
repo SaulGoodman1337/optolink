@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "title": "VDensHO1 firmware asset and MCU-evidence boundary",
+  "date_local": "2026-09-25",
+  "source_snapshot": {
+    "private_repository": "SaulGoodman1337/Viessmann-Vitosoft-300-SID1",
+    "collector_release": "collector-20260924-143439",
+    "asset": "vitosoft-private-archive-20260924-143439.7z",
+    "sha256": "3d31380d6dfabf8ede9e305b115e847fb0670511e253a4ed4e59feef2f7adfee"
+  },
+  "firmware_asset_hunt": {
+    "workflow_commit": "67a172c6139b2b93f1c8a431f214f90e8068955c",
+    "run": 36127832189,
+    "artifact": 10861175324,
+    "artifact_digest": "sha256:bf86d65d346b0446cde3f6a56d95ed20f0595dc406b5a7fdec2b3f45284eb779",
+    "archive_paths_scanned": "full verified release archive",
+    "candidate_binary_name_hits": 9,
+    "candidates": [
+      "raw/install-parent/ServiceTool/MobileClient/vsmGWG99Native.dll",
+      "raw/install-parent/ServiceTool/Support/Drivers/GWG99/x64/vsmGWG99Native.dll",
+      "raw/install-parent/ServiceTool/Support/Drivers/GWG99/x86/vsmGWG99Native.dll",
+      "associated dumpbin text outputs"
+    ],
+    "result": "NO_CONTROLLER_FIRMWARE_ASSET_FOUND",
+    "interpretation": [
+      "No .hex/.mot/.s19/.srec/.bin/.rom/.eep/.fw/.img/.upd asset attributable to VDensHO1/20C2 was found.",
+      "The vsmGWG99Native DLLs are Windows host-side Vitosoft drivers and are not boiler regulation firmware.",
+      "The verified Vitosoft archive therefore cannot currently provide a controller image for direct static firmware analysis."
+    ]
+  },
+  "m16c_reference_trace": {
+    "workflow_commit": "ea8e68fd189d29c0752ee16265357972d6c6ddb6",
+    "run": 36128032409,
+    "matching_event": "NRF_ResetUrsache~0x0900",
+    "description_excerpt": "EFh Timer- Fehler. Alle Timer des M16C stehen still.",
+    "current_eventtypegroup_memberships": [],
+    "configbackup_eventtypegroup_memberships": [],
+    "conclusion": "GENERIC_EVENT_NOT_LOCAL_MCU_PROOF",
+    "interpretation": [
+      "Vitosoft contains a generic reset-cause event whose description references M16C.",
+      "The event has no EventTypeGroup membership, including no VDensHO1 membership.",
+      "Do not infer that the local 20C2 regulation uses an M16C solely from this text.",
+      "A local PCB photo or other device-specific source remains required before naming the MCU family."
+    ]
+  },
+  "public_board_provenance_to_verify_later": [
+    "GG1/WB2A regulation replacement families include 7823830 and successor 7825241.",
+    "A publicly reported GG1 PCB carries 7184367 405334100.",
+    "These part numbers are comparison targets only until the user's installed board is photographed."
+  ],
+  "next_steps": [
+    "Inspect exact local regulation PCB and MCU marking when physical access/photos are available.",
+    "Use public GG1 board photos only as comparison references, not local proof.",
+    "Proceed with physical coding-plug EEPROM correlation when the reader is available.",
+    "Do not attempt broad RAM/flash sweeps or infer program-flash accessibility from ordinary 16-bit VS2 addresses."
+  ]
+}
