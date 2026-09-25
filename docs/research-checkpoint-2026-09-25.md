@@ -1028,3 +1028,38 @@ Before ending the next session:
 - [ ] any flame-correlation run classified as STARTUP_ACTIVITY_SEEN yes/no;
 - [ ] no unresolved temporary setpoint remains;
 - [ ] production splitter/services confirmed running.
+
+## Session close / canonical handoff refresh
+
+The replacement-chat handoff and research plan were refreshed after the
+burner-dependent A1 runtime work.
+
+Canonical current commits:
+
+- research-plan pump-boundary correction:
+  `96854adb5a3b61d09d9798be2f1fe435a1b8ad17`;
+- follow-up removal of superseded clamp/arbitration wording:
+  `baa43e8d0d67ca5847ce9ff0f21e667117828f53`;
+- full new-chat handoff rewrite:
+  `1e02eb6e14e9970024d26a5ff0ef75b5759edde9`;
+- Issue #25 firmware-boundary update: comment id `5831663523`.
+
+Final production verification on 2026-09-25 13:27 CEST:
+
+~~~text
+E7 / 0x27E7 = 0x1E = 30 %
+A1 / 0x7663 = 01 1E = on / 30 %
+flame = off
+all four production services = active
+no experimental watch/probe process remains
+~~~
+
+The current research boundary is therefore clean:
+
+- no unresolved temporary coding value;
+- no active experimental helper;
+- no exposed source-backed volatile direct-A1 pump-speed command remains to
+  test;
+- next independent evidence paths are physical coding-plug EEPROM correlation
+  and local regulation-board/MCU identification.
+
