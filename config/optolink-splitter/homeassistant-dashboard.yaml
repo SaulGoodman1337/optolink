@@ -891,6 +891,71 @@ button_card_templates:
         ]]]
 
 
+  schedule_day_card:
+    section_mode: true
+    show_icon: true
+    show_name: true
+    show_state: false
+    show_label: false
+    show_ripple: false
+    variables:
+      day_index: 0
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    styles:
+      card:
+        - border-radius: 18px
+        - border: 1px solid var(--divider-color)
+        - box-shadow: none
+        - padding: 0
+        - overflow: hidden
+        - background: |
+            [[[
+              const today = (new Date().getDay() + 6) % 7;
+              const base = 'var(--ha-card-background, var(--card-background-color))';
+              if (today !== Number(variables.day_index)) return base;
+              return 'color-mix(in srgb, var(--primary-color) 5%, ' + base + ')';
+            ]]]
+      grid:
+        - grid-template-areas: '"i n today" "heating heating heating" "dhw dhw dhw" "circulation circulation circulation"'
+        - grid-template-columns: 30px 1fr auto
+        - grid-template-rows: 46px min-content min-content min-content
+        - column-gap: 8px
+      img_cell:
+        - width: 24px
+        - height: 24px
+        - margin-left: 12px
+      icon:
+        - width: 18px
+        - color: var(--secondary-text-color)
+      name:
+        - justify-self: start
+        - font-size: 14px
+        - font-weight: 700
+        - padding-left: 4px
+      custom_fields:
+        today:
+          - justify-self: end
+          - padding-right: 14px
+        heating:
+          - width: 100%
+          - border-top: 1px solid var(--divider-color)
+        dhw:
+          - width: 100%
+          - border-top: 1px solid var(--divider-color)
+        circulation:
+          - width: 100%
+          - border-top: 1px solid var(--divider-color)
+    custom_fields:
+      today: |
+        [[[
+          const today = (new Date().getDay() + 6) % 7;
+          if (today !== Number(variables.day_index)) return '';
+          return '<span style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:9px;font-weight:800;letter-spacing:.04em;color:var(--primary-color);background:color-mix(in srgb, var(--primary-color) 12%, transparent);">HEUTE</span>';
+        ]]]
+
   schedule_program_row:
     section_mode: true
     show_icon: true
@@ -1045,21 +1110,32 @@ button_card_templates:
       action: more-info
     styles:
       card:
-        - border-radius: 14px
-        - border: 1px solid var(--divider-color)
+        - border-radius: 0
+        - border: none
         - border-left: |
             [[[
-              return '4px solid ' + variables.accent;
+              return '3px solid ' + variables.accent;
             ]]]
         - box-shadow: none
-        - padding: 9px 11px 10px
-        - min-height: 78px
+        - padding: 9px 12px 10px
+        - min-height: 72px
         - background: |
             [[[
-              const today = (new Date().getDay() + 6) % 7;
-              const base = 'var(--ha-card-background, var(--card-background-color))';
-              if (today !== Number(variables.day_index)) return base;
-              return 'color-mix(in srgb, ' + variables.accent + ' 6%, ' + base + ')';
+              const raw = String(entity?.state ?? '').trim();
+              const d = new Date();
+              const today = (d.getDay() + 6) % 7;
+              if (today !== Number(variables.day_index)) return 'transparent';
+              const now = d.getHours() * 60 + d.getMinutes();
+              for (const part of raw.split(',')) {
+                const m = part.trim().match(/^(\d{2}):(\d{2})-(\d{2}):(\d{2})$/);
+                if (!m) continue;
+                const a = Number(m[1]) * 60 + Number(m[2]);
+                const b = Number(m[3]) * 60 + Number(m[4]);
+                if (now >= a && now < b) {
+                  return 'color-mix(in srgb, ' + variables.accent + ' 8%, transparent)';
+                }
+              }
+              return 'transparent';
             ]]]
       grid:
         - grid-template-areas: '"i n status" "i times times" "i timeline timeline"'
@@ -5405,7 +5481,7 @@ views:
               {% elif s == 'Schreibt …' and p and d %}
                 {{ p }} · {{ d }} · {{ z }}
               {% else %}
-                Tippe eine Programmzeile an · Auswahl statt Texteingabe · max. 4 Zeitfenster
+                Wochentag wählen · Programm antippen · max. 4 Zeitfenster
               {% endif %}
             icon: >-
               {% set s = states(entity) %}
@@ -5442,343 +5518,371 @@ views:
                 content: Zirkulation
               - type: template
                 icon: mdi:gesture-tap
-                content: Antippen zum Bearbeiten
+                content: Programm antippen
             grid_options:
               columns: full
 
       - type: grid
         column_span: 1
         cards:
-          - type: heading
-            heading: Montag
-            heading_style: title
-            icon: mdi:calendar-week
-
           - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_montag_editor
-            name: Heizung
+            template: schedule_day_card
+            name: Montag
+            icon: mdi:calendar-week
             variables:
               day_index: 0
-              day_slug: montag
-              program: heating
-              program_label: Heizung
-              accent: '#ff9800'
-              icon: mdi:radiator
-            grid_options:
-              columns: full
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_montag_editor
-            name: Warmwasser
-            variables:
-              day_index: 0
-              day_slug: montag
-              program: dhw
-              program_label: Warmwasser
-              accent: '#00bcd4'
-              icon: mdi:water-thermometer
-            grid_options:
-              columns: full
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_montag_editor
-            name: Zirkulation
-            variables:
-              day_index: 0
-              day_slug: montag
-              program: circulation
-              program_label: Zirkulation
-              accent: '#2196f3'
-              icon: mdi:pump
+            custom_fields:
+              heating:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_montag_editor
+                name: Heizung
+                variables:
+                  day_index: 0
+                  day_slug: montag
+                  program: heating
+                  program_label: Heizung
+                  accent: '#ff9800'
+                  icon: mdi:radiator
+              dhw:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_montag_editor
+                name: Warmwasser
+                variables:
+                  day_index: 0
+                  day_slug: montag
+                  program: dhw
+                  program_label: Warmwasser
+                  accent: '#00bcd4'
+                  icon: mdi:water-thermometer
+              circulation:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_montag_editor
+                name: Zirkulation
+                variables:
+                  day_index: 0
+                  day_slug: montag
+                  program: circulation
+                  program_label: Zirkulation
+                  accent: '#2196f3'
+                  icon: mdi:pump
             grid_options:
               columns: full
 
       - type: grid
         column_span: 1
         cards:
-          - type: heading
-            heading: Dienstag
-            heading_style: title
-            icon: mdi:calendar-week
-
           - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_dienstag_editor
-            name: Heizung
+            template: schedule_day_card
+            name: Dienstag
+            icon: mdi:calendar-week
             variables:
               day_index: 1
-              day_slug: dienstag
-              program: heating
-              program_label: Heizung
-              accent: '#ff9800'
-              icon: mdi:radiator
-            grid_options:
-              columns: full
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_dienstag_editor
-            name: Warmwasser
-            variables:
-              day_index: 1
-              day_slug: dienstag
-              program: dhw
-              program_label: Warmwasser
-              accent: '#00bcd4'
-              icon: mdi:water-thermometer
-            grid_options:
-              columns: full
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_dienstag_editor
-            name: Zirkulation
-            variables:
-              day_index: 1
-              day_slug: dienstag
-              program: circulation
-              program_label: Zirkulation
-              accent: '#2196f3'
-              icon: mdi:pump
+            custom_fields:
+              heating:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_dienstag_editor
+                name: Heizung
+                variables:
+                  day_index: 1
+                  day_slug: dienstag
+                  program: heating
+                  program_label: Heizung
+                  accent: '#ff9800'
+                  icon: mdi:radiator
+              dhw:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_dienstag_editor
+                name: Warmwasser
+                variables:
+                  day_index: 1
+                  day_slug: dienstag
+                  program: dhw
+                  program_label: Warmwasser
+                  accent: '#00bcd4'
+                  icon: mdi:water-thermometer
+              circulation:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_dienstag_editor
+                name: Zirkulation
+                variables:
+                  day_index: 1
+                  day_slug: dienstag
+                  program: circulation
+                  program_label: Zirkulation
+                  accent: '#2196f3'
+                  icon: mdi:pump
             grid_options:
               columns: full
 
       - type: grid
         column_span: 1
         cards:
-          - type: heading
-            heading: Mittwoch
-            heading_style: title
-            icon: mdi:calendar-week
-
           - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_mittwoch_editor
-            name: Heizung
+            template: schedule_day_card
+            name: Mittwoch
+            icon: mdi:calendar-week
             variables:
               day_index: 2
-              day_slug: mittwoch
-              program: heating
-              program_label: Heizung
-              accent: '#ff9800'
-              icon: mdi:radiator
-            grid_options:
-              columns: full
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_mittwoch_editor
-            name: Warmwasser
-            variables:
-              day_index: 2
-              day_slug: mittwoch
-              program: dhw
-              program_label: Warmwasser
-              accent: '#00bcd4'
-              icon: mdi:water-thermometer
-            grid_options:
-              columns: full
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_mittwoch_editor
-            name: Zirkulation
-            variables:
-              day_index: 2
-              day_slug: mittwoch
-              program: circulation
-              program_label: Zirkulation
-              accent: '#2196f3'
-              icon: mdi:pump
+            custom_fields:
+              heating:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_mittwoch_editor
+                name: Heizung
+                variables:
+                  day_index: 2
+                  day_slug: mittwoch
+                  program: heating
+                  program_label: Heizung
+                  accent: '#ff9800'
+                  icon: mdi:radiator
+              dhw:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_mittwoch_editor
+                name: Warmwasser
+                variables:
+                  day_index: 2
+                  day_slug: mittwoch
+                  program: dhw
+                  program_label: Warmwasser
+                  accent: '#00bcd4'
+                  icon: mdi:water-thermometer
+              circulation:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_mittwoch_editor
+                name: Zirkulation
+                variables:
+                  day_index: 2
+                  day_slug: mittwoch
+                  program: circulation
+                  program_label: Zirkulation
+                  accent: '#2196f3'
+                  icon: mdi:pump
             grid_options:
               columns: full
 
       - type: grid
         column_span: 1
         cards:
-          - type: heading
-            heading: Donnerstag
-            heading_style: title
+          - type: custom:button-card
+            template: schedule_day_card
+            name: Donnerstag
             icon: mdi:calendar-week
-
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_donnerstag_editor
-            name: Heizung
             variables:
               day_index: 3
-              day_slug: donnerstag
-              program: heating
-              program_label: Heizung
-              accent: '#ff9800'
-              icon: mdi:radiator
-            grid_options:
-              columns: full
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_donnerstag_editor
-            name: Warmwasser
-            variables:
-              day_index: 3
-              day_slug: donnerstag
-              program: dhw
-              program_label: Warmwasser
-              accent: '#00bcd4'
-              icon: mdi:water-thermometer
-            grid_options:
-              columns: full
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_donnerstag_editor
-            name: Zirkulation
-            variables:
-              day_index: 3
-              day_slug: donnerstag
-              program: circulation
-              program_label: Zirkulation
-              accent: '#2196f3'
-              icon: mdi:pump
+            custom_fields:
+              heating:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_donnerstag_editor
+                name: Heizung
+                variables:
+                  day_index: 3
+                  day_slug: donnerstag
+                  program: heating
+                  program_label: Heizung
+                  accent: '#ff9800'
+                  icon: mdi:radiator
+              dhw:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_donnerstag_editor
+                name: Warmwasser
+                variables:
+                  day_index: 3
+                  day_slug: donnerstag
+                  program: dhw
+                  program_label: Warmwasser
+                  accent: '#00bcd4'
+                  icon: mdi:water-thermometer
+              circulation:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_donnerstag_editor
+                name: Zirkulation
+                variables:
+                  day_index: 3
+                  day_slug: donnerstag
+                  program: circulation
+                  program_label: Zirkulation
+                  accent: '#2196f3'
+                  icon: mdi:pump
             grid_options:
               columns: full
 
       - type: grid
         column_span: 1
         cards:
-          - type: heading
-            heading: Freitag
-            heading_style: title
+          - type: custom:button-card
+            template: schedule_day_card
+            name: Freitag
             icon: mdi:calendar-week
-
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_freitag_editor
-            name: Heizung
             variables:
               day_index: 4
-              day_slug: freitag
-              program: heating
-              program_label: Heizung
-              accent: '#ff9800'
-              icon: mdi:radiator
-            grid_options:
-              columns: full
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_freitag_editor
-            name: Warmwasser
-            variables:
-              day_index: 4
-              day_slug: freitag
-              program: dhw
-              program_label: Warmwasser
-              accent: '#00bcd4'
-              icon: mdi:water-thermometer
-            grid_options:
-              columns: full
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_freitag_editor
-            name: Zirkulation
-            variables:
-              day_index: 4
-              day_slug: freitag
-              program: circulation
-              program_label: Zirkulation
-              accent: '#2196f3'
-              icon: mdi:pump
+            custom_fields:
+              heating:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_freitag_editor
+                name: Heizung
+                variables:
+                  day_index: 4
+                  day_slug: freitag
+                  program: heating
+                  program_label: Heizung
+                  accent: '#ff9800'
+                  icon: mdi:radiator
+              dhw:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_freitag_editor
+                name: Warmwasser
+                variables:
+                  day_index: 4
+                  day_slug: freitag
+                  program: dhw
+                  program_label: Warmwasser
+                  accent: '#00bcd4'
+                  icon: mdi:water-thermometer
+              circulation:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_freitag_editor
+                name: Zirkulation
+                variables:
+                  day_index: 4
+                  day_slug: freitag
+                  program: circulation
+                  program_label: Zirkulation
+                  accent: '#2196f3'
+                  icon: mdi:pump
             grid_options:
               columns: full
 
       - type: grid
         column_span: 1
         cards:
-          - type: heading
-            heading: Samstag
-            heading_style: title
+          - type: custom:button-card
+            template: schedule_day_card
+            name: Samstag
             icon: mdi:calendar-weekend
-
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_samstag_editor
-            name: Heizung
             variables:
               day_index: 5
-              day_slug: samstag
-              program: heating
-              program_label: Heizung
-              accent: '#ff9800'
-              icon: mdi:radiator
-            grid_options:
-              columns: full
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_samstag_editor
-            name: Warmwasser
-            variables:
-              day_index: 5
-              day_slug: samstag
-              program: dhw
-              program_label: Warmwasser
-              accent: '#00bcd4'
-              icon: mdi:water-thermometer
-            grid_options:
-              columns: full
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_samstag_editor
-            name: Zirkulation
-            variables:
-              day_index: 5
-              day_slug: samstag
-              program: circulation
-              program_label: Zirkulation
-              accent: '#2196f3'
-              icon: mdi:pump
+            custom_fields:
+              heating:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_samstag_editor
+                name: Heizung
+                variables:
+                  day_index: 5
+                  day_slug: samstag
+                  program: heating
+                  program_label: Heizung
+                  accent: '#ff9800'
+                  icon: mdi:radiator
+              dhw:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_samstag_editor
+                name: Warmwasser
+                variables:
+                  day_index: 5
+                  day_slug: samstag
+                  program: dhw
+                  program_label: Warmwasser
+                  accent: '#00bcd4'
+                  icon: mdi:water-thermometer
+              circulation:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_samstag_editor
+                name: Zirkulation
+                variables:
+                  day_index: 5
+                  day_slug: samstag
+                  program: circulation
+                  program_label: Zirkulation
+                  accent: '#2196f3'
+                  icon: mdi:pump
             grid_options:
               columns: full
 
       - type: grid
         column_span: 1
         cards:
-          - type: heading
-            heading: Sonntag
-            heading_style: title
+          - type: custom:button-card
+            template: schedule_day_card
+            name: Sonntag
             icon: mdi:calendar-weekend
-
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_sonntag_editor
-            name: Heizung
             variables:
               day_index: 6
-              day_slug: sonntag
-              program: heating
-              program_label: Heizung
-              accent: '#ff9800'
-              icon: mdi:radiator
-            grid_options:
-              columns: full
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_sonntag_editor
-            name: Warmwasser
-            variables:
-              day_index: 6
-              day_slug: sonntag
-              program: dhw
-              program_label: Warmwasser
-              accent: '#00bcd4'
-              icon: mdi:water-thermometer
-            grid_options:
-              columns: full
-          - type: custom:button-card
-            template: schedule_program_row
-            entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_sonntag_editor
-            name: Zirkulation
-            variables:
-              day_index: 6
-              day_slug: sonntag
-              program: circulation
-              program_label: Zirkulation
-              accent: '#2196f3'
-              icon: mdi:pump
+            custom_fields:
+              heating:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_heizkreis_m1_zeitprogramm_sonntag_editor
+                name: Heizung
+                variables:
+                  day_index: 6
+                  day_slug: sonntag
+                  program: heating
+                  program_label: Heizung
+                  accent: '#ff9800'
+                  icon: mdi:radiator
+              dhw:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_warmwasser_zeitprogramm_sonntag_editor
+                name: Warmwasser
+                variables:
+                  day_index: 6
+                  day_slug: sonntag
+                  program: dhw
+                  program_label: Warmwasser
+                  accent: '#00bcd4'
+                  icon: mdi:water-thermometer
+              circulation:
+              card:
+                type: custom:button-card
+                template: schedule_program_row
+                entity: text.vitodens_200_wb2a_zirkulation_zeitprogramm_sonntag_editor
+                name: Zirkulation
+                variables:
+                  day_index: 6
+                  day_slug: sonntag
+                  program: circulation
+                  program_label: Zirkulation
+                  accent: '#2196f3'
+                  icon: mdi:pump
             grid_options:
               columns: full
 
