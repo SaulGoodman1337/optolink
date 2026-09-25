@@ -279,6 +279,44 @@ e6238c86  editable weekly schedule cockpit
 2ca471b8  refine schedule timeline cockpit
 ~~~
 
+## Structured weekday editor implementation - 2026-09-25
+
+A new operator-facing editor has been implemented on branch
+`feat/schedule-day-editor-20260925`.
+
+The dashboard is now weekday-centric rather than program-centric: each weekday
+contains **Heizung**, **Warmwasser** and **Zirkulation** together, with stable
+orange/cyan/blue accents, compact interval pills, a 24 h timeline and today /
+active-state indication.
+
+Tapping one program row opens a shared structured editor. Four start/end pairs
+are exposed as MQTT Select entities in 10-minute steps; there is no free-text
+schedule entry in the normal dashboard workflow. The selector values are only
+staged in `optolink-schedule-manager`.
+
+Safety properties are unchanged:
+
+- loading the editor reads the current complete eight-byte controller block;
+- changing selectors does not write the controller;
+- clearing only clears the staged draft until Apply is confirmed;
+- Apply converts the staged slots back to the canonical schedule string and
+  calls the existing strict validator/full-block writer;
+- byte-exact readback remains authoritative;
+- the original block is still restored on a readback mismatch.
+
+Validation completed before merge:
+
+- schedule-manager editor self-test passed in the production Python venv;
+- HA profile parses successfully;
+- HA discovery dry-run completed successfully and emitted the eight new Select
+  entities plus the editor status sensor with resolved MQTT topics;
+- updated dashboard YAML parses successfully;
+- Browser Mod sequence uses a short load delay before opening the popup so the
+  newly selected day is visible instead of stale staging values.
+
+Live frontend rendering and one no-op/apply interaction should be checked after
+deployment before declaring the new UI fully verified.
+
 ## Next session
 
 Immediate next task:
