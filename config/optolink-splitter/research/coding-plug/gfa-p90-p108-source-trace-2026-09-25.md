@@ -162,3 +162,34 @@ Useful evidence would be one of:
    live values can fingerprint the two repeated f02 records.
 
 Until then, leave P90/P100/P107/P108 physically unresolved.
+
+
+## Live static discriminator result
+
+A fresh production read-only capture was performed after the source trace.
+
+Two identical rounds returned:
+
+```text
+P80=20 P81=02 P82=06 P83=76
+P90=00 P100=63
+P101=15 P102=01 P103=14 P104=0C P105=04 P106=D6
+P107=02 P108=00
+```
+
+This provides a new physical discriminator:
+
+- active f02 contains no `20`, no `06`, and no `76` byte anywhere;
+- therefore P80 (BCU chip ID), P82 (software revision), and P83 (appliance
+  configuration) are not flat f02 EEPROM bytes;
+- P81=02 cannot be assigned by value coincidence because the surrounding
+  source-defined identity/config fields are demonstrably non-linear with
+  respect to f02;
+- P101..P106 remain the directly proven coding-plug EEPROM fields;
+- P100 remains ambiguous between the two repeated-record field positions;
+- P90/P107/P108 remain identity/type results whose physical encoding or
+  derivation is unresolved.
+
+This narrows the architecture: GFA_READ exposes both **GFA internal identity /
+firmware state** and **coding-plug-derived values**. Do not assume every Pxx
+entry maps one-to-one onto the f02 24C04.
