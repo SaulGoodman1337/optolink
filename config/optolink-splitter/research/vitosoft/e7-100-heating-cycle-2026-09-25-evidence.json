@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "title": "WB2A controlled E7=100 high-flow heating comparison",
+  "date_local": "2026-09-25",
+  "timezone": "Europe/Berlin",
+  "controller": {
+    "boiler": "Vitodens 200-W WB2A",
+    "device": "VDensHO1",
+    "identification": "20C2"
+  },
+  "authorization": {
+    "user_action": "Opened several radiators and authorized temporary E7=100 for a normal heating observation.",
+    "controller_write_scope": "Only coding address 0x27E7 was changed: 30 -> 100 -> 30."
+  },
+  "baseline_reference": {
+    "evidence_file": "a1-heating-takt-baseline-2026-09-25-evidence.json",
+    "e7_pct": 30,
+    "a1_speed_pct": 36,
+    "final_internal_setpoint_pct": 50,
+    "internal_pump_speed_pct": 50,
+    "complete_flame_on_durations_s": [
+      41.529,
+      38.264,
+      33.943
+    ],
+    "complete_flame_off_intervals_s": [
+      247.586,
+      247.853
+    ]
+  },
+  "precondition": {
+    "note": "Probe intentionally waited while DHW was active. No E7 write occurred until DHW=0 and flame=0.",
+    "dhw_states_seen_before_write": [
+      "01",
+      "02"
+    ],
+    "e7_held_pct": 30,
+    "safe_release_local": "2026-09-25T11:58:52+02:00"
+  },
+  "write": {
+    "local_time_approx": "2026-09-25T11:58:55+02:00",
+    "address": "0x27E7",
+    "from_pct": 30,
+    "to_pct": 100,
+    "readback_raw": "64",
+    "readback_pct": 100
+  },
+  "immediate_effect": {
+    "local_time": "2026-09-25T11:58:56+02:00",
+    "dhw": 0,
+    "flame": 0,
+    "e7_pct": 100,
+    "a1_speed_pct": 100,
+    "final_internal_setpoint_pct": 100,
+    "internal_pump_speed_pct": 100,
+    "flow_target_c": 38,
+    "boiler_c": 58,
+    "interpretation": "A1 runtime request, final internal-pump setpoint and physical internal-pump speed all followed the temporary E7=100 setting immediately."
+  },
+  "heating_cycle": {
+    "flame_start_local": "2026-09-25T11:59:48.900+02:00",
+    "start_modulation_pct": 66,
+    "boiler_c_at_flame_start": 30.5,
+    "flow_target_c": 38,
+    "later_points": [
+      {
+        "local_time": "2026-09-25T12:01:43+02:00",
+        "modulation_pct": 33,
+        "boiler_c": 36.5,
+        "flow_target_c": 38
+      },
+      {
+        "local_time": "2026-09-25T12:02:03+02:00",
+        "modulation_pct": 33,
+        "boiler_c": 37,
+        "flow_target_c": 38
+      },
+      {
+        "local_time": "2026-09-25T12:03:35+02:00",
+        "modulation_pct": 33,
+        "boiler_c": 38.5,
+        "flow_target_c": 38
+      },
+      {
+        "local_time": "2026-09-25T12:04:15+02:00",
+        "modulation_pct": 33,
+        "boiler_c": 39.3,
+        "flow_target_c": 38
+      },
+      {
+        "local_time": "2026-09-25T12:05:16+02:00",
+        "modulation_pct": 33,
+        "boiler_c": 40.5,
+        "flow_target_c": 38
+      },
+      {
+        "local_time": "2026-09-25T12:05:48+02:00",
+        "modulation_pct": 33,
+        "boiler_c": 41,
+        "flow_target_c": 38
+      },
+      {
+        "local_time": "2026-09-25T12:06:20+02:00",
+        "modulation_pct": 33,
+        "flame": 1,
+        "e7_pct": 100
+      }
+    ],
+    "minimum_confirmed_continuous_flame_duration_s": 391.1,
+    "natural_flame_end_observed": false,
+    "termination_note": "The user later switched the operating mode back to DHW-only. The cycle therefore must be treated as a lower-bound runtime observation, not a natural full-cycle duration.",
+    "comparison": "The E7=100/high-flow heating run remained continuously in flame for at least 391 s, whereas the preceding E7=30 baseline complete flame runs lasted 33.9-41.5 s."
+  },
+  "restore": {
+    "safe_state_before_restore": {
+      "local_time": "2026-09-25T12:12:53+02:00",
+      "dhw": 0,
+      "flame": 0,
+      "a1_speed_pct": 0,
+      "final_internal_setpoint_pct": 0,
+      "internal_pump_speed_pct": 0,
+      "e7_pct": 100
+    },
+    "write_back": {
+      "address": "0x27E7",
+      "value_pct": 30,
+      "write_response": "1;0x27e7;30",
+      "readback_raw": "1e",
+      "readback_pct": 30
+    },
+    "post_restore": {
+      "a1_speed_pct": 0,
+      "final_internal_setpoint_pct": 0,
+      "internal_pump_speed_pct": 0,
+      "services": {
+        "optolink-splitter.service": "active",
+        "optolink-party-emulator.service": "active",
+        "optolink-maintenance-api.service": "active",
+        "optolink-schedule-manager.service": "active"
+      }
+    }
+  },
+  "helper": {
+    "commit": "07ac0f5adbefe4e5af8796a316b647d5a60204e9",
+    "self_test": "E7_100_HEATING_CYCLE_TESTS=3/3",
+    "issue": "The recorder stopped advancing its CSV around 12:00 while its process remained alive. Independent read-only control snapshots were therefore used for the remainder of the observation. The helper was force-terminated before manual controlled restore. Root cause not yet established.",
+    "automatic_restore_used": false
+  },
+  "interpretation": {
+    "established": [
+      "Temporary E7=100 caused the A1 runtime request to become 100%, with 0x0A3C and 0x7660[1] both following to 100%.",
+      "With multiple radiators opened and pump flow at 100%, boiler temperature was drawn down enough to allow a substantially longer burner run.",
+      "The burner remained continuously active for at least 391 s and modulated down to about 33% near the heating target.",
+      "This contrasts strongly with the preceding E7=30 baseline, where complete flame runs were approximately 34-42 s and flame-off intervals approximately 248 s.",
+      "Normal flame cycling itself does not drive the pump result; pump request/result remained invariant through the baseline takt cycles."
+    ],
+    "not_established": [
+      "Because heat-emitter load was intentionally changed by opening radiators, the longer burner run cannot be attributed to E7 alone.",
+      "Because the user ended heating mode before natural flame-off was observed, no natural E7=100 burner-cycle duration is claimed.",
+      "No conclusion is made that E7=100 is an appropriate permanent setting."
+    ],
+    "value_for_research": "The experiment confirms the request/result topology and provides a high-flow reference state for future pump and combustion dynamics comparisons."
+  }
+}
