@@ -96,6 +96,18 @@ def discovery(slot: int) -> bytes:
     return append_crc(bytes([0x11, 0x00, 0x33, 0x0A, slot, 0x01, 0xF8, 0x04]))
 
 
+def master_read(slot: int, block: int) -> bytes:
+    if slot not in (1, 2, 3):
+        raise SystemExit("slot must be 1, 2, or 3")
+    if not 0 <= block <= 0xFF:
+        raise SystemExit("block must fit in one byte")
+
+    record = 0x14 + slot
+    return append_crc(
+        bytes([0x00, 0x11, 0xBF, 0x0A, slot, 0x01, record, block ^ 0xAA])
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Build/check Viessmann KM-BUS Vitotrol frames"
@@ -122,6 +134,10 @@ def main() -> None:
     discovery_parser = sub.add_parser("discovery")
     discovery_parser.add_argument("--slot", type=parse_int, default=1)
 
+    read_parser = sub.add_parser("master-read")
+    read_parser.add_argument("--slot", type=parse_int, default=1)
+    read_parser.add_argument("--block", type=parse_int, required=True)
+
     args = parser.parse_args()
 
     if args.command == "crc":
@@ -140,6 +156,8 @@ def main() -> None:
         print(fmt(room_temp(args.slot, args.circuit, args.temp)))
     elif args.command == "discovery":
         print(fmt(discovery(args.slot)))
+    elif args.command == "master-read":
+        print(fmt(master_read(args.slot, args.block)))
 
 
 if __name__ == "__main__":
