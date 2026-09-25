@@ -171,11 +171,13 @@ Key semantic results:
 - `Virtual_MBUS` is linked to actual external meter profiles and must remain
   separate from KM-BUS.
 
-These results support `PrefixRead` as operational request data. Local P-N-P
-hardware evidence now proves an effect at 0x0001, but the exact role as routing
-or selector data is still not fully isolated. The earlier local prefix-less 0x43/F8 experiment omitted
-that selector data and must not be treated as a normal Vitosoft-defined EEPROM
-transaction.
+These catalog results prove that PrefixRead is meaningful metadata, but they do
+**not** prove that it is serialized for every function family. Static analysis
+of the captured Vitosoft host now shows a sharp boundary: PrefixRead is
+converted into request bytes on the `Remote_Procedure_Call / 0x07` path, while
+ordinary non-RPC reads such as `KMBUS_EEPROM_READ / 0x43` do not consume it.
+The prefix-less 0x43 frame is therefore the standard host-generated shape for
+that function in this build.
 
 See the dedicated analysis for the full derived inventory, memory/firmware
 boundary and read-only experiment sequence:
@@ -917,10 +919,11 @@ EXECUTION_RESULT=...
 ~~~
 
 Decision: the known Vitosoft XRAM shapes are closed as a direct local path.
-Do not blind-scan 0x31. Continue with an exact source-defined prefixed
-`KMBUS_EEPROM_READ 0x43`.
+Do not blind-scan 0x31. The subsequent manually prefixed 0x43 experiment is
+retained below as historical evidence, but host analysis later showed that the
+captured Vitosoft non-RPC serializer does not emit those PrefixRead bytes.
 
-## Prefixed KMBUS_EEPROM_READ 0x43 - LOCAL SUCCESS
+## Historical manually prefixed KMBUS_EEPROM_READ 0x43 experiment
 
 The exact source-defined Vitosoft request shape from event 578 was executed in
 a guarded temporary P300 window:
@@ -956,23 +959,21 @@ length       = 1
 data         = 0x88
 ~~~
 
-This is the first clean hardware proof that the six-byte Vitosoft
-`PrefixRead=030000000101` is operational request data on the local controller.
-With the prefix supplied, the source-shaped 0x43 access succeeds instead of
-producing the ambiguous prefix-less F8 behavior.
+The controller accepted this manually extended frame and returned `0x88`.
+That fact is preserved, but the interpretation has changed: the fresh-session
+P/N test found no isolated effect, and later host CIL analysis proves that the
+captured Vitosoft standard non-RPC `0x43` path does **not** append PrefixRead.
 
-Evidence boundary: `0x88` is preserved as raw data. The metadata label
-`Kennung (Prog1)` and its LGM27/GWG_BT2 interpretation are source semantics
-for another profile and are **not yet assigned to the local WB2A**.
-
-The result strongly supports a routed subordinate persistent-memory namespace,
-but does not demonstrate access to main-regulation program flash.
+Therefore this request must not be called an exact Vitosoft wire shape, and
+`0x88` must not be assigned the source GWG_BT2/LGM27 label `Kennung (Prog1)`.
+The experiment demonstrates tolerance/handling of extra bytes, not a proven
+routed subordinate EEPROM namespace.
 
 Evidence:
 [vitosoft/kmbus-eeprom-prefixed-live-2026-09-24-evidence.json](vitosoft/kmbus-eeprom-prefixed-live-2026-09-24-evidence.json).
 
-Decision: expand only to the remaining exact Vitosoft-defined 0x43 block
-shapes sharing the same prefix; no blind EEPROM sweep.
+Historical decision: the bounded 13-shape expansion was completed before the
+serializer path was recovered. No further prefixed 0x43 expansion is justified.
 
 ## Bounded 0x43 source-map result - 13/13 success, EEPROM semantics not proven
 
@@ -1126,26 +1127,45 @@ The important correction is therefore:
   point more strongly to a transaction/status/mailbox-like mechanism than to a
   direct linear EEPROM view.
 
-Source reassessment also tightens the earlier inference. Public
-InsideViessmannVitosoft code shows:
+The Vitosoft host implementation has now been recovered from the verified
+private archive. The relevant CIL establishes:
 
-1. `PrefixRead` is parsed/preserved as event metadata;
-2. the generic `VS2Message` class supports optional `Data` bytes after
-   `BlockSize`;
-3. but no recovered implementation currently proves that the vendor maps
-   `PrefixRead` into those `Data` bytes.
+- `RPCConverter.IsFCReadRpc()` returns true only for `FCRead == 0x07`;
+- on that RPC path, `ConvertRpcToDevice_Default()` parses PrefixRead hex
+  into bytes, stores them in `BlockDataToDevice`, and changes BlockLength to
+  the prefix-byte count;
+- standard non-RPC reads do not perform that conversion;
+- `MultiRequestDictionary.createListOfRequest()` copies FCRead directly to
+  the request function code;
+- `createMultiRequest()` constructs LDAP data from Address, BlockLength and
+  BlockDataToDevice;
+- `LDAPMessage.toByteArray()` serializes
+  `00 FCT ADDR_H ADDR_L DATA_LENGTH [DATA...]`;
+- serial DAP wraps that as
+  `41 LEN 00 FCT ADDR_H ADDR_L DATA_LENGTH [DATA...] CRC`;
+- the VS1 converter does not support function `0x43`;
+- a managed-assembly scan of the extracted ServiceTool tree found no external
+  preprocessing path that maps PrefixRead into BlockDataToDevice for ordinary
+  reads.
 
-Therefore the mapping
+For `0x43 / 0x0001 / len 1`, the captured host-generated serial frame is:
 
 ~~~text
-PrefixRead -> trailing VS2 request data
+41 05 00 43 00 01 01 4A
 ~~~
 
-remains **plausible but unproven**.
+with no PrefixRead payload.
 
-Decision: stop broad live 0x43 expansion and recover the actual Vitosoft
-PrefixRead/PrefixWrite serialization path offline before further semantic
-claims.
+Thus the serializer question is closed for this Vitosoft build. The manually
+prefixed form used in earlier experiments was not the vendor host shape. The
+remaining research question is what the local controller's dynamic no-prefix
+0x43 response represents.
+
+Private derived report:
+`collector-output/20260924-143439/prefixread-serializer-analysis-2026-09-25.md`
+(commit `1bd156be85d947a3af890db426ce4462d71b4099`).
+
+Decision: no more PrefixRead discrimination and no broad 0x43 expansion.
 
 Evidence:
 [vitosoft/kmbus-prefix-isolated-live-2026-09-24-evidence.json](vitosoft/kmbus-prefix-isolated-live-2026-09-24-evidence.json).
@@ -1162,9 +1182,9 @@ The project should answer these in order:
 4. Does a controlled A0 remote-identification write only configure the expected
    accessory type, or can it create enough internal state for operation without
    a physical slave?
-5. Can Vitosoft `PrefixRead` be hardware-verified as the optional VS2 DATA
-   bytes using a source-defined event on a suitable device/path?
-6. What does the prefix-less dynamic two-byte result of 0x43 at F8 actually
+5. Why does the event catalog retain PrefixRead on non-RPC KBus/KMBUS rows
+   even though the captured standard host serializer does not consume it?
+6. What does the host-shaped prefix-less dynamic result of 0x43 actually
    represent?
 7. Are any global KBUS APIs useful on VDensHO1 despite not being present in its
    Vitosoft event tree?
