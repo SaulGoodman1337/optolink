@@ -1,7 +1,9 @@
 # Vitotrol emulation via Optolink / KBus / KM-BUS
 
 Status: **open research**
-Last updated: **2026-09-23**
+Last updated: **2026-09-25**
+
+**Current software-only deep dive:** [vitotrol-software-emulation-deep-dive-2026-09-25.md](vitotrol-software-emulation-deep-dive-2026-09-25.md). It supersedes older optimistic raw-KBus-injection assumptions and records the new global writable `0x0896/0x0898` NRF alias lead, the exact VDensHO1 RPC closure, and the staged software-emulator plan.
 
 This note covers the **Vitotrol-specific** application of the KBus/KM-BUS
 research through the existing Optolink interface of the Vitodens 200-W WB2A
