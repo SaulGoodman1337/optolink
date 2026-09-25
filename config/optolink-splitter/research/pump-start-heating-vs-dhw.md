@@ -3762,3 +3762,91 @@ Private evidence:
 The remaining selector is therefore a controller-firmware question unless the
 A1-withdrawal/GWG75/GWG76 correlation exposes another observable state.
 
+## Controlled E7=100 high-flow heating comparison — 2026-09-25
+
+A user-authorized controlled comparison was performed after opening several
+radiators. The write scope was restricted to E7:
+
+~~~text
+0x27E7: 30 % -> 100 % -> 30 %
+~~~
+
+The guarded probe waited until DHW was inactive and the flame was off before
+the write. Readback confirmed E7=100.
+
+Immediate response:
+
+~~~text
+E7        = 100 %
+0x7663    = 100 %  A1 runtime request
+0x0A3C    = 100 %  final internal-pump set speed
+0x7660[1] = 100 %  physical internal pump
+~~~
+
+This directly reconfirms the request/result topology:
+
+~~~text
+E7 -> A1 runtime request -> 0x0A3C -> physical internal pump
+~~~
+
+with no evidence of a 50 % clamp once the A1 request itself exceeds GWG75.
+
+The subsequent heating flame started at
+`2026-09-25T11:59:48.900+02:00` at about 66 % modulation. It then settled
+near 33 % modulation while boiler temperature approached and passed the
+38.0 C flow target.
+
+The flame was still confirmed on at
+`2026-09-25T12:06:20+02:00`, establishing a lower-bound continuous runtime
+of at least 391.1 s.
+
+For comparison, the immediately preceding E7=30 baseline complete flame runs
+were only:
+
+~~~text
+41.529 s
+38.264 s
+33.943 s
+~~~
+
+with flame-off intervals of approximately 247.6 and 247.9 s.
+
+This contrast is important but must not be over-attributed to E7. Several
+radiators were intentionally opened at the same time, increasing heat-emitter
+load and hydraulic flow. The longer burner run therefore demonstrates a
+different high-flow/high-load operating state, not an isolated causal effect
+of E7 alone.
+
+The natural E7=100 flame end was not observed because heating mode was later
+manually withdrawn. After the user switched back to DHW-only mode, a safe
+restore point was verified:
+
+~~~text
+DHW        = 0
+flame      = off
+0x7663     = 0
+0x0A3C     = 0
+0x7660     = 0
+E7         = 100 %
+~~~
+
+E7 was then explicitly restored:
+
+~~~text
+write  0x27E7 = 30
+read   0x27E7 = 0x1E = 30 %
+~~~
+
+All four production services were active after restore.
+
+Evidence:
+
+- `vitosoft/e7-100-heating-cycle-2026-09-25-evidence.json`
+- evidence commit `28f7c1b46423cf19cf7c1ccd54e36ff1e46aa375`
+- guarded helper commit `07ac0f5adbefe4e5af8796a316b647d5a60204e9`
+
+The helper's CSV recorder stopped advancing around 12:00 while its process
+remained alive. Independent read-only snapshots were therefore used for the
+remainder of the observation, and the helper was terminated before the manual
+safe restore. This is a tooling issue, not controller evidence.
+
