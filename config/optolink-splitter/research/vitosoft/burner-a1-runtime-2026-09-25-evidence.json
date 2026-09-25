@@ -190,8 +190,48 @@
     }
   },
   "next_boundary": [
-    "Complete offline enumeration of exact VDensHO1 pump-related FCWrite surfaces.",
-    "Do not write any candidate until its semantics, volatility/persistence and safety boundary are source-backed.",
-    "If no volatile A1 pump-speed write surface exists, continue with controller firmware/MCU analysis and physical coding-plug correlation."
-  ]
+    "Vitosoft-exposed service, LON nvi and KBus write surfaces do not reveal a volatile direct-A1 pump-speed override for VDensHO1.",
+    "Do not repurpose CFDM production commands or relay-test functions as a pump-speed solution.",
+    "Continue at controller-firmware/MCU level once local PCB/MCU identity is available.",
+    "Use the physical coding-plug EEPROM read as the next independent evidence path when available."
+  ],
+  "exact_vdensho1_pump_write_surface": {
+    "workflow_commit": "85e4603854cb12902c81a5bd4ef2171cf8719149",
+    "run": 36127320074,
+    "result": [
+      "A1 runtime surfaces 0x7663 and 0x0A3A are read-only (FCWrite undefined).",
+      "Internal-pump runtime/result surfaces 0x7660 and 0x0A3C are read-only.",
+      "A1 E6/E7/E8/E9 are Virtual_WRITE coding surfaces, not separate runtime speed commands.",
+      "K30/K31/K32/K34 and 6C are also Virtual_WRITE coding/configuration surfaces.",
+      "0x7500 RelaistestGWG200x is a diagnostic relay-test surface; it is not a source-backed A1 speed-control algorithm.",
+      "No exact VDensHO1 pump-related event exposes a dedicated volatile A1 speed-command surface."
+    ]
+  },
+  "global_kbus_pump_write_scan": {
+    "workflow_commit": "ffc9070c8ff2b10dd8027364497751d7fd43d2a6",
+    "run": 36127576729,
+    "kbus_write_function_counts": {
+      "KBUS_DIRECT_WRITE": 11,
+      "KBUS_EEPROM_LT_WRITE": 495,
+      "KBUS_GATEWAY_WRITE": 1,
+      "KBUS_INDIRECT_WRITE": 97,
+      "KBUS_MEMBERLIST_WRITE": 2,
+      "KBUS_TRANSPARENT_WRITE": 853,
+      "KBUS_VIRTUAL_WRITE": 124
+    },
+    "pump_write_candidates": 1,
+    "sole_candidate": {
+      "event_id": 2095,
+      "token": "KBUS_Kessel_Beimischpumpe_nach_KTS_RTS~0x4301",
+      "name_de": "Kessel: Beimischpumpe nach KTS/RTS",
+      "fc_write": "KBUS_VIRTUAL_WRITE",
+      "devices": [
+        "Dekamatik_E",
+        "Dekamatik_M1",
+        "Dekamatik_M2",
+        "Dekamatik_M2_3"
+      ]
+    },
+    "conclusion": "No VDensHO1/HO1 KBus write event with pump/speed semantics exists in the recovered All-Devices catalog."
+  }
 }
