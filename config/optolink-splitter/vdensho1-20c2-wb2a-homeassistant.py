@@ -2105,6 +2105,166 @@ poll_list = {
                 },
             ],
         },
+
+        # Native Home Assistant time/switch staging for the schedule editor.
+        # The legacy Select entities above remain available as a fallback, but
+        # the normal dashboard no longer needs long text-like option lists.
+        {
+            "domain": "switch",
+            "entity_category": "config",
+            "icon": "mdi:timeline-clock-outline",
+            "payload_on": "ON",
+            "payload_off": "OFF",
+            "state_topic": "{mqtt_base}/schedule/editor/slot1/enabled",
+            "command_topic": "{mqtt_base}/schedule/editor/slot1/enabled/set",
+            "optimistic": False,
+            "nopoll": [
+                {
+                    "name": "zeitprogramm_editor_slot1_aktiv",
+                },
+            ],
+        },
+        {
+            "domain": "time",
+            "entity_category": "config",
+            "icon": "mdi:clock-start",
+            "state_topic": "{mqtt_base}/schedule/editor/slot1/start_time",
+            "command_topic": "{mqtt_base}/schedule/editor/slot1/start_time/set",
+            "nopoll": [
+                {
+                    "name": "zeitprogramm_editor_slot1_startzeit",
+                },
+            ],
+        },
+        {
+            "domain": "time",
+            "entity_category": "config",
+            "icon": "mdi:clock-end",
+            "state_topic": "{mqtt_base}/schedule/editor/slot1/end_time",
+            "command_topic": "{mqtt_base}/schedule/editor/slot1/end_time/set",
+            "nopoll": [
+                {
+                    "name": "zeitprogramm_editor_slot1_endzeit",
+                },
+            ],
+        },
+        {
+            "domain": "switch",
+            "entity_category": "config",
+            "icon": "mdi:timeline-clock-outline",
+            "payload_on": "ON",
+            "payload_off": "OFF",
+            "state_topic": "{mqtt_base}/schedule/editor/slot2/enabled",
+            "command_topic": "{mqtt_base}/schedule/editor/slot2/enabled/set",
+            "optimistic": False,
+            "nopoll": [
+                {
+                    "name": "zeitprogramm_editor_slot2_aktiv",
+                },
+            ],
+        },
+        {
+            "domain": "time",
+            "entity_category": "config",
+            "icon": "mdi:clock-start",
+            "state_topic": "{mqtt_base}/schedule/editor/slot2/start_time",
+            "command_topic": "{mqtt_base}/schedule/editor/slot2/start_time/set",
+            "nopoll": [
+                {
+                    "name": "zeitprogramm_editor_slot2_startzeit",
+                },
+            ],
+        },
+        {
+            "domain": "time",
+            "entity_category": "config",
+            "icon": "mdi:clock-end",
+            "state_topic": "{mqtt_base}/schedule/editor/slot2/end_time",
+            "command_topic": "{mqtt_base}/schedule/editor/slot2/end_time/set",
+            "nopoll": [
+                {
+                    "name": "zeitprogramm_editor_slot2_endzeit",
+                },
+            ],
+        },
+        {
+            "domain": "switch",
+            "entity_category": "config",
+            "icon": "mdi:timeline-clock-outline",
+            "payload_on": "ON",
+            "payload_off": "OFF",
+            "state_topic": "{mqtt_base}/schedule/editor/slot3/enabled",
+            "command_topic": "{mqtt_base}/schedule/editor/slot3/enabled/set",
+            "optimistic": False,
+            "nopoll": [
+                {
+                    "name": "zeitprogramm_editor_slot3_aktiv",
+                },
+            ],
+        },
+        {
+            "domain": "time",
+            "entity_category": "config",
+            "icon": "mdi:clock-start",
+            "state_topic": "{mqtt_base}/schedule/editor/slot3/start_time",
+            "command_topic": "{mqtt_base}/schedule/editor/slot3/start_time/set",
+            "nopoll": [
+                {
+                    "name": "zeitprogramm_editor_slot3_startzeit",
+                },
+            ],
+        },
+        {
+            "domain": "time",
+            "entity_category": "config",
+            "icon": "mdi:clock-end",
+            "state_topic": "{mqtt_base}/schedule/editor/slot3/end_time",
+            "command_topic": "{mqtt_base}/schedule/editor/slot3/end_time/set",
+            "nopoll": [
+                {
+                    "name": "zeitprogramm_editor_slot3_endzeit",
+                },
+            ],
+        },
+        {
+            "domain": "switch",
+            "entity_category": "config",
+            "icon": "mdi:timeline-clock-outline",
+            "payload_on": "ON",
+            "payload_off": "OFF",
+            "state_topic": "{mqtt_base}/schedule/editor/slot4/enabled",
+            "command_topic": "{mqtt_base}/schedule/editor/slot4/enabled/set",
+            "optimistic": False,
+            "nopoll": [
+                {
+                    "name": "zeitprogramm_editor_slot4_aktiv",
+                },
+            ],
+        },
+        {
+            "domain": "time",
+            "entity_category": "config",
+            "icon": "mdi:clock-start",
+            "state_topic": "{mqtt_base}/schedule/editor/slot4/start_time",
+            "command_topic": "{mqtt_base}/schedule/editor/slot4/start_time/set",
+            "nopoll": [
+                {
+                    "name": "zeitprogramm_editor_slot4_startzeit",
+                },
+            ],
+        },
+        {
+            "domain": "time",
+            "entity_category": "config",
+            "icon": "mdi:clock-end",
+            "state_topic": "{mqtt_base}/schedule/editor/slot4/end_time",
+            "command_topic": "{mqtt_base}/schedule/editor/slot4/end_time/set",
+            "nopoll": [
+                {
+                    "name": "zeitprogramm_editor_slot4_endzeit",
+                },
+            ],
+        },
         {
             "domain": "sensor",
             "entity_category": "diagnostic",
