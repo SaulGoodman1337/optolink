@@ -242,433 +242,94 @@ VDensHO1 with error payload `05`.
 Therefore none of these may currently be treated as a safe software injection
 primitive.
 
-## New lead: writable alias at the exact room-temperature address
+## Cross-profile NRF remote-state metadata — corrected interpretation
 
-The deep dive found the strongest new software-only lead so far.
-
-The global production event catalog contains:
+The global production catalog contains a coherent set of NRF remote-state
+events on VBC550S, VBC550P and Ecotronic, including:
 
 ~~~text
-NRF_Raumtemperatur_M1~0x0896
-FCRead  = Virtual_READ
-FCWrite = Virtual_WRITE
-length  = 2
-conversion = Div10
-
-NRF_Raumtemperatur_M2~0x0898
-FCRead  = Virtual_READ
-FCWrite = Virtual_WRITE
-length  = 2
-conversion = Div10
+0x0896 NRF_Raumtemperatur_M1
+0x089C NRF_TemperaturFehler_RTS_M1
+0x0A40 NRF_SWIndex_FB_M1
+0x7341 NRF_BedienBDETyp_FBKK
+0x7342 NRF_BedienBDETyp_FBM1
+0x7343 NRF_BedienBDETyp_FBM2
 ~~~
 
-At the **same numeric addresses**, exact VDensHO1 instead links:
+Their access metadata has an important two-layer structure:
 
 ~~~text
-TiefpassTemperatur_RTS_A1M1~0x0896
-FCRead  = Virtual_READ
-FCWrite = undefined
-
-TiefpassTemperaturwert_RTS_M2~0x0898
-FCRead  = Virtual_READ
-FCWrite = undefined
+FCRead     = Virtual_READ
+FCWrite    = Virtual_WRITE
+AccessMode = Read
 ~~~
 
-This distinction matters.
+This **corrects the earlier interpretation** that `FCWrite=Virtual_WRITE`
+proved a supported software-injection API. It does not.
 
-### What this proves
+Across the complete v6 event catalog there are **185** events with
+`AccessMode=Read` plus `FCWrite=Virtual_WRITE`, and 229 read-only events with
+some defined write function. Therefore a populated `FCWrite` on a read-only
+event is a common lower-level metadata pattern and cannot by itself establish
+that Vitosoft intentionally writes that datapoint.
 
-It proves that Viessmann software uses `Virtual_WRITE` to the same
-room-temperature address in at least another controller/profile context. Thus
-`0x0896` is not globally an intrinsically read-only protocol address.
+An independent 2026 implementation,
+`SoulSolistice/esphome_vitohome`, generated from Vitosoft exports reaches the
+same practical interpretation: the NRF room value, sensor status, software
+index and BDE type are emitted as read-only sensor entities despite the
+underlying FCWrite field.
 
-### What it does not prove
+### What the NRF metadata still proves
 
-It does **not** prove that the local VDensHO1 firmware accepts a Virtual_WRITE
-to `0x0896`.
-
-The earlier local attempt to write the suspected room-temperature object was
-rejected. That result remains authoritative for the ordinary VDensHO1 path.
-
-It also does not prove that writing `0x0896` alone would satisfy:
-
-- remote identity/software-index state;
-- sensor-valid state;
-- remote communication watchdog;
-- BC fault supervision.
-
-### Cross-profile differential result — 2026-09-25
-
-A direct Collector-v6 profile comparison on the Optolink-Splitter machine
-resolved the writable alias provenance and found a broader, coherent NRF remote
-injection surface.
-
-The writable room-temperature aliases are linked to:
+The NRF controller family exposes a coherent internal representation for
+remote-controller state at the addresses above, and the type encoding is highly
+specific:
 
 ~~~text
-VBC550S   device 224
-VBC550P   device 225
-Ecotronic device 432
-~~~
-
-For these profiles, the following NRF events form a consistent remote-state
-set:
-
-| Address | NRF event | Access | VDensHO1 counterpart |
-| --- | --- | --- | --- |
-| `0x0896` | `NRF_Raumtemperatur_M1` | Virtual_READ / Virtual_WRITE | same address, read-only `TiefpassTemperatur_RTS_A1M1` |
-| `0x089C` | `NRF_TemperaturFehler_RTS_M1` | Virtual_READ / Virtual_WRITE | same address, read-only `HO2B_SensorStatus_RTS_M1` |
-| `0x0A40` | `NRF_SWIndex_FB_M1` | Virtual_READ / Virtual_WRITE | VDensHO1 uses read-only `SWIndex_FB1` at `0x0A5C` instead |
-| `0x7342` | `NRF_BedienBDETyp_FBM1` | Virtual_READ / Virtual_WRITE | no exact VDensHO1 remote-runtime equivalent recovered |
-| `0x75A2` | `NRF_KTInfo_Fernbedienungen` | Virtual_READ only | no exact VDensHO1 event link recovered |
-| `0x779C` | `NRF_K9C_KonfiReceiveHeartBeat` | Virtual_READ / Virtual_WRITE | VDensHO1 has the same address as LON participant supervision, not Vitotrol runtime state |
-
-The key architectural observation is that VBC550S/P and Ecotronic contain both
-of the following aliases simultaneously at `0x0896`:
-
-~~~text
-NRF_Raumtemperatur_M1      Virtual_READ + Virtual_WRITE
-TiefpassTemperatur_RTS...  Virtual_READ only
-~~~
-
-VBC550S/P similarly contain a writable NRF sensor-status alias at `0x089C`.
-This makes a deliberate service/software injection model substantially more
-plausible than a coincidental address collision.
-
-It does not make these writes valid on VDensHO1. The local normal
-`Virtual_WRITE 0x0896` attempt was already rejected. The next justified local
-step is therefore **read-only discovery** of the cross-profile NRF-only
-addresses (`0x0A40`, `0x7342`, `0x75A2`) and comparison with the exact
-VDensHO1 state. No NRF write should be attempted without a VDensHO1 firmware or
-source-backed handler match.
-
-A read-only helper was staged on the Optolink-Splitter host as:
-
-~~~text
-/home/chatgpt-admin/vitotrol-nrf-readonly-probe.py
-~~~
-
-It uses the existing MQTT/splitter request path and implements no write command.
-At the time of staging, `optolink-splitter.service` was independently down due
-to the known codierstecker UTF-8 decode crash on an `FF...` response, so the
-probe has not yet produced a live controller result.
-
-### Local hardware verification of the NRF/remote-state hypothesis — 2026-09-25
-
-The cross-profile NRF surface was probed on the local WB2A through the existing
-VS1 Optolink-Splitter with room influence disabled. All temporary state changes
-were bounded and rolled back.
-
-#### Hidden participant/state block is real
-
-Read-only local values:
-
-~~~text
-0x7330 /2 = 0100   programming-unit software index
-0x7332 /2 = 0000   older-family FB A1/M1 software-index slot
-0x7334 /2 = 0000   older-family FB M2 software-index slot
-0x7336 /2 = FFFF   older-family FB M3 absent/uninitialised slot
-
-0x7340 /1 = 21     programming-unit type
-0x7341 /1 = 00     remote-control type KK absent
-0x7342 /1 = 00     remote-control type M1 absent
-0x7343 /1 = FF     M2/unused state on this controller
-~~~
-
-The exact VDensHO1 Vitosoft profile does not publish 0x7340..0x7344, but these
-addresses return a coherent programming-unit/remote-control structure. This is
-strong evidence that the firmware retains internal remote-participant state
-which is not exposed by the exact Vitosoft profile.
-
-#### 0x7342 is genuinely writable
-
-Vitosoft defines 0x7342 in the VBC550/Ecotronic NRF profiles as
-`NRF_BedienBDETyp_FBM1`, with:
-
-~~~text
+0x34 = BDETYP_F2KK
+0x38 = BDETYP_F3KK
 0x74 = BDETYP_F2M1
 0x78 = BDETYP_F3M1
+0xB4 = BDETYP_F2M2
+0xB8 = BDETYP_F3M2
 ~~~
 
-On the local WB2A:
-
-~~~text
-0x7342: 00 -> 74 -> 00
-~~~
-
-Both writes were accepted and the changed value was observable by readback until
-explicit rollback. No A0, room-temperature, room-sensor, remote-software-index,
-current-alarm or fault-history state changed merely from setting 0x7342.
-
-Therefore 0x7342 is a real hidden writable runtime/configuration field, but it
-is not by itself remote detection or remote communication.
-
-#### 0x7342 does not satisfy the Vitotrol watchdog
-
-A bounded combination test used:
-
-~~~text
-0x7342 = 74
-0x27A0 = 01
-~~~
-
-with B0 still disabled. The result was:
-
-~~~text
-t ~= 0.0 s   A0=01, 7342=74, no current alarm yet
-t ~= 0.8 s   current alarm = BC
-~~~
-
-During the test:
-
-~~~text
-0x0A5C = 00000000
-0x0896 = C800
-0x089C = 03
-~~~
-
-The test stopped on BC and immediately restored:
-
-~~~text
-0x27A0 = 00
-0x7342 = 00
-~~~
-
-The current alarm cleared. The expected BC history entry remains at the newest
-fault-history slot. Thus the actual KM-BUS remote communication/alive watchdog
-is independent of the hidden 0x7342 type field.
-
-#### Write acceptance is length- and alias-dependent
-
-Several same-value writes were used only to classify handler behaviour:
-
-~~~text
-0x0896 /2  C800       -> rejected
-0x0896 /1  C8         -> ACK/success
-0x089C /1  03         -> ACK/success
-0x0A40 /4  00000000   -> rejected
-0x0A5C /4  00000000   -> rejected
-0x0A5C /1  00         -> ACK/success
-0x7332 /2  0000       -> rejected
-0x7332 /1  00         -> ACK/success
-~~~
-
-This is a critical protocol result: the virtual address space must not be
-assumed to be byte-linear. A multi-byte object at address X is not equivalent
-to independently addressable bytes X, X+1, ... . Cross-profile aliases can
-also make one request length accepted while the canonical local object remains
-read-only.
-
-Accordingly, a splitter response of `1;address;value` proves only that the
-particular write request shape was accepted. It does **not** prove that the
-canonical semantic object changed.
-
-#### One-byte room-temperature ACK does not inject room temperature
-
-With the safe baseline:
-
-~~~text
-A0 = 00
-B0 = 00
-0x0896 = C800 = 20.0 °C fallback
-0x089C = 03
-~~~
-
-one byte was temporarily written at 0x0896:
-
-~~~text
-wraw 0x0896 D7
-~~~
-
-If 0x0896 were a byte-linear little-endian room value, this would correspond to
-21.5 °C (`D7 00`). The write returned success, but repeated canonical two-byte
-reads over roughly two seconds remained:
-
-~~~text
-0x0896 /2 = C800
-~~~
-
-at every sample. No sensor-status, A0 or current-alarm change occurred. The
-original low-byte value was then explicitly written back.
-
-Therefore the one-byte ACK is **not semantic room-temperature injection**. The
-full VDensHO1 room-temperature object remains protected/read-only through this
-path.
-
-#### 0x089C ACK is also not persistent state injection
-
-A temporary write:
-
-~~~text
-0x089C: 03 -> 00
-~~~
-
-was acknowledged, but the next canonical read already returned 03 again. This
-is consistent with the sensor-status value being recomputed/overwritten by the
-controller rather than being a durable externally writable state.
-
-#### Cross-profile aliases eliminated as local Vitotrol hooks
-
-Additional local mapping resolved several apparent NRF candidates as address
-collisions:
-
-- `0x0A40` is the VDensHO1 solar-controller software-index location;
-- `0x0A44` is the VDensHO1 mixer software-index location;
-- `0x75A2` is VDensHO1 burner/BCU fault-history slot FA03, not remote-info;
-- `0x779C` is VDensHO1 LON receive-heartbeat configuration; local value is
-  `0x14 = 20 min`;
-- `0x778E` is a VDensHO1 EEPROM/I2C-related configuration/error location, not
-  the NRF remote-control selector.
-
-These addresses must not be repurposed according to VBC550/Ecotronic semantics
-on the WB2A.
-
-#### Restored final state
-
-After all bounded tests the controller was verified at:
-
-~~~text
-0x27A0 = 00
-0x27B0 = 00
-0x7342 = 00
-0x7332 = 0000
-0x0A5C = 00000000
-0x0896 = C800
-0x089C = 03
-current alarm code = 00
-~~~
-
-The Optolink-Splitter service was active. The only intentional persistent test
-artifact is the new BC entry in the system fault history from the bounded
-A0+0x7342 experiment.
-
-
-#### Additional local discriminators — 2026-09-25 late session
-
-A control pass across the hidden programming-unit block showed that same-value
-Virtual_WRITE acceptance is not unique to the M1 remote-type byte:
-
-~~~text
-0x7340  21 -> 21   accepted
-0x7341  00 -> 00   accepted
-0x7342  00 -> 00   accepted
-0x7343  FF -> FF   accepted
-0x7344  FF -> FF   accepted
-~~~
-
-This weakens any interpretation based solely on an ACK at 0x7342. The
-significant evidence remains its source-correlated value semantics
-(`0x74 = BDETYP_F2M1`, `0x78 = BDETYP_F3M1`) and the fact that a changed
-value can be read back.
-
-A separate persistence test held `0x7342 = 0x74` for more than 20 seconds
-while `A0 = 0`. It remained `0x74` for the full observation interval, did
-not auto-arm `0x27A0`, and caused no current alarm. The value was then
-explicitly restored to `0x00`.
-
-A matched A0 control was also run:
-
-~~~text
-control:             0x7342=00, A0 00->01 -> BC observed in that run at ~6.48 s
-type preloaded:      0x7342=74, A0 00->01 -> BC observed in that run at ~2.56 s
-~~~
-
-Both runs left `0x0A5C=00000000`, `0x0896=C800` and `0x089C=03`, and
-both were immediately rolled back to `A0=0`; the current alarm then cleared.
-The different BC latency must not be interpreted as a causal acceleration:
-the controller fault check is asynchronous/cyclic and the trials were not
-phase-synchronised. The robust discriminator is binary: **BC occurs in both
-cases**.
-
-This strengthens the interpretation that `0x7342` is a writable
-type/service-state field, while the actual remote liveness state is owned by a
-different firmware path fed by successful KM-BUS traffic.
-
-The generic MQTT maintenance `request;0x41;...` route was also tested and
-timed out even for the already known-good `0x00F8` target. This is therefore
-a maintenance-API/serializer limitation, not evidence that local
-`KMBUS_RAM_READ` stopped working. The isolated guarded P300 helper was run
-immediately afterwards and again hardware-verified `0x41` as identical to
-Virtual_READ on its whitelisted targets, including `0x27A0`.
-
-Finally, the recovered production FunctionCode table contains
-`KMBUS_RAM_READ = 0x41` and then `KMBUS_EEPROM_READ = 0x43`; there is no
-defined/source-backed `KMBUS_RAM_WRITE = 0x42`. This is a further reason not
-to infer a symmetric write primitive from the working 0x41 path.
-
-
-
-#### Remote-cluster differential and alternate transport closure
-
-A source-driven all-device comparison identified one additional non-colliding
-remote candidate from Ecotronic:
-
-~~~text
-0x0D0C  Softwareindex Vitotrol HK1
-0x0D0D  Softwareindex Vitotrol HK2
-0x0D0E  Softwareindex Vitotrol HK3
-~~~
-
-The local VDensHO1 baseline reads:
-
-~~~text
-0x0D0C = FF
-0x0D0D = FF
-0x0D0E = FF
-0x7301 = 0A
-0x7302 = 0A
-0x7330 = 0100
-0x7332 = 0000
-0x7334 = 0000
-0x7336 = FFFF
-0x7340 = 21
-0x7341 = 00
-0x7342 = 00
-0x7343 = FF
-~~~
-
-A bounded A0-to-BC differential monitored this entire cluster while
-`0x27A0` was temporarily set to `01`. The controller progressed to current
-alarm `BC`, but every value above remained unchanged; `0x0A5C`,
-`0x0896` and `0x089C` also remained in their absent-remote state. A0 was
-then immediately restored to zero and the current alarm cleared.
-
-Thus no currently source-derived Virtual datapoint in this remote-state cluster
-exposes the communication-alive transition. The liveness/watchdog state is
-therefore likely private to the KM-BUS receive/participant logic.
-
-Two alternate FunctionCode families were also closed offline:
-
-- `Virtual_MBUS / 0x21` is the ordinary meter M-Bus path used for ABB,
-  Kamstrup, Techem, Pollu and similar heat meters. The production catalog has
-  254 reads and one write, the latter being an M-Bus scan operation. It is not
-  the Viessmann KM-BUS/Vitotrol transport.
-- `PROZESS_WRITE / 0x78` has 30 production events; the temperature-related
-  entries belong to the VSorp process-control family. No room-temperature,
-  remote-control or Vitotrol injection event was found. OpenTherm and
-  MarktManager write families are likewise unrelated.
-
-This leaves no source-backed host FunctionCode presently capable of injecting a
-slave-side Vitotrol response into the local VDensHO1 KM-BUS receive path.
-
-
-#### Updated interpretation
-
-The ordinary Virtual_WRITE route is now strongly constrained:
-
-1. hidden remote-type state exists and can be manipulated at 0x7342;
-2. setting that state does not satisfy the real Vitotrol communication
-   watchdog;
-3. canonical room value and remote software-index objects remain non-writable;
-4. ACKs from one-byte alias writes do not alter the canonical multi-byte
-   runtime objects;
-5. the unresolved state is therefore the KM-BUS RX-derived participant
-   alive/watchdog/runtime state, not merely the displayed type or room value.
-
-The next high-value discriminator is a read-only differential of the controller
-state while A0 transitions into BC, preferably through the already verified
-`0x41 KMBUS_RAM_READ` path under a guarded P300 session, or through firmware
-cross-reference once a regulation firmware dump is available.
+The `0x34/0x38` base values match the independently reconstructed physical
+Vitotrol-200/300 device-ID families, while `+0x40` and `+0x80` encode M1
+and M2 in the NRF representation. This is strong evidence that
+`0x7341..0x7343` are genuine remote-type runtime state in that firmware
+family.
+
+It does **not** prove that these numeric addresses have the same ownership or
+semantics on VDensHO1. Several direct cross-profile collisions have already
+been demonstrated:
+
+- `0x0A40`: NRF remote software index, but VDensHO1 solar-controller software
+  index;
+- `0x75A2`: NRF remote-info block, but VDensHO1 fault-history storage;
+- `0x778E`: NRF `KonfiKennungCS_RFB`, but VDensHO1 GWG EEPROM/I2C error flag;
+- `0x779C`: receive-heartbeat configuration associated with LON supervision,
+  not a fast Vitotrol/KM-BUS watchdog.
+
+The NRF model is therefore a **firmware-family comparison oracle**, not a
+write recipe for the WB2A.
+
+### Local discriminator results
+
+On the real VDensHO1/WB2A:
+
+- ordinary `Virtual_WRITE 0x0896` is rejected, including a same-value write;
+- ordinary `Virtual_WRITE 0x0A40` is rejected;
+- `0x089C` accepts a write response but its effective value is immediately
+  regenerated by controller logic;
+- `0x7340..0x7344` accept writes, but a one-second
+  `0x7342: 00 -> 74 -> 00` experiment followed by 77 seconds of observation
+  produced no new BC fault;
+- sensor-status control addresses outside the room path also accept same-value
+  writes, so `0x089C` write acceptance is not Vitotrol-specific.
+
+The current evidence therefore does **not** support implementing a software
+Vitotrol by directly writing the NRF addresses.
 
 ### Why this lead remains useful
 
@@ -938,15 +599,18 @@ However the search is no longer generic:
    no KM-BUS remote hook;
 3. `KMBUS_RAM_READ` has no source-backed symmetric write primitive;
 4. `XRAM_WRITE` has no production event definitions;
-5. **the global writable NRF alias at `0x0896/0x0898` is the strongest new
-   software-only lead**;
-6. the remaining decisive information is likely in the local regulation
+5. the NRF cross-profile state model is useful for naming and locating remote
+   state, but its read-only `AccessMode` means it is **not a documented
+   injection API**;
+6. a legacy `KBUS_Raumtemperatur_M1_IST~0x6F08` write function exists only for
+   `HV_V300KW3` and is not linked to VDensHO1;
+7. the remaining decisive information is likely in the local regulation
    firmware: room-value handler, remote watchdog and KM-BUS RX state updater.
 
 The recommended research sequence is therefore:
 
 ~~~text
-NRF writable-alias profile trace
+NRF state/profile differential + bounded P300 read correlation
         ->
 local regulation firmware dump
         ->
