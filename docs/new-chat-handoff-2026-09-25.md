@@ -498,8 +498,7 @@ Verified:
 - physical offset `x` maps to P300 `0x1000+x`;
 - 7823363 -> 7833968 changes GWG75 internal-pump minimum **100% -> 50%**;
 - current operating 7833971 already reports GWG75=50%;
-- f02 is not a flat P300/GWG copy; its GFA/fire-control assignment remains
-  unproven.
+- f02 is not a flat P300/GWG copy; active physical f02 `0x0E..0x13` exactly matches live GFA P101..P106, so the GFA/fire-control assignment is now physically proven for those fields.
 
 Current software reference for the installed 7833971:
 
@@ -508,17 +507,11 @@ Current software reference for the installed 7833971:
 - GWG date slots `0x1020[2:5] = FF FF FF`;
 - GFA P103-P105 = `14 0C 04`.
 
-**Next physical gate:** current operating 7833971 only.
+Active 7833971 physical capture is complete.
 
-- boiler unpowered;
-- plug disconnected;
-- f01 three identical 512-byte reads;
-- f02 three identical 512-byte reads;
-- record SHA256;
-- never write.
-
-Then compare active f01 byte-for-byte with the already captured P300 blocks and
-active f02 with the old f02 structure plus current GFA P90/P100..P108.
+- f01 exactly matches the known P300/GWG blocks;
+- f02 maps P101..P106 directly at physical offsets 0x0E..0x13;
+- open only: unique physical offsets for P90/P100/P107/P108 and any integrity/check algorithm.
 
 ## PCB / firmware boundary
 
@@ -544,8 +537,7 @@ Next hardware work:
 
 ## Current priority order
 
-1. **When safely possible:** dump the current operating 7833971 f01/f02
-   three times each, hash and compare; boiler unpowered, no writes.
+1. **Coding-plug:** map remaining f02 P90/P100/P107/P108 offsets only if a source-backed discriminator is found; no writes.
 2. **Local PCB photos:** prove regulation-board/MCU/memory identity.
 3. **Firmware research:** continue the burner-dependent A1 pump-boost search
    inside the regulation firmware after MCU/board identity is known.
