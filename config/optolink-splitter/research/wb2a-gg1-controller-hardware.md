@@ -87,3 +87,39 @@ The next firmware research step is hardware identification of the European WB2A/
 - [ ] Build a processor/memory/oscillator inventory from exact markings.
 - [ ] Map documented service/test interfaces only after the MCU family is known.
 - [ ] Keep main-regulation and burner/GFA firmware research separate.
+
+
+## 2026-09-25 update: historical Optolink firmware-readout lead
+
+The local-board working model has been narrowed further:
+
+- exact-board online evidence strongly favors GG1 PCB `7187393`;
+- the owner reports from memory that the installed board matches the 7187393
+  variant with screw terminals;
+- the main MCU is still unreadable in exact-board online photographs;
+- for current analysis only, `M30624FGPFP / M16C/62P` is used as a
+  **working hypothesis**, not as a confirmed local marking.
+
+A new historical lead materially changes the firmware-acquisition workstream.
+OpenV's KM-BUS documentation states that a Vitotronic 200 KW2 using
+`M30612MC` had about 128 KiB of code and that its software could be read via
+Optolink. Git history shows that KarlKoch introduced the MCU/readout statement
+and the approximately 57,000-line disassembly note together in commit
+`da56ba2f73ae09d03597d75210d8a76444595503` on 2010-10-04.
+
+This is evidence that an M16C-era Viessmann controller firmware acquisition
+through the Optolink side existed historically. The exact request/service is
+still unknown and must not be transferred directly to WB2A.
+
+The obvious historical OpenV candidate, `OptoLinkLogger v0.0.4`, has now
+been disassembled and closed as the mechanism: its "Dump Data" feature sends
+ordinary VS1 `F7 <addr_hi> <addr_lo> <len>` virtual reads, serializes only
+16 address bits and defaults to `0x0800 / 0x1000`. It therefore does not
+directly expose M16C program flash.
+
+Canonical detailed note:
+
+`firmware-optolink-readout-research-2026-09-25.md`
+
+Research priority is now to recover the specific M30612-era Optolink readout
+mechanism before any new live WB2A firmware-read probe is attempted.
