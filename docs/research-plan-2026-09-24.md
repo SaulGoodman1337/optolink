@@ -360,7 +360,30 @@ firmware dump would require an additional bank/prefix/RPC mechanism.
 
 ## Coding-plug physical/software correlation
 
-**Tracking:** GitHub issue **#36**. Physical f01/f02 dual-EEPROM capture is the current independent hardware gate; keep it separate from PCB/firmware Issue #25 and KM-BUS Issue #30.
+**Tracking:** GitHub issue **#36**.
+
+2026-09-25 old-plug capture is now archived under
+`config/optolink-splitter/research/coding-plug/2026-09-25-old-plugs/`.
+
+Verified from the physical bytes:
+
+- f01 offset `0x10` contains ASCII part numbers `7823363` and `7833968`;
+- physical f01 block offsets map directly to the P300/GWG view
+  `0x1000 + EEPROM offset` (0x20->0x1020, 0x30->0x1030, ...);
+- 7823363 and 7833968 f01 are 499/512 bytes identical;
+- the replacement delta includes **GWG75 internal-pump minimum 100% -> 50%**;
+- current operating 7833971 already reports GWG75=50% via P300;
+- f02 is not a flat GWG/P300 copy: the two old f02 images share the first
+  226 bytes exactly and differ only from offset `0x0E2` onward;
+- f02 -> GFA/fire-control remains a hypothesis, not a proven mapping.
+
+The next decisive capture is the **currently operating 7833971**: read f01 and
+f02 three times each, boiler unpowered and plug disconnected, then compare the
+physical f01 image byte-for-byte with the already captured live P300 blocks and
+the physical f02 image with P90/P100..P108.
+
+Keep coding-plug EEPROM work separate from PCB/firmware Issue #25 and KM-BUS
+Issue #30.
 
 ## P1 - Platinen-Research / local hardware identity
 
