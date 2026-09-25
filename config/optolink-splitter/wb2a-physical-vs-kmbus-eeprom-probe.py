@@ -45,7 +45,7 @@ import sys
 import termios
 import time
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 SPLITTER = "optolink-splitter.service"
 PARTY = "optolink-party-emulator.service"
 SETTINGS = Path("/opt/optolink/settings_ini.py")
@@ -349,9 +349,11 @@ def open_port(port, serial_module):
 
 
 def result_key(result: dict):
+    # Compare semantic response outcome, not the echoed request command.
+    # 0x01 vs 0x41 and 0x03 vs 0x43 are expected to echo different command
+    # bytes even when their status/address/length/payload are identical.
     return (
         result["status"],
-        result["command"],
         result["address"],
         result["length"],
         result["data"].hex(),
@@ -513,6 +515,16 @@ def self_test():
             self.assertEqual(request_frame(0x03, 0x00F8, 2).hex(), "4105000300f80202")
             self.assertEqual(request_frame(0x43, 0x00F8, 2).hex(), "4105004300f80242")
 
+        def test_classification_ignores_echoed_command(self):
+            a = {
+                "status": "SUCCESS", "command": 0x01, "address": 0x00F8,
+                "length": 2, "data": bytes.fromhex("20c2"),
+            }
+            b = dict(a)
+            b["command"] = 0x41
+            observations = [(0x01, a), (0x41, b), (0x41, b), (0x01, a)]
+            self.assertEqual(classify_pair(observations, 0x01, 0x41), "STABLE_SAME")
+
         def test_write_and_unknown_blocked(self):
             with self.assertRaises(ValueError):
                 request_frame(0x04, 0x00F8, 2)
@@ -523,7 +535,7 @@ def self_test():
         unittest.defaultTestLoader.loadTestsFromTestCase(Tests)
     )
     if result.wasSuccessful():
-        print("PHYSICAL_VS_KMBUS_EEPROM_PROBE_TESTS=5/5")
+        print("PHYSICAL_VS_KMBUS_EEPROM_PROBE_TESTS=6/6")
         return 0
     return 1
 
