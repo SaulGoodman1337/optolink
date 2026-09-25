@@ -1593,29 +1593,59 @@ The original XML sources have now been identified in
 `Textresource_de.xml` and `ecnEventTypeGroup.xml`. Exact SHA-256 values and
 sizes are preserved in `vitosoft/source-manifest.json`.
 
-The current GitHub tool can see the LFS pointers but cannot materialize the
-large LFS object bytes. Consequently the device membership and addresses are
-already preserved locally, while the exact `FCRead`/`FCWrite`,
-`PrefixRead`/`PrefixWrite` and block-length join still requires the LFS XML
-objects to be made available to the extractor.
+That join is now complete in the verified Collector-v6 All-Devices export.
+The targeted read slice contains 2,055 rows across the KMBUS/KBUS read
+families, including exact function codes, addresses, block lengths,
+PrefixRead metadata, event semantics and profile membership.
 
-Until that join is complete, do not invent argument semantics for
-0x5D/0x57/0x65.
+The slice is applicability evidence, not a firmware capability boundary:
+`KMBUS_RAM_READ` has zero Vitosoft events despite local 20C2 support for
+0x41. Conversely, a source-defined request shape from another family is not
+automatically valid on VDensHO1.
+
+## Local 0x5F KBUS_VIRTUAL_READ gate - 2026-09-25
+
+A bounded semantic test used two Vitosoft source-backed `KBUS_VIRTUAL_READ`
+objects with strong local controls:
+
+- `0x5F / 0x2508 / 1`: source meaning outside temperature;
+- `0x5F / 0x2D08 / 1`: source meaning HC A flow temperature actual.
+
+Each 0x5F request was executed twice in a fresh P300 session, bracketed by
+ordinary local `0x01` controls. Both 0x5F requests returned a valid P300
+Error Message with inner payload `05` on both repetitions. The controls
+remained stable at 14.8 C (`0x5525`) and 52.5 C (`0x0810`).
+
+Classification:
+
+~~~text
+NO_LOCAL_KBUS_VIRTUAL_SUCCESS_ON_TESTED_ANCHORS
+~~~
+
+This closes broad live 0x5F expansion. It does not prove universal 0x5F
+unsupported status and does not define error byte `05`.
+
+Evidence:
+`vitosoft/kbus-virtual-read-live-2026-09-25-evidence.json`.
 
 ### F. Only then test additional read functions
 
-Priorities:
+Current status / priorities:
 
-1. `KBUS_MEMBERLIST_READ` / 0x5D
-2. `KBUS_INITIALISATION_READ` / 0x57
-3. `KBUS_GATEWAY_READ` / 0x65
-4. `KBUS_TRANSPARENT_READ` / 0x55
-5. `KBUS_VIRTUAL_READ` / 0x5F
-6. `KBUS_DATAELEMENT_READ` / 0x51
-7. `KBUS_DATABLOCK_READ` / 0x53
-8. `KBUS_DIRECT_READ` / 0x61
-9. `KBUS_INDIRECT_READ` / 0x63
-10. `KBUS_EEPROM_LT_READ` / 0x59
+1. `KBUS_VIRTUAL_READ` / 0x5F: two strong source-backed semantic anchors
+   tested locally; both reproducibly returned Error Message payload `05`.
+   Do not expand without a new local discriminator.
+2. `KBUS_MEMBERLIST_READ` / 0x5D: one source definition exists; analyze its
+   exact event semantics and request shape offline before considering a bounded
+   local gate.
+3. `KBUS_TRANSPARENT_READ` / 0x55: 850 definitions; continue offline
+   clustering before any live use.
+4. `KBUS_EEPROM_LT_READ` / 0x59: 500 legacy definitions; offline semantics
+   only unless a local discriminator emerges.
+5. Direct/indirect/data-element families: useful for protocol reconstruction,
+   not yet justified for local live probing.
+6. `KBUS_INITIALISATION_READ` / 0x57 and `KBUS_GATEWAY_READ` / 0x65:
+   no event definitions in the verified slice; do not invent request shapes.
 
 Use source-derived parameters whenever possible. Do not blindly substitute
 `0x00F8` into every function just because it works for 0x41/0x43.
