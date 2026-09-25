@@ -488,55 +488,37 @@ Canonical KBus docs:
 
 Tracking: **GitHub Issue #36**.
 
-Two older side-labelled plugs are now physically decoded and archived under
+Two older side-labelled plugs are physically decoded and archived under
 `config/optolink-splitter/research/coding-plug/2026-09-25-old-plugs/`.
 
-New hard result:
+Verified:
 
 - f01 is the physical P300/GWG coding-plug image;
-- f01 `0x10` contains `7823363` / `7833968` as ASCII;
+- f01 `0x10` contains ASCII `7823363` / `7833968`;
 - physical offset `x` maps to P300 `0x1000+x`;
-- 7823363 -> 7833968 changes GWG75 internal-pump minimum
-  **100% -> 50%**;
+- 7823363 -> 7833968 changes GWG75 internal-pump minimum **100% -> 50%**;
 - current operating 7833971 already reports GWG75=50%;
-- f02 is structurally different and its GFA assignment is still unproven.
+- f02 is not a flat P300/GWG copy; its GFA/fire-control assignment remains
+  unproven.
 
-Next: physically dump the current operating 7833971 f01/f02 three times each,
-read-only with the boiler unpowered and plug disconnected.
+Current software reference for the installed 7833971:
 
-This is the next independent evidence path when the EEPROM reader is available.
+- `0x7656 = P80|P101|P107|P102 = 20 15 02 01`;
+- `0x1040 = 02 15`;
+- GWG date slots `0x1020[2:5] = FF FF FF`;
+- GFA P103-P105 = `14 0C 04`.
 
-Known physical state:
+**Next physical gate:** current operating 7833971 only.
 
-- two spare coding plugs
-- two 24C04-class EEPROM sides per board
-- previous repeatable 512-byte chip1 dumps
-- two spare chip1 images share identical 226-byte prefix and an exact duplicated
-  82-byte logical record
+- boiler unpowered;
+- plug disconnected;
+- f01 three identical 512-byte reads;
+- f02 three identical 512-byte reads;
+- record SHA256;
+- never write.
 
-Known controller-visible identity:
-
-- `0x7656 = P80|P101|P107|P102 = 20 15 02 01`
-- `0x1040[0:2] = P107|P101 = 02 15`
-- exact VDensHO1 catalog order:
-  - byte0 P80 type = 20
-  - byte1 P101 identification = 15
-  - byte2 P107 GWG revision = 02
-  - byte3 P102 GFA revision = 01
-- GWG date slots in `0x1020[2:5]` are FF FF FF
-- GFA P103-P105 = 14 0C 04; treat as separate data
-
-When the reader is available:
-
-1. label sides explicitly `f01/ST` and `f02/Microchip`
-2. read both EEPROMs of one spare 3x each
-3. compare repeatability and SHA256
-4. repeat second spare where practical
-5. active coding plug last, boiler unpowered and plug disconnected
-6. **never write**
-
-The hypothesis "one EEPROM GWG/regulation, other GFA/fire-control" remains
-unproven until side-specific physical evidence exists.
+Then compare active f01 byte-for-byte with the already captured P300 blocks and
+active f02 with the old f02 structure plus current GFA P90/P100..P108.
 
 ## PCB / firmware boundary
 
@@ -562,8 +544,8 @@ Next hardware work:
 
 ## Current priority order
 
-1. **Tonight / when available:** read both coding-plug EEPROM sides
-   repeatedly, hash, label, compare; no writes.
+1. **When safely possible:** dump the current operating 7833971 f01/f02
+   three times each, hash and compare; boiler unpowered, no writes.
 2. **Local PCB photos:** prove regulation-board/MCU/memory identity.
 3. **Firmware research:** continue the burner-dependent A1 pump-boost search
    inside the regulation firmware after MCU/board identity is known.
