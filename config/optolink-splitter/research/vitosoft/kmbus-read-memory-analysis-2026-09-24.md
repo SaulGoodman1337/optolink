@@ -957,3 +957,74 @@ Evidence:
 - all four production services restored active; `VS1_RESTORED=yes`
 - post-restore identity: `20c2000300000103`
 
+## 0x5D KBUS_MEMBERLIST_READ local gate - 2026-09-25
+
+The verified Collector-v6 slice contains exactly one
+`KBUS_MEMBERLIST_READ` definition:
+
+| Field | Source value |
+| --- | --- |
+| event | 2756 |
+| meaning | Teilnehmer 00 am Viessmann-2-Draht-BUS |
+| function | `0x5D` |
+| address | `0x0000` |
+| block length | 3 |
+| PrefixRead | empty |
+| profile family | DEKATEL / VCOM300, not VDensHO1 |
+
+That is a concrete source-defined request shape, so a single bounded local gate
+was justified. It was **not** treated as proof that the returned bytes, if any,
+would have the same member-list semantics on VDensHO1.
+
+Before the P300 gate, ordinary permanent-VS1 reads showed the current local
+participant context:
+
+- internal pump: `0x5730=01`, software block `0x0A54=01110101`;
+- Vitotrol A1/M1: `0x27A0=00`, `0x0A5C=00000000`;
+- Vitotrol M2: `0x37A0=00`, `0x0A60=00000000`;
+- separate KM-BUS pumps A1/M2: `0x27E5=00`, `0x37E5=00`;
+- external extension: `0x572E=00`;
+- Vitocom identification: `0x7795=00`.
+
+The exact member-list request was then repeated three times, each in a fresh
+P300 session, with 20C2 identity controls before and after:
+
+~~~text
+TX 41 05 00 5d 00 00 03 65
+
+RX 41 06 03 5d 00 00 01 05 6c
+RX 41 06 03 5d 00 00 01 05 6c
+RX 41 06 03 5d 00 00 01 05 6c
+~~~
+
+All three trials returned `ERROR_MESSAGE` with inner payload `05`.
+The response length byte is `01`, which describes the one-byte error payload;
+it does not echo the requested member-list length `03`.
+
+Classification:
+
+~~~text
+STABLE_ERROR_RESPONSE
+~~~
+
+The identity controls both returned `20c2000300000103`. All four production
+services were restored active and permanent VS1 restoration was confirmed.
+
+The inner error value `05` is now a repeated descriptive pattern across the
+bounded source-shaped 0x31 XRAM, 0x5F KBUS_VIRTUAL_READ and 0x5D
+KBUS_MEMBERLIST_READ failures. No source-backed error-code mapping has been
+recovered, so do not assign a name or cause to `05`.
+
+Decision: the sole source-defined legacy 0x5D shape gives no evidence of a
+usable local member-list API. Do not invent further 0x5D addresses or lengths.
+Reopen only if VDensHO1-specific source evidence appears.
+
+Evidence and implementation:
+
+- `kbus-memberlist-read-live-2026-09-25-evidence.json`
+- live helper commit `3df1a6cdfabe5f668e940432d4a1090c74fbb1c6`
+- post-run self-test-fixture correction `c0c8e4a5f5ff1c3742d1e056f2718f53ff2aa518`
+- updater integration `2c58ad97c69cb91a362ce891961a8e242dbbcdc6`
+- current evidence commit `8f350a34cb22207ad13fbf83a211692d8909ca20`
+- live log `/home/chatgpt-admin/wb2a-kbus-memberlist-read-20260925-103843-219422.log`
+
