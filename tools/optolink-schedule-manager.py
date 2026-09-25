@@ -250,6 +250,42 @@ def splitter_schedule(intervals):
     return ",".join(values[:4])
 
 
+EDITOR_OFF = "Aus"
+
+
+def editor_slots_from_intervals(intervals):
+    slots = [[None, None] for _ in range(4)]
+    for index, (start, end) in enumerate(intervals[:4]):
+        slots[index] = [start, end]
+    return slots
+
+
+def editor_schedule_from_slots(slots):
+    parts = []
+    for index, (start, end) in enumerate(slots, start=1):
+        if start is None and end is None:
+            continue
+        if start is None or end is None:
+            raise ValueError(
+                f"Zeitfenster {index} ist unvollständig; Start und Ende wählen"
+            )
+        parts.append(f"{start}-{end}")
+
+    payload = ",".join(parts) if parts else "none"
+    intervals = parse_schedule(payload)
+    return canonical_schedule(intervals)
+
+
+def time_plus_minutes(value, delta, *, allow_24=False):
+    minutes = max(0, min(24 * 60, to_minutes(value) + delta))
+    if minutes == 24 * 60:
+        if allow_24:
+            return "24:00"
+        minutes = 23 * 60 + 50
+    hour, minute = divmod(minutes, 60)
+    return f"{hour:02d}:{minute:02d}"
+
+
 class ScheduleManager:
     def __init__(self):
         if not getattr(settings, "mqtt_broker", None):
@@ -279,6 +315,30 @@ class ScheduleManager:
         self.response_seq = 0
         self.responses = []
 
+        self.editor_status_topic = f"{self.base_topic}/schedule/editor/status"
+        self.editor_load_topic = f"{self.base_topic}/schedule/editor/load"
+        self.editor_apply_topic = f"{self.base_topic}/schedule/editor/apply"
+        self.editor_clear_topic = f"{self.base_topic}/schedule/editor/clear"
+        self.editor_reload_topic = f"{self.base_topic}/schedule/editor/reload"
+        self.editor_slot_topics = {}
+        for slot in range(4):
+            for side in ("start", "end"):
+                topic = (
+                    f"{self.base_topic}/schedule/editor/"
+                    f"slot{slot + 1}/{side}/set"
+                )
+                self.editor_slot_topics[topic] = (slot, side)
+
+        self.editor_command_topics = {
+            self.editor_load_topic,
+            self.editor_apply_topic,
+            self.editor_clear_topic,
+            self.editor_reload_topic,
+            *self.editor_slot_topics.keys(),
+        }
+        self.editor_target = None
+        self.editor_slots = [[None, None] for _ in range(4)]
+
     def connect(self):
         self.client = connect_mqtt(retries=10, delay=3)
         if self.client is None:
@@ -289,11 +349,12 @@ class ScheduleManager:
         # Schedule command topics must never carry retained commands. A stale
         # retained payload would otherwise be replayed when this service
         # reconnects. Clear them before subscribing to the command topics.
-        for topic in self.command_map:
+        guarded_topics = set(self.command_map) | self.editor_command_topics
+        for topic in guarded_topics:
             self.client.publish(topic, "", retain=True).wait_for_publish()
 
         subscriptions = [(settings.mqtt_respond, 0)]
-        subscriptions.extend((topic, 0) for topic in self.command_map)
+        subscriptions.extend((topic, 0) for topic in sorted(guarded_topics))
         self.client.subscribe(subscriptions)
         time.sleep(0.5)
 
@@ -301,8 +362,14 @@ class ScheduleManager:
             "idle",
             message="Schedule-Manager bereit",
         )
+        self.publish_editor_slots()
+        self.publish_editor_status(
+            "idle",
+            message="Programm und Wochentag auswählen",
+        )
         log(
-            f"listening on {len(self.command_map)} guarded schedule topics; "
+            f"listening on {len(self.command_map)} direct and "
+            f"{len(self.editor_command_topics)} editor command topics; "
             f"Optolink commands={settings.mqtt_listen}"
         )
 
@@ -318,9 +385,26 @@ class ScheduleManager:
                 self.response_cond.notify_all()
             return
 
+        retained = bool(getattr(message, "retain", False))
+
+        if message.topic in self.editor_command_topics:
+            if retained:
+                log(
+                    "WARNING: ignoring retained schedule editor command on "
+                    f"{message.topic}: {payload!r}"
+                )
+                return
+            if not payload:
+                log(
+                    "WARNING: ignoring empty schedule editor command on "
+                    f"{message.topic}"
+                )
+                return
+            self.actions.put(("editor", message.topic, payload))
+            return
+
         target = self.command_map.get(message.topic)
         if target is not None:
-            retained = bool(getattr(message, "retain", False))
             log(
                 "COMMAND "
                 f"{target[0]}/{DAYS[target[1]][0]} "
@@ -338,7 +422,201 @@ class ScheduleManager:
                     f"{message.topic}"
                 )
                 return
-            self.actions.put((target[0], target[1], payload))
+            self.actions.put(("schedule", target[0], target[1], payload))
+
+    def publish_editor_slots(self):
+        if self.client is None:
+            return
+        for slot, (start, end) in enumerate(self.editor_slots, start=1):
+            self.client.publish(
+                f"{self.base_topic}/schedule/editor/slot{slot}/start",
+                start or EDITOR_OFF,
+                retain=True,
+            )
+            self.client.publish(
+                f"{self.base_topic}/schedule/editor/slot{slot}/end",
+                end or EDITOR_OFF,
+                retain=True,
+            )
+
+    def publish_editor_status(self, state, *, message=None, valid=None):
+        if self.client is None:
+            return
+
+        payload = {
+            "state": state,
+            "timestamp": utc_now(),
+        }
+        if self.editor_target is not None:
+            program, day_index = self.editor_target
+            payload.update(
+                {
+                    "program": program,
+                    "program_label": PROGRAMS[program]["label"],
+                    "day": DAYS[day_index][0],
+                    "day_short": DAYS[day_index][1],
+                }
+            )
+            try:
+                payload["preview"] = editor_schedule_from_slots(self.editor_slots)
+                if valid is None:
+                    valid = True
+            except Exception as exc:
+                payload["preview"] = None
+                if message is None:
+                    message = str(exc)
+                if valid is None:
+                    valid = False
+
+        if valid is not None:
+            payload["valid"] = bool(valid)
+        if message is not None:
+            payload["message"] = message
+
+        self.client.publish(
+            self.editor_status_topic,
+            json.dumps(payload, separators=(",", ":"), ensure_ascii=False),
+            retain=True,
+        )
+
+    @staticmethod
+    def parse_editor_target(payload):
+        try:
+            data = json.loads(payload)
+        except json.JSONDecodeError as exc:
+            raise ValueError("Editor-Ziel muss JSON sein") from exc
+
+        program = str(data.get("program", "")).strip()
+        day_name = str(data.get("day", "")).strip().lower()
+        if program not in PROGRAMS:
+            raise ValueError(f"Unbekanntes Programm: {program!r}")
+
+        day_lookup = {name: index for index, (name, _short) in enumerate(DAYS)}
+        if day_name not in day_lookup:
+            raise ValueError(f"Unbekannter Wochentag: {day_name!r}")
+
+        return program, day_lookup[day_name]
+
+    def load_editor(self, program, day_index, *, state="ready", message=None):
+        cfg = PROGRAMS[program]
+        addr = cfg["base"] + day_index * 8
+        self.editor_target = (program, day_index)
+        self.publish_editor_status(
+            "loading",
+            message="Lese aktuellen Tagesblock vom Controller",
+        )
+        raw = self.read_block(addr)
+        intervals = decode_block(raw)
+        self.editor_slots = editor_slots_from_intervals(intervals)
+        self.publish_editor_slots()
+        self.publish_editor_status(
+            state,
+            message=message or "Aktueller Controller-Stand geladen",
+            valid=True,
+        )
+
+    def set_editor_slot(self, slot, side, value):
+        if self.editor_target is None:
+            raise ValueError("Zuerst ein Programm und einen Wochentag auswählen")
+
+        value = value.strip()
+        if value == EDITOR_OFF:
+            self.editor_slots[slot] = [None, None]
+        elif side == "start":
+            start = parse_time(value, allow_24=False)
+            self.editor_slots[slot][0] = start
+            end = self.editor_slots[slot][1]
+            if end is None or to_minutes(end) <= to_minutes(start):
+                self.editor_slots[slot][1] = time_plus_minutes(
+                    start, 60, allow_24=True
+                )
+        else:
+            end = parse_time(value, allow_24=True)
+            if end == "00:00":
+                raise ValueError("00:00 ist als Endzeit nicht sinnvoll")
+            self.editor_slots[slot][1] = end
+            start = self.editor_slots[slot][0]
+            if start is None or to_minutes(start) >= to_minutes(end):
+                self.editor_slots[slot][0] = time_plus_minutes(
+                    end, -60, allow_24=False
+                )
+
+        self.publish_editor_slots()
+        try:
+            preview = editor_schedule_from_slots(self.editor_slots)
+            self.publish_editor_status(
+                "dirty",
+                message=f"Entwurf geändert: {preview}",
+                valid=True,
+            )
+        except Exception as exc:
+            self.publish_editor_status(
+                "dirty",
+                message=str(exc),
+                valid=False,
+            )
+
+    def clear_editor(self):
+        if self.editor_target is None:
+            raise ValueError("Zuerst ein Programm und einen Wochentag auswählen")
+        self.editor_slots = [[None, None] for _ in range(4)]
+        self.publish_editor_slots()
+        self.publish_editor_status(
+            "dirty",
+            message="Entwurf geleert; Controller noch unverändert",
+            valid=True,
+        )
+
+    def apply_editor(self):
+        if self.editor_target is None:
+            raise ValueError("Zuerst ein Programm und einen Wochentag auswählen")
+
+        payload = editor_schedule_from_slots(self.editor_slots)
+        program, day_index = self.editor_target
+        self.publish_editor_status(
+            "applying",
+            message=f"Übernehme {payload}",
+            valid=True,
+        )
+        if self.apply(program, day_index, payload):
+            self.load_editor(
+                program,
+                day_index,
+                state="ok",
+                message="Bytegenauer Readback bestätigt",
+            )
+        else:
+            self.publish_editor_status(
+                "error",
+                message="Übernahme fehlgeschlagen; Schreibstatus prüfen",
+                valid=True,
+            )
+
+    def handle_editor_action(self, topic, payload):
+        try:
+            if topic == self.editor_load_topic:
+                program, day_index = self.parse_editor_target(payload)
+                self.load_editor(program, day_index)
+            elif topic == self.editor_reload_topic:
+                if self.editor_target is None:
+                    raise ValueError(
+                        "Zuerst ein Programm und einen Wochentag auswählen"
+                    )
+                self.load_editor(*self.editor_target)
+            elif topic == self.editor_clear_topic:
+                self.clear_editor()
+            elif topic == self.editor_apply_topic:
+                self.apply_editor()
+            else:
+                slot, side = self.editor_slot_topics[topic]
+                self.set_editor_slot(slot, side, payload)
+        except Exception as exc:
+            log(f"EDITOR ERROR {topic}: {exc}")
+            self.publish_editor_status(
+                "error",
+                message=str(exc),
+                valid=False,
+            )
 
     def publish_status(
         self,
@@ -478,7 +756,7 @@ class ScheduleManager:
                 schedule=payload,
                 message=f"Validierung: {message}",
             )
-            return
+            return False
 
         self.publish_status(
             "writing",
@@ -507,7 +785,7 @@ class ScheduleManager:
                     original=original.hex().upper(),
                     message="Unverändert; Readback stimmt bereits überein",
                 )
-                return
+                return True
 
             self.publish_status(
                 "writing",
@@ -570,6 +848,7 @@ class ScheduleManager:
                 f"PASS {cfg['label']} {day_name}: "
                 f"{target.hex().upper()} {canonical}"
             )
+            return True
 
         except Exception as exc:
             log(f"ERROR {cfg['label']} {short}: {exc}")
@@ -587,20 +866,47 @@ class ScheduleManager:
                 transport_response=transport_response,
                 message=str(exc),
             )
+            return False
 
     def run(self):
         self.connect()
         try:
             while True:
-                program, day_index, payload = self.actions.get()
-                self.apply(program, day_index, payload)
+                action = self.actions.get()
+                if action[0] == "schedule":
+                    _kind, program, day_index, payload = action
+                    self.apply(program, day_index, payload)
+                elif action[0] == "editor":
+                    _kind, topic, payload = action
+                    self.handle_editor_action(topic, payload)
         finally:
             if self.client is not None:
                 self.client.loop_stop()
                 self.client.disconnect()
 
 
+def self_test():
+    sample = parse_schedule(
+        "05:00-08:00,10:00-12:00,14:00-16:00,18:00-24:00"
+    )
+    slots = editor_slots_from_intervals(sample)
+    assert editor_schedule_from_slots(slots) == (
+        "05:00-08:00,10:00-12:00,14:00-16:00,18:00-24:00"
+    )
+    slots[1] = [None, None]
+    assert editor_schedule_from_slots(slots) == (
+        "05:00-08:00,14:00-16:00,18:00-24:00"
+    )
+    assert time_plus_minutes("23:30", 60, allow_24=True) == "24:00"
+    assert time_plus_minutes("00:30", -60) == "00:00"
+    assert editor_schedule_from_slots([[None, None] for _ in range(4)]) == "none"
+    print("schedule editor self-test OK")
+
+
 def main():
+    if sys.argv[1:] == ["--self-test"]:
+        self_test()
+        return
     ScheduleManager().run()
 
 
