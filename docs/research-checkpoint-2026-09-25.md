@@ -1,8 +1,285 @@
 # WB2A research checkpoint - 2026-09-25
 
-Purpose: **start-of-session checkpoint for the next research day**. This file does not replace
-`docs/research-plan-2026-09-24.md`; it records the exact state reached on the evening of
-2026-09-24 and the highest-value next actions.
+Purpose: **current handoff checkpoint for the WB2A research**. This file does not replace
+`docs/research-plan-2026-09-24.md`; it consolidates the latest verified state,
+including the 2026-09-25 KMBUS/Physical_READ discriminator and the safe remote-access
+workflow.
+
+## Update through 2026-09-25 10:00 CEST
+
+### Production transport and remote-access baseline
+
+The production Optolink path remains intentionally **permanent VS1/KW**:
+
+- `vs1protocol = True`;
+- `port_vitoconnect = None`;
+- `port_optolink = /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0`;
+- serial resolves to `/dev/ttyUSB0`;
+- current global `olbreath = 0.025 s`;
+- normal datapoints are served through the production splitter while GFA access uses the
+  validated permanent-VS1 integration.
+
+Remote Desktop Commander access to the LXC is working. The remote account is
+`chatgpt-admin`; root access is deliberately restricted through exact sudo allowlists.
+Do not broaden sudo rules merely for convenience. Read-only status checks can be executed
+directly; privileged maintenance commands must stay within the existing allowlist.
+
+After the latest test/recovery, the following services were verified active:
+
+- `optolink-splitter.service`;
+- `optolink-party-emulator.service`;
+- `optolink-maintenance-api.service`;
+- `optolink-schedule-manager.service`.
+
+The schedule manager had to be restarted manually after the first revision of the new
+P300 helper; this is fixed in helper v1.0.2.
+
+### PrefixRead / 0x43 host serializer - closed
+
+The earlier assumption that Vitosoft serializes
+`PrefixRead=030000000101` as trailing request data for ordinary
+`KMBUS_EEPROM_READ / 0x43` is rejected for the captured Vitosoft-v6 build.
+
+Recovered `vsmInterfaceCore.dll` behavior:
+
+- `PrefixRead` and `PrefixWrite` are real first-class EventType metadata;
+- `RPCConverter.ConvertRpcToDevice_Default()` copies `PrefixRead` into
+  `BlockDataToDevice` only for `Remote_Procedure_Call / FCRead 0x07`;
+- ordinary non-RPC reads do not execute this conversion;
+- the normal `0x43 / 0x0001 / len 1` request is therefore:
+  `41 05 00 43 00 01 01 4A`;
+- the six-byte prefix must not be manually appended to standard P300 0x43 reads.
+
+The catalog provenance also matters:
+
+- 90/91 KMBUS_EEPROM_READ rows carry `030000000101`;
+- all 90 are linked only to GWG-family profiles;
+- the single no-prefix KMBUS_EEPROM row belongs to DEKATEL/VCOM;
+- **no KMBUS_EEPROM_READ event belongs to VDensHO1**.
+
+Historical GWG implementations use numeric type `0x43` in a different, 8-bit-address
+wire protocol. The identical numeric byte does not justify transferring GWG/LGM27
+semantics onto local P300/VS2 command 0x43.
+
+Private serializer reports/workflows:
+
+- `collector-output/20260924-143439/prefixread-serializer-deep-dive.md`;
+- workflow commit `d79475d9d955a129bef5d9bbb16755f8988486e7`;
+- successful run `36107129749`;
+- artifact `10852220322`;
+- report commit `f55cf2257d70a46e0bca92fd532b4693fd1c7fab`.
+
+### 0x43 response handling - controller bytes, not host artifacts
+
+The Vitosoft response path has also been recovered.
+
+For normal LDAP responses the host strips the five-byte LDAP header, copies the remaining
+payload directly into `BlockDataFromDevice/DataFromDevice`, then applies only the normal
+event conversion metadata. Therefore repeated/dynamic words such as:
+
+- `5498`;
+- `5497`;
+- `d301`;
+- `f201`;
+- low values such as `81`, `87`, `88`;
+
+are raw controller-produced payloads, not synthesized by a host-side KMBUS EEPROM decoder.
+
+The response converter groups command bytes by their low five bits:
+
+~~~text
+0x41 & 0x1F = 0x01
+0x43 & 0x1F = 0x03
+~~~
+
+This does not prove controller-side aliases, but it supplied a precise same-address
+hardware discriminator.
+
+Private response report:
+
+`collector-output/20260924-143439/kmbus-eeprom-response-analysis-2026-09-25.md`
+
+commit: `9bdb2b8019a5c4684fb36dc28f896903ab4eeab7`.
+
+### vsmGWG99Native.dll - recognition helper, not a recovered generic KMBUS reader
+
+All archived GWG99 native DLLs were inspected. The x64/x86 builds export only:
+
+- `CheckGWG`;
+- `TestCall_GWG99Native`.
+
+They import the expected Windows serial APIs and contain detector/test-style strings such
+as `checking gwg...`, `receive ENQ` and `WriteData OK`, but no exported general
+GWG/KMBUS datapoint API was recovered.
+
+Workflow:
+
+- `.github/workflows/gwg99-native-inspect.yml`;
+- commit `4bb3add3b06043d7fb8c3f077684292a14891761`;
+- successful run `36108141163`;
+- artifact `10851988021`.
+
+### New bounded live discriminator: 0x03 Physical_READ vs 0x43
+
+A dedicated fixed-allowlist read-only helper was created:
+
+`config/optolink-splitter/wb2a-physical-vs-kmbus-eeprom-probe.py`
+
+Initial helper commit:
+`48e77885ce0c9fc0a864cf46465c895828701192`
+
+Updater integration:
+`de2d8ab08aa740735366a3eae697822bd5ad5484`
+
+The live run was performed with helper v1.0.0 at:
+
+`/root/wb2a-physical-vs-kmbus-eeprom-20260925-095756-217850.log`
+
+Safety constraints were met:
+
+- read-only;
+- fixed address/function allowlist;
+- no broad scan;
+- no writes;
+- fresh P300 session per sample;
+- positive 20C2 identity control first;
+- splitter and Party restored;
+- `VS1/KW protocol initialized` seen after restore.
+
+Identity control:
+
+~~~text
+0x01 / 0x00F8 / 8
+-> 20 c2 00 03 00 00 01 03
+PASS
+~~~
+
+#### Positive control: 0x01 vs 0x41 at 0x00F8/2
+
+~~~text
+0x01 -> 20c2
+0x41 -> 20c2
+0x41 -> 20c2
+0x01 -> 20c2
+~~~
+
+Correct semantic classification: **STABLE_SAME**.
+
+This reconfirms the already proven `0x01 / 0x41` mirrored behavior.
+
+#### 0x03 vs 0x43 at 0x00F8/2
+
+~~~text
+0x03 -> 5491
+0x43 -> 5491
+0x43 -> 5491
+0x03 -> 5497
+~~~
+
+Classification: **DYNAMIC_OR_INCONCLUSIVE**.
+
+Important consequence: the same dynamic two-byte family previously considered peculiar to
+0x43 is also produced by ordinary `Physical_READ 0x03`.
+
+#### 0x03 vs 0x43 at 0x0001/1
+
+~~~text
+0x03 -> 81
+0x43 -> 81
+0x43 -> 81
+0x03 -> 81
+~~~
+
+Correct semantic classification: **STABLE_SAME**.
+
+At these bounded samples, 0x43 did not expose a distinct local view from 0x03.
+The current working hypothesis is therefore a common/aliased local
+physical/service view. **Universal equivalence remains unproven.**
+
+Do not interpret this as LGM27 EEPROM access, and do not start a broad 0x43 scan.
+
+Evidence:
+
+`config/optolink-splitter/research/vitosoft/physical-vs-kmbus-eeprom-2026-09-25-evidence.json`
+
+commit:
+`fb5fb0280726a7a61e52d606028ec4377717608c`.
+
+### Probe corrections discovered during the run
+
+The raw live data are valid, but helper v1.0.0 had a **reporting bug**:
+its equality key included the echoed response command byte. Therefore a
+payload-identical `0x01` versus `0x41` or `0x03` versus `0x43` pair was
+misreported as `STABLE_DISTINCT`.
+
+v1.0.1 fixes that classifier and adds an explicit regression test.
+
+Commit:
+`3391e21f9a8179e9773d1760ee408a264d97bc9d`
+
+Offline self-test after correction:
+
+`PHYSICAL_VS_KMBUS_EEPROM_PROBE_TESTS=6/6`.
+
+A second operational issue was found: the original helper stopped splitter/Party but did
+not preserve `optolink-schedule-manager.service`. During the maintenance window the
+schedule manager exited and was found inactive afterward. It was manually restarted and
+verified listening on 21 guarded schedule topics.
+
+v1.0.2 now explicitly stops/restores the schedule manager with the maintenance window.
+
+Commit:
+`3c1e37e79a628fce4c1ed0ed9683ba01fbf46ad9`.
+
+**Important operational note:** the live run itself used v1.0.0. Before this helper is ever
+used again on the container, run the normal `update` path so the installed production copy
+is refreshed to v1.0.2 or later, then run `--self-test` first.
+
+### Current KM-BUS conclusions
+
+1. `0x41 KMBUS_RAM_READ` is genuinely implemented on local 20C2.
+2. At the tested logical addresses, 0x41 mirrors `Virtual_READ 0x01`, including dynamic
+   pump objects.
+3. The dynamic pump capture directly showed:
+   - A1 request `0x7663[1] = 30%`;
+   - final/internal command `0x0A3C = 50%`;
+   - physical internal pump `0x7660[1] = 50%`.
+4. This remains strong evidence for the known GWG75=50% minimum-pump clamp, though a strict
+   same-window E7+GWG75 causality capture is optional.
+5. Source-derived `XRAM_READ 0x31` shapes were rejected 0/6 on local VDensHO1; do not
+   blind-scan XRAM.
+6. `PrefixRead` is not a generic non-RPC read serializer in this Vitosoft build.
+7. Local P300 `0x43` is implemented, but no dedicated LGM27 EEPROM view has been
+   demonstrated.
+8. The latest bounded 0x03/0x43 evidence favors a common/aliased local physical/service
+   view.
+9. No further live 0x43 work is justified without a new source-backed discriminator.
+
+Public documentation commits for this closure:
+
+- KBus read-memory analysis:
+  `df4d85a245bf85f14b4c26cac2706a02e7848f8d`;
+- canonical KM-BUS research:
+  `53c6a552cddd7b8cb8a9593eef55b74ef9be4e66`;
+- issue #30 latest discriminator comment id:
+  `5829107798`.
+
+### Highest-value next actions
+
+Do **not** continue generic 0x43 experimentation.
+
+Priority order:
+
+1. if coding-plug hardware is available, continue the side-labelled dual-EEPROM capture
+   described below;
+2. photograph the actual installed WB2A regulation board and identify the local MCU before
+   transferring any M16C/VBC130 assumption;
+3. continue passive/firmware-side work on the hidden pump selector upstream of
+   `0x0A3C`;
+4. only return to KM-BUS/P300 extended read families when a new source-derived request
+   discriminator exists;
+5. keep all bus research read-only and preserve the permanent VS1 production path.
+
 
 ## State at end of 2026-09-24
 
