@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "title": "WB2A / VDensHO1 bounded KBUS_VIRTUAL_READ semantic gate",
+  "date_local": "2026-09-25",
+  "timezone": "Europe/Berlin",
+  "controller": {
+    "boiler": "Vitodens 200-W WB2A",
+    "device": "VDensHO1",
+    "identification": "20C2",
+    "regulation_software": "0103"
+  },
+  "source_basis": {
+    "collector": "Vitosoft v6 All-Devices kmbus-read-slice",
+    "function": "KBUS_VIRTUAL_READ",
+    "function_code": "0x5F",
+    "exact_vdensho1_event_membership": false,
+    "tested_events": [
+      {
+        "event_id": 1125,
+        "address": "0x2508",
+        "block_length": 1,
+        "name_de": "Anlage: Aussentemperatur",
+        "conversion": "Div2",
+        "vdensho1_control": {
+          "function": "0x01",
+          "address": "0x5525",
+          "length": 2,
+          "conversion": "signed little-endian / 10"
+        }
+      },
+      {
+        "event_id": 2820,
+        "address": "0x2D08",
+        "block_length": 1,
+        "name_de": "HK A: Vorlauftemperatur (IST)",
+        "conversion": "Div2",
+        "vdensho1_control": {
+          "function": "0x01",
+          "address": "0x0810",
+          "length": 2,
+          "conversion": "signed little-endian / 10"
+        }
+      }
+    ],
+    "prefixread_note": "Vitosoft metadata carries PrefixRead equal to the KBus address for these rows. Recovered host serialization does not append PrefixRead to ordinary non-RPC reads, so the live probe used standard 8-byte P300 read frames without trailing request data."
+  },
+  "helper": {
+    "name": "wb2a-kbus-virtual-read-probe",
+    "version": "1.0.0",
+    "helper_commit": "22ab617559cc70dcd21b1f5b1309a2bcbd3f9265",
+    "updater_commit": "34d5f395c70b52049e01882e1479cf7c56d860c1",
+    "self_test": "KBUS_VIRTUAL_READ_PROBE_TESTS=7/7",
+    "arbitrary_requests": false,
+    "writes_implemented": false
+  },
+  "execution": {
+    "started_local": "2026-09-25T10:32:23+02:00",
+    "completed_local": "2026-09-25T10:32:48+02:00",
+    "log_path": "/root/wb2a-kbus-virtual-read-20260925-103223-219241.log",
+    "fresh_p300_session_per_sample": true,
+    "trial_order_per_anchor": "CKKC",
+    "identity_control": {
+      "function": "0x01",
+      "address": "0x00F8",
+      "length": 8,
+      "data": "20c2000300000103",
+      "result": "PASS"
+    },
+    "anchors": [
+      {
+        "label": "outside_temperature",
+        "control_trials": [
+          {
+            "raw": "9400",
+            "temperature_c": 14.8,
+            "status": "SUCCESS"
+          },
+          {
+            "raw": "9400",
+            "temperature_c": 14.8,
+            "status": "SUCCESS"
+          }
+        ],
+        "kbus_trials": [
+          {
+            "tx_frame": "4105005f25080192",
+            "rx_frame": "4106035f250801059b",
+            "status": "ERROR_MESSAGE",
+            "echoed_command": "0x5F",
+            "echoed_address": "0x2508",
+            "echoed_length": 1,
+            "error_payload": "05"
+          },
+          {
+            "tx_frame": "4105005f25080192",
+            "rx_frame": "4106035f250801059b",
+            "status": "ERROR_MESSAGE",
+            "echoed_command": "0x5F",
+            "echoed_address": "0x2508",
+            "echoed_length": 1,
+            "error_payload": "05"
+          }
+        ],
+        "classification": "KBUS_REJECTED_OR_ERROR"
+      },
+      {
+        "label": "a1_flow_actual_temperature",
+        "control_trials": [
+          {
+            "raw": "0d02",
+            "temperature_c": 52.5,
+            "status": "SUCCESS"
+          },
+          {
+            "raw": "0d02",
+            "temperature_c": 52.5,
+            "status": "SUCCESS"
+          }
+        ],
+        "kbus_trials": [
+          {
+            "tx_frame": "4105005f2d08019a",
+            "rx_frame": "4106035f2d080105a3",
+            "status": "ERROR_MESSAGE",
+            "echoed_command": "0x5F",
+            "echoed_address": "0x2D08",
+            "echoed_length": 1,
+            "error_payload": "05"
+          },
+          {
+            "tx_frame": "4105005f2d08019a",
+            "rx_frame": "4106035f2d080105a3",
+            "status": "ERROR_MESSAGE",
+            "echoed_command": "0x5F",
+            "echoed_address": "0x2D08",
+            "echoed_length": 1,
+            "error_payload": "05"
+          }
+        ],
+        "classification": "KBUS_REJECTED_OR_ERROR"
+      }
+    ],
+    "overall_classification": "NO_LOCAL_KBUS_VIRTUAL_SUCCESS_ON_TESTED_ANCHORS",
+    "execution_result": "PASS"
+  },
+  "restore": {
+    "vs1_restored": true,
+    "services": {
+      "optolink-splitter.service": "active",
+      "optolink-party-emulator.service": "active",
+      "optolink-maintenance-api.service": "active",
+      "optolink-schedule-manager.service": "active"
+    },
+    "post_restore_vs1_identity": "20c2000300000103"
+  },
+  "interpretation": {
+    "established": [
+      "The local VDensHO1/20C2 did not successfully execute the two tested source-backed KBUS_VIRTUAL_READ request shapes.",
+      "Both tested addresses reproducibly returned a valid P300 Error Message with inner payload 05.",
+      "The ordinary VDensHO1 controls stayed stable across each balanced C-K-K-C sequence.",
+      "The test therefore gives no evidence that the historical Vitosoft KBUS_VIRTUAL_READ semantic map is locally usable on these two anchors."
+    ],
+    "not_established": [
+      "This does not prove that function 0x5F is universally unsupported on VDensHO1.",
+      "It does not assign a semantic meaning to inner error payload 05.",
+      "It does not justify transferring legacy Dekamatik/HV/GWG participant addresses to VDensHO1.",
+      "It does not justify a broad 0x5F address sweep."
+    ],
+    "decision": "Do not expand live 0x5F probing without a new source-backed local discriminator or stronger controller-side evidence."
+  }
+}
