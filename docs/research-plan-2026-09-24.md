@@ -212,8 +212,22 @@ Current evidence:
   outside `vsmInterfaceCore.dll`.
 - [x] Close further live PrefixRead discrimination for 0x43. The no-prefix form
   is the captured host shape; broad address expansion remains unjustified.
-- [ ] Investigate the semantics of the dynamic host-shaped 0x43 response only
-  if a new source-backed discriminator becomes available.
+- [x] Trace the 0x43 response path. Vitosoft copies the raw payload after the
+  five LDAP header bytes and applies normal event conversion only; repeated
+  words such as `5498`/`d301` are therefore controller-produced, not a host
+  decoding artifact.
+- [x] Resolve the catalog provenance: all 90 prefixed KMBUS_EEPROM_READ rows
+  are linked only to 21 GWG profiles; the sole no-prefix row belongs to
+  DEKATEL/VCOM. No 0x43 event belongs to VDensHO1.
+- [x] Inspect archived `vsmGWG99Native.dll`: only `CheckGWG` and
+  `TestCall_GWG99Native` are exported; no general GWG/KMBUS datapoint API was
+  found. Historical GWG sources independently use TYPE `0x43` in a separate
+  8-bit-address wire protocol.
+- [~] Run the new source-backed bounded discriminator
+  `0x03 Physical_READ vs 0x43 KMBUS_EEPROM_READ` only at `0x00F8/2` and
+  `0x0001/1`, with fresh P300 sessions per sample. Keep `0x01 vs 0x41` at
+  `0x00F8/2` as the positive comparison control. Guarded helper prepared:
+  `wb2a-physical-vs-kmbus-eeprom-probe`.
 - [ ] Keep all work read-only; no broad blind sweep and no KBUS/KMBUS writes.
 
 The exact slice additionally shows that `XRAM_READ` is used on GWG families
