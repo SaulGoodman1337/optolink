@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "title": "WB2A natural burner/A1 runtime correlation and volatile control-surface evidence",
+  "date_local": "2026-09-25",
+  "timezone": "Europe/Berlin",
+  "controller": {
+    "boiler": "Vitodens 200-W WB2A",
+    "device": "VDensHO1",
+    "identification": "20C2"
+  },
+  "acquisition": {
+    "helper": "config/optolink-splitter/wb2a-burner-a1-runtime-watch.py",
+    "helper_commit": "78d463253f13523d1f5ec838fff4d5a61bb5e700",
+    "helper_self_test": "BURNER_A1_RUNTIME_WATCH_TESTS=5/5",
+    "writes": "none",
+    "csv_appliance_path": "/home/chatgpt-admin/wb2a-burner-a1-runtime-20260925-124401.csv",
+    "csv_sha256": "a2935a048b033a10062fa220751a6ff960c93134f8ff532336f0df1dcb65fd74",
+    "csv_bytes": 47051,
+    "csv_data_rows": 573,
+    "result": "PASS",
+    "stop_condition": "two complete natural flame cycles"
+  },
+  "source_backed_runtime_surfaces": {
+    "0xA152": {
+      "source_group": "VDensHO1~70_LON_Objekte~20_Node_RelayState",
+      "bits_msb_first": {
+        "2": "nvoRelayState_Interne_Pumpe",
+        "3": "nvoRelayState_UV_Heizen",
+        "5": "nvoRelayState_UV_Warmwasser",
+        "6": "nvoRelayState_Brenner",
+        "10": "nvoRelayState_HKP1"
+      },
+      "metadata_workflow_commit": "53beef8abdddcccd2548af55341985d7a90e982c",
+      "metadata_run": 36125220363,
+      "metadata_artifact": 10859906815
+    },
+    "0xA305": {
+      "source_name": "Modulationsgrad",
+      "token": "nvoBoilerState_BLR_value",
+      "note": "Observed as a modulation-related output state, not as an independent burner-demand flag."
+    },
+    "0x555A": {
+      "token": "Kesselsoll_eff",
+      "block_length": 2,
+      "conversion": "Div10",
+      "description": "Effective boiler target considering boiler max temperature, boiler protection and frost protection; Vitosoft explicitly states startup optimization is not included."
+    },
+    "0x7663": {
+      "token": "HKP_A1Drehzahl / Ausgang_HKP_A1",
+      "role": "direct A1 heating-circuit pump runtime/output"
+    }
+  },
+  "operating_mode_transition": {
+    "initial_state_local": "2026-09-25T12:44:03.165+02:00",
+    "initial_mode": "DHW-only idle",
+    "initial": {
+      "a152_raw": "0400",
+      "relay_burner": 0,
+      "relay_hkp1": 0,
+      "relay_internal_pump": 0,
+      "relay_uv_heating": 0,
+      "relay_uv_dhw": 1,
+      "a305_raw": 0,
+      "flame": 0,
+      "a1_speed_pct": 0,
+      "effective_boiler_target_c": 5,
+      "flow_target_c": 0,
+      "boiler_c": 54.5
+    },
+    "heating_activation": {
+      "a1_first_active_local": "2026-09-25T12:46:10.737+02:00",
+      "a1_speed_pct": 32,
+      "relay_state_change_local": "2026-09-25T12:46:12.061+02:00",
+      "a152_raw": "b020",
+      "relay_burner": 0,
+      "relay_hkp1": 1,
+      "relay_internal_pump": 1,
+      "relay_uv_heating": 1,
+      "relay_uv_dhw": 0,
+      "effective_boiler_target_c": 38,
+      "flow_target_c": 38
+    },
+    "interpretation": "A1/HKP1 and the integrated-pump relay state become active well before burner startup."
+  },
+  "cycles": [
+    {
+      "cycle": 1,
+      "pre_start_effective_target_drop_local": "2026-09-25T12:50:56.138+02:00",
+      "effective_boiler_target_before_c": 38,
+      "effective_boiler_target_during_start_c": 18,
+      "gfa_modulation_command_nonzero_local": "2026-09-25T12:50:58.755+02:00",
+      "flame_on_local": "2026-09-25T12:51:07.750+02:00",
+      "flame_off_local": "2026-09-25T12:51:35.366+02:00",
+      "modulation_zero_local": "2026-09-25T12:51:38.016+02:00",
+      "flame_duration_s": 27.616,
+      "a1_speed_pct_entire_cycle": 32,
+      "a1_result_0x0a3a_entire_cycle": 0,
+      "a152_raw_entire_heating_state": "b020",
+      "a152_burner_bit_entire_cycle": 0
+    },
+    {
+      "cycle": 2,
+      "pre_start_effective_target_drop_local": "2026-09-25T12:55:32.421+02:00",
+      "effective_boiler_target_before_c": 38,
+      "effective_boiler_target_during_start_c": 18,
+      "gfa_modulation_command_nonzero_local": "2026-09-25T12:55:35.156+02:00",
+      "flame_on_local": "2026-09-25T12:55:44.375+02:00",
+      "flame_off_local": "2026-09-25T12:56:12.223+02:00",
+      "flame_duration_s": 27.848,
+      "a1_speed_pct_entire_cycle": 32,
+      "a1_result_0x0a3a_entire_cycle": 0,
+      "a152_raw_entire_heating_state": "b020",
+      "a152_burner_bit_entire_cycle": 0
+    }
+  ],
+  "timing_correlations": {
+    "cycle1_flame_off_to_cycle2_gfa_start_s": 239.79,
+    "cycle1_flame_off_to_cycle2_flame_on_s": 249.009,
+    "cycle2_gfa_start_to_flame_on_s": 9.219,
+    "coding_plug_candidates": [
+      {
+        "field": "GWG65",
+        "source_label": "Brennermindestpausenzeit",
+        "raw": 4,
+        "decoded_by_refined_catalog": "4 min",
+        "caution": "The measured approximately 240 s restart interval is numerically consistent, but this capture alone does not isolate GWG65 from other 240 s mechanisms."
+      },
+      {
+        "field": "GWG73",
+        "source_label": "Anfahroptimierung modulierender Brenner",
+        "raw": 24,
+        "decoded_by_vdensho1_catalog_s": 240,
+        "caution": "Also numerically 240 s. Do not attribute the observed restart interval uniquely to GWG65 or GWG73 without a stronger discriminator."
+      },
+      {
+        "field": "GWG72",
+        "source_label": "Offset modulierender Brenner",
+        "raw_k": 20,
+        "observation": "Kesselsoll_eff reproducibly drops 38 -> 18 C immediately before both startup sequences, an exact 20 K difference.",
+        "caution": "Strong numerical/temporal correlation only. Kesselsoll_eff's source description says startup optimization itself is not included; the precise firmware relation to GWG72 is not yet proven."
+      }
+    ]
+  },
+  "key_result": {
+    "established": [
+      "Across two natural direct-A1 burner starts, A1 pump speed remained exactly 32% before startup, during the pre-flame GFA sequence, throughout flame and through flame-off.",
+      "No burner-dependent A1 speed boost was visible in the active VDensHO1 configuration.",
+      "A152 HKP1 and internal-pump relay bits are active before burner startup and remain unchanged through the flame cycle.",
+      "A152 nvoRelayState_Brenner remained 0 even while independent flame channels were 1, so that LON relay bit is not the local GFA burner request/output path on this installation.",
+      "A305 follows the modulation state and is not an independent pre-flame burner-demand flag.",
+      "0x0A3A stayed 0 and therefore does not reveal a hidden A1 speed result on this topology."
+    ],
+    "not_established": [
+      "Absence of an observed A1 boost does not prove the firmware contains no dormant/alternate burner-dependent pump algorithm.",
+      "No volatile pump-control write surface has yet been exercised.",
+      "No causal assignment of the approximately 240 s interval to GWG65 versus GWG73 is made.",
+      "No causal assignment of the 20 K Kesselsoll_eff offset to GWG72 is made yet."
+    ]
+  },
+  "exact_vdensho1_nvi_trace": {
+    "workflow_commit": "024cbaafb26ca9eaadf69dfc4d4f39f3ca01322f",
+    "run": 36127098381,
+    "exact_nvi_count": 12,
+    "objects": [
+      "CFDM",
+      "DHWC",
+      "HCC1",
+      "HCC2"
+    ],
+    "noteworthy": [
+      "0xA380 nviProdCmd_CFDM value/state: volatile production-output command, Virtual_READ/Virtual_WRITE",
+      "0xA382 nviApplicMode_CFDM: volatile central production mode",
+      "0xA383 nviSetpoint_CFDM: volatile production temperature setpoint",
+      "0xA401/0xA403 HCC1 space/flow setpoints",
+      "No exact VDensHO1 nvi pump-speed command exists in the recovered service groups."
+    ],
+    "interpretation": "The CFDM surface is a heat-production-demand interface, not a source-backed A1 pump-speed interface. It is not a candidate for direct pump-speed control."
+  },
+  "post_run_state": {
+    "checked_local": "2026-09-25T13:03:49+02:00",
+    "e7_pct": 30,
+    "a1_speed_pct": 31,
+    "flame": 0,
+    "experimental_processes_running": false,
+    "services": {
+      "optolink-splitter.service": "active",
+      "optolink-party-emulator.service": "active",
+      "optolink-maintenance-api.service": "active",
+      "optolink-schedule-manager.service": "active"
+    }
+  },
+  "next_boundary": [
+    "Complete offline enumeration of exact VDensHO1 pump-related FCWrite surfaces.",
+    "Do not write any candidate until its semantics, volatility/persistence and safety boundary are source-backed.",
+    "If no volatile A1 pump-speed write surface exists, continue with controller firmware/MCU analysis and physical coding-plug correlation."
+  ]
+}
