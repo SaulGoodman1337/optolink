@@ -455,3 +455,64 @@ has now been proven to be only a 16-bit VS1 virtual-memory dump.
 The correct next step is therefore not a broad P300 scan. It is recovery of the
 specific M30612-era readout mechanism, followed by a protocol/architecture
 comparison against the WB2A/M30624 working model.
+
+
+## BE_READ / 0x9E discriminator — closed as firmware-bank lead
+
+During the historical GWG review, `BE_READ` / GWG wire type `0x9E` was
+briefly considered as a possible "Bereich"/bank-extension mechanism because its
+name was otherwise unexplained and a banked service would solve the 16-bit
+Optolink vs. 20-bit M16C program-address mismatch.
+
+The verified Collector-v6 source material now closes that hypothesis.
+
+A dedicated extraction from the hash-verified private Vitosoft snapshot found:
+
+```text
+20 unique BE_READ event IDs
+18 unique low addresses
+range represented by the events: 0x0008..0x00F6
+PrefixRead: none
+FCWrite counterpart: BE_WRITE
+AccessMode: ReadWrite
+```
+
+Representative exact event tokens are:
+
+```text
+GWG_Raumtemperatur_SollwertNormalBEM~0x0008
+GWG_Trinkwasser_SolltemperaturBEM~0x0011
+GWG_Niveau_HKA_BEM~0x0018
+GWG_Neigung_HKA_BEM~0x0020
+GWG_BetriebsprogrammBEM~0x0057
+GWG_Uhrzeit_Wochentag_BEM~0x00F4
+GWG_Uhrzeit_Stunden_BEM~0x00F5
+GWG_Uhrzeit_Minute_BEM~0x00F6
+```
+
+The translated catalog text explicitly identifies the `0x0057` object as
+the operating program of the **menügeführte Bedieneinheit**. Device membership
+is confined to legacy `GWG_V*` profiles; no BE event is linked to
+`VDensHO1`.
+
+Therefore `BE_READ` is best interpreted as a Bedieneinheit-domain access
+family in this catalog. It provides no evidence for a program-ROM bank
+selector or extended M16C address mechanism.
+
+Private reproducible evidence:
+
+```text
+collector-output/20260925-m16c-be-read-trace/
+  be-summary.json
+  be-events.json
+  be-membership.csv
+  raw-be-hits.txt
+```
+
+Workflow:
+
+`.github/workflows/m16c-be-read-trace.yml`
+
+Decision: **remove BE_READ / 0x9E from the active firmware-readout candidate
+list unless independent firmware-level evidence assigns it another meaning on
+a different controller family.**
