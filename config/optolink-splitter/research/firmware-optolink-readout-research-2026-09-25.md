@@ -1072,3 +1072,182 @@ The firmware-acquisition research now has two concrete lost-source targets:
 Until either source is recovered, ordinary public dump/logging tools continue
 to converge on the same 16-bit Virtual_READ behavior and add no new path into
 main program ROM.
+
+
+## 2026-09-25 follow-up: VitosorpAccessController proves an Optolink RPC address-proxy architecture
+
+A targeted static trace was executed against the verified Collector-v6 archive
+to answer a narrower question:
+
+> Does any recovered Vitosoft RPC serializer move a target address into request
+> data and route the request through a fixed Optolink endpoint?
+
+This matters because such a proxy/window architecture is one of the plausible
+ways a 16-bit Optolink request space could reach another address domain.
+
+Private reproducible evidence:
+
+```text
+workflow:
+  .github/workflows/optolink-high-address-rpc-trace.yml
+
+workflow source commit:
+  df21ed4f2fb95fd4c21ebbfd598383177b016e3b
+
+result commit:
+  9649093181eb148bf54dfada416c253e7489253f
+
+collector-output/20260925-optolink-high-address-rpc-trace/
+  README.md
+  summary.json
+  exact-methods.json
+  exact-methods.txt
+  serializer-candidates.json
+  event-candidates.json
+```
+
+### Exact read serializer recovered
+
+`RPCConverter.ConvertRpcToDevice_VitosorpAccessController()` implements a
+real address proxy.
+
+For a read request, Vitosoft takes the original event address and block length,
+then rewrites the request as:
+
+```text
+original target:
+  EventType.Address = <16-bit target address>
+  EventType.BlockLength = <requested length>
+
+RPC proxy:
+  endpoint = 0xA400
+  payload  = <target_addr_hi> <target_addr_lo> <requested_length>
+```
+
+The recovered code is equivalent to:
+
+```text
+target = BitConverter.GetBytes(EventType.Address)
+
+EventType.Address = 0xA400
+BlockDataToDevice = [
+    target[1],
+    target[0],
+    requested_length
+]
+BlockLength = 3
+```
+
+For writes the same concept uses fixed endpoint `0xA401`:
+
+```text
+payload =
+  <target_addr_hi>
+  <target_addr_lo>
+  <data_length>
+  <data...>
+```
+
+The response path then copies the returned RPC payload back into the original
+event representation and applies the normal event conversion.
+
+### Why this is important
+
+This is the first recovered Vitosoft implementation in this workstream that
+demonstrates the **exact architectural pattern** previously hypothesized for a
+hidden firmware-access mechanism:
+
+```text
+ordinary Optolink RPC
+        |
+        v
+fixed service endpoint
+        |
+        v
+target address carried inside request data
+        |
+        v
+controller-side proxy accesses another object/address
+```
+
+Therefore it is no longer merely hypothetical that Viessmann uses
+controller-side address-proxy services behind Optolink.
+
+### Why handler 71 does not solve the M30624 firmware dump
+
+The same static recovery also closes this specific handler as a direct
+high-address program-ROM path.
+
+The serializer uses only:
+
+```text
+target[1]
+target[0]
+```
+
+from `BitConverter.GetBytes(EventType.Address)`.
+
+It does **not** use:
+
+```text
+target[2]
+target[3]
+>> 16
+>> 24
+PrefixRead
+PrefixWrite
+bank/page bytes
+```
+
+Thus the proxy target remains strictly 16 bit.
+
+The fixed proxy endpoints are:
+
+```text
+0xA400  read
+0xA401  write
+```
+
+and the recovered event scan found **zero catalog rows explicitly using
+RPC handler 71 / VitosorpAccessController** in the captured event definitions.
+The implementation exists in the host code as a generic/specialized capability,
+but there is no current source-backed VDensHO1 event which activates it.
+
+### High-address serializer scan
+
+The same trace inspected request serializers for address-style use of:
+
+- third/fourth bytes from `BitConverter.GetBytes(Address)`;
+- `>> 16` / `>> 24`;
+- page/bank/address-extension fields;
+- PrefixRead/PrefixWrite used as an address extension;
+- request-data construction around an event address.
+
+No recovered serializer in the traced Vitosoft core uses a third or fourth
+byte of `EventType.Address` to construct a target address.
+
+Four-byte `BitConverter` payloads do occur elsewhere, for example for
+32-bit **values** such as impulse counters / LON parameters. They are not
+address extensions.
+
+### Research decision
+
+`VitosorpAccessController` is therefore:
+
+- **positive architectural evidence** that fixed-endpoint RPC address proxies
+  exist in Viessmann/Vitosoft;
+- **negative evidence** for this particular handler as the missing M16C
+  20-bit program-ROM path.
+
+Do not live-probe `0xA400/0xA401` on VDensHO1 merely because the serializer
+has been recovered. No VDensHO1 applicability or high-ROM semantic is proven.
+
+The next static target is now more precise:
+
+> enumerate every recovered fixed RPC/service endpoint which builds request
+> payloads from addresses, offsets, selectors or opaque byte arrays, and look
+> specifically for a service carrying more than 16 target-address bits or a
+> page/bank selector.
+
+This is a substantially narrower search than scanning arbitrary P300 function
+codes.
