@@ -542,6 +542,61 @@ The Optolink-Splitter service was active. The only intentional persistent test
 artifact is the new BC entry in the system fault history from the bounded
 A0+0x7342 experiment.
 
+
+#### Additional local discriminators — 2026-09-25 late session
+
+A control pass across the hidden programming-unit block showed that same-value
+Virtual_WRITE acceptance is not unique to the M1 remote-type byte:
+
+~~~text
+0x7340  21 -> 21   accepted
+0x7341  00 -> 00   accepted
+0x7342  00 -> 00   accepted
+0x7343  FF -> FF   accepted
+0x7344  FF -> FF   accepted
+~~~
+
+This weakens any interpretation based solely on an ACK at 0x7342. The
+significant evidence remains its source-correlated value semantics
+(`0x74 = BDETYP_F2M1`, `0x78 = BDETYP_F3M1`) and the fact that a changed
+value can be read back.
+
+A separate persistence test held `0x7342 = 0x74` for more than 20 seconds
+while `A0 = 0`. It remained `0x74` for the full observation interval, did
+not auto-arm `0x27A0`, and caused no current alarm. The value was then
+explicitly restored to `0x00`.
+
+A matched A0 control was also run:
+
+~~~text
+control:             0x7342=00, A0 00->01 -> BC observed in that run at ~6.48 s
+type preloaded:      0x7342=74, A0 00->01 -> BC observed in that run at ~2.56 s
+~~~
+
+Both runs left `0x0A5C=00000000`, `0x0896=C800` and `0x089C=03`, and
+both were immediately rolled back to `A0=0`; the current alarm then cleared.
+The different BC latency must not be interpreted as a causal acceleration:
+the controller fault check is asynchronous/cyclic and the trials were not
+phase-synchronised. The robust discriminator is binary: **BC occurs in both
+cases**.
+
+This strengthens the interpretation that `0x7342` is a writable
+type/service-state field, while the actual remote liveness state is owned by a
+different firmware path fed by successful KM-BUS traffic.
+
+The generic MQTT maintenance `request;0x41;...` route was also tested and
+timed out even for the already known-good `0x00F8` target. This is therefore
+a maintenance-API/serializer limitation, not evidence that local
+`KMBUS_RAM_READ` stopped working. The isolated guarded P300 helper was run
+immediately afterwards and again hardware-verified `0x41` as identical to
+Virtual_READ on its whitelisted targets, including `0x27A0`.
+
+Finally, the recovered production FunctionCode table contains
+`KMBUS_RAM_READ = 0x41` and then `KMBUS_EEPROM_READ = 0x43`; there is no
+defined/source-backed `KMBUS_RAM_WRITE = 0x42`. This is a further reason not
+to infer a symmetric write primitive from the working 0x41 path.
+
+
 #### Updated interpretation
 
 The ordinary Virtual_WRITE route is now strongly constrained:
