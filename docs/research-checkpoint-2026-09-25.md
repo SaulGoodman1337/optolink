@@ -383,38 +383,30 @@ Interpretation:
 Next hardware gate is the current operating 7833971, read last and read-only:
 boiler unpowered, plug disconnected, f01/f02 three identical reads each.
 
-## Priority 1 - current operating 7833971 physical capture
+## Priority 1 - active 7833971 physical capture completed
 
 The two older side-labelled plugs are already archived and analyzed under
 `config/optolink-splitter/research/coding-plug/2026-09-25-old-plugs/`.
 
-The next decisive hardware capture is the **currently operating 7833971**.
+The **currently operating 7833971** has now been physically captured on both f01 and f02.
 
 Physical labels:
 
 - **f01 / SIM1 / ST 24C04W6**;
 - **f02 / SIM2 / Microchip 24LC04B**.
 
-Procedure:
+Results:
 
-1. boiler fully unpowered;
-2. coding plug disconnected from the boiler;
-3. read f01 three times without moving the clip;
-4. verify each file is 512 bytes and all three SHA256 values are identical;
-5. repeat f02 the same way;
-6. never write, erase or patch either EEPROM.
+- f01 SHA256 `6b60b5b9de3dc90cbbe2bba2f7878ef4db36e117577f3402970170746e5cf63f`;
+- f02 SHA256 `e20316f2053b5002fc52b213b7f6bd7f8b63944a3202bf4b865c999091113e9a`;
+- f01 offset `0x10` is ASCII `7833971`;
+- all known P300 blocks `0x1010,0x1020,0x1030,0x1040,0x1050,0x1060,0x1070,0x1080,0x1090,0x10C0` match the physical f01 image exactly;
+- f02 `0x0E..0x13 = 15 01 14 0C 04 D6`;
+- live GFA P101..P106 are exactly `15 01 14 0C 04 D6`.
 
-Immediate comparisons after capture:
+Therefore f01->P300/GWG and f02->GFA are both physically proven for the mapped fields.
 
-- f01 offset `0x10` should contain ASCII `7833971`;
-- f01 physical blocks `0x20..0xC0` should be compared byte-for-byte against
-  the existing P300 `0x1020..0x10C0` live observations;
-- f02 should be compared against the old f02 record structure and the current
-  GFA P90/P100..P108 vector.
-
-This capture should close the f01 physical/P300 mapping on the same plug and
-provide the best available discriminator for the still-unproven f02/GFA-domain
-hypothesis.
+The same current files were uploaded twice and compare byte-identically. This verifies transfer/file identity but is not counted as independent 3x physical EEPROM repeatability.
 
 ## Priority 2 - regulation-board photographs
 
