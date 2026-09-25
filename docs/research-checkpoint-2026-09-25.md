@@ -880,6 +880,134 @@ Conclusion: the function class exists in Viessmann firmware history, but no
 source-backed exposed burner-dependent A1 coding has yet been found on
 VDensHO1. Do not use repeated E7 writes as the production solution.
 
+## Natural burner/A1 runtime closure
+
+A new strictly read-only permanent-VS1 watcher captured two complete natural
+direct-A1 burner cycles after switching from DHW-only to heating + DHW.
+
+Raw CSV:
+
+`/home/chatgpt-admin/wb2a-burner-a1-runtime-20260925-124401.csv`
+
+SHA256:
+
+`a2935a048b033a10062fa220751a6ff960c93134f8ff532336f0df1dcb65fd74`
+
+573 data rows; no writes.
+
+### Repeated natural result
+
+Both burner starts showed:
+
+~~~text
+A1 / 0x7663 = exactly 32 %
+~~~
+
+before the GFA start sequence, during pre-flame activity, through confirmed
+flame and through flame-off.
+
+Cycle timings:
+
+~~~text
+cycle 1:
+  GFA/mod start  12:50:58.755
+  flame on       12:51:07.750
+  flame off      12:51:35.366
+  flame duration 27.616 s
+
+cycle 2:
+  GFA/mod start  12:55:35.156
+  flame on       12:55:44.375
+  flame off      12:56:12.223
+  flame duration 27.848 s
+~~~
+
+This directly establishes that the active VDensHO1/20C2 configuration applies
+**no visible burner-dependent A1 speed boost**.
+
+It does not prove that no dormant firmware path exists.
+
+### New runtime state observations
+
+The exact VDensHO1 raw EventTypeGroup metadata decodes `0xA152` relay-state
+bits. On the local installation:
+
+- HKP1, internal-pump and heating-diverter bits become active when heating is
+  enabled, several minutes before burner startup;
+- the source-labelled burner relay bit remains zero even with independent
+  flame confirmation and is therefore not the local GFA burner request/output
+  path;
+- `0xA305` is source-labelled Modulationsgrad and follows modulation rather
+  than exposing an independent pre-flame request.
+
+`0x555A / Kesselsoll_eff` is source-defined as 2-byte Div10. Before both
+start sequences it reproducibly changed 38 -> 18 C, an exact 20 K difference
+matching local `GWG72 = Offset modulierender Brenner = 20 K`. Treat this as
+a strong correlation, not yet a causal firmware proof.
+
+Measured restart timing:
+
+~~~text
+cycle1 flame off -> cycle2 GFA start = 239.790 s
+cycle1 flame off -> cycle2 flame on  = 249.009 s
+GFA start -> flame on                 =   9.219 s
+~~~
+
+Both `GWG65 Brennermindestpausenzeit = 4 min` and
+`GWG73 Anfahroptimierung modulierender Brenner = 240 s` are numerically
+compatible with a 240-second interval. Do not assign the observation
+exclusively to either field without a stronger discriminator.
+
+### Exposed pump-control surfaces closed
+
+Exact VDensHO1 `nvi*` trace:
+
+- 12 inputs total, belonging to CFDM, HCC1/HCC2 and DHWC;
+- CFDM provides volatile heat-production commands/setpoints;
+- no pump-speed `nvi*` exists.
+
+Run `36127098381`, workflow commit
+`024cbaafb26ca9eaadf69dfc4d4f39f3ca01322f`.
+
+Exact VDensHO1 pump-write trace:
+
+- runtime A1 surfaces `0x7663` and `0x0A3A` are read-only;
+- E6/E7/E8/E9 and K30/K31/K32/K34/6C are coding/configuration writes;
+- relay test is a diagnostic actuator surface, not an A1-speed regulation
+  interface;
+- no dedicated volatile A1 speed command is exposed.
+
+Run `36127320074`, workflow commit
+`85e4603854cb12902c81a5bd4ef2171cf8719149`.
+
+Global All-Devices KBus-write trace:
+
+- many KBus writes exist overall;
+- only one pump-semantic KBus write exists;
+- it is a legacy Dekamatik shunt-pump event at `0x4301`;
+- no VDensHO1/HO1 KBus pump-speed write exists.
+
+Run `36127576729`, workflow commit
+`ffc9070c8ff2b10dd8027364497751d7fd43d2a6`.
+
+Machine evidence:
+
+- `config/optolink-splitter/research/vitosoft/burner-a1-runtime-2026-09-25-evidence.json`;
+- evidence commits `54c9d153124e7268a54925150e59a2ec40adee19`,
+  `67016d7045f7a4a9e5c65fd87dc30cceb3a4798e`;
+- public analysis commit `cca74a27fe0be998acd492b29615ce4f1a94640e`.
+
+Post-run verification:
+
+- E7 = 30 %;
+- no experimental helper process remains;
+- all four production services active.
+
+The Vitosoft-exposed service, LON and KBus control surfaces are therefore
+exhausted for a source-backed volatile direct-A1 pump-speed override. Continue
+at the regulation-firmware/MCU boundary and with physical coding-plug EEPROM
+correlation.
+
 ## Priority 4 - remaining firmware/KM-BUS work
 
 After the physical evidence above:
