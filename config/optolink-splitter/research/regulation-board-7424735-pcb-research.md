@@ -437,7 +437,51 @@ Visual comparison shows the same broad GG1-era architecture: vertical daughterbo
 
 The main QFP marking in this image is also not readable enough to identify the MCU.
 
-#### Updated image-search boundary
+#### Revalidated Kleinanzeigen pixel evidence and coding-plug clue
+
+The archived exact-7187393 Kleinanzeigen page was fetched again on 2026-09-25 and all four still-accessible CDN images were inspected directly at the largest available `$_57.JPG` rendering rather than relying on search thumbnails.
+
+Directly revalidated observations:
+
+- full-board image shows exact main PCB sticker **7187393**, the vertical daughterboard, the large main QFP, three-pad **J1**, black **2 x 3 X10**, X3/[145] and the separate [145] connector in one frame;
+- X3 close-up sharply confirms `X3 [1] [2] [145]`, the separate `[145]` connector and barcode **7187393513812107**;
+- the close-up around the 7187393 sticker/C105/C106 region shows multiple optocoupler-class 4-pin packages; two top markings are visually consistent with the **SFH618A-1 family**, but the suffix/date lines are not promoted as exact part identification from this photograph;
+- the full-board photograph also contains a removed coding plug next to the PCB carrying visible side/sticker number **7177432**;
+- the fourth image is an appliance/HMI photograph and adds no PCB-level component evidence.
+
+CDN sources:
+
+- `https://img.kleinanzeigen.de/api/v1/prod-ads/images/a4/a4a18677-b897-4865-ab4e-3fd80add6ff7?rule=$_57.JPG`
+- `https://img.kleinanzeigen.de/api/v1/prod-ads/images/e8/e8f3c5fb-5159-4b46-bc65-2038ed39af55?rule=$_57.JPG`
+- `https://img.kleinanzeigen.de/api/v1/prod-ads/images/38/385fcc69-292b-42d7-8a6e-276a7c0eaf19?rule=$_57.JPG`
+- `https://img.kleinanzeigen.de/api/v1/prod-ads/images/1e/1ee1bfed-256b-4229-97c7-f4a3acceb146?rule=$_57.JPG`
+
+#### Important coding-plug numbering implication
+
+Public WB2A evidence shows that **7177432 is not sufficient to identify the programmed coding-plug data set**.
+
+In a WB2A exchange case, two plugs both carry `7177432` but have different further/article identifiers and different appliance semantics:
+
+- `7177432 / 7824047`: reported for a WB2A with storage cylinder/Vitocell 100;
+- `7177432 / 7823552`: reported from another WB2A configuration with plate heat exchanger.
+
+Source:
+https://community.viessmann.de/t5/Gas/ich-habe-eine-Viessmann-vitodens-200-wb2a-fehler-b7-neuer/td-p/89744
+
+A second direct WB2A case identifies appliance `7186846`, GG1 `7187362`, and coding plug **7824047**, strengthening the relevance of that programmed identifier for this WB2A branch:
+
+https://community.viessmann.de/t5/Gas/Vitodens-200-WB2A-Stoerung-F0-Zuendtrafo-liegt-ununterbrochen-an/td-p/219269
+
+Other Viessmann generations likewise show `7177432` beside different programmed/article numbers, so treat `7177432` as a carrier/base-part marking unless a device-specific article number and/or EEPROM contents establish the data set.
+
+Research consequence for the planned physical dumps:
+
+- photograph **all labels on every coding plug, including side labels only visible when removed**;
+- retain plug identity together with `f01/ST` and `f02/Microchip` side identity and every dump hash;
+- do not group two plugs as equivalent merely because both say `7177432`;
+- use the binary content plus known software anchors (`20 15 02 01`, etc.) for correlation.
+
+### Updated image-search boundary
 
 After the expanded search, no public image yet supports a defensible MCU part-number transcription for exact `7187393`, `84346904`, `7186950` or the additional `7189106` comparator. The MCU question remains gated on a perpendicular local macro photograph.
 
