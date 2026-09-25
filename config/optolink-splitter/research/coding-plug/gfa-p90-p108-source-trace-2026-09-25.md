@@ -193,3 +193,29 @@ This provides a new physical discriminator:
 This narrows the architecture: GFA_READ exposes both **GFA internal identity /
 firmware state** and **coding-plug-derived values**. Do not assume every Pxx
 entry maps one-to-one onto the f02 24C04.
+
+
+### P70-P79 discriminator attempt
+
+The VDensHO1 metadata also exposes P70..P79 as GFA_READ configuration/calibration
+limits (C10..C14 min/max). They were tested because a ten-byte static vector
+would have been a strong discriminator for the repeated f02 records.
+
+Local read-only result, reproduced twice:
+
+```text
+P70 0x4046 -> retcode 0xFF
+P71 0x4047 -> retcode 0xFF
+P72 0x4048 -> retcode 0xFF
+P73 0x4049 -> retcode 0xFF
+P74 0x404A -> retcode 0xFF
+P75 0x404B -> retcode 0xFF
+P76 0x404C -> retcode 0xFF
+P77 0x404D -> retcode 0xFF
+P78 0x404E -> retcode 0xFF
+P79 0x404F -> retcode 0xFF
+```
+
+Therefore P70..P79 are source-defined for the broader metadata/device mapping
+but are not usable local read targets on this P80=0x20 GFA branch. Do not use
+them for further live probing unless new branch-specific evidence appears.
