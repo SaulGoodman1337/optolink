@@ -991,22 +991,26 @@ button_card_templates:
                         columns: 2
                         square: false
                         cards:
-                          - type: tile
+                          - type: custom:datetime-spinner-card
                             entity: time.vitodens_200_wb2a_zeitprogramm_editor_slot1_startzeit
                             name: Start
                             icon: mdi:clock-start
-                            tap_action:
-                              action: more-info
-                            hold_action:
-                              action: more-info
-                          - type: tile
+                            icon_color: teal
+                            minute_step: 10
+                            repeat: 3
+                            layout: vertical
+                            show_label: false
+                            haptic_feedback: true
+                          - type: custom:datetime-spinner-card
                             entity: time.vitodens_200_wb2a_zeitprogramm_editor_slot1_endzeit
                             name: Ende
                             icon: mdi:clock-end
-                            tap_action:
-                              action: more-info
-                            hold_action:
-                              action: more-info
+                            icon_color: teal
+                            minute_step: 10
+                            repeat: 3
+                            layout: vertical
+                            show_label: false
+                            haptic_feedback: true
 
                     - type: custom:mushroom-template-card
                       entity: switch.vitodens_200_wb2a_zeitprogramm_editor_slot2_aktiv
@@ -1037,22 +1041,26 @@ button_card_templates:
                         columns: 2
                         square: false
                         cards:
-                          - type: tile
+                          - type: custom:datetime-spinner-card
                             entity: time.vitodens_200_wb2a_zeitprogramm_editor_slot2_startzeit
                             name: Start
                             icon: mdi:clock-start
-                            tap_action:
-                              action: more-info
-                            hold_action:
-                              action: more-info
-                          - type: tile
+                            icon_color: teal
+                            minute_step: 10
+                            repeat: 3
+                            layout: vertical
+                            show_label: false
+                            haptic_feedback: true
+                          - type: custom:datetime-spinner-card
                             entity: time.vitodens_200_wb2a_zeitprogramm_editor_slot2_endzeit
                             name: Ende
                             icon: mdi:clock-end
-                            tap_action:
-                              action: more-info
-                            hold_action:
-                              action: more-info
+                            icon_color: teal
+                            minute_step: 10
+                            repeat: 3
+                            layout: vertical
+                            show_label: false
+                            haptic_feedback: true
 
                     - type: custom:mushroom-template-card
                       entity: switch.vitodens_200_wb2a_zeitprogramm_editor_slot3_aktiv
@@ -1083,22 +1091,26 @@ button_card_templates:
                         columns: 2
                         square: false
                         cards:
-                          - type: tile
+                          - type: custom:datetime-spinner-card
                             entity: time.vitodens_200_wb2a_zeitprogramm_editor_slot3_startzeit
                             name: Start
                             icon: mdi:clock-start
-                            tap_action:
-                              action: more-info
-                            hold_action:
-                              action: more-info
-                          - type: tile
+                            icon_color: teal
+                            minute_step: 10
+                            repeat: 3
+                            layout: vertical
+                            show_label: false
+                            haptic_feedback: true
+                          - type: custom:datetime-spinner-card
                             entity: time.vitodens_200_wb2a_zeitprogramm_editor_slot3_endzeit
                             name: Ende
                             icon: mdi:clock-end
-                            tap_action:
-                              action: more-info
-                            hold_action:
-                              action: more-info
+                            icon_color: teal
+                            minute_step: 10
+                            repeat: 3
+                            layout: vertical
+                            show_label: false
+                            haptic_feedback: true
 
                     - type: custom:mushroom-template-card
                       entity: switch.vitodens_200_wb2a_zeitprogramm_editor_slot4_aktiv
@@ -1129,27 +1141,31 @@ button_card_templates:
                         columns: 2
                         square: false
                         cards:
-                          - type: tile
+                          - type: custom:datetime-spinner-card
                             entity: time.vitodens_200_wb2a_zeitprogramm_editor_slot4_startzeit
                             name: Start
                             icon: mdi:clock-start
-                            tap_action:
-                              action: more-info
-                            hold_action:
-                              action: more-info
-                          - type: tile
+                            icon_color: teal
+                            minute_step: 10
+                            repeat: 3
+                            layout: vertical
+                            show_label: false
+                            haptic_feedback: true
+                          - type: custom:datetime-spinner-card
                             entity: time.vitodens_200_wb2a_zeitprogramm_editor_slot4_endzeit
                             name: Ende
                             icon: mdi:clock-end
-                            tap_action:
-                              action: more-info
-                            hold_action:
-                              action: more-info
+                            icon_color: teal
+                            minute_step: 10
+                            repeat: 3
+                            layout: vertical
+                            show_label: false
+                            haptic_feedback: true
 
                     - type: custom:mushroom-template-card
-                      primary: Uhrzeiten
+                      primary: Bedienung
                       secondary: >-
-                        Antippen öffnet die native Uhrzeitauswahl · 10-Minuten-Raster wird automatisch übernommen · Ende 00:00 entspricht 24:00
+                        Uhrzeit antippen und im Spinner wählen · 10-Minuten-Raster · Ende 00:00 entspricht 24:00 · Änderungen bleiben zunächst im Entwurf
                       icon: mdi:gesture-tap
                       icon_color: grey
                       multiline_secondary: true
