@@ -154,7 +154,7 @@ The notes are intentionally split into two layers:
 - [pump-start-heating-vs-dhw.md](pump-start-heating-vs-dhw.md) —
   read-only comparison of internal-pump setpoints and runtime state during
   space-heating versus domestic-hot-water burner starts.
-- [kmbus-optolink-research.md](kmbus-optolink-research.md) —
+- [firmware-optolink-readout-research-2026-09-25.md](firmware-optolink-readout-research-2026-09-25.md) —\n  current firmware-acquisition checkpoint: historical OpenV M30612/Optolink evidence,\n  byte-level closure of the old OptoLinkLogger dump as 16-bit VS1 virtual read,\n  M30624 working-hypothesis address-width boundary and next read-only acquisition paths.\n- [kmbus-optolink-research.md](kmbus-optolink-research.md) —
   canonical protocol research for controller-side KBus/KM-BUS access through
   Optolink, including verified function codes, frame layout, safety rules and
   reproducible read-only experiments.
