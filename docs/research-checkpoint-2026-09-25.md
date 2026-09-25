@@ -383,54 +383,38 @@ Interpretation:
 Next hardware gate is the current operating 7833971, read last and read-only:
 boiler unpowered, plug disconnected, f01/f02 three identical reads each.
 
-## Priority 1 - new EEPROM reader: side-labelled coding-plug capture
+## Priority 1 - current operating 7833971 physical capture
 
-The replacement EEPROM reader/programmer is expected on 2026-09-25. Resume physical
-coding-plug research only when the new reader is available.
+The two older side-labelled plugs are already archived and analyzed under
+`config/optolink-splitter/research/coding-plug/2026-09-25-old-plugs/`.
 
-### First capture: both EEPROMs of the SAME spare plug
+The next decisive hardware capture is the **currently operating 7833971**.
 
-Explicit physical labels:
+Physical labels:
 
 - **f01 / SIM1 / ST 24C04W6**;
 - **f02 / SIM2 / Microchip 24LC04B**.
 
-Read each side three times without changing the clip between repeat reads.
+Procedure:
 
-Recommended filenames:
+1. boiler fully unpowered;
+2. coding plug disconnected from the boiler;
+3. read f01 three times without moving the clip;
+4. verify each file is 512 bytes and all three SHA256 values are identical;
+5. repeat f02 the same way;
+6. never write, erase or patch either EEPROM.
 
-```text
-spare-1-f01-st-read1.bin
-spare-1-f01-st-read2.bin
-spare-1-f01-st-read3.bin
-spare-1-f02-microchip-read1.bin
-spare-1-f02-microchip-read2.bin
-spare-1-f02-microchip-read3.bin
-```
+Immediate comparisons after capture:
 
-Acceptance before semantic analysis:
+- f01 offset `0x10` should contain ASCII `7833971`;
+- f01 physical blocks `0x20..0xC0` should be compared byte-for-byte against
+  the existing P300 `0x1020..0x10C0` live observations;
+- f02 should be compared against the old f02 record structure and the current
+  GFA P90/P100..P108 vector.
 
-- each file must be 512 bytes;
-- all three reads of the same EEPROM must hash identically;
-- record SHA256 values;
-- compare f01 versus f02 of the same physical plug before moving to another plug.
-
-Do not write either EEPROM.
-
-### Then
-
-1. second spare if practical;
-2. active plug **last**;
-3. boiler unpowered / plug disconnected during active-plug bench read;
-4. immediately before or after active-plug capture, snapshot the software-visible coding-plug views:
-   - `0x1010`;
-   - `0x1020`;
-   - `0x1030..0x10C0`;
-   - `0x7656`;
-   - GFA P90 and P100..P108.
-
-Compare semantic vectors, complement pairs, duplicated records and CRC/integrity patterns rather
-than requiring a flat byte-for-byte P300-object match.
+This capture should close the f01 physical/P300 mapping on the same plug and
+provide the best available discriminator for the still-unproven f02/GFA-domain
+hypothesis.
 
 ## Priority 2 - regulation-board photographs
 
