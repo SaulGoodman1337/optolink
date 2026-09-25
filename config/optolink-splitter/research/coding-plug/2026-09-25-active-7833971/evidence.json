@@ -126,6 +126,23 @@
       "0x07D",
       "0x098"
     ],
-    "p100_status": "ambiguous; two repeated-record field positions, no differential discriminator"
+    "p100_status": "ambiguous; two repeated-record field positions, no differential discriminator",
+    "p70_p79_probe": {
+      "rounds": 2,
+      "values": {
+        "P70": "FF",
+        "P71": "FF",
+        "P72": "FF",
+        "P73": "FF",
+        "P74": "FF",
+        "P75": "FF",
+        "P76": "FF",
+        "P77": "FF",
+        "P78": "FF",
+        "P79": "FF"
+      },
+      "interpretation": "source-defined metadata targets but unsupported/unusable on local P80=0x20 GFA branch",
+      "action": "do not expand without branch-specific evidence"
+    }
   }
 }
