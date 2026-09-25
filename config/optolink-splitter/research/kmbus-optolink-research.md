@@ -1190,16 +1190,45 @@ The first pair is already locally resolved: `0x01 Virtual_READ` and
 `0x41 KMBUS_RAM_READ` were byte-identical across seven same-address samples,
 including dynamic non-zero pump values.
 
-The next bounded read-only gate is therefore:
+The bounded read-only gate has now been executed:
 
 ~~~text
-0x03 Physical_READ  vs  0x43 KMBUS_EEPROM_READ
+positive control 0x00F8/2:
+  0x01 = 20c2,20c2
+  0x41 = 20c2,20c2
+  -> payload STABLE_SAME
+
+0x00F8/2:
+  0x03 = 5491,5497
+  0x43 = 5491,5491
+  -> DYNAMIC_OR_INCONCLUSIVE
+
+0x0001/1:
+  0x03 = 81,81
+  0x43 = 81,81
+  -> payload STABLE_SAME
 ~~~
 
-at only a tiny fixed address set. Different data or different error behavior
-would prove a distinct local 0x43 service/view; matching stable data would
-support an alias/common-view hypothesis. Neither outcome transfers GWG/LGM27
+Every trial used a fresh P300 session.
+
+Thus `0x43` has **not** demonstrated a distinct local data view from
+`Physical_READ 0x03` at the sampled addresses. More importantly, the same
+dynamic family previously attributed to strange 0x43 behavior is also visible
+through ordinary `0x03`. This strongly shifts the working interpretation
+toward a common/aliased legacy physical/service view on VDensHO1 rather than a
+dedicated LGM27 EEPROM window.
+
+Universal equivalence remains unproven. Neither result transfers GWG/LGM27
 semantics to VDensHO1.
+
+The first helper revision reported payload-identical groups as
+`STABLE_DISTINCT` because the classifier included the expected echoed command
+byte. Raw frames/data were unaffected. That reporting bug is fixed in v1.0.1;
+v1.0.2 also preserves the schedule-manager service across the temporary P300
+window.
+
+Evidence:
+[vitosoft/physical-vs-kmbus-eeprom-2026-09-25-evidence.json](vitosoft/physical-vs-kmbus-eeprom-2026-09-25-evidence.json).
 
 The archived `vsmGWG99Native.dll` was also inspected. Its only exports are
 `CheckGWG` and `TestCall_GWG99Native`; it imports the expected Windows
