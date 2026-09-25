@@ -417,6 +417,62 @@ The online-photo work has now resolved the physical research target substantiall
 4. The exact main MCU remains **unknown** because no found 7187393 photo resolves its laser marking.
 5. The next decisive evidence is a local perpendicular macro photo of the 7187393 main QFP and both faces of the vertical daughterboard, followed by unpowered continuity mapping.
 
+## Additional 7187393 photo sources and current MCU-search result
+
+Targeted web/image research on 2026-09-25 found several exact 7187393/84346904 sale sets with multiple photographs:
+
+- eBay item `127115328332`: `Viessmann Vitodens Regelung 7187393 Kesselkreisregelung Platine 84346904`, 10 images.
+- eBay item `127843820272`: `Viessmann 7187393 Kesselkreisregelung Regelung 84346904 Platine 7187393775791202`, 10 images.
+- eBay item `127843820279`: `7297094 Viessmann Regelung 7187393 Kesselkreisregelung 84346904`, 15 images; seller metadata lists `7297094 / 7297094900583117`.
+- Kleinanzeigen ad `3388584017-84-16390`: standalone `Viessman Steuerung Platine 7187393`, 4 images.
+- Michl's Onlineshop: standalone `Viessmann 7187393 Leiterplatte` product page.
+
+These sources strengthen the existence of multiple physical 7187393 assemblies and provide future photo-comparison material. The number `7297094` is currently only seller/listing metadata and must **not** yet be treated as a Viessmann board-family identifier.
+
+### Negative result: no public readable MCU marking yet
+
+Targeted searches for combinations of:
+
+- `7187393` + MCU / processor / microcontroller / Renesas / M306
+- `84346904` + MCU / processor / microcontroller
+- exact listing/barcode strings such as `7187393775791202` and `7297094900583117`
+
+did **not** produce a reliable source that names or clearly exposes the MCU/ASIC marking on either PCB.
+
+Current boundary:
+
+- exact 7187393 main-board MCU: **unknown**;
+- exact 84346904 vertical-board MCU/ASIC: **unknown**;
+- M30624FGPFP remains proven only for the 7424735/VBC130 comparison board and must not be carried over to GG1.
+
+### Useful physical clues from the repair thread
+
+The WB2A repair report involving vertical PCB `84346904` also mentions:
+
+- optocoupler reference `U5` in the ignition-transformer switching path;
+- three nearby relays complicating trace-following;
+- persistent 230-V behaviour at the ignition transformer under fault conditions.
+
+Source:
+https://community.viessmann.de/t5/Gas/Vitodens-200-WB2A-Stoerung-F0-Zuendtrafo-liegt-ununterbrochen-an/td-p/219269
+
+This is user repair evidence, not a schematic. It does, however, make `U5` and the adjacent relay cluster useful landmarks when comparing high-resolution photographs of 84346904/7187393 assemblies.
+
+### Photo-analysis priority
+
+For any newly found or locally captured 7187393/84346904 image, inspect in this order:
+
+1. all QFP/TQFP/PLCC devices and exact top markings;
+2. all 8-pin and 14/16-pin ICs near the MCU and vertical-board connector;
+3. crystals/resonators and their frequency markings;
+4. EEPROM candidates (`24Cxx`, `93Cxx`, `25xx`, etc.);
+5. optocouplers, especially the board-designator `U5` region;
+6. X10/X15/test pads and continuity-relevant nearby passives;
+7. connector pins between 7187393 and 84346904;
+8. KM-BUS/145 physical-layer components.
+
+At present, **local macro photos remain the shortest path to a trustworthy MCU identification**.
+
 ## Main MCU: likely Renesas M30624FGPFP
 
 The enhanced crop of reference set A shows a 100-pin QFP with markings strongly consistent with:
