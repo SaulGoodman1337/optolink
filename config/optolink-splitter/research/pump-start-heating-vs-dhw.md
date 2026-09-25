@@ -3971,3 +3971,246 @@ Private archive evidence:
   `ace35d303018604e1ac5e696614398d5a2c9c86c`;
 - run `36124347409`, artifact `10859586607`.
 
+## Natural burner/A1 runtime correlation and exposed-control closure — 2026-09-25
+
+A dedicated read-only permanent-VS1 watcher captured two complete natural
+direct-A1 burner cycles after switching from DHW-only to heating + DHW.
+
+Helper:
+
+- `config/optolink-splitter/wb2a-burner-a1-runtime-watch.py`;
+- commit `78d463253f13523d1f5ec838fff4d5a61bb5e700`;
+- self-test `BURNER_A1_RUNTIME_WATCH_TESTS=5/5`;
+- no write command exists in the helper.
+
+Raw appliance CSV:
+
+`/home/chatgpt-admin/wb2a-burner-a1-runtime-20260925-124401.csv`
+
+SHA256:
+
+`a2935a048b033a10062fa220751a6ff960c93134f8ff532336f0df1dcb65fd74`
+
+573 data rows were captured.
+
+### Heating activation precedes burner startup
+
+DHW-only idle:
+
+~~~text
+0xA152 = 04 00
+HKP1 relay       = 0
+internal-pump relay = 0
+UV heating       = 0
+UV DHW           = 1
+burner relay     = 0
+A1               = 0 %
+~~~
+
+After heating was enabled:
+
+~~~text
+0xA152 = B0 20
+HKP1 relay       = 1
+internal-pump relay = 1
+UV heating       = 1
+UV DHW           = 0
+burner relay     = 0
+A1               = 32 %
+~~~
+
+This state existed several minutes before the first burner startup. Thus the
+heating-circuit pump is already active during the burner-off waiting/minimum-
+pause period.
+
+### Two natural burner starts: no A1 speed boost
+
+Cycle 1:
+
+~~~text
+12:50:56.138  Kesselsoll_eff 38 -> 18 C, flame off
+12:50:58.755  GFA/modulation command becomes non-zero
+12:51:07.750  flame on
+12:51:35.366  flame off
+12:51:38.016  GFA/modulation command returns to zero
+~~~
+
+Flame duration: 27.616 s.
+
+Cycle 2:
+
+~~~text
+12:55:32.421  Kesselsoll_eff 38 -> 18 C, flame off
+12:55:35.156  GFA/modulation command becomes non-zero
+12:55:44.375  flame on
+12:56:12.223  flame off
+~~~
+
+Flame duration: 27.848 s.
+
+Across both complete cycles:
+
+~~~text
+A1 / 0x7663 = exactly 32 %
+0x0A3A      = 0
+~~~
+
+before startup, throughout the pre-flame GFA sequence, during flame and through
+shutdown.
+
+This directly establishes that **the currently active VDensHO1/20C2
+configuration does not apply a visible burner-dependent A1 speed boost**.
+
+It does not prove that no dormant firmware path exists.
+
+### Relay and boiler-state observations
+
+The raw VDensHO1 EventTypeGroup metadata resolves `0xA152` relay-state bits,
+including HKP1, internal pump, heating/DHW diverter state and burner.
+
+On this local GFA/modulating-burner configuration the source-labelled
+`nvoRelayState_Brenner` bit stayed zero even with independently confirmed
+flame. It is therefore not the local burner request/output indicator for this
+installation.
+
+`0xA305 / nvoBoilerState_BLR_value` is source-labelled "Modulationsgrad".
+It follows modulation after flame establishment and is not an independent
+pre-flame burner-demand flag.
+
+### 240-second restart interval: keep GWG65 and GWG73 separate
+
+Measured:
+
+~~~text
+cycle 1 flame off -> cycle 2 GFA/modulation start = 239.790 s
+cycle 1 flame off -> cycle 2 flame on             = 249.009 s
+GFA/modulation start -> flame on                  =   9.219 s
+~~~
+
+Two coding-plug fields are numerically compatible with a 240-second interval:
+
+- GWG65: `Brennermindestpausenzeit`, raw 4, catalog interpretation 4 min;
+- GWG73: `Anfahroptimierung modulierender Brenner`, raw 24,
+  source/catalog conversion x10 s = 240 s.
+
+The observed timing alone does **not** distinguish which mechanism determines
+this exact interval. Do not assign the 239.790 s measurement exclusively to
+GWG65 or GWG73 without a stronger discriminator.
+
+### Reproducible 20 K effective-target transition
+
+The source definition for `0x555A / Kesselsoll_eff` is a 2-byte Div10 value.
+Vitosoft describes it as the effective boiler target after boiler-limit,
+boiler-protection and frost-protection effects, explicitly excluding startup
+optimization itself.
+
+Before both startup sequences it changed:
+
+~~~text
+38 C -> 18 C
+~~~
+
+and returned to 38 C near shutdown.
+
+The difference is exactly 20 K, matching the local coding-plug value:
+
+~~~text
+GWG72 = 20 K
+Offset modulierender Brenner
+~~~
+
+This is a strong numeric and temporal correlation, but the exact firmware
+causal relation is not yet proven.
+
+### VDensHO1 volatile-input search
+
+An exhaustive raw EventTypeGroup trace found 12 exact VDensHO1 `nvi*`
+inputs. They belong to:
+
+- CFDM: Central Flow Demand Manager;
+- HCC1/HCC2: heating-circuit controller inputs;
+- DHWC: domestic-hot-water controller.
+
+Noteworthy CFDM inputs:
+
+~~~text
+0xA380 nviCFDMProdCmd
+0xA382 nviCFDMApplicMode
+0xA383 nviCFDMSetpoint
+~~~
+
+The Viessmann LON architecture defines CFDM as a central heat-production
+demand manager. `nviCFDMProdCmd` can override heat-production demand/output;
+it is not a source-backed A1 pump-speed command.
+
+No exact VDensHO1 `nvi*` pump-speed input exists.
+
+Private trace:
+
+- workflow commit `024cbaafb26ca9eaadf69dfc4d4f39f3ca01322f`;
+- run `36127098381`.
+
+### Exact VDensHO1 pump write surfaces
+
+A raw metadata pass over every exact VDensHO1 pump-related event found:
+
+- `0x7663 / Ausgang_HKP_A1`: read-only;
+- `0x0A3A / HKP_A1_res`: read-only;
+- `0x7660` and `0x0A3C` internal-pump runtime/result surfaces: read-only;
+- E6/E7/E8/E9: `Virtual_WRITE` coding/configuration surfaces;
+- K30/K31/K32/K34 and 6C: coding/configuration surfaces;
+- `0x7500 RelaistestGWG200x`: diagnostic relay test, not an A1 speed
+  regulation interface.
+
+No dedicated volatile direct-A1 speed command is exposed.
+
+Private trace:
+
+- workflow commit `85e4603854cb12902c81a5bd4ef2171cf8719149`;
+- run `36127320074`.
+
+### Global KBus pump-write search
+
+The complete All-Devices catalog contains many KBus write events overall, but
+only **one** whose semantic text is pump-related:
+
+~~~text
+KBUS_Kessel_Beimischpumpe_nach_KTS_RTS~0x4301
+FCWrite: KBUS_VIRTUAL_WRITE
+devices: Dekamatik_E, Dekamatik_M1, Dekamatik_M2, Dekamatik_M2_3
+~~~
+
+There is no VDensHO1/HO1 KBus pump-speed write event in the recovered catalog.
+
+Private trace:
+
+- workflow commit `ffc9070c8ff2b10dd8027364497751d7fd43d2a6`;
+- run `36127576729`.
+
+### Current boundary
+
+Three exposed control layers are now negative for the desired function:
+
+1. exact VDensHO1 service/runtime metadata;
+2. exact VDensHO1 LON `nvi*` inputs;
+3. global Vitosoft KBus/KMBUS pump-write semantics.
+
+Therefore the desired burner-dependent A1 speed boost is not exposed as a
+source-backed service/LON/KBus command in the recovered Vitosoft model.
+
+The remaining high-value paths are:
+
+1. regulation firmware / MCU analysis;
+2. physical coding-plug EEPROM correlation;
+3. new vendor/firmware source material if found.
+
+Do not substitute CFDM production commands, relay test, or repeated E7 writes
+for the missing pump-speed function.
+
+Machine evidence:
+
+- `vitosoft/burner-a1-runtime-2026-09-25-evidence.json`;
+- initial evidence commit `54c9d153124e7268a54925150e59a2ec40adee19`;
+- exposed-control closure commit
+  `67016d7045f7a4a9e5c65fd87dc30cceb3a4798e`.
+
