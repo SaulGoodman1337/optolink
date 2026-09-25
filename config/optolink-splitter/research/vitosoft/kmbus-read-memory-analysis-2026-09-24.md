@@ -218,60 +218,34 @@ was required.
 | `KBUS_DIRECT_READ` | 11 | 10x empty, 1x 1 byte | direct legacy channel access |
 | `KBUS_INDIRECT_READ` | 97 | 96x 1 byte, 1x empty | prefix is explicitly the participant number in the Vitosoft event names |
 
-This makes `PrefixRead` operationally important rather than descriptive
-metadata. In particular, the `KBUS_INDIRECT_READ` rows prove the pattern
-directly:
+The prefix distributions remain useful **catalog metadata**, but host static
+analysis changes their wire interpretation materially.
 
-```text
-Teilnehmer 07 Datenpunkt 6
-  PrefixRead = 07
-  Address    = 0x01E8
-  BlockLen   = 2
+The recovered Vitosoft-v6 core consumes `PrefixRead` as request bytes only on
+the `Remote_Procedure_Call / 0x07` conversion path. Ordinary non-RPC reads,
+including `KMBUS_EEPROM_READ / 0x43`, do not copy PrefixRead into
+`BlockDataToDevice`.
 
-Teilnehmer 08 Datenpunkt 1
-  PrefixRead = 08
-  Address    = 0x0200
-  BlockLen   = 2
+This also resolves the profile provenance of the 0x43 rows:
 
-Teilnehmer 09 ...
-  PrefixRead = 09
+- all **90** rows carrying `PrefixRead=030000000101` are linked only to
+  **21 GWG profiles**;
+- their LGM27 names therefore describe the legacy GWG-family access model, not
+  the local VDensHO1;
+- the sole no-prefix KMBUS EEPROM event is event 2190 at `0x0310/4`,
+  `Geräteidentifikation Schalterblock`, in 19 DEKATEL/VCOM profiles;
+- no KMBUS_EEPROM_READ event is linked to VDensHO1.
 
-Teilnehmer 10 ...
-  PrefixRead = 0A
+Independent GWG implementations and vcontrold map KMBUS EEPROM access to the
+old GWG TYPE byte `0x43`, using a one-byte address frame of the form
+`01 43 <addr> <len> 04`. That is a different wire protocol from P300/VS2.
+The shared numeric byte must not be used to transfer the GWG LGM27 semantics
+onto a local P300 `0x43` response.
 
-Teilnehmer 11 ...
-  PrefixRead = 0B
-```
-
-Thus at least in the indirect family a prefix byte is plainly a routing/target
-selector for the KBus participant. This substantially strengthens the working
-mapping of Vitosoft `PrefixRead` to the optional data bytes carried by the
-generic VS2 request.
-
-### KMBUS_EEPROM_READ is semantically a subordinate-device EEPROM path
-
-The 90 rows using `030000000101` are not generic main-controller flash
-objects. The current export names them as parameters stored in an **LGM27
-burner-control unit**, for example:
-
-- `0x0001`: `Kennung (Prog1)`;
-- `0x000A`: device number and parameter-set fields;
-- `0x000F`: gas modulation values for low/partial/full/ignition load;
-- `0x0064`: minimum burner pause;
-- `0x006A`: minimum/maximum/emergency/frost-protection temperature data;
-- `0x0070`: comfort/frost/DHW limit values;
-- `0x0078`: burner switching differentials and flue-gas thresholds;
-- `0x0083`: minimum runtime, controller delay and pump run-on timing.
-
-This is strong evidence that `KMBUS_EEPROM_READ` is intended to route through
-the controller to **persistent memory of a subordinate bus participant**. It is
-therefore not evidence for main-regulation program-flash access and not evidence
-for the boiler coding-plug EEPROM.
-
-The single no-prefix exception is event **2190** at `0x0310`,
-`Geräteidentifikation Schalterblock`, block length 4, in DEKATEL/VCOM
-profiles. It is a different legacy use case and does not invalidate the
-six-byte-prefix pattern of the LGM27 group.
+The 1-byte PrefixRead values on `KBUS_INDIRECT_READ` still clearly encode
+participant numbers at the **metadata** level. What is no longer justified is
+the generic assumption that every catalog PrefixRead is serialized as trailing
+VS2 request data by this host build.
 
 ### XRAM_READ really is used for volatile runtime state
 
@@ -379,52 +353,51 @@ controller/KM-BUS RAM address space, mirror or gateway view.
 Primary memory-map source: Renesas M16C/62P Group datasheet, section 3
 (Memory).
 
-## 0x43 KMBUS_EEPROM_READ: why the prefix matters
+## 0x43 KMBUS_EEPROM_READ: response path and current interpretation
 
-The local controller accepts prefix-less 0x43, but its F8 behavior is not a
-normal byte-addressed EEPROM.
+The local controller accepts the P300/VS2 command byte `0x43`, but its
+prefix-less behavior is not a normal linear EEPROM read.
 
-Examples:
+Examples from local hardware include changing two-byte words that are
+repeated/truncated to the requested length:
 
-```text
-request;0x43;0x00F8;2;;0x00
-wire data -> 54 97
+~~~text
+54 98 54 98 ...
+54 97 54 97 ...
+d3 01 d3 01 ...
+f2 01 f2 01 ...
+~~~
 
-request;0x43;0x00F8;8;;0x00
-wire data -> 54 98 54 98 54 98 54 98
-```
+The recovered Vitosoft response converter proves that these patterns are **not
+created by host-side conversion**. `convertLDAPDataFromDevice()` strips the
+five-byte LDAP header, copies the remaining response bytes directly into
+`BlockDataFromDevice` / `DataFromDevice`, and then applies only the normal
+event conversion metadata.
 
-Repeated transactions produce different two-byte words such as `1d80`,
-`4800`, `5497`, `5498`, `411d` and `3500`. For requested lengths
-greater than one, the controller repeats/truncates the current two-byte result
-to the requested length.
+A second useful source clue is the LDAP command-byte handling:
 
-The key Vitosoft finding is:
+~~~text
+0x41 & 0x1F = 0x01
+0x43 & 0x1F = 0x03
+~~~
 
-```text
-90 / 91 KMBUS_EEPROM_READ definitions:
-PrefixRead = 030000000101
-```
+Vitosoft places `0x41` responses in the same generic read-conversion class as
+`0x01`, and `0x43` responses in the same class as `0x03`. This does not
+prove that the controller itself aliases those command bytes, because the
+controller may interpret the full byte. It does provide a precise local
+discriminator.
 
-The generic splitter request format is:
+The `0x01 vs 0x41` pair is already locally closed: seven same-address
+comparisons, including non-zero dynamic pump objects, were byte-identical.
 
-```text
-request;<function>;<address>;<length>;<optional-data>;<protocol-id>
-```
+The next justified read-only test is therefore a very small
+`0x03 Physical_READ vs 0x43` same-address comparison. Matching values would
+support an alias/common-view hypothesis; different values or different error
+behavior would prove that 0x43 reaches a distinct local service/view.
 
-and its VS2 builder places optional data after the block-length byte. That is
-the same structural location used by Vitosoft's prefix field.
-
-### Current best interpretation
-
-The prefix-less 0x43 request probably invokes an incomplete/default transaction
-rather than selecting the intended KBus participant/EEPROM subspace. The
-dynamic repeated word is therefore much more plausibly a result/mailbox/status
-artifact than eight bytes of EEPROM.
-
-The six prefix bytes must not yet be assigned field names. They may encode a
-participant, channel, memory bank, subaddress, transaction mode or a combination
-of those.
+Do **not** call the local P300 0x43 payload LGM27 EEPROM data. The LGM27 catalog
+rows belong to legacy GWG profiles, and the local VDensHO1 profile contains no
+KMBUS_EEPROM_READ event.
 
 ## Why this probably will not directly dump M16C program flash
 
