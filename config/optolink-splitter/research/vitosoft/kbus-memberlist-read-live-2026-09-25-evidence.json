@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "title": "WB2A / VDensHO1 bounded KBUS_MEMBERLIST_READ gate",
+  "date_local": "2026-09-25",
+  "timezone": "Europe/Berlin",
+  "controller": {
+    "boiler": "Vitodens 200-W WB2A",
+    "device": "VDensHO1",
+    "identification": "20C2",
+    "regulation_software": "0103"
+  },
+  "source_basis": {
+    "collector": "Vitosoft v6 All-Devices kmbus-read-slice",
+    "event_id": 2756,
+    "name_de": "Teilnehmer 00 am Viessmann-2-Draht-BUS",
+    "name_en": "Subscriber 00 on Viessmann 2-wire BUS",
+    "function": "KBUS_MEMBERLIST_READ",
+    "function_code": "0x5D",
+    "address": "0x0000",
+    "block_length": 3,
+    "prefix_read": "",
+    "exact_vdensho1_event_membership": false,
+    "source_devices": [
+      "DEKATEL_F_R1_ETCPU",
+      "DEKATEL_F_R1",
+      "DEKATEL_F",
+      "DEKATEL_F_ETCPU",
+      "DEKATEL_F_I",
+      "DEKATEL_F_A",
+      "DEKATEL_F_CH",
+      "VCOM300_DEKF_R2",
+      "VCOM300_ETCPU",
+      "VCOM300_ETCPU2",
+      "VCOM300_ETCPU3",
+      "VCOM300_ETCPU4"
+    ]
+  },
+  "preflight_local_participant_snapshot": {
+    "note": "Ordinary permanent-VS1 reads only. Presence semantics are taken only where already source-backed; nonzero software-index bytes are not treated as presence by themselves.",
+    "values": [
+      {
+        "address": "0x5730",
+        "length": 1,
+        "label": "internal pump identification",
+        "data": "01"
+      },
+      {
+        "address": "0x0A54",
+        "length": 4,
+        "label": "internal pump software index block",
+        "data": "01110101"
+      },
+      {
+        "address": "0x27A0",
+        "length": 1,
+        "label": "remote control A1/M1 identification",
+        "data": "00"
+      },
+      {
+        "address": "0x0A5C",
+        "length": 4,
+        "label": "remote control A1 software index",
+        "data": "00000000"
+      },
+      {
+        "address": "0x37A0",
+        "length": 1,
+        "label": "remote control M2 identification",
+        "data": "00"
+      },
+      {
+        "address": "0x0A60",
+        "length": 4,
+        "label": "remote control M2 software index",
+        "data": "00000000"
+      },
+      {
+        "address": "0x27E5",
+        "length": 1,
+        "label": "KM-BUS heating circuit pump A1 identification",
+        "data": "00"
+      },
+      {
+        "address": "0x0A4C",
+        "length": 4,
+        "label": "pump A1 software index",
+        "data": "00000000"
+      },
+      {
+        "address": "0x37E5",
+        "length": 1,
+        "label": "KM-BUS heating circuit pump M2 identification",
+        "data": "00"
+      },
+      {
+        "address": "0x0A50",
+        "length": 4,
+        "label": "pump M2 software index",
+        "data": "00000000"
+      },
+      {
+        "address": "0x572E",
+        "length": 1,
+        "label": "external extension identification",
+        "data": "00"
+      },
+      {
+        "address": "0x0A48",
+        "length": 4,
+        "label": "external extension software index",
+        "data": "00000000"
+      },
+      {
+        "address": "0x7795",
+        "length": 1,
+        "label": "Vitocom 100 identification",
+        "data": "00"
+      },
+      {
+        "address": "0x0A58",
+        "length": 4,
+        "label": "Vitocom software index block",
+        "data": "20ff0000"
+      }
+    ]
+  },
+  "helper": {
+    "name": "wb2a-kbus-memberlist-read-probe",
+    "version_used": "1.0.0",
+    "helper_commit_used": "3df1a6cdfabe5f668e940432d4a1090c74fbb1c6",
+    "self_test": "KBUS_MEMBERLIST_READ_PROBE_TESTS=6/6",
+    "execution_user": "chatgpt-admin",
+    "serial_group": "dialout",
+    "root_execution": false,
+    "service_control": "only exact pre-existing sudo systemctl allowlist",
+    "arbitrary_requests": false,
+    "writes_implemented": false
+  },
+  "execution": {
+    "started_local": "2026-09-25T10:38:43+02:00",
+    "completed_local": "2026-09-25T10:39:00+02:00",
+    "log_path": "/home/chatgpt-admin/wb2a-kbus-memberlist-read-20260925-103843-219422.log",
+    "fresh_p300_session_per_sample": true,
+    "pre_identity": {
+      "function": "0x01",
+      "address": "0x00F8",
+      "length": 8,
+      "data": "20c2000300000103",
+      "result": "PASS"
+    },
+    "memberlist_request": {
+      "function": "0x5D",
+      "address": "0x0000",
+      "requested_length": 3,
+      "tx_frame": "4105005d00000365"
+    },
+    "trials": [
+      {
+        "n": 1,
+        "status": "ERROR_MESSAGE",
+        "rx_frame": "4106035d000001056c",
+        "echoed_command": "0x5D",
+        "echoed_address": "0x0000",
+        "response_length": 1,
+        "error_payload": "05"
+      },
+      {
+        "n": 2,
+        "status": "ERROR_MESSAGE",
+        "rx_frame": "4106035d000001056c",
+        "echoed_command": "0x5D",
+        "echoed_address": "0x0000",
+        "response_length": 1,
+        "error_payload": "05"
+      },
+      {
+        "n": 3,
+        "status": "ERROR_MESSAGE",
+        "rx_frame": "4106035d000001056c",
+        "echoed_command": "0x5D",
+        "echoed_address": "0x0000",
+        "response_length": 1,
+        "error_payload": "05"
+      }
+    ],
+    "post_identity": {
+      "function": "0x01",
+      "address": "0x00F8",
+      "length": 8,
+      "data": "20c2000300000103",
+      "result": "PASS"
+    },
+    "classification": "STABLE_ERROR_RESPONSE",
+    "execution_result": "PASS",
+    "protocol_note": "For this Error Message the response length field is 1, matching the one-byte error payload, not the requested member-list length 3."
+  },
+  "restore": {
+    "vs1_restored": true,
+    "services": {
+      "optolink-splitter.service": "active",
+      "optolink-party-emulator.service": "active",
+      "optolink-maintenance-api.service": "active",
+      "optolink-schedule-manager.service": "active"
+    },
+    "post_restore_vs1_identity": "20c2000300000103"
+  },
+  "interpretation": {
+    "established": [
+      "The one exact Vitosoft source-defined KBUS_MEMBERLIST_READ request shape did not produce a successful local member-list response on VDensHO1/20C2.",
+      "All three fresh-session trials returned the same valid P300 Error Message with inner payload 05.",
+      "The 20C2 identity control passed before and after the three trials.",
+      "The result provides no evidence that the legacy DEKATEL/VCOM300 member-list API is locally usable through this request shape."
+    ],
+    "cross_family_observation": "Inner error payload 05 has also appeared in the bounded source-shaped 0x31 XRAM failures and the two bounded 0x5F KBUS_VIRTUAL_READ failures. No source-backed error-code mapping exists, so this common value must not be given a semantic label.",
+    "not_established": [
+      "This does not prove that function 0x5D is universally unsupported on VDensHO1.",
+      "It does not prove that VDensHO1 has no internal KM-BUS participant list.",
+      "It does not decode or map any member-list bits or bytes.",
+      "It does not justify testing invented 0x5D addresses or lengths."
+    ],
+    "decision": "Close broad live 0x5D work. Reopen only if a VDensHO1-specific request shape or stronger controller-side evidence is recovered."
+  }
+}
