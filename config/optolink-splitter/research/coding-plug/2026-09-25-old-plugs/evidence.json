@@ -1,0 +1,117 @@
+{
+  "date": "2026-09-25",
+  "issue": 36,
+  "active_reference": {
+    "part_number": "7833971",
+    "status": "installed_operating",
+    "physical_dump": "pending",
+    "p300_part_number_address": "0x1010",
+    "p300_identity_block_address": "0x1040",
+    "p300_identity_raw": "0215",
+    "p300_7656_raw": "20150201"
+  },
+  "files": [
+    {
+      "name": "7173085-3_HND_SD-20-04-f01.bin",
+      "side": "f01",
+      "size": 512,
+      "sha256": "34073f01eec962b709e1be22ed1332fa5bd3ca7bb361d320bb395ddc923dfa6e",
+      "ascii_part_number": "7823363"
+    },
+    {
+      "name": "7173085-3_HND_SD-20-04-f02.bin",
+      "side": "f02",
+      "size": 512,
+      "sha256": "3dd583723661ea765f4e57405628def121bf78f1bc7d09dc1dfb51fec362f386"
+    },
+    {
+      "name": "7173085-3_400_94v_0-f01.bin",
+      "side": "f01",
+      "size": 512,
+      "sha256": "86d8703dc40c9eb4db0e1013773507417dd512bb379fad6b17b6ef88da4e6fb2",
+      "ascii_part_number": "7833968"
+    },
+    {
+      "name": "7173085-3_400_94v_0-f02.bin",
+      "side": "f02",
+      "size": 512,
+      "sha256": "554d890e5c5158893ca44b10e0503f38f8c6de4f01de0fb2b9e55211a3e48946"
+    }
+  ],
+  "f01": {
+    "mapping": "P300 address = 0x1000 + physical EEPROM offset",
+    "confidence": "strong_hardware_plus_metadata",
+    "pair_identical_bytes": 499,
+    "pair_diff_bytes": 13,
+    "replacement_diff_offsets": [
+      "0x00E",
+      "0x00F",
+      "0x012",
+      "0x014",
+      "0x016",
+      "0x030",
+      "0x031",
+      "0x032",
+      "0x033",
+      "0x040",
+      "0x05A",
+      "0x074",
+      "0x075"
+    ],
+    "decoded": {
+      "7823363": {
+        "P107_P101": "0212",
+        "GWG30": 70,
+        "GWG32": 70,
+        "GWG34": 3,
+        "GWG5A": 60,
+        "GWG5C": 85,
+        "GWG5D": 85,
+        "GWG74": 70,
+        "GWG75": 100
+      },
+      "7833968": {
+        "P107_P101": "0412",
+        "GWG30": 85,
+        "GWG32": 60,
+        "GWG34": 3,
+        "GWG5A": 63,
+        "GWG5C": 85,
+        "GWG5D": 85,
+        "GWG74": 100,
+        "GWG75": 50
+      },
+      "7833971_live": {
+        "P107_P101": "0215",
+        "GWG30": 65,
+        "GWG32": 29,
+        "GWG34": 3,
+        "GWG5A": 63,
+        "GWG5C": 65,
+        "GWG5D": 65,
+        "GWG74": 65,
+        "GWG75": 50
+      }
+    }
+  },
+  "f02": {
+    "pair_identical_bytes": 492,
+    "pair_diff_bytes": 20,
+    "identical_prefix_bytes": 226,
+    "first_difference_offset": "0x0E2",
+    "repeated_payload": {
+      "first_offset": "0x14",
+      "second_offset": "0x66",
+      "distance": 82,
+      "consecutive_identical_bytes": 71
+    },
+    "flat_current_vectors_found": false,
+    "domain_assignment": "unproven_second_domain_candidate"
+  },
+  "conclusions": [
+    "f01 is the physical main-regulation/GWG coding-plug image behind P300 0x10xx",
+    "7823363 to 7833968 changes GWG75 internal-pump minimum from 100 to 50 percent",
+    "f02 is not a flat copy of the P300/GWG image",
+    "active 7833971 f01/f02 physical capture remains the decisive next comparison"
+  ]
+}
