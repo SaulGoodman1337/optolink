@@ -173,3 +173,88 @@ persistent coding-plug configuration for the internal-pump role.
 - f02 P101..P106 <-> GFA mapping: same-plug hardware observation + live GFA_READ
 - P90/P100/P107/P108 physical offsets: unresolved
 - date display encoding: unresolved
+
+
+## Fresh static GFA fingerprint - live read-only correlation
+
+A fresh bounded read-only run used the production VS1 `gfaread` path and read
+the static identity/configuration fields twice. P80 was used as the branch gate.
+
+Both rounds were identical:
+
+```text
+P80  0x4050 = 20
+P81  0x4051 = 02
+P82  0x4052 = 06
+P83  0x4053 = 76
+P90  0x405A = 00
+P100 0x4064 = 63
+P101 0x4065 = 15
+P102 0x4066 = 01
+P103 0x4067 = 14
+P104 0x4068 = 0C
+P105 0x4069 = 04
+P106 0x406A = D6
+P107 0x406B = 02
+P108 0x406C = 00
+```
+
+Source semantics:
+
+- P80 = ID BCU/FA chip
+- P81 = BCU software version
+- P82 = BCU software revision
+- P83 = appliance configuration
+- P90 = coding-card/BCU type FA42
+- P100 = minimum output
+- P107 = coding-card identity FA40
+- P108 = coding-card identity FA41
+
+### Important physical negative evidence
+
+The active f02 EEPROM contains:
+
+- no byte `0x20` anywhere;
+- no byte `0x06` anywhere;
+- no byte `0x76` anywhere.
+
+Therefore P80, P82 and P83 **cannot** be flat raw bytes stored in the f02 image.
+
+P81 happens to have raw value `0x02`, and `0x02` occurs in f02, but the
+P80/P82/P83 result shows that the P80-P83 identity/configuration block belongs
+to GFA chip/firmware/device state rather than a direct linear coding-plug
+EEPROM mapping. A coincidental `0x02` match must not be promoted to a P81
+offset.
+
+This cleanly separates:
+
+- f02 coding-plug bytes proven by P101..P106;
+- GFA chip/software/appliance identity represented by P80..P83.
+
+### P100 remains ambiguous
+
+Active P100 raw = `0x63`.
+
+The active f02 contains `0x63` at:
+
+```text
+0x02B
+0x046
+0x07D
+0x098
+```
+
+The two pairs are separated by the known 82-byte repeated-record distance:
+
+- `0x02B -> 0x07D`
+- `0x046 -> 0x098`
+
+All three available f02 images carry `0x63` at all four positions, so this
+live read still cannot select the physical P100 field by differential evidence.
+
+### Safety / runtime state
+
+- only explicit `GFA_READ` operations were used;
+- no write command was issued;
+- no service was stopped or restarted for this capture;
+- all four production services remained active after the run.
