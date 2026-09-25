@@ -297,6 +297,62 @@ It also does not prove that writing `0x0896` alone would satisfy:
 - remote communication watchdog;
 - BC fault supervision.
 
+### Cross-profile differential result — 2026-09-25
+
+A direct Collector-v6 profile comparison on the Optolink-Splitter machine
+resolved the writable alias provenance and found a broader, coherent NRF remote
+injection surface.
+
+The writable room-temperature aliases are linked to:
+
+~~~text
+VBC550S   device 224
+VBC550P   device 225
+Ecotronic device 432
+~~~
+
+For these profiles, the following NRF events form a consistent remote-state
+set:
+
+| Address | NRF event | Access | VDensHO1 counterpart |
+| --- | --- | --- | --- |
+| `0x0896` | `NRF_Raumtemperatur_M1` | Virtual_READ / Virtual_WRITE | same address, read-only `TiefpassTemperatur_RTS_A1M1` |
+| `0x089C` | `NRF_TemperaturFehler_RTS_M1` | Virtual_READ / Virtual_WRITE | same address, read-only `HO2B_SensorStatus_RTS_M1` |
+| `0x0A40` | `NRF_SWIndex_FB_M1` | Virtual_READ / Virtual_WRITE | VDensHO1 uses read-only `SWIndex_FB1` at `0x0A5C` instead |
+| `0x7342` | `NRF_BedienBDETyp_FBM1` | Virtual_READ / Virtual_WRITE | no exact VDensHO1 remote-runtime equivalent recovered |
+| `0x75A2` | `NRF_KTInfo_Fernbedienungen` | Virtual_READ only | no exact VDensHO1 event link recovered |
+| `0x779C` | `NRF_K9C_KonfiReceiveHeartBeat` | Virtual_READ / Virtual_WRITE | VDensHO1 has the same address as LON participant supervision, not Vitotrol runtime state |
+
+The key architectural observation is that VBC550S/P and Ecotronic contain both
+of the following aliases simultaneously at `0x0896`:
+
+~~~text
+NRF_Raumtemperatur_M1      Virtual_READ + Virtual_WRITE
+TiefpassTemperatur_RTS...  Virtual_READ only
+~~~
+
+VBC550S/P similarly contain a writable NRF sensor-status alias at `0x089C`.
+This makes a deliberate service/software injection model substantially more
+plausible than a coincidental address collision.
+
+It does not make these writes valid on VDensHO1. The local normal
+`Virtual_WRITE 0x0896` attempt was already rejected. The next justified local
+step is therefore **read-only discovery** of the cross-profile NRF-only
+addresses (`0x0A40`, `0x7342`, `0x75A2`) and comparison with the exact
+VDensHO1 state. No NRF write should be attempted without a VDensHO1 firmware or
+source-backed handler match.
+
+A read-only helper was staged on the Optolink-Splitter host as:
+
+~~~text
+/home/chatgpt-admin/vitotrol-nrf-readonly-probe.py
+~~~
+
+It uses the existing MQTT/splitter request path and implements no write command.
+At the time of staging, `optolink-splitter.service` was independently down due
+to the known codierstecker UTF-8 decode crash on an `FF...` response, so the
+probe has not yet produced a live controller result.
+
 ### Why this lead remains useful
 
 This alias gives a concrete firmware-research discriminator:
