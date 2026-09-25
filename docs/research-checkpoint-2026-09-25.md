@@ -532,6 +532,43 @@ Relevant commits:
 - detailed analysis: `5ced606816eeca051036db35c03b9d3639afb056`
 - canonical KM-BUS update: `7ffcfaa3292541ab318e3c41a8193b4f6ef96ea3`
 
+## KM-BUS update - extended non-RPC host path closed
+
+The remaining Vitosoft-v6 non-RPC KBus host path was analyzed offline.
+
+Key result:
+
+- all 850 `KBUS_TRANSPARENT_READ / 0x55` rows require a 2-byte PrefixRead
+  for catalog-level differentiation;
+- current v6 Default non-RPC reads do not serialize PrefixRead;
+- the 850 rows therefore collapse to only 11 standard request shapes if sent
+  through the current managed path;
+- the largest collision is `0x55 / 0x0100 / 1` with 170 rows and 85 distinct
+  PrefixRead selectors;
+- full-archive v6 search found no second/native KBus PrefixRead serializer;
+  exact extended KBus function-name strings occur only in the common enum DLLs.
+
+Accordingly no live `0x55` test is justified.
+
+The other remaining families are also offline-only:
+
+- `0x59`, `0x63`, `0x61`, `0x51`: source shapes exist but only for
+  legacy DEKATEL/VCOM families and no VDensHO1 semantic discriminator exists;
+- `0x53`, `0x57`, `0x65`: no source read-event definitions.
+
+There is therefore currently **no justified next live Extended-KBus probe**
+from the Vitosoft-v6 catalog.
+
+Evidence:
+
+- private workflow run `36114832604`, artifact `10854457460`;
+- private host-path report commit
+  `1d2973ffbc8adab50f3bbce68eaac1dd27403251`;
+- public detailed analysis commit
+  `a03827fa6c822b58fd049ebf0bd212d92b3abe20`;
+- canonical KM-BUS commit
+  `f46bd1c9ff2cf7821de03d0f6db5115575a934a4`.
+
 ## Priority 4 - remaining firmware/KM-BUS work
 
 After the physical evidence above:
