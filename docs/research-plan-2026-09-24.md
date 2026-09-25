@@ -358,6 +358,10 @@ MCU later confirms as M30624FGPFP, its 256-KiB program flash occupies a 20-bit
 address range while the normal VS2 address field is 16 bit; an Optolink
 firmware dump would require an additional bank/prefix/RPC mechanism.
 
+## Coding-plug physical/software correlation
+
+**Tracking:** GitHub issue **#36**. Physical f01/f02 dual-EEPROM capture is the current independent hardware gate; keep it separate from PCB/firmware Issue #25 and KM-BUS Issue #30.
+
 ## P1 - Platinen-Research / local hardware identity
 
 **Tracking:** GitHub issue **#25** and [regulation-board-7424735-pcb-research.md](../config/optolink-splitter/research/regulation-board-7424735-pcb-research.md).
