@@ -3850,3 +3850,124 @@ remained alive. Independent read-only snapshots were therefore used for the
 remainder of the observation, and the helper was terminated before the manual
 safe restore. This is a tooling issue, not controller evidence.
 
+## Role-model correction: A1 heating pump vs internal-pump role — 2026-09-25
+
+The earlier working model that treated the direct-A1 runtime value
+`0x7663` as a request feeding an internal-pump arbitration stage at
+`0x0A3C` was too coarse and is **superseded**.
+
+The same physical integrated KM-BUS pump is used in different logical roles,
+and the controller exposes separate service/coding surfaces for those roles.
+
+### Direct A1 heating
+
+For a direct heating circuit without mixer, the integrated variable-speed pump
+acts as the **A1 heating-circuit pump**.
+
+Source-backed VDensHO1 controls:
+
+- `E6 / 0x27E6`: maximum speed, A1/M1 regulated pump;
+- `E7 / 0x27E7`: minimum speed, A1/M1 regulated pump;
+- `0x7663`: A1 heating-circuit pump runtime/output surface.
+
+This matches the local controlled observation that changing E7 from 30 to
+100 immediately moved the A1 runtime surface to 100.
+
+### DHW / cylinder charging
+
+During DHW the A1 heating-circuit path is withdrawn and the same integrated
+hydraulic pump is used in the boiler/DHW circulation role.
+
+Source-backed VDensHO1 control:
+
+- `6C / 0x676C`: speed of the internal pump during DHW preparation.
+
+Local value is 100 %. During the observed DHW takeover:
+
+~~~text
+0x7663 A1 = 0
+6C = 100 %
+integrated pump hardware = 100 %
+~~~
+
+This explains the full-speed physical pump during DHW without requiring the
+A1 heating-circuit speed command to become 100.
+
+### Boiler-circuit role
+
+`31 / 0x5731` is the internal-pump speed setting for a boiler-circuit role,
+for example topologies with hydraulic separation/mixer. It must not be treated
+as the normal direct-A1 pump speed command.
+
+### Consequence for 0x0A3C / 0x7660
+
+`0x0A3C` remains a genuine VDensHO1 service result named
+"Interne Pumpe Solldrehzahl", and `0x7660` remains an internal-pump service
+surface. Their raw correlations are real, but they must **not** be used as
+proof that direct-A1 E7 control is implemented as
+`0x7663 -> clamp -> 0x0A3C`.
+
+The research target is now narrower:
+
+> Does VDensHO1 contain an internal burner-dependent A1-pump boost/override
+> that raises the direct heating-circuit pump while the burner is running,
+> without repeatedly writing E7?
+
+### Vitosoft evidence for such a concept in other families
+
+The verified Vitosoft-v6 archive contains explicit historical controls:
+
+- `K1D_KonfiPumpenbeiBrennerein~0x571D`:
+  "Beimischpumpe EIN, wenn Brenner EIN";
+- `SR13_K1D_KonfiPumpenbeiBrennerein~0x581D`:
+  "bei einigen Kesseln soll die BP eingeschaltet werden, wenn der Brenner läuft";
+- `KS_Karte_GasKonfiPumpebeiBrennerbetrieb~0x1070`, byte 5:
+  "Pumpe bei Brennerbetrieb";
+- corresponding NRx variant at `0x1080`, byte 5.
+
+None of these events belongs to any exact VDensHO1 EventTypeGroup.
+
+The local controller already rejected the legacy `0x571D` and `0x581D`
+addresses as invalid.
+
+The historical `0x1070` byte-5 event is especially important as provenance:
+it proves that older Viessmann gas-regulation families used this coding-card
+slot for a burner-operation pump concept. On VDensHO1, however, the **same
+slot** is explicitly mapped as:
+
+~~~text
+GWG75: Mindestdrehzahl Interne Pumpe
+~~~
+
+Therefore the historical semantic must not be transferred to WB2A/VDensHO1.
+
+A later-generation coding concept `K51_KonfiHydrWeicheIntPumpe~0x7751`
+also exists globally, but it is not present in any VDensHO1 group.
+
+### Current conclusion
+
+Viessmann firmware families demonstrably contain burner-dependent pump-control
+concepts. The exact VDensHO1 metadata, however, exposes none of the known
+burner-dependent controls for the direct A1 path.
+
+This does **not** prove that the 20C2 firmware lacks such an internal state or
+algorithm. It establishes that no source-backed user/service coding for it has
+yet been found.
+
+Next work should focus on:
+
+1. firmware/runtime-state evidence rather than further E7 writes;
+2. coding-plug physical correlation when the EEPROM reader is available;
+3. local PCB/MCU identity and regulation-firmware analysis;
+4. only source-backed volatile observations for burner-state-dependent A1
+   behavior.
+
+Private archive evidence:
+
+- burner/pump semantic trace workflow commit
+  `5a38c5bc7655426d112a5dc7ae967c41b0eadfff`;
+- run `36123710024`, artifact `10859205686`;
+- exact VDensHO1 candidate workflow commit
+  `ace35d303018604e1ac5e696614398d5a2c9c86c`;
+- run `36124347409`, artifact `10859586607`.
+
