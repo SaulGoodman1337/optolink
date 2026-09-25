@@ -569,6 +569,42 @@ Evidence:
 - canonical KM-BUS commit
   `f46bd1c9ff2cf7821de03d0f6db5115575a934a4`.
 
+## Pump-selector preparation while EEPROM read is pending
+
+The coding-plug EEPROM bench read is deferred until later on 2026-09-25.
+Research therefore continues on the hidden controller selector upstream of
+`0x0A3C`.
+
+A fresh permanent-VS1 snapshot showed the controller idle:
+
+- `E7 / 0x27E7 = 0x1E = 30 %`;
+- `K31 / 0x5731 = 0x64 = 100 %`;
+- `6C / 0x676C = 0x64 = 100 %`;
+- `0x1070 = 051d141841323c000000000000000000`;
+- source-mapped `GWG75 = 0x32 = 50 %`;
+- `0x7663 = 0000`;
+- `0x0A3C = 00`;
+- `0x7660 = 0000`;
+- `0x650A = 00`;
+- `0x6513 = 00`;
+- `0x0A10 = 03`.
+
+This idle state cannot isolate the known 30 -> 50 transformation, but confirms
+that the relevant static limits remain unchanged.
+
+`wb2a-pump-divergence-watch.py` was therefore extended so that the first
+future `0x7660[1] != 0x7663[1]` capture also reads, in the same local window:
+
+- K30;
+- K31;
+- E7;
+- 6C;
+- `0x1070` and source-mapped GWG75.
+
+Commit: `8e18873fd8528dc260120877f9d725a6ebb65c1e`.
+The updated script passed a syntax compile check. No controller writes were
+performed. All four production services remained active.
+
 ## Priority 4 - remaining firmware/KM-BUS work
 
 After the physical evidence above:
