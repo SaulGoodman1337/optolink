@@ -162,6 +162,14 @@ The notes are intentionally split into two layers:
   Vitotrol-specific application of the KM-BUS/Optolink research. The simple
   A0-only emulation hypothesis is hardware-disproved: A0=1 raises BC unless a
   real/emulated KM-BUS slave responds.
+- [firmware-optolink-readout-research-2026-09-25.md](firmware-optolink-readout-research-2026-09-25.md) —
+  active main-controller firmware acquisition research: historical M30612
+  Optolink evidence, Vitosoft/RPC boundaries, closed 16-bit dump paths and the
+  current monitor/page-service hypothesis.
+- [v-comm-dll-source-recovery-2026-09-25.md](v-comm-dll-source-recovery-2026-09-25.md) —
+  static recovery of the original V-Comm VB6 source from the historical Wise
+  installer; exact VDensHO1/20C2 support is present, but transport is limited
+  to 16-bit P300 Virtual_READ/Virtual_WRITE and contains no firmware-ROM path.
 - [vitotrol-kmbus-wire-protocol.md](vitotrol-kmbus-wire-protocol.md) —
   byte-level physical Vitotrol/KM-BUS reference reconstructed from two working
   emulator implementations: discovery, identity, PING/PONG, CRC and room-
