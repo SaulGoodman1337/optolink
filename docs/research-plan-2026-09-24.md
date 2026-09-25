@@ -192,26 +192,65 @@ The read transport is already production-verified. The missing identity fields a
 
 ## P1 - Coding-plug physical/software correlation
 
-**Hardware status:** active 7833971 f01/f02 physical capture completed on 2026-09-25; the coding-plug domain mapping is now materially closed.
+**Hardware status:** active 7833971 f01/f02 capture completed on 2026-09-25.
+The two EEPROM domains are now physically identified for the mapped fields.
 
-**Goal:** map the two physical 24C04-class EEPROMs to the controller-visible GWG and GFA coding-plug domains without writing either EEPROM.
+**Goal:** preserve the proven physical/software mapping and finish only the
+remaining unresolved f02 fields without writing either EEPROM.
 
-**TODO:**
+### Proven f01 / main regulation / GWG mapping
 
-- [x] Side-labelled f01/ST and f02/Microchip captures available for both old plugs and the active 7833971.
-- [ ] Capture both EEPROMs of one spare three times each and compare repeatability.
-- [ ] Capture both EEPROMs of the second spare where practical.
-- [x] Capture active 7833971 f01/f02 and compare to live software views.
-- [x] Compare `0x1020[2:5]` with P103-P105. Result: GWG date slots are `FF FF FF`, while GFA remains `14 0C 04`; they are separate datasets. The comparison therefore does not resolve GFA integer-vs-BCD display or year base.
-- [ ] Immediately before or after the active-plug bench session, snapshot `0x1010`, `0x1020`, `0x1030..0x10C0`, `0x7656`.
-- [x] P90/P100-P108 read-only snapshot completed; see [gfa-coding-plug-p90-p108-read.md](gfa-coding-plug-p90-p108-read.md) and the linked live evidence.
-- [ ] Compare semantic field vectors, complement pairs, mirror records and checksums. Initial exact-byte scan is complete: the saved spare-chip1 images do not contain the live GFA vector contiguously; mirrored single-byte candidates are documented separately.
-- [x] Establish exact live software-view relations: `0x7656 = P80|P101|P107|P102 = 20 15 02 01` and `0x1040[0:2] = P107|P101 = 02 15`.
-- [x] Resolve the `0x7656` field order independently from the exact VDensHO1 catalog: byte0 type=`20`/P80, byte1 identification=`15`/P101, byte2 GWG revision=`02`/P107, byte3 GFA revision=`01`/P102. A private-v6 four-row extract remains optional same-source confirmation, not a blocker.
-- [x] Resolve dual-domain assignment: f01 is P300/GWG; active f02 physically matches live GFA P101..P106. Keep only P90/P100/P107/P108 physical offsets unresolved.
-- [ ] y unproven until side-specific evidence supports it. The newly proven separation between GWG `0x1020` date slots and GFA P103-P105 makes the side-labelled second-EEPROM capture more valuable, but does not by itself assign a physical EEPROM to either domain.
+- [x] Old f01 part numbers: `7823363` and `7833968` at physical offset `0x10`.
+- [x] Active f01 part number: `7833971` at physical offset `0x10`.
+- [x] Same-plug mapping proven: `P300 address = 0x1000 + physical f01 offset`.
+- [x] Active physical f01 matches live P300 blocks
+  `0x1010,0x1020,0x1030,0x1040,0x1050,0x1060,0x1070,0x1080,0x1090,0x10C0` exactly.
+- [x] 7823363 -> 7833968 physical delta decoded, including
+  **GWG75 internal-pump minimum 100% -> 50%**.
+- [x] Active 7833971 physically confirms GWG75 = 50%.
 
-**Completion criterion:** side-labelled repeatable dumps plus a documented correlation matrix showing confirmed, rejected and still-unknown mappings.
+### Proven f02 / GFA-fire-control mapping
+
+- [x] Active physical f02 `0x0E..0x13 = 15 01 14 0C 04 D6`.
+- [x] Same live GFA values are exactly
+  `P101..P106 = 15 01 14 0C 04 D6`.
+- [x] Therefore physical f02 offsets map directly:
+  - `0x0E -> P101`
+  - `0x0F -> P102`
+  - `0x10 -> P103`
+  - `0x11 -> P104`
+  - `0x12 -> P105`
+  - `0x13 -> P106`
+- [x] Both old f02 images contain `12 03 08 04 04 FB` at the same offsets.
+- [x] Cross-domain P101 consistency: old f01 P101=12 / old f02[0x0E]=12;
+  active f01 P101=15 / active f02[0x0E]=15.
+- [x] The former hypothesis "f02 may be GFA/fire-control" is now promoted to
+  direct hardware evidence for P101..P106.
+
+### Still open
+
+- [ ] Identify unique physical offsets for P90, P100, P107 and P108.
+  The active f02 contains several value-equal candidates, so do not assign by
+  value alone.
+- [ ] Resolve the meaning/check algorithm for unknown integrity bytes only from
+  reproducible source or differential evidence.
+- [ ] Keep P103/P104/P105 date bytes raw until the vendor display rule proves
+  binary vs BCD interpretation and the year base.
+- [ ] Optional: perform three **separate physical EEPROM reads** per side if
+  repeatability itself needs formal evidence. The two uploads of the current
+  files are byte-identical, but they are re-uploads of the same captures and
+  are not counted as independent EEPROM reads.
+
+### Evidence
+
+- `config/optolink-splitter/research/coding-plug/2026-09-25-old-plugs/`
+- `config/optolink-splitter/research/coding-plug/2026-09-25-active-7833971/`
+- [gfa-coding-plug-p90-p108-read.md](gfa-coding-plug-p90-p108-read.md)
+- GitHub Issue #36
+
+**Completion criterion:** P90/P100/P107/P108 are either physically mapped with
+an independent discriminator or explicitly left unresolved; no write is needed
+for completion.
 
 ## P1 - Protected FlowCalibration and embedded resources
 
