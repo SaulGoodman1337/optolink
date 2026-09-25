@@ -667,6 +667,55 @@ Implementation / evidence:
 - private membership trace run `36117356536`, artifact `10855701528`;
 - private analysis commit `5759c52d050b96b7827e3a1cd8740dc57baf7064`.
 
+## Pump-selector update - VDensHO1 service surface exhausted
+
+A corrected raw EventType/EventTypeGroup pass enumerated every exact VDensHO1
+group member that is result-like or located in `0x0A00..0x0AFF`.
+
+Result: 23 service-surface rows total.
+
+The only pump result surfaces are:
+
+~~~text
+0x0A3A  HKP_A1_res
+0x0A3B  HKP_M2_res
+0x0A3C  InternePumpeDrehzahl_res
+~~~
+
+No additional pump request, clamp, overrun or arbitration intermediate exists
+in the exact VDensHO1 service metadata.
+
+The remaining `0x0Axx` rows are diverter-valve, KM-BUS error/status,
+participant software-index and extension-input surfaces.
+
+Therefore Vitosoft now exposes both sides of the relevant boundary:
+
+~~~text
+0x7663  A1 runtime request
+   -> hidden controller-firmware arbitration
+0x0A3C  final internal-pump set speed transferred to pump
+0x7660  physical internal-pump runtime
+~~~
+
+but not the arbitration variable/algorithm itself.
+
+The next read-only discriminator is the installed
+`wb2a-a1-withdrawal-watch`, which measures whether the natural A1-request
+withdrawal produces GWG75=50 % for approximately GWG76=60 s.
+
+Latest evidence:
+
+- corrected result-map workflow commit
+  `a0594c17a244841a4e2dd5189b98bcffe7a765ba`;
+- run `36117975655`, artifact `10855682670`;
+- private analysis `d099f5157cf4dae5a297ce100e5b11a27acc3590`;
+- public pump note `8a77e06d9cf0f25023556f2006f93b8b92fa3fc4`.
+
+Production deployment was refreshed successfully afterwards. The watcher is
+installed at `/usr/local/bin/wb2a-a1-withdrawal-watch` and its installed
+self-test passes 5/5. All four production services are active and the
+post-update identity is `20c2000300000103`.
+
 ## Priority 4 - remaining firmware/KM-BUS work
 
 After the physical evidence above:
