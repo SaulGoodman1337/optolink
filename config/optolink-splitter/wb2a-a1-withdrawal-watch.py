@@ -158,6 +158,8 @@ def trigger_transition(previous: Sample | None, current: Sample) -> bool:
         and previous.a1_speed > 0
         and current.a1_speed == 0
         and current.internal_speed > 0
+        and previous.ww == 0
+        and current.ww == 0
     )
 
 
@@ -207,6 +209,10 @@ def self_test() -> int:
             self.assertTrue(trigger_transition(sample(30, 50), sample(0, 50)))
             self.assertFalse(trigger_transition(sample(30, 50), sample(30, 50)))
             self.assertFalse(trigger_transition(sample(30, 50), sample(0, 0)))
+            prev = sample(30, 50)
+            curr = sample(0, 100)
+            curr.ww = 1
+            self.assertFalse(trigger_transition(prev, curr))
 
         def test_full_match(self):
             self.assertEqual(
