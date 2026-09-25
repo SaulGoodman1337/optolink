@@ -227,6 +227,14 @@ remaining unresolved f02 fields without writing either EEPROM.
 - [x] The former hypothesis "f02 may be GFA/fire-control" is now promoted to
   direct hardware evidence for P101..P106.
 
+### Live static GFA discriminator
+
+- [x] Two fresh read-only rounds: P80=20, P81=02, P82=06, P83=76; P90=00; P100=63; P101..P108=15 01 14 0C 04 D6 02 00.
+- [x] Active f02 contains no 0x20, no 0x06 and no 0x76 anywhere.
+- [x] Therefore P80/P82/P83 are not flat f02 bytes; P81 cannot be mapped by coincidental 0x02 equality.
+- [x] Architecture split refined: GFA_READ mixes internal GFA identity/firmware state with coding-plug-derived fields.
+- [ ] P100 still ambiguous between repeated-record candidate pairs 0x02B/0x07D and 0x046/0x098.
+
 ### Still open
 
 - [ ] Identify unique physical offsets for P90, P100, P107 and P108.
