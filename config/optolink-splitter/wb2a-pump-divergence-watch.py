@@ -105,6 +105,39 @@ def snapshot(client, responses):
     }
 
 
+def constraint_snapshot(client, responses):
+    """Capture static/slow selector inputs at the divergence time.
+
+    These are read only when a divergence is captured so the normal watcher
+    loop stays lightweight. 0x1070 byte 5 is source-mapped as GWG75, the
+    coding-plug minimum internal-pump speed.
+    """
+    k30 = request(client, responses, "0x5730", 1)[0]
+    k31 = request(client, responses, "0x5731", 1)[0]
+    e7 = request(client, responses, "0x27E7", 1)[0]
+    k6c = request(client, responses, "0x676C", 1)[0]
+    gwg = request(client, responses, "0x1070", 16)
+    return {
+        "k30": k30,
+        "k31": k31,
+        "e7": e7,
+        "k6c": k6c,
+        "gwg70_76_raw": gwg.hex(),
+        "gwg75": gwg[5],
+    }
+
+
+def fmt_constraints(s):
+    return (
+        f"K30={s['k30']:02X} "
+        f"K31={s['k31']:3d}% "
+        f"E7={s['e7']:3d}% "
+        f"6C={s['k6c']:3d}% "
+        f"GWG75={s['gwg75']:3d}% "
+        f"1070={s['gwg70_76_raw']}"
+    )
+
+
 def fmt(s):
     relation_internal = (
         "A3C=7660"
@@ -165,7 +198,8 @@ def main():
 
     print("WB2A pump divergence watcher")
     print("============================")
-    print("Reads only: 0A3A, 0A3B, 0A3C, 7660, 7663, 650A, 0A10, 55D3")
+    print("Loop reads: 0A3A, 0A3B, 0A3C, 7660, 7663, 650A, 0A10, 55D3")
+    print("On divergence: +5730/K30, 5731/K31, 27E7/E7, 676C/6C, 1070/GWG75")
     print("Trigger:   7660[1] != 7663[1]")
     print("Writes:    none")
     print("Ctrl-C beendet")
@@ -238,6 +272,14 @@ def main():
             if divergent:
                 print()
                 print("=== DIVERGENCE CAPTURE ===")
+                try:
+                    constraints = constraint_snapshot(client, responses)
+                    print(
+                        f"{datetime.now().isoformat(timespec='milliseconds')} "
+                        f"constraints: {fmt_constraints(constraints)}"
+                    )
+                except Exception as exc:
+                    print(f"constraints: READ_ERROR {exc}", file=sys.stderr)
                 for i in range(args.burst):
                     try:
                         b = snapshot(client, responses)
