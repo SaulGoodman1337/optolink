@@ -101,6 +101,8 @@ install_repo_file config/optolink-splitter/wb2a-kbus-virtual-read-probe.py   /us
 ln -sf /usr/local/bin/wb2a-kbus-virtual-read-probe /usr/bin/wb2a-kbus-virtual-read-probe
 install_repo_file config/optolink-splitter/wb2a-kbus-memberlist-read-probe.py   /usr/local/bin/wb2a-kbus-memberlist-read-probe 0755
 ln -sf /usr/local/bin/wb2a-kbus-memberlist-read-probe /usr/bin/wb2a-kbus-memberlist-read-probe
+install_repo_file config/optolink-splitter/wb2a-a1-withdrawal-watch.py   /usr/local/bin/wb2a-a1-withdrawal-watch 0755
+ln -sf /usr/local/bin/wb2a-a1-withdrawal-watch /usr/bin/wb2a-a1-withdrawal-watch
 ln -sf /usr/local/bin/wb2a-e7-persistence-probe /usr/bin/wb2a-e7-persistence-probe
 
 install_repo_file config/optolink-splitter/optolink-splitter.service   /etc/systemd/system/optolink-splitter.service 0644
@@ -113,7 +115,7 @@ install_repo_file config/optolink-splitter/vcontrol-mapping.md   /root/optolink-
 systemctl daemon-reload
 systemctl enable optolink-splitter.service >/dev/null 2>&1 || true
 systemctl enable optolink-party-emulator.service >/dev/null 2>&1 || true
-chown root:root   /usr/local/bin/optolink-apply-vdensho1-ha-profile   /usr/local/bin/optolink-apply-vscotho1-profile   /usr/local/bin/optolink-party-test   /usr/local/bin/optolink-debug   /usr/local/bin/optolink-maintenance   /usr/local/bin/wb2a-schedule-probe   /usr/local/bin/optolink-schedule-manager   /usr/local/bin/optolink-party-emulator   /usr/local/bin/wb2a-single-session-logger   /usr/local/bin/wb2a-rkr-cycle-logger   /usr/local/bin/wb2a-pump-start-logger   /usr/local/bin/wb2a-e7-persistence-probe   /usr/local/bin/wb2a-kmbus-p300-read-probe   /usr/local/bin/wb2a-xram-p300-read-probe   /usr/local/bin/wb2a-kmbus-eeprom-p300-read-probe   /usr/local/bin/wb2a-kmbus-eeprom-map-probe   /usr/local/bin/wb2a-kmbus-prefix-ab-probe   /usr/local/bin/wb2a-kmbus-prefix-isolated-probe   /usr/local/bin/wb2a-physical-vs-kmbus-eeprom-probe   /usr/local/bin/wb2a-kbus-virtual-read-probe   /usr/local/bin/wb2a-kbus-memberlist-read-probe   /etc/systemd/system/optolink-splitter.service   /etc/systemd/system/optolink-party-emulator.service   /etc/systemd/system/optolink-schedule-manager.service   /etc/systemd/system/optolink-maintenance-api.service   /root/optolink-vcontrol-mapping.md
+chown root:root   /usr/local/bin/optolink-apply-vdensho1-ha-profile   /usr/local/bin/optolink-apply-vscotho1-profile   /usr/local/bin/optolink-party-test   /usr/local/bin/optolink-debug   /usr/local/bin/optolink-maintenance   /usr/local/bin/wb2a-schedule-probe   /usr/local/bin/optolink-schedule-manager   /usr/local/bin/optolink-party-emulator   /usr/local/bin/wb2a-single-session-logger   /usr/local/bin/wb2a-rkr-cycle-logger   /usr/local/bin/wb2a-pump-start-logger   /usr/local/bin/wb2a-e7-persistence-probe   /usr/local/bin/wb2a-kmbus-p300-read-probe   /usr/local/bin/wb2a-xram-p300-read-probe   /usr/local/bin/wb2a-kmbus-eeprom-p300-read-probe   /usr/local/bin/wb2a-kmbus-eeprom-map-probe   /usr/local/bin/wb2a-kmbus-prefix-ab-probe   /usr/local/bin/wb2a-kmbus-prefix-isolated-probe   /usr/local/bin/wb2a-physical-vs-kmbus-eeprom-probe   /usr/local/bin/wb2a-kbus-virtual-read-probe   /usr/local/bin/wb2a-kbus-memberlist-read-probe   /usr/local/bin/wb2a-a1-withdrawal-watch   /etc/systemd/system/optolink-splitter.service   /etc/systemd/system/optolink-party-emulator.service   /etc/systemd/system/optolink-schedule-manager.service   /etc/systemd/system/optolink-maintenance-api.service   /root/optolink-vcontrol-mapping.md
 # Keep ChatGPT remote access narrowly scoped to this guarded read-only helper.
 if id chatgpt-admin >/dev/null 2>&1; then
   cat >/etc/sudoers.d/chatgpt-wb2a-kbus-virtual-read <<'EOF_SUDO'
@@ -180,6 +182,7 @@ printf '  /usr/local/bin/wb2a-kmbus-prefix-isolated-probe\n' >&2
 printf '  /usr/local/bin/wb2a-physical-vs-kmbus-eeprom-probe\n' >&2
 printf '  /usr/local/bin/wb2a-kbus-virtual-read-probe\n' >&2
 printf '  /usr/local/bin/wb2a-kbus-memberlist-read-probe\n' >&2
+printf '  /usr/local/bin/wb2a-a1-withdrawal-watch\n' >&2
 printf 'Run RKR logger: wb2a-rkr-cycle-logger\n' >&2
 printf 'Run pump logger: wb2a-pump-start-logger --mode heating|dhw\n' >&2
 printf 'Run E7 persistence probe: wb2a-e7-persistence-probe --run\n' >&2
@@ -192,6 +195,7 @@ printf 'Run isolated PrefixRead probe: wb2a-kmbus-prefix-isolated-probe --execut
 printf 'Run Physical_READ vs KMBUS_EEPROM probe: wb2a-physical-vs-kmbus-eeprom-probe --execute\n' >&2
 printf 'Run KBUS_VIRTUAL_READ semantic gate: wb2a-kbus-virtual-read-probe --execute\n' >&2
 printf 'Run KBUS_MEMBERLIST_READ gate (dialout user): wb2a-kbus-memberlist-read-probe --execute\n' >&2
+printf 'Watch A1 withdrawal / pump overrun: wb2a-a1-withdrawal-watch\n' >&2
 printf 'Maintenance CLI: optolink-maintenance status\n' >&2
 printf 'Maintenance API: systemctl status optolink-maintenance-api\n' >&2
 printf 'Schedule probe: wb2a-schedule-probe snapshot\n' >&2
