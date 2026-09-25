@@ -2,7 +2,7 @@
 
 Status: **active preliminary PCB research; local-board identity not yet confirmed**
 
-Last updated: **2026-09-24**
+Last updated: **2026-09-25**
 
 This document records the board-level research triggered by two third-party online-reference photos supplied by the user on 2026-09-24. The photographed board looks similar to the user's installed regulation electronics, but **the supplied photos are not photos of the installed local boiler board**. No conclusion below may therefore be transferred to the local WB2A until its labels and IC markings have been photographed directly.
 
@@ -124,6 +124,32 @@ The current project baseline identifies the local appliance as **WB2A**. Multipl
   https://www.uttscheid.de/Viessmann-Regelung-GG1-fuer-Vitodens-200-WB2A-300-WB3A-333-WS3A-7825241/VI7825241
 
 A GG1 7825241 board image is visually related in general architecture but is **not identical enough to assume that the 7424735 VBC130 board is the installed WB2A board**.
+
+### Stronger GG1 comparison anchor: 7184367 / 405334100
+
+A Viessmann Community case for a **GG1** regulation gives a concrete PCB marking from the installed board:
+
+- regulation family discussed: **GG1**
+- older regulation part: **7823830**
+- PCB marking reported directly from the board: **7184367 405334100**
+- Viessmann staff confirms **7823830** is usable for that application and separately states that **7825241** is the successor model; in the same thread, Viessmann states that no software changes were made in the successor.
+
+Primary public evidence:
+
+- https://community.viessmann.de/t5/Gas/Regelung-GG1-unterschiedliche-Bestellnummern/m-p/13079
+- https://community.viessmann.de/t5/Gas/Regelung-GG1-unterschiedliche-Bestellnummern/m-p/12157
+
+An active marketplace listing also identifies a complete **GG1 / 7184367** regulation:
+
+- https://www.ebay.de/itm/156269696802
+
+This is a materially better comparison anchor for the local **WB2A / VDensHO1 / 20C2** than the 7424735/VBC130 board, because it belongs to the GG1 lineage that is independently linked to WB2A.
+
+However, it is still **not a local-board identity proof**:
+
+- the reported 7184367 board came from another appliance/control;
+- successor compatibility does not prove unchanged PCB layout or MCU;
+- the exact local board number and MCU still require direct local photographs.
 
 ### Working rule
 
