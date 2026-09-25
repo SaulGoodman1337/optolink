@@ -269,35 +269,28 @@ Therefore the current debug path directly controls:
 This is stronger than merely knowing that arbitrary function codes can be sent:
 the request-frame layout used by the splitter is known.
 
-The production Vitosoft metadata now resolves much of the earlier uncertainty
-around the additional event fields.
+The production Vitosoft metadata and recovered host implementation now resolve
+the optional-data question more narrowly than the earlier working hypothesis.
 
-The global `ecnEventType.xml` contains real KBus/KM-BUS rows with
-`PrefixRead`/`PrefixWrite`. For example, 90 of 91
-`KMBUS_EEPROM_READ` definitions use:
+The global catalog contains real `PrefixRead`/`PrefixWrite` fields, but the
+captured host build does **not** serialize PrefixRead for ordinary non-RPC
+reads. PrefixRead is converted into `BlockDataToDevice` only on the
+`Remote_Procedure_Call / 0x07` path.
 
-~~~text
-PrefixRead = 030000000101
-~~~
-
-The Vitosoft-derived VS2 message builder and the Optolink-Splitter generic
-request use the same structural location for optional bytes:
+For an ordinary `0x43 / 0x0001 / len 1` request the host-generated serial
+shape is therefore:
 
 ~~~text
-41 LEN PROTID FCT ADDR_H ADDR_L BLOCKLEN [DATA ...] CHECKSUM
+41 05 00 43 00 01 01 4A
 ~~~
 
-Therefore the strongest current mapping is:
+with no PrefixRead bytes.
 
-~~~text
-Vitosoft PrefixRead -> request DATA bytes after BlockLength
-~~~
-
-This mapping is source-supported, and local hardware now shows that adding the
-exact six source bytes can change the 0x0001 response. Their precise role as a
-routing selector remains unproven. The earlier prefix-less 0x43/F8
-experiments remain valid wire evidence, but they must not be treated as normal
-Vitosoft KMBUS_EEPROM_READ semantics.
+The 90 catalog rows carrying `030000000101` are all linked only to GWG
+profiles. Independent GWG protocol sources map KMBUS EEPROM access to the old
+GWG TYPE byte `0x43` with an 8-bit-address frame, not to extra P300 request
+data. The same numeric byte appears in two different protocol layers and must
+not be used to transfer LGM27/GWG semantics to local VDensHO1 P300 traffic.
 
 ## Production Vitosoft join for the exact local profile
 
@@ -1169,6 +1162,54 @@ Decision: no more PrefixRead discrimination and no broad 0x43 expansion.
 
 Evidence:
 [vitosoft/kmbus-prefix-isolated-live-2026-09-24-evidence.json](vitosoft/kmbus-prefix-isolated-live-2026-09-24-evidence.json).
+
+## 0x43 response-side closure and next discriminator
+
+The Vitosoft response converter has now been traced as well.
+
+For normal LDAP responses it dispatches on the **low five bits** of the command
+byte and copies the bytes after the five-byte LDAP header directly into the
+event block before applying normal event conversion metadata:
+
+~~~text
+0x41 & 0x1F = 0x01
+0x43 & 0x1F = 0x03
+~~~
+
+Therefore:
+
+- local repeated `0x43` payloads such as `5498`, `5497`, `d301` and
+  `f201` are device-produced raw bytes, not a Vitosoft conversion artifact;
+- the host processes `0x41` in the same generic read class as `0x01`;
+- the host processes `0x43` in the same generic read class as `0x03`.
+
+This masking does **not** prove that the controller aliases the full command
+bytes. It does create a precise source-backed hardware discriminator.
+
+The first pair is already locally resolved: `0x01 Virtual_READ` and
+`0x41 KMBUS_RAM_READ` were byte-identical across seven same-address samples,
+including dynamic non-zero pump values.
+
+The next bounded read-only gate is therefore:
+
+~~~text
+0x03 Physical_READ  vs  0x43 KMBUS_EEPROM_READ
+~~~
+
+at only a tiny fixed address set. Different data or different error behavior
+would prove a distinct local 0x43 service/view; matching stable data would
+support an alias/common-view hypothesis. Neither outcome transfers GWG/LGM27
+semantics to VDensHO1.
+
+The archived `vsmGWG99Native.dll` was also inspected. Its only exports are
+`CheckGWG` and `TestCall_GWG99Native`; it imports the expected Windows
+serial APIs and contains detector-style strings (`checking gwg...`,
+`receive ENQ`, `WriteData OK`), but no exported general GWG/KMBUS datapoint
+API. This supports treating the current Vitosoft GWG99 component as a
+recognition/test helper rather than an alternate managed 0x43 serializer.
+
+Private response analysis:
+`collector-output/20260924-143439/kmbus-eeprom-response-analysis-2026-09-25.md`.
 
 ## Research questions
 
