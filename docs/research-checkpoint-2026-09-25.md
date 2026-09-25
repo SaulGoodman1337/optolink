@@ -1069,3 +1069,19 @@ The current research boundary is therefore clean:
 - next independent evidence paths are physical coding-plug EEPROM correlation
   and local regulation-board/MCU identification.
 
+
+
+## Fresh static GFA fingerprint - 2026-09-25
+
+Two fresh read-only GFA_READ rounds on the running appliance were identical:
+
+`P80=20 P81=02 P82=06 P83=76 P90=00 P100=63 P101=15 P102=01 P103=14 P104=0C P105=04 P106=D6 P107=02 P108=00`.
+
+New physical discriminator:
+
+- current f02 contains no byte 0x20, 0x06 or 0x76;
+- P80 (FA chip ID), P82 (FA software revision) and P83 (appliance configuration) therefore cannot be linear f02 EEPROM bytes;
+- P81=02 must not be mapped by value coincidence;
+- P101..P106 remain the direct f02 coding-plug mapping;
+- P100 remains unresolved between two repeated-record field positions;
+- no writes were performed and all production services remained active.
