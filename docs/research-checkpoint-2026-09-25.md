@@ -716,6 +716,71 @@ installed at `/usr/local/bin/wb2a-a1-withdrawal-watch` and its installed
 self-test passes 5/5. All four production services are active and the
 post-update identity is `20c2000300000103`.
 
+## Heating takt baseline before controlled E7=100 comparison
+
+A natural A1 heating run was captured before a later DHW takeover.
+
+Same-window static/runtime state:
+
+~~~text
+E7 = 30 %
+GWG75 = 50 %
+GWG76 = 60 s
+0x7663 = 01 24  -> A1 request 36 %
+0x0A3C = 32     -> final internal-pump set speed 50 %
+0x7660 = 01 32  -> physical internal pump 50 %
+DHW = 0
+~~~
+
+This closes the earlier evidence boundary where E7 and GWG75 had not been read
+in the exact same window as the 36 -> 50 transformation.
+
+The read-only A1-withdrawal CSV contained 1,085 pre-DHW samples. Across all of
+them the pump chain was invariant:
+
+~~~text
+A1 request 36 % -> 0x0A3C 50 % -> internal pump 50 %
+~~~
+
+while the burner repeatedly cycled:
+
+- flame ON 41.529 s;
+- flame OFF 247.586 s;
+- flame ON 38.264 s;
+- flame OFF 247.853 s;
+- flame ON 33.943 s.
+
+Thus normal burner takt lock did not alter or withdraw the A1 pump request or
+the final internal-pump result in this capture.
+
+At 11:40:55 CEST DHW took over:
+
+~~~text
+A1 -> 0 %
+DHW -> 1
+0x0A3C -> 100 %
+internal pump -> 100 %
+~~~
+
+The first version of the A1-withdrawal watcher incorrectly classified that
+DHW takeover as an A1-withdrawal trigger. The trigger was corrected to require
+DHW=0 on both sides of the transition.
+
+Evidence:
+
+- `config/optolink-splitter/research/vitosoft/a1-heating-takt-baseline-2026-09-25-evidence.json`
+- evidence commit `8b343868f0c8852cc1e0696f41c3e1ea9c1289b7`
+- watcher DHW exclusion commit
+  `2718b6c53a55a30c6eacec17857fff628b3dc7c5`.
+
+A guarded follow-up helper was prepared for a user-authorized controlled
+E7=30 -> 100 -> 30 comparison. It waits for DHW inactive + flame off, writes
+only E7, verifies every write, captures one heating flame cycle and restores
+the original E7 after the cycle.
+
+Helper commit:
+`07ac0f5adbefe4e5af8796a316b647d5a60204e9`.
+
 ## Priority 4 - remaining firmware/KM-BUS work
 
 After the physical evidence above:
