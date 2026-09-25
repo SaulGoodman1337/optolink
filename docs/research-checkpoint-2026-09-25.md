@@ -605,6 +605,68 @@ Commit: `8e18873fd8528dc260120877f9d725a6ebb65c1e`.
 The updated script passed a syntax compile check. No controller writes were
 performed. All four production services remained active.
 
+## Pump-selector update - raw VDensHO1 result groups resolved
+
+The private Collector-v6 raw service metadata resolves a limitation of the
+generated all-device membership join.
+
+`InternePumpeDrehzahl_res~0x0A3C` is explicitly present in:
+
+- `VDensHO1~35_Information~10_Kessel`;
+- `VDensHO1~40_Diagnose_1~10_Kessel`.
+
+The vendor text says this value is the internal-pump set speed transferred to
+the pump. This directly supports the already measured local relation
+`0x0A3C ~= 0x7660[1]`.
+
+The adjacent result events are likewise in exact VDensHO1 groups:
+
+- `0x0A3A HKP_A1_res`: A1 Information/Diagnose;
+- `0x0A3B HKP_M2_res`: M2 Information/Diagnose.
+
+Local evidence still shows `0x0A3A=0` during active direct-A1 heating, so it
+is not the local `0x7663` source.
+
+A8 at `0x37A8` is now fully decoded:
+
+- 0 = without;
+- 1 = heating circuit sets demand for internal pump.
+
+Local `A8=1`, but no M2 circuit is installed, so this is not the direct-A1
+30/36 -> 50 clamp. External-extension pump paths are also dormant:
+`2E=0`, `32=0`, `34=0`.
+
+The leading direct-A1 model remains:
+
+~~~text
+0x0A3C ~= max(0x7663[1], GWG75)
+~~~
+
+subject to operating-state selection and other overrides.
+
+A new read-only permanent-VS1 watcher now targets the more useful transition
+where the whole A1 pump request is withdrawn, rather than ordinary flame-off:
+
+~~~text
+0x7663[1] > 0 -> 0
+while 0x7660[1] remains > 0
+~~~
+
+It records K30/K31/E7/6C/GWG75/GWG76 and measures time until the internal pump
+stops. A 50 % / approximately 60 s result would strongly correlate the state
+with GWG75=50 and GWG76=60, without claiming firmware-level causality.
+
+Implementation / evidence:
+
+- helper commit `39585aa932a2604c4237c38f34fa737f2eafbf8d`;
+- helper self-test `A1_WITHDRAWAL_WATCH_TESTS=5/5`;
+- updater integration `72471b4df4a5c9b9f559a389f09aafdce132a8f5`;
+- public pump analysis `d7a578036974d5cbcee8754e6c3cdd957472c0f5`;
+- private cross-profile run `36116347446`, artifact `10855039354`;
+- private token trace run `36116563436`, artifact `10854958468`;
+- private membership trace run `36117356536`, artifact `10855701528`;
+- private analysis commit `5759c52d050b96b7827e3a1cd8740dc57baf7064`.
+
 ## Priority 4 - remaining firmware/KM-BUS work
 
 After the physical evidence above:
