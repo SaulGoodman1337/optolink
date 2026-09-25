@@ -14,7 +14,7 @@ This is the **current execution plan** for the local Vitodens 200-W WB2A / VDens
 - P06 / `0x4006` is the canonical controller-reported blower speed for this installation, scaled by 30 rpm/LSB. The old `0x55D3[6:7]` blower interpretation is closed.
 - Main regulation software-version bytes are measured as `0x778C=01`, `0x778D=03`, raw pair `0x0103`.
 - GFA P80 / `0x4050` is measured as `0x20`, selecting the local GFA branch.
-- Pump captures distinguish the normal heating path from the DHW path: heating showed A1 runtime 36% with the internal pump clamped to the 50% GWG75 floor; DHW/DHW overrun showed the internal pump at 100% while A1 runtime was 0%.
+- Pump-role model corrected: direct A1 heating uses the integrated pump as the A1 heating-circuit pump governed by E6/E7 and exposed by 0x7663; DHW uses the same physical pump in the internal/DHW circulation role governed by 6C (local 100%). Internal-pump result surfaces 0x0A3C/0x7660 must not be used as proof of the direct-A1 control algorithm.
 - Two spare coding plugs have repeatable 512-byte chip1 dumps. Both use a two-EEPROM 24C04-class board architecture; the two chip1 images share an identical 226-byte prefix and an exact duplicated 82-byte logical record.
 
 ## Closed or deprioritized searches
@@ -275,9 +275,7 @@ Current evidence:
   `0x7663=03 1E` (A1 request 30 %), `0x0A3C=32` (final 50 %),
   `0x7660=03 32` (internal pump 50 %); 0x01 and 0x41 were byte-identical
   on all three. Dynamic mirror proven.
-- [ ] Treat the observed A1 30 % -> internal 50 % uplift as strong evidence
-  for the previously established GWG75=50 % internal-pump minimum clamp;
-  optionally close causality with a same-window E7 + 0x1070 read.
+- [x] Preserve the historical same-window 0x7663/0x0A3C/0x7660 correlation as raw hardware evidence only. The later pump-role correction supersedes the causal interpretation that direct-A1 control is implemented as an internal-pump GWG75 clamp. Do not use this correlation to infer the A1 algorithm.
 - [x] Test all six source-derived `XRAM_READ 0x31` address/length shapes.
   Result: **0/6 successful**; every 0x31 request returned a valid Error Message
   with inner payload `05`. Matching cross-profile Virtual_READ controls
@@ -488,7 +486,7 @@ These are **later read-only verification items**. Never add a duplicate poll for
 - [ ] Keep P06 as the canonical blower RPM entity.
 - [ ] Keep P87 raw/unnamed in the UI.
 - [ ] Optionally add P81-P83 as low-frequency/ONCE diagnostic entities; raw reads are now captured and labels are source-backed, but human-readable P81/P82 formatting and P83 decoding remain unresolved.
-- [ ] Build the planned pump-process visualization once the `0x0A3A/0x0A3C/0x7663/0x7660` arbitration map is verified.
+- [ ] If a pump-process dashboard is built, represent direct A1 heating, DHW/internal-pump operation and boiler-circuit operation as separate logical roles. Do not visualize the superseded `0x7663 -> 0x0A3C -> 0x7660` causal chain.
 - [ ] Preserve unresolved diagnostic values as diagnostics rather than presenting inferred semantics as facts.
 
 ## Evidence discipline
