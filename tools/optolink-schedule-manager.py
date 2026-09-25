@@ -294,7 +294,28 @@ def normalize_editor_time(value, *, end=False):
         # Home Assistant time entities use 00:00 for midnight; in a same-day
         # schedule end field that is the natural UI representation of 24:00.
         return "24:00"
-    return value
+
+    match = re.fullmatch(r"(\d{2}):(\d{2})", value)
+    if match is None:
+        return value
+
+    hour = int(match.group(1))
+    minute = int(match.group(2))
+    if hour > 23 or minute > 59:
+        return value
+
+    total = hour * 60 + minute
+    rounded = ((total + 5) // 10) * 10
+    if end:
+        if rounded >= 24 * 60:
+            return "24:00"
+        if rounded == 0:
+            rounded = 10
+    else:
+        rounded = min(rounded, 23 * 60 + 50)
+
+    hour, minute = divmod(rounded, 60)
+    return f"{hour:02d}:{minute:02d}"
 
 
 def editor_time_state(value, *, end=False):
@@ -1031,6 +1052,10 @@ def self_test():
     assert time_plus_minutes("00:30", -60) == "00:00"
     assert editor_schedule_from_slots([[None, None] for _ in range(4)]) == "none"
     assert normalize_editor_time("05:30:00") == "05:30"
+    assert normalize_editor_time("05:34:00") == "05:30"
+    assert normalize_editor_time("05:36:00") == "05:40"
+    assert normalize_editor_time("23:58:00") == "23:50"
+    assert normalize_editor_time("23:58:00", end=True) == "24:00"
     assert normalize_editor_time("00:00:00", end=True) == "24:00"
     assert editor_time_state("24:00", end=True) == "00:00:00"
     defaults = [[None, None] for _ in range(4)]
