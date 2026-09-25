@@ -467,6 +467,39 @@ P87 raw / bit transition
 
 Do not assign manufacturer names to P84 states or P87 bits solely from temporal proximity.
 
+## KM-BUS update - bounded 0x5F gate completed
+
+On 2026-09-25 10:32 CEST the guarded `KBUS_VIRTUAL_READ / 0x5F`
+semantic gate was executed against two source-backed temperature anchors.
+
+Results:
+
+- `0x5F / 0x2508 / 1` (source: outside temperature) -> Error Message `05`, twice;
+- `0x5F / 0x2D08 / 1` (source: A1 flow actual) -> Error Message `05`, twice;
+- ordinary VDensHO1 controls were stable before/after each pair:
+  - `0x5525 = 94 00` -> 14.8 C;
+  - `0x0810 = 0d 02` -> 52.5 C;
+- identity control `0x00F8/8 = 20c2000300000103` passed;
+- classification:
+  `NO_LOCAL_KBUS_VIRTUAL_SUCCESS_ON_TESTED_ANCHORS`;
+- all four production services were restored active and permanent VS1 was
+  confirmed after the run.
+
+This does not prove universal 0x5F rejection. It closes broad 0x5F live
+expansion until a new VDensHO1-specific discriminator or stronger source
+evidence exists.
+
+Evidence:
+`config/optolink-splitter/research/vitosoft/kbus-virtual-read-live-2026-09-25-evidence.json`
+
+Relevant commits:
+
+- helper: `22ab617559cc70dcd21b1f5b1309a2bcbd3f9265`
+- updater: `34d5f395c70b52049e01882e1479cf7c56d860c1`
+- evidence: `157e7a514d516c227d2f2e1595041d6285da9f29`
+- detailed read-memory note: `add661a711089951c76e4d1e5f23e88a99692f2d`
+- canonical KM-BUS note: `bd1e3124a4c0f9cd88a92d38bf45c849cb8abf76`
+
 ## Priority 4 - remaining firmware/KM-BUS work
 
 After the physical evidence above:
