@@ -25,7 +25,7 @@ import sys
 import tempfile
 import time
 
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 ROOT = Path("/opt/optolink")
 
 BASE_BLOBS = {
@@ -176,9 +176,39 @@ def patch_c_polllist(text: str) -> str:
 
 
 def patch_switch(text: str) -> str:
-    if MARKERS["optolinkvs2_switch.py"] in text:
-        return text
     nl = newline_of(text)
+    failsoft_marker = "community-scripts: fail-soft poll value conversion"
+
+    def add_failsoft_guard(src: str) -> str:
+        if failsoft_marker in src:
+            return src
+        old = nl.join([
+            "    except Exception as e:",
+            '        logger.error(f"Error do_poll_item {poll_pointer}, {item}: {e}")',
+            "        raise",
+        ])
+        new = nl.join([
+            "    except (UnicodeError, ValueError, IndexError, OverflowError) as e:",
+            "        # community-scripts: fail-soft poll value conversion",
+            "        # A malformed payload or formatter mismatch invalidates only",
+            "        # this datapoint. Transport/serial exceptions still fall",
+            "        # through to the original hard recovery path below.",
+            "        bad_item = locals().get('item', '<unavailable>')",
+            "        logger.warning(",
+            '            f"Skipping malformed poll value {poll_pointer}, {bad_item}: "',
+            '            f"{type(e).__name__}: {e}"',
+            "        )",
+            "        return 0xFD",
+            "    except Exception as e:",
+            '        logger.error(f"Error do_poll_item {poll_pointer}, {item}: {e}")',
+            "        raise",
+        ])
+        if old not in src:
+            raise PatchError("switch poll exception marker not found")
+        return src.replace(old, new, 1)
+
+    if MARKERS["optolinkvs2_switch.py"] in text:
+        return add_failsoft_guard(text)
 
     old = nl.join([
         "force_poll_flag = False",
@@ -318,7 +348,8 @@ def patch_switch(text: str) -> str:
     ])
     if old not in text:
         raise PatchError("switch cycle-complete marker not found")
-    return text.replace(old, new, 1)
+    text = text.replace(old, new, 1)
+    return add_failsoft_guard(text)
 
 
 PATCHERS = {
@@ -462,6 +493,9 @@ def main():
                                 reload_poll_flag = False
                                     # poll cycle control
                                     poll_cycle += 1
+    except Exception as e:
+        logger.error(f"Error do_poll_item {poll_pointer}, {item}: {e}")
+        raise
 """
             out = patch_switch(src)
             self.assertIn("startup_once_complete", out)
@@ -469,11 +503,30 @@ def main():
             self.assertIn("item_phases", out)
             self.assertNotIn("force poll including onceonlies", out)
             self.assertIn("startup-only ONCE poll group completed", out)
+            self.assertIn("community-scripts: fail-soft poll value conversion", out)
+            self.assertIn("except (UnicodeError, ValueError, IndexError, OverflowError)", out)
+            self.assertIn("return 0xFD", out)
+
+        def test_switch_failsoft_upgrade(self):
+            src = """community-scripts: phased poll scheduler runtime
+def do_poll_item():
+    try:
+        return 1
+    except Exception as e:
+        logger.error(f"Error do_poll_item {poll_pointer}, {item}: {e}")
+        raise
+"""
+            out = patch_switch(src)
+            self.assertIn("community-scripts: fail-soft poll value conversion", out)
+            self.assertIn("return 0xFD", out)
 
         def test_idempotent_markers(self):
             p = "community-scripts: phased group poll scheduler\n"
             self.assertEqual(patch_c_polllist(p), p)
-            s = "community-scripts: phased poll scheduler runtime\n"
+            s = (
+                "community-scripts: phased poll scheduler runtime\n"
+                "community-scripts: fail-soft poll value conversion\n"
+            )
             self.assertEqual(patch_switch(s), s)
 
         def test_git_blob(self):
@@ -486,7 +539,7 @@ def main():
         unittest.defaultTestLoader.loadTestsFromTestCase(Tests)
     )
     if result.wasSuccessful():
-        print("PHASED_POLL_SCHEDULER_TESTS=4/4")
+        print("PHASED_POLL_SCHEDULER_TESTS=5/5")
         return 0
     return 1
 
