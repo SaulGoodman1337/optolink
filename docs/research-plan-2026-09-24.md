@@ -223,11 +223,24 @@ Current evidence:
   `TestCall_GWG99Native` are exported; no general GWG/KMBUS datapoint API was
   found. Historical GWG sources independently use TYPE `0x43` in a separate
   8-bit-address wire protocol.
-- [~] Run the new source-backed bounded discriminator
-  `0x03 Physical_READ vs 0x43 KMBUS_EEPROM_READ` only at `0x00F8/2` and
-  `0x0001/1`, with fresh P300 sessions per sample. Keep `0x01 vs 0x41` at
-  `0x00F8/2` as the positive comparison control. Guarded helper prepared:
-  `wb2a-physical-vs-kmbus-eeprom-probe`.
+- [x] Run the source-backed bounded discriminator
+  `0x03 Physical_READ vs 0x43 KMBUS_EEPROM_READ` with fresh P300 sessions.
+  Result: positive `0x01/0x41 @ 0x00F8/2` control is payload-identical
+  (`20c2`); `0x03/0x43 @ 0x0001/1` is also stably identical
+  (`81` in all four trials); `0x00F8/2` is dynamic but overlapping
+  (`0x03=5491,5497`, `0x43=5491,5491`). No distinct local 0x43 data view
+  was demonstrated.
+- [x] Correct the probe reporter: v1.0.0 included the echoed function byte in
+  equality classification and therefore mislabeled identical payload groups as
+  `STABLE_DISTINCT`. v1.0.1 compares semantic response outcome/payload only;
+  offline self-test is 6/6 PASS.
+- [x] Preserve schedule-manager state across future P300 maintenance windows.
+  v1.0.0 allowed it to exit while the splitter was paused; it was manually
+  restored after this run. v1.0.2 now explicitly stops/restores the service.
+- [ ] Require a new source-backed discriminator before any further 0x43 live
+  work. Current evidence favors a common/aliased local `0x03/0x43`
+  physical/service view over a dedicated LGM27 EEPROM interpretation, but
+  universal equivalence is not proven.
 - [ ] Keep all work read-only; no broad blind sweep and no KBUS/KMBUS writes.
 
 The exact slice additionally shows that `XRAM_READ` is used on GWG families
