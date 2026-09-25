@@ -516,3 +516,77 @@ Workflow:
 Decision: **remove BE_READ / 0x9E from the active firmware-readout candidate
 list unless independent firmware-level evidence assigns it another meaning on
 a different controller family.**
+
+
+## Historical M30612 memory type — mask ROM, not flash
+
+The historical OpenV controller is now materially better constrained.
+
+Renesas/Mitsubishi documentation places the `M30612MC` family in the
+M16C/61 group. The contemporaneous M16C/61 device table and type-number scheme
+show:
+
+```text
+M = mask ROM version
+C = 128 KiB ROM capacity
+M30612MCA = 128 KiB mask-ROM device
+internal ROM: 0xE0000..0xFFFFF
+internal RAM end: 0x017FF
+```
+
+The `A` suffix belongs to the documented M16C/61 device revision; the older
+Renesas technical note also explicitly lists `M30612MC-XXXFP/GP` as an
+M16C/61 device.
+
+Primary/period documentation used for the architecture check:
+
+- Renesas technical note `M16C-07-9701`, which explicitly lists
+  `M30612MC-XXXFP/GP`;
+- Mitsubishi M16C/61 group datasheet, which classifies `M30612MCA` as
+  128-KiB mask ROM and maps its internal ROM to `0xE0000..0xFFFFF`.
+
+### Consequence for the OpenV Optolink claim
+
+This sharply reduces the probability that the historical statement
+
+```text
+"SW lässt sich mit etwas Aufwand über Optolink auslesen"
+```
+
+referred to an ordinary flash-programming bootloader:
+
+- mask ROM is not a user-reprogrammable flash array;
+- the M30612 application image occupies the high 20-bit ROM region;
+- the documented GWG Optolink requests expose only short logical/physical
+  address fields.
+
+The historical readout therefore more plausibly involved one of:
+
+1. a **monitor/read service implemented in the running Viessmann firmware**;
+2. a pointer/page setup followed by an application-side memory-copy/read
+   operation;
+3. a service/debug mode entered through Optolink;
+4. a still-undocumented GWG request type carrying an extended address or page.
+
+This remains an inference from the documented memory type plus the explicit
+OpenV readout statement. The exact command sequence has not yet been recovered.
+
+### Comparison to current WB2A working hypothesis
+
+```text
+historical Vitotronic 200 KW2
+  M30612MC(A), M16C/61
+  128 KiB mask ROM
+  ROM 0xE0000..0xFFFFF
+  OpenV says software was read via Optolink
+
+current WB2A hypothesis
+  M30624FGPFP, M16C/62P
+  256 KiB flash
+  program flash 0xC0000..0xFFFFF
+  normal VS2 address = 16 bit
+```
+
+Both therefore present the same central acquisition problem: executable code
+lives above `0xFFFF`, so a useful Optolink firmware service must do more than
+a plain 16-bit virtual/physical read.
