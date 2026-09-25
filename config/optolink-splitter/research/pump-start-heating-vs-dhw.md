@@ -3725,3 +3725,40 @@ Private Vitosoft analysis:
 - run `36117356536`, artifact `10855701528`
 - analysis commit `5759c52d050b96b7827e3a1cd8740dc57baf7064`
 
+### Exhaustive VDensHO1 0x0Axx/result surface map
+
+A corrected raw `ecnEventType.xml` + `ecnEventTypeGroup.xml` pass enumerated
+all exact VDensHO1 group members that are result-like or lie in
+`0x0A00..0x0AFF`.
+
+The map contains 23 rows. Pump result surfaces are exactly:
+
+~~~text
+0x0A3A  HKP_A1_res
+0x0A3B  HKP_M2_res
+0x0A3C  InternePumpeDrehzahl_res
+~~~
+
+No fourth pump request/result/clamp/overrun/arbitration variable is exposed in
+the exact VDensHO1 service groups.
+
+The remaining mapped `0x0Axx` rows are limited to:
+
+- `0x0A10` diverter valve;
+- `0x0A31..0x0A36` KM-BUS error/status bytes;
+- `0x0A40..0x0A60` software-index blocks;
+- `0x0A80/81/82/86` extension/analog-input surfaces.
+
+This closes the current Vitosoft service-metadata search for a hidden
+intermediate between `0x7663` and `0x0A3C`.
+
+Private evidence:
+
+- workflow fix `a0594c17a244841a4e2dd5189b98bcffe7a765ba`;
+- run `36117975655`;
+- artifact `10855682670`;
+- private analysis update `d099f5157cf4dae5a297ce100e5b11a27acc3590`.
+
+The remaining selector is therefore a controller-firmware question unless the
+A1-withdrawal/GWG75/GWG76 correlation exposes another observable state.
+
