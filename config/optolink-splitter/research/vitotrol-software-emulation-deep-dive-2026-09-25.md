@@ -978,3 +978,188 @@ Public reference implementations:
 
 The public projects are protocol/reference evidence. They do not prove an
 Optolink-only injection path on VDensHO1.
+
+
+## Local hardware follow-up — hidden NRF aliases on VDensHO1
+
+The cross-profile NRF candidates were probed on the real WB2A through the
+existing splitter transport.
+
+### Read-only baseline
+
+All of the following Virtual_READ requests were accepted:
+
+~~~text
+0x27A0 /1 -> 00
+0x0A5C /4 -> 00000000
+0x0896 /2 -> c800
+0x089C /1 -> 03
+
+0x0A40 /4 -> 00000000
+0x7340 /1 -> 21
+0x7341 /1 -> 00
+0x7342 /1 -> 00
+0x7343 /1 -> ff
+0x75A2 /8 -> 0020260925052122
+0x779C /1 -> 14
+~~~
+
+The cross-profile candidates are not all evidence of hidden Vitotrol state.
+The all-device metadata resolves several collisions:
+
+- `0x0A40` is already used by VDensHO1 as the read-only solar-control
+  software-index object. The NRF profile reuses this address as a remote
+  software-index input.
+- `0x75A2` is VDensHO1 fault-history slot FA03 / 9-byte structure. The NRF
+  profile reuses bytes of this address as a controller-info structure.
+- `0x779C` is the normal LON receive-heartbeat configuration on VDensHO1.
+  The local value `0x14` is 20 decimal / 20 minutes, matching Viessmann LON
+  documentation. It must not be interpreted as a Vitotrol heartbeat.
+
+Therefore those three addresses are cross-profile address reuse, not hidden
+Vitotrol proof.
+
+### 0x7340..0x7344 block
+
+Exact VDensHO1 Vitosoft metadata contains no event link for
+`0x733F..0x7344`.
+
+Nevertheless the real controller returns stable values:
+
+~~~text
+0x7340 = 21
+0x7341 = 00
+0x7342 = 00
+0x7343 = ff
+0x7344 = ff
+~~~
+
+In VBC550S/P/Ecotronic the corresponding NRF semantics are:
+
+~~~text
+0x7340 programming-unit type
+0x7341 remote-control ID boiler circuit
+0x7342 remote-control ID M1
+0x7343 remote-control ID M2
+~~~
+
+with `0x7342` values including `0x74 = BDETYP_F2M1`.
+
+All tested addresses `0x7340..0x7344` accepted a same-value Virtual_WRITE.
+This proves that the block is writable on local firmware, but not that every
+byte has the NRF meaning on VDensHO1.
+
+A bounded `0x7342` test was performed:
+
+~~~text
+00 -> 74 -> 00
+~~~
+
+Both writes returned success and readback matched. During the immediate
+observation window there was no change to:
+
+~~~text
+0x27A0
+0x0A5C
+0x0896
+0x089C
+current alarm
+~~~
+
+A later isolated causality test held `0x7342=0x74` for one second, restored
+`00`, and then monitored current alarm and newest fault-history slot for
+77 seconds. No new BC entry was generated. Therefore a one-second change of
+`0x7342` alone is insufficient to trigger the remote watchdog.
+
+### 0x089C write behavior
+
+A same-value Virtual_WRITE to `0x089C=03` is accepted by the controller:
+
+~~~text
+wraw 0x089C 03 -> success
+~~~
+
+A temporary attempt to write sensor-status OK:
+
+~~~text
+03 -> 00
+~~~
+
+also returned success, but the next read already returned `03`. Thus the
+value is immediately regenerated/overwritten by internal controller logic.
+
+A later isolated same-value `0x089C=03` write followed by 99 seconds of
+monitoring produced no new current alarm and no new fault-history entry.
+
+This proves a write handler exists for `0x089C`, but a normal Virtual_WRITE
+does not own the effective sensor-status state.
+
+### Rejected hidden NRF writes
+
+The local controller rejects ordinary Virtual_WRITE to:
+
+~~~text
+0x0896  room actual value
+0x0A40  candidate cross-profile remote SW index
+~~~
+
+including same-value writes. This confirms the previous `0x0896` rejection
+and closes the simple NRF-alias injection hypothesis for those two objects.
+
+### BC history observed during the research session
+
+The newest system-fault slots currently contain four BC entries:
+
+~~~text
+BC 2026-09-25 21:43:28
+BC 2026-09-25 22:04:48
+BC 2026-09-25 22:09:04
+BC 2026-09-25 22:17:36
+~~~
+
+The current alarm is now clear and `0x27A0=00`.
+
+The first BC is consistent with the earlier known A0/Vitotrol-expectation
+experiment. The later three occurred during the hidden-state investigation,
+but exact one-to-one attribution is not yet proven because the splitter journal
+records RX data but not a complete timestamped maintenance-command audit.
+
+Important negative controls performed afterward:
+
+- isolated `0x7342 00 -> 74 -> 00`, 1 s hold + 77 s observation: **no new BC**;
+- isolated same-value `0x089C=03` + 99 s observation: **no new BC**.
+
+Therefore neither primitive operation alone reproduces BC under those bounded
+conditions. Future active experiments must write a timestamped local experiment
+log before transmission so delayed faults can be attributed unambiguously.
+
+### Updated model
+
+Current evidence supports the following distinction:
+
+~~~text
+0x7340..0x7344
+    writable hidden runtime/config block
+    exact VDensHO1 meaning not yet proven
+
+0x089C
+    Virtual_WRITE handler exists
+    effective value is regenerated by internal logic
+
+0x0896
+    effective room value
+    ordinary Virtual_WRITE rejected
+
+0x0A5C
+    effective VDensHO1 remote software-index
+    read-only
+
+0x779C
+    LON watchdog configuration
+    NOT the Vitotrol watchdog
+~~~
+
+The central missing primitive remains the receive-side operation that updates
+the effective room value, sensor-valid state and remote-alive/software-index
+state together. The hidden writable aliases show that related handlers exist in
+shared firmware families, but VDensHO1 applies different ownership/gating.
