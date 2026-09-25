@@ -533,7 +533,9 @@ New v6 deep-dive result:
 - [x] Prove A0=1 alone is not emulation; the local BC fault closes that shortcut.
 - [x] Exhaust exact VDensHO1 RPC events for a receive/member/mailbox path.
 - [x] Exhaust production Vitosoft KBus write semantics for a source-backed raw-slave injection path.
-- [ ] Finish the cross-profile provenance of the writable NRF `0x0896/0x0898` aliases and identify the controller families that accept them.
+- [x] Resolve the writable NRF `0x0896/0x0898` provenance: VBC550S/VBC550P/Ecotronic use a coherent software-injection surface including `0x0896`, `0x089C`, `0x0A40`, `0x7342` and related state.
+- [x] Hardware-probe the cross-profile NRF candidates on local VDensHO1: hidden `0x7342` is genuinely writable, but `0x7342=0x74 + A0=1` still raises BC in ~0.8 s; canonical `0x0896` and `0x0A5C` remain non-writable, while accepted one-byte alias writes do not change the canonical objects.
+- [ ] Identify the KM-BUS RX-derived remote alive/watchdog state. Prefer a guarded read-only P300/`0x41 KMBUS_RAM_READ` differential during the A0->BC transition or firmware cross-reference; do not infer semantics from one-byte Virtual_WRITE ACKs.
 - [ ] Use the future local regulation-firmware dump to cross-reference `0x0896`, `0x089C`, `0x0A5C`, A0/BC watchdog state and the KM-BUS receive handler.
 - [ ] Only perform a software-state injection test after an exact source-backed VDensHO1 write primitive or firmware handler is identified.
 - [ ] Keep physical KM-BUS slave emulation as the reference implementation until software-only state injection is proven.
