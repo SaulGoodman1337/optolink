@@ -28,11 +28,12 @@ The read families are worth pursuing. In particular:
 3. **0x43 KMBUS_EEPROM_READ is also locally accepted**, but the prefix-less
    `0x00F8` experiment is not a linear EEPROM read. It returns a changing
    two-byte transaction result repeated/truncated to the requested length.
-4. The current Vitosoft metadata explains why the prefix-less 0x43 experiment
-   is suspicious: **90 of 91 KMBUS_EEPROM_READ definitions carry
-   `PrefixRead=030000000101`**. The generic splitter can place those bytes in
-   exactly the optional-data position of a VS2 request. The most useful next
-   step is therefore to decode source-defined prefixes, not to sweep addresses.
+4. **90 of 91 KMBUS_EEPROM_READ definitions carry
+   `PrefixRead=030000000101`**, but host-implementation recovery now shows
+   that the captured Vitosoft standard non-RPC VS2 read path does **not**
+   serialize `PrefixRead`. Only the `Remote_Procedure_Call / 0x07` path
+   converts PrefixRead hex into request data. For `0x43`, the normal host
+   frame is therefore prefix-less.
 5. The verified v6 All-Devices export contains a large amount of KBus read
    metadata even though the exact VDensHO1 profile uses none of those functions
    in its event tree. This is useful cross-profile protocol evidence.
@@ -470,7 +471,7 @@ Good discriminators include:
 These addresses are candidates for a **bounded comparison**, not permission for
 a blind sweep.
 
-### 2. 0x43 KMBUS_EEPROM_READ - high value after prefix decoding
+### 2. 0x43 KMBUS_EEPROM_READ - implemented locally, semantics still unresolved
 
 Potentially useful for:
 
@@ -480,9 +481,10 @@ Potentially useful for:
 
 Do not equate it with the boiler coding-plug EEPROM. No such link is proven.
 
-## Local proof: PrefixRead makes source-shaped 0x43 access succeed
+## Historical manual prefixed 0x43 experiment - superseded
 
-The first exact Vitosoft-shaped prefixed KMBUS EEPROM request was tested locally:
+A manual KMBUS EEPROM frame was built by placing the catalog PrefixRead bytes
+after the standard read length and tested locally:
 
 ~~~text
 event 578
@@ -501,14 +503,14 @@ RX 41 06
 RX 01 43 00 01 01 88 D4
 ~~~
 
-So the local 20C2 returns a normal successful response with raw data `88`.
-This closes an important protocol question: for this path, `PrefixRead` is
-indeed transmitted selector/routing data and materially changes the useful
-0x43 transaction shape.
+So the local 20C2 accepted that frame and returned raw data `88`.
+This **does not** prove that the six bytes are the Vitosoft PrefixRead wire
+encoding. The later fresh-session discriminator found no isolated prefix effect,
+and the recovered Vitosoft host implementation now proves that ordinary
+non-RPC `0x43` reads do not serialize PrefixRead at all.
 
-Do not yet interpret `88` as the GWG_BT2/LGM27 `Kennung (Prog1)`; only the
-request shape is source-derived. Local subordinate-device identity remains to
-be correlated.
+Do not interpret `88` as the GWG_BT2/LGM27 `Kennung (Prog1)`. The manually
+appended request form is retained only as historical hardware evidence.
 
 The v6 slice contains a bounded family of additional exact 0x43 block shapes
 using the same prefix, including `0x000A/5`, `0x000F/8`, `0x0064/2`,
@@ -608,13 +610,71 @@ This changes the protocol conclusion materially:
 - do **not** expand the address map while the vendor field serialization is
   unresolved.
 
-Public source inspection supports only a weaker relationship:
-`ecnEventType.PrefixRead` exists as metadata, and the generic VS2 builder can
-append optional request Data after BlockSize. No recovered Vitosoft call path
-yet proves that PrefixRead is passed into that Data field.
+Host-implementation recovery is now complete for the captured Vitosoft build.
 
-The next task is offline host-implementation recovery, not another live address
-probe.
+Static CIL analysis of `vsmInterfaceCore.dll` establishes the complete standard
+read chain:
+
+~~~text
+EventType.FCRead
+  -> MRKey.FunctionCode
+  -> LDAPMessage.FunctionCode
+
+EventType.Address
+  -> LDAPMessage address
+
+EventType.BlockLength
+  -> LDAPMessage DataLength
+
+EventType.BlockDataToDevice
+  -> LDAPMessage Data
+~~~
+
+`LDAPMessage.toByteArray()` serializes:
+
+~~~text
+00 FCT ADDR_H ADDR_L DATA_LENGTH [DATA...]
+~~~
+
+and the serial DAP wrapper produces:
+
+~~~text
+41 LEN 00 FCT ADDR_H ADDR_L DATA_LENGTH [DATA...] CRC
+~~~
+
+For `0x43 / 0x0001 / len 1`, the captured host therefore generates:
+
+~~~text
+41 05 00 43 00 01 01 4A
+~~~
+
+with **no PrefixRead bytes**.
+
+The reason is explicit in the code:
+
+- `RPCConverter.IsFCReadRpc()` is true only for `FCRead == 0x07`;
+- on that RPC path, `ConvertRpcToDevice_Default()` converts PrefixRead hex
+  with `Util.getBytes()`, stores the bytes in `BlockDataToDevice`, and
+  changes `BlockLength` to the prefix byte count;
+- ordinary non-RPC reads such as `KMBUS_EEPROM_READ = 0x43` do not execute
+  that conversion;
+- exhaustive field/call-site analysis found no direct hidden read serializer
+  for the PrefixRead backing field;
+- a scan of the extracted ServiceTool managed assemblies found no external
+  preprocessing path that maps PrefixRead into `BlockDataToDevice`;
+- the VS1 converter does not support function `0x43` at all.
+
+Thus the no-prefix form used in the fresh-session control is the actual standard
+Vitosoft host shape for `0x43`. The six-byte `030000000101` catalog value
+must not be manually appended to ordinary 0x43 frames.
+
+Private derived report:
+`collector-output/20260924-143439/prefixread-serializer-analysis-2026-09-25.md`
+(commit `1bd156be85d947a3af890db426ce4462d71b4099`).
+
+The open question is no longer PrefixRead placement. It is the semantics of the
+controller's dynamic `0x43` response itself. Further prefix discrimination is
+closed; no broad 0x43 address expansion is justified.
 
 ### 3. 0x31 XRAM_READ - high conceptual value, local applicability unknown
 
