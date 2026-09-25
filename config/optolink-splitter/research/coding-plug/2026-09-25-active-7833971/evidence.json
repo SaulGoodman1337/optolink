@@ -1,0 +1,87 @@
+{
+  "date": "2026-09-25",
+  "issue": 36,
+  "status": "active_operating_coding_plug_physical_capture",
+  "files": [
+    {
+      "name": "7173085-3_CHL-G_3F1_94V-0_f01.bin",
+      "side": "f01",
+      "size": 512,
+      "sha256": "6b60b5b9de3dc90cbbe2bba2f7878ef4db36e117577f3402970170746e5cf63f"
+    },
+    {
+      "name": "7173085-3_CHL-G_3F1_94V-0_f02.bin",
+      "side": "f02",
+      "size": 512,
+      "sha256": "e20316f2053b5002fc52b213b7f6bd7f8b63944a3202bf4b865c999091113e9a"
+    }
+  ],
+  "f01": {
+    "part_number_ascii_offset": "0x10",
+    "part_number": "7833971",
+    "mapping": "P300 address = 0x1000 + physical f01 offset",
+    "same_plug_blocks_exact": [
+      "0x1010",
+      "0x1020",
+      "0x1030",
+      "0x1040",
+      "0x1050",
+      "0x1060",
+      "0x1070",
+      "0x1080",
+      "0x1090",
+      "0x10C0"
+    ],
+    "gwg75_internal_pump_min_percent": 50
+  },
+  "f02": {
+    "proven_mapping": {
+      "0x0E": {
+        "field": "P101",
+        "value": "15"
+      },
+      "0x0F": {
+        "field": "P102",
+        "value": "01"
+      },
+      "0x10": {
+        "field": "P103",
+        "value": "14"
+      },
+      "0x11": {
+        "field": "P104",
+        "value": "0C"
+      },
+      "0x12": {
+        "field": "P105",
+        "value": "04"
+      },
+      "0x13": {
+        "field": "P106",
+        "value": "D6"
+      }
+    },
+    "live_gfa_vector_p101_p106": "1501140C04D6",
+    "physical_vector_0x0e_0x13": "1501140C04D6",
+    "old_physical_vector_0x0e_0x13": "1203080404FB",
+    "domain_conclusion": "GFA/fire-control coding-plug dataset physically proven for P101..P106",
+    "unresolved_fields": [
+      "P90",
+      "P100",
+      "P107",
+      "P108"
+    ],
+    "repeated_region": {
+      "offset_a": "0x14",
+      "offset_b": "0x66",
+      "distance": 82,
+      "identical_bytes": 71
+    }
+  },
+  "conclusions": [
+    "active f01 exactly matches the known live P300/GWG coding-plug blocks",
+    "active f02 offsets 0x0E..0x13 exactly match live GFA P101..P106",
+    "f02 GFA-domain assignment is promoted from hypothesis to direct hardware evidence",
+    "physical offsets for P90/P100/P107/P108 remain unresolved"
+  ]
+}
