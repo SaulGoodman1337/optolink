@@ -35,13 +35,31 @@
     "description_excerpt": "EFh Timer- Fehler. Alle Timer des M16C stehen still.",
     "current_eventtypegroup_memberships": [],
     "configbackup_eventtypegroup_memberships": [],
-    "conclusion": "GENERIC_EVENT_NOT_LOCAL_MCU_PROOF",
+    "conclusion": "M16C_REFERENCE_BELONGS_TO_VBC550S_VBC550P_NOT_VDENSHO1",
     "interpretation": [
-      "Vitosoft contains a generic reset-cause event whose description references M16C.",
-      "The event has no EventTypeGroup membership, including no VDensHO1 membership.",
-      "Do not infer that the local 20C2 regulation uses an M16C solely from this text.",
-      "A local PCB photo or other device-specific source remains required before naming the MCU family."
-    ]
+      "The generic NRF_ResetUrsache event description references an M16C timer failure.",
+      "It has no current EventTypeGroup membership.",
+      "Direct legacy DataPointType membership exists only for configbackup VBC550S (2032) and VBC550P (2033).",
+      "VDensHO1 / identification 20C2 does not contain this reset event in the recovered direct membership data.",
+      "Therefore M16C must not be used as a local MCU hypothesis from Vitosoft evidence."
+    ],
+    "direct_datapoint_membership": {
+      "workflow_commit": "1f8f284108e984cf9c3773745d4990409c9679de",
+      "run": 36128318085,
+      "matches": [
+        {
+          "source": "configbackup",
+          "id": "VBC550S",
+          "identification": "2032"
+        },
+        {
+          "source": "configbackup",
+          "id": "VBC550P",
+          "identification": "2033"
+        }
+      ],
+      "vdensho1_present": false
+    }
   },
   "public_board_provenance_to_verify_later": [
     "GG1/WB2A regulation replacement families include 7823830 and successor 7825241.",
