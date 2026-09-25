@@ -590,3 +590,132 @@ current WB2A hypothesis
 Both therefore present the same central acquisition problem: executable code
 lives above `0xFFFF`, so a useful Optolink firmware service must do more than
 a plain 16-bit virtual/physical read.
+
+
+## 2026-09-25 follow-up: historical ROM-checksum objects in TerminatorIII material
+
+The OpenV wiki repository contains the historical archive:
+
+```text
+files/TerminatorIII.zip
+import commit: fcd37fc
+import date:   2011-01-21
+archive files:
+  vito_V200KW2.xml
+  vito_V200KW2_extended.xml
+```
+
+Both XML files declare device `2098 / V200KW2 / protocol KW` in their header.
+The extended file contains two unusually relevant objects:
+
+```text
+ChecksummeROMBerechnet
+  address     0x08F0
+  length      2
+  description ChecksummeROM
+
+NRF_ChecksummeROMLinker
+  address     0x08F4
+  length      2
+  description Gespeicherte Checksumme ROM
+```
+
+These names are significant because they distinguish a checksum calculated by
+the running software from a ROM checksum stored by the linker. They are
+consistent with firmware which can traverse or otherwise validate its own
+program ROM and expose the result through the normal 16-bit application data
+space.
+
+### Applicability boundary
+
+The two ROM-checksum objects occur only in `vito_V200KW2_extended.xml`, not
+in the smaller base `vito_V200KW2.xml`.
+
+The difference is substantial:
+
+```text
+vito_V200KW2.xml           578 datapoints
+vito_V200KW2_extended.xml 1796 datapoints
+```
+
+The extended file also contains clearly unrelated families such as many
+`WPR_*` heat-pump and `SC100_*` objects. It therefore behaves as an
+extended/unfiltered candidate universe rather than a trustworthy statement
+that every contained object exists on physical V200KW2 hardware.
+
+Decision:
+
+- retain `0x08F0` and `0x08F4` as **historical ROM-service candidates**;
+- do not call them confirmed V200KW2 objects without independent membership or
+  live evidence;
+- do not infer that they expose raw ROM bytes;
+- use the naming as architectural evidence that Viessmann firmware had an
+  internal concept of runtime ROM checksum versus linker-stored ROM checksum.
+
+This strengthens the application-firmware monitor/service hypothesis slightly,
+but it does not by itself solve firmware acquisition.
+
+## 2026-09-25 follow-up: PROZESS_READ / VS1 0x7B closed as firmware-read route
+
+The verified Vitosoft-v6 host implementation exposes another VS1 read command
+that initially deserved scrutiny:
+
+```text
+FunctionCodes.PROZESS_READ = 123 = 0x7B
+VS1FunctionCode.PROZESS_READ = 0x7B
+```
+
+Static host recovery shows that VS1 serializes it exactly like Virtual_READ:
+
+```text
+7B <addr_hi> <addr_lo> <length>
+```
+
+There is no high-address byte, bank selector or request-data extension in the
+VS1 message object. The response converter likewise treats
+`PROZESS_READ` as an ordinary returned byte block.
+
+The verified event inventory contains:
+
+```text
+111 PROZESS_READ event definitions
+177 device/event memberships
+```
+
+The recovered memberships are concentrated in the `VSorp` process-control
+family. Representative events are process tuning/configuration values in the
+`0x2000..` range, for example burner shutdown delta-T, pump limits and
+process timers. No VDensHO1 program-ROM or firmware-dump semantic was recovered.
+
+Private reproducible source report:
+
+```text
+collector-output/20260925-vs1-process-read-trace/summary.json
+```
+
+Decision: **PROZESS_READ / 0x7B is removed from the active WB2A firmware
+acquisition candidate list unless new controller-specific evidence gives it a
+different meaning.**
+
+## Updated acquisition ranking
+
+After the additional historical and Vitosoft work, the active ranking is:
+
+1. **Recover the exact M30612-era Optolink readout mechanism.**
+   The original OpenV statement remains the strongest direct lead.
+2. **Search for an application-side ROM monitor/page service**, not merely
+   another ordinary 16-bit read opcode.
+3. **Use ROM checksum objects as semantic anchors** when historical firmware
+   material or disassembly becomes available.
+4. Keep M30624 serial boot/J1/X10 as a fallback after local hardware identity
+   is confirmed.
+5. Do not resume blind function-code or address sweeps on the production
+   WB2A.
+
+The two strongest negative closures now are:
+
+- old OptoLinkLogger bulk dump = ordinary 16-bit VS1 Virtual_READ;
+- Vitosoft PROZESS_READ = ordinary 16-bit VS1 process-data read.
+
+Neither can directly address the assumed M30624 program range
+`0xC0000..0xFFFFF`.
