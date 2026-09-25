@@ -352,6 +352,95 @@ However, the assemblies are not identical. One visible discriminator is the silk
 
 The 7186950 main-QFP marking is also too faint for a defensible transcription. Image enhancement suggests there is laser text, but it is not readable enough to identify a device.
 
+### Follow-up image sweep: assembly variants, 7142213-4 and PCB-material marking
+
+A second deep image/search pass on 2026-09-25 reloaded the original Michl full-resolution files and compared additional GG1/GG1E-family boards.
+
+#### Additional independent 7187393 assembly evidence
+
+A further sold eBay sample is explicitly labelled:
+
+- main PCB/reference: `7187393`;
+- full visible listing identifier: `7187393622882206`;
+- 8-image listing: https://www.ebay.com/itm/296194458383
+
+This is a third independent 7187393 production sample in addition to the Michl `7187393513594102` and Kleinanzeigen `7187393513812107` boards.
+
+A current marketplace listing also pairs:
+
+- complete regulation/fabrication number: **GG1E 7187364**;
+- PCB/manufacturer number: **7187393**.
+
+Source:
+https://www.ebay.de/itm/167709425528
+
+This must be interpreted carefully. Direct WB2A field evidence elsewhere in this document pairs **GG1 7187362** with the same `7187393` PCB number, while Viessmann itself states that `7187364` and `7187362` are *Fertigungsnummern* and that the queried GG1E/GG1 controls are not directly interchangeable.
+
+Viessmann source:
+https://community.viessmann.de/t5/Gas/Kompatibilitaet-Steuerung-7187364-GG1E-und-7187362-GG1/td-p/35751
+
+Therefore `7187393` is increasingly likely to represent a reused main-PCB hardware platform across more than one complete-control configuration. **This does not imply control interchangeability.** Coding plug, daughterboard, component population and/or firmware/configuration can still distinguish the complete regulation.
+
+#### 7186950 / 7142213-4 reference and the circled variant marker
+
+Multiple independent listings explicitly pair the closely related `7186950` board with **`7142213-4`**, including:
+
+- https://www.ebay.de/itm/117121874610
+- https://www.ebay.de/itm/157843170299
+- https://climatizacioniberica.es/recambio/placa-electronica-viessmann-vitodens-300-7186950/
+
+The Spanish spare-parts source describes `7186950` as replacing/reference-equivalent to `7142213-4`.
+
+The high-resolution 7186950 photograph independently shows the already recorded **circled `4`** Viessmann variant marker, whereas exact 7187393 shows **circled `1`**.
+
+This creates a useful but still unproven hypothesis:
+
+- the circled `1` / `4` marks may encode a hardware/layout/assembly variant related to the `7142213-x` numbering;
+- public searches did **not** find a defensible `7142213-1 = 7187393` source;
+- therefore do not promote `7142213-1` as an identifier; instead photograph any comparable local silk/variant marking directly.
+
+#### Correction: `E200175(2) WM328ML ... 94V-0` is not a Viessmann board identity
+
+Both exact 7187393 and the related 7186950 board carry a lower-edge PCB-material marking of the form:
+
+`E200175(2) WM328ML ... 94V-0`
+
+A wider search resolves this marking class:
+
+- independent safety/certification documentation names **World Mastery Technology Ltd.** as PCB-material manufacturer;
+- `WM328DS-2` is listed as an FR-4 PCB-material/type designation;
+- UL file **E200175** belongs to that PCB-material manufacturer;
+- unrelated industrial PCBs also carry `E200175` / `WM328DS` or `WM328ML` markings.
+
+References:
+
+- https://products.electrovoice.com/download/977444
+- https://axxacnc.com/pcb-e200175-2-wm328ds-94v-0-new/
+- https://www.lektronix.de/equipment/cse-e2001752/162348
+
+Consequences:
+
+- **do not use `E200175` as a Viessmann board number**;
+- **do not use `WM328ML` as a firmware/controller-family identifier**;
+- it is useful only as evidence about PCB fabrication/material provenance.
+
+#### Additional visual family comparator: Viessmann 7189106
+
+A current Spanish parts listing exposes a direct image of another Viessmann boiler PCB stickered `7189106`:
+
+https://www.openclima.com/products/13264/placa-electronica-caldera-viessmann-7189106
+
+Direct image:
+https://openclima-static.s3.eu-west-1.amazonaws.com/images/2025/products/13264/placa-electronica-caldera-viessmann-7189106-principal.webp
+
+Visual comparison shows the same broad GG1-era architecture: vertical daughterboard, large main QFP, J1/X10-like service/test footprint placement, X3/[145] region, right-edge connector bank and very similar mains/relay topology. Its exact appliance/control-family mapping has not been established, so it is retained only as a **visual family comparator**, not as local-board evidence.
+
+The main QFP marking in this image is also not readable enough to identify the MCU.
+
+#### Updated image-search boundary
+
+After the expanded search, no public image yet supports a defensible MCU part-number transcription for exact `7187393`, `84346904`, `7186950` or the additional `7189106` comparator. The MCU question remains gated on a perpendicular local macro photograph.
+
 ### Optical routing assessment: J1 and X10
 
 The exact `7187393` rear-side photograph from the Michl source was horizontally mirrored only for front/rear registration and compared against the component-side image.
