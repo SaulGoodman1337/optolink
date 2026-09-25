@@ -901,3 +901,59 @@ MCU + KM-BUS transceiver ------> correlate memory/bus architecture
 If the local board ultimately confirms M30624FGPFP, its documented memory map
 provides an additional discriminator for any real CPU-RAM hypothesis. Until
 then, 0x41 should be called a **KMBUS_RAM_READ view**, not "the M16C RAM".
+
+## 0x5F KBUS_VIRTUAL_READ local semantic gate - 2026-09-25
+
+The verified Collector-v6 slice contains 232 `KBUS_VIRTUAL_READ` definitions,
+but none belongs to the exact VDensHO1 event tree. A bounded local gate was
+nevertheless justified because two source-defined objects have clear
+temperature semantics and independent local VDensHO1 controls.
+
+The fixed test used fresh P300 sessions and a balanced `C-K-K-C` order:
+
+| Anchor | Local 0x01 control | Source-backed 0x5F request | Result |
+| --- | --- | --- | --- |
+| outside temperature | `0x5525/2` = `94 00` = 14.8 C, twice | `0x2508/1` | Error Message payload `05`, twice |
+| A1 flow actual | `0x0810/2` = `0d 02` = 52.5 C, twice | `0x2D08/1` | Error Message payload `05`, twice |
+
+Exact research frames:
+
+~~~text
+0x5F / 0x2508 / 1
+TX 41 05 00 5f 25 08 01 92
+RX 41 06 03 5f 25 08 01 05 9b
+
+0x5F / 0x2D08 / 1
+TX 41 05 00 5f 2d 08 01 9a
+RX 41 06 03 5f 2d 08 01 05 a3
+~~~
+
+Both ordinary controls were stable before and after the KBus trials. The helper
+classified the run as:
+
+~~~text
+NO_LOCAL_KBUS_VIRTUAL_SUCCESS_ON_TESTED_ANCHORS
+~~~
+
+This establishes only that the two tested source-backed historical KBus
+virtual objects are not locally usable through the tested standard 0x5F
+request shape. It does **not** prove universal 0x5F rejection on VDensHO1 and
+does not assign meaning to inner error payload `05`. The same inner value was
+seen in the bounded 0x31 XRAM failures, but no source-backed error-code mapping
+has been recovered, so the equality must remain descriptive only.
+
+Decision: do not broaden live 0x5F probing. Reopen it only if a new
+VDensHO1-specific discriminator or stronger controller-side source evidence
+appears.
+
+Evidence:
+
+- `kbus-virtual-read-live-2026-09-25-evidence.json`
+- helper `wb2a-kbus-virtual-read-probe` v1.0.0
+- helper commit `22ab617559cc70dcd21b1f5b1309a2bcbd3f9265`
+- updater commit `34d5f395c70b52049e01882e1479cf7c56d860c1`
+- evidence commit `157e7a514d516c227d2f2e1595041d6285da9f29`
+- live log `/root/wb2a-kbus-virtual-read-20260925-103223-219241.log`
+- all four production services restored active; `VS1_RESTORED=yes`
+- post-restore identity: `20c2000300000103`
+
