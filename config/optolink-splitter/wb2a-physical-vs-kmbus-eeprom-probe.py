@@ -45,9 +45,10 @@ import sys
 import termios
 import time
 
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 SPLITTER = "optolink-splitter.service"
 PARTY = "optolink-party-emulator.service"
+SCHEDULE = "optolink-schedule-manager.service"
 SETTINGS = Path("/opt/optolink/settings_ini.py")
 LOCK = "/run/lock/wb2a-physical-vs-kmbus-eeprom-probe.lock"
 ABORT_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
@@ -394,6 +395,11 @@ def run_guarded(services, opener, log):
         raise ProbeError("Require running splitter.")
     party = services.state(PARTY)
     party_active = party.get("LoadState") == "loaded" and party.get("ActiveState") == "active"
+    schedule = services.state(SCHEDULE)
+    schedule_active = (
+        schedule.get("LoadState") == "loaded"
+        and schedule.get("ActiveState") == "active"
+    )
 
     changed = []
     wire = None
@@ -402,7 +408,14 @@ def run_guarded(services, opener, log):
     restart_epoch = None
 
     try:
-        for unit in ([PARTY] if party_active else []) + [SPLITTER]:
+        stop_order = []
+        if schedule_active:
+            stop_order.append(SCHEDULE)
+        if party_active:
+            stop_order.append(PARTY)
+        stop_order.append(SPLITTER)
+
+        for unit in stop_order:
             changed.append(unit)
             log("Stopping " + unit)
             services.stop(unit)
