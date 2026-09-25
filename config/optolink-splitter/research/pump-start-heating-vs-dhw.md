@@ -3568,3 +3568,160 @@ controller as invalid addresses:
 This closes the simple legacy-coding route for the WB2A. These objects are
 present in wider Vitosoft metadata for older controller families but are not
 implemented as readable virtual datapoints on this local VDensHO1/20C2 unit.
+
+## Cross-profile result-event closure and A1-withdrawal discriminator — 2026-09-25
+
+A new Collector-v6 cross-profile and raw EventTypeGroup trace corrects an
+important limitation of the generated DataPointType membership export.
+
+### 0x0A3C is explicitly exposed for VDensHO1
+
+The raw Vitosoft service metadata defines:
+
+~~~text
+InternePumpeDrehzahl_res~0x0A3C
+name: Interne Pumpe Solldrehzahl
+description:
+  Soll-Drehzahl der Internen Pumpe, die an die Pumpe übertragen wird.
+~~~
+
+The English resource says:
+
+~~~text
+Set speed of internal pump, which is transferred to the pump.
+~~~
+
+More importantly, `ecnEventTypeGroup.xml` places the event directly in the
+base VDensHO1 groups:
+
+~~~text
+VDensHO1~35_Information~10_Kessel
+VDensHO1~40_Diagnose_1~10_Kessel
+~~~
+
+The earlier statement that event 788 was merely a global/orphan event is
+therefore superseded. It is absent from the generated DataPointType-membership
+join, but it is explicitly a VDensHO1 Information/Diagnose event in the raw
+service metadata.
+
+This vendor-side definition matches the local hardware correlation
+`0x0A3C ~= 0x7660[1]` and strengthens the interpretation of `0x0A3C` as
+the final set speed transferred toward the internal pump.
+
+### Adjacent A1/M2 result events
+
+The same group metadata exposes:
+
+~~~text
+0x0A3A  HKP_A1_res  Heizkreispumpe A1 Solldrehzahl
+0x0A3B  HKP_M2_res  Heizkreispumpe M2 Solldrehzahl
+~~~
+
+inside the exact VDensHO1 A1/M2 Information/Diagnose groups.
+
+However the local WB2A heating-start evidence remains decisive:
+`0x0A3A` stayed zero while `0x7663` and `0x0A3C` became active. With
+`0x27E5=00` there is no separate speed-controlled A1 KM-BUS pump participant.
+Therefore 0x0A3A must not be re-promoted as the local A1 request feeding
+`0x7663`.
+
+### A8 resolved
+
+Event 1084 at `0x37A8` is now fully resolved:
+
+~~~text
+0 = ohne
+1 = HK setzt Anforderung an Int.Pumpe
+~~~
+
+The longer Vitosoft text also describes the M2 mixer-economy behavior.
+
+Local value:
+
+~~~text
+0x37A8 = 01
+~~~
+
+So A8 is a genuine M2/heating-circuit influence on the internal-pump request
+architecture. It is not the explanation for the local direct-A1 30/36 -> 50
+clamp because M2 is not installed/active.
+
+The external influence paths are also dormant locally:
+
+~~~text
+0x572E = 00  external extension absent
+0x5732 = 00  external block influence
+0x5734 = 00  external demand influence
+~~~
+
+### Strongest current selector model
+
+The currently exposed architecture is:
+
+~~~text
+A1 controller -> 0x7663 ------------------+
+DHW hydraulic/mode request ---------------+
+M2/A8 request, if installed --------------+--> hidden firmware arbitration
+external request/block paths -------------+             |
+coding-plug limits / overrun -------------+             v
+                                                   0x0A3C
+                                                       |
+                                                       v
+                                                   0x7660[1]
+~~~
+
+For normal direct A1 heating the leading numerical model is still:
+
+~~~text
+0x0A3C ~= max(0x7663[1], GWG75)
+~~~
+
+subject to operating-state selection and other overrides.
+
+This is consistent with both observed 36 -> 50 and 30 -> 50 heating states,
+while an earlier controlled E7=100 run produced 100 -> 100. K31=100 therefore
+cannot be an unconditional final selector in ordinary A1 heating.
+
+### Next clean discriminator: A1 request withdrawal
+
+Normal burner takt-lock does not withdraw the A1 pump request, so burner-off is
+the wrong trigger.
+
+A dedicated read-only watcher now waits for:
+
+~~~text
+previous 0x7663[1] > 0
+current  0x7663[1] = 0
+while    0x7660[1] > 0
+~~~
+
+At that transition it captures K30, K31, E7, 6C, the full `0x1070` block,
+GWG75 and GWG76, then measures the time until the internal pump stops.
+
+If the post-A1 state is 50 % and lasts approximately 60 s, that is strong
+same-window correlation with:
+
+~~~text
+GWG75 = 50 %   Mindestdrehzahl interne Pumpe
+GWG76 = 60 s   Nachlaufzeit interne Pumpe
+~~~
+
+It remains correlation, not firmware-level causal proof.
+
+Implementation:
+
+- `config/optolink-splitter/wb2a-a1-withdrawal-watch.py`
+- helper commit `39585aa932a2604c4237c38f34fa737f2eafbf8d`
+- self-test `A1_WITHDRAWAL_WATCH_TESTS=5/5`
+- updater integration `72471b4df4a5c9b9f559a389f09aafdce132a8f5`
+
+Private Vitosoft analysis:
+
+- cross-profile workflow commit `042a060d13acb0322244016ddd4e969be65d84a5`
+- run `36116347446`, artifact `10855039354`
+- token-trace workflow commit `e3d1cf530270f4031245b44547db6b159a567f59`
+- run `36116563436`, artifact `10854958468`
+- membership-trace workflow commit `436b636ce05f37cfe96d0af0c350877f26a482c7`
+- run `36117356536`, artifact `10855701528`
+- analysis commit `5759c52d050b96b7827e3a1cd8740dc57baf7064`
+
