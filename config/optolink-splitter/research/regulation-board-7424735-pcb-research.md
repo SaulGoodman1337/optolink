@@ -352,6 +352,38 @@ However, the assemblies are not identical. One visible discriminator is the silk
 
 The 7186950 main-QFP marking is also too faint for a defensible transcription. Image enhancement suggests there is laser text, but it is not readable enough to identify a device.
 
+### Optical routing assessment: J1 and X10
+
+The exact `7187393` rear-side photograph from the Michl source was horizontally mirrored only for front/rear registration and compared against the component-side image.
+
+#### J1
+
+- exact board footprint: **3 through-hole pads**, silk `J1`, directly beside the main logic region;
+- component side shows a small local SMD network immediately adjacent to J1;
+- rear-side routing is visible only partially and crosses vias/layer changes;
+- the photographs do **not** prove that any J1 pad connects directly to a main-MCU pin;
+- therefore `J1 = UART/debug/programmer` remains a hypothesis, not a finding.
+
+#### X10
+
+- exact board connector: black **2 x 3 through-hole header**, silk `X10`;
+- solder-side image shows a nearby parallel multi-trace bundle running toward the logic region;
+- because of vias, layer changes and overlapping routing, the photographs do **not** support a defensible per-pin destination map;
+- X10 is therefore a high-value passive trace/debug candidate, but no programming/debug protocol is assigned to it yet.
+
+#### Safe local continuity sequence
+
+With the board fully de-energized and isolated:
+
+1. identify which J1/X10 pins have continuity to a known logic ground;
+2. identify likely supply/reference pins only by passive continuity/resistance to known decoupling/rail points; **do not inject voltage**;
+3. trace remaining pins to nearby passives and then to exact main-QFP pins;
+4. photograph/record every measured endpoint and resistance/continuity result;
+5. only after the main MCU is identified, compare those QFP pins with the vendor datasheet's UART/boot/reset/debug functions;
+6. do not attach a programmer/debugger until voltage domains, reset/mode behavior and readout-protection behavior are known.
+
+Current conclusion: **J1 and X10 are both worth mapping. X10 may be at least as interesting as J1, but online imagery alone cannot rank them as a debug/programming port.**
+
 ### MCU inference boundary
 
 The package and pin count on exact 7187393 are visually compatible with 100-QFP microcontrollers such as the Renesas/Mitsubishi M16C parts seen on other Viessmann boards, including the previously researched M30624FGPFP comparison board. Renesas specifies M30624FGPFP as a 100-QFP, 20 x 14 mm device.
