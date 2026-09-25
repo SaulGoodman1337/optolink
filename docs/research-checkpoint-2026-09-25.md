@@ -500,6 +500,38 @@ Relevant commits:
 - detailed read-memory note: `add661a711089951c76e4d1e5f23e88a99692f2d`
 - canonical KM-BUS note: `bd1e3124a4c0f9cd88a92d38bf45c849cb8abf76`
 
+## KM-BUS update - bounded 0x5D member-list gate completed
+
+The only source-defined `KBUS_MEMBERLIST_READ` shape was also tested on
+2026-09-25:
+
+- Vitosoft event 2756: `0x5D / 0x0000 / 3`, empty PrefixRead,
+  "Teilnehmer 00 am Viessmann-2-Draht-BUS";
+- source membership is legacy DEKATEL/VCOM300, not VDensHO1;
+- three fresh-session trials all returned the identical Error Message
+  `41 06 03 5d 00 00 01 05 6c`;
+- classification: `STABLE_ERROR_RESPONSE`;
+- pre/post identity controls both returned `20c2000300000103`;
+- all four production services and permanent VS1 were restored and verified.
+
+The error payload `05` is now also observed in the bounded 0x31, 0x5F and
+0x5D source-shaped failures. Its semantic meaning remains unknown.
+
+Decision: no further 0x5D live expansion unless VDensHO1-specific source
+evidence appears.
+
+Evidence:
+`config/optolink-splitter/research/vitosoft/kbus-memberlist-read-live-2026-09-25-evidence.json`
+
+Relevant commits:
+
+- live helper: `3df1a6cdfabe5f668e940432d4a1090c74fbb1c6`
+- fixture correction: `c0c8e4a5f5ff1c3742d1e056f2718f53ff2aa518`
+- updater integration: `2c58ad97c69cb91a362ce891961a8e242dbbcdc6`
+- current evidence: `8f350a34cb22207ad13fbf83a211692d8909ca20`
+- detailed analysis: `5ced606816eeca051036db35c03b9d3639afb056`
+- canonical KM-BUS update: `7ffcfaa3292541ab318e3c41a8193b4f6ef96ea3`
+
 ## Priority 4 - remaining firmware/KM-BUS work
 
 After the physical evidence above:
