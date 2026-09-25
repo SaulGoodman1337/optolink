@@ -984,3 +984,91 @@ The active question is therefore narrower:
 
 That mechanism, rather than another ordinary datapoint read function, is the
 next acquisition target.
+
+
+## 2026-09-25 follow-up: v_comm_dll source provenance and VScotHO1 branch
+
+The old V-Comm source trail is now better constrained.
+
+### The VB6 source definitely existed outside the surviving installer archive
+
+A January 2010 HaustechnikDialog discussion contains a developer working
+directly from the `v_comm_dll` source and quoting a concrete source line in
+the receive/error path involving `V_DataRX` and comparison against `0x15`.
+This is direct evidence that the VB6 source was circulating at the time, even
+though the surviving OpenV archive currently exposes only:
+
+```text
+files/v_comm_dll.zip
+  setup_vcomm.exe
+  MANUAL.txt
+  AUTHORS.txt
+  COPYING.txt
+```
+
+The manual identifies V-Comm as a VB6 ActiveX component by Peter Schulze,
+first public release May 2007.
+
+The embedded installer is a Wise installer. It has not yet been unpacked into
+its installed payload, so the bundled DLL/sample-project contents remain an
+open offline extraction task.
+
+### Walter/wkiffe maintained a VScotHO1 modification
+
+Public forum chronology:
+
+- 2010-11-20: Walter/wkiffe states that he modified `v_comm_dll` for
+  `VScotHO1` and could read all values from his system.
+- 2013-12-10: the same user states that he wants to publish the source of his
+  VB6 program / modified `v_comm_dll`.
+- 2013-12-14: he is told to upload it to the OpenV Wikispaces site.
+
+This branch is relevant because VScotHO1 is architecturally closer to the
+later 20C2/VDensHO1 generation than the old KW2/GWG examples.
+
+A Git-history audit around December 2013 / January 2014 found **no committed
+Walter/wkiffe VB6 archive** and no newly introduced `.bas`, `.frm`,
+`.cls` or `.vbp` source. A complete scan of all surviving OpenV ZIP
+archives likewise found no VB6 source tree; only the Wise installer and a
+`vito_VScotHO1.xml` archive are present.
+
+Therefore Walter's source was either never uploaded to the surviving wiki,
+uploaded outside the imported Git history, or later lost.
+
+This is now a specific archival acquisition target.
+
+## 2026-09-25 follow-up: later Viess_Data source is plain P300 Virtual_READ
+
+The 2014-era `viessdata201.zip` archive contains full C# source and supports
+the VS2/P300 framing used by later controllers.
+
+Its read path constructs only:
+
+```text
+41 05 00 01 <addr_hi> <addr_lo> <len> <checksum>
+```
+
+where function code `0x01` is Virtual_READ.
+
+The code identifies the controller via `0x00F8` and then performs ordinary
+16-bit datapoint reads. No alternate function code, page selector, program-ROM
+read, flash monitor or >16-bit address mechanism was found in the
+communication implementation.
+
+Decision: the later Viess_Data source is useful as an independent P300 framing
+reference but does not contain the missing firmware-read mechanism.
+
+## Refined archival priorities
+
+The firmware-acquisition research now has two concrete lost-source targets:
+
+1. **KarlKoch / old OpenV developer-forum M30612 material**
+   - likely source of the 128-KiB Optolink software-read claim and the
+     ~57,000-line disassembly.
+2. **Walter/wkiffe VScotHO1-modified v_comm_dll VB6 source**
+   - closer-generation Optolink implementation;
+   - may preserve service/raw-command handling lost from the public installer.
+
+Until either source is recovered, ordinary public dump/logging tools continue
+to converge on the same 16-bit Virtual_READ behavior and add no new path into
+main program ROM.
