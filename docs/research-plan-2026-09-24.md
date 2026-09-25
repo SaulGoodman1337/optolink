@@ -146,8 +146,10 @@ Current evidence:
   raw 0x41 works on the local controller. Event/profile membership therefore
   remains applicability evidence, not a low-level capability boundary.
 - 90/91 `KMBUS_EEPROM_READ` definitions use
-  `PrefixRead=030000000101`; this makes source-derived prefix analysis the
-  next step before any further 0x43 probing.
+  `PrefixRead=030000000101`, but captured Vitosoft host CIL now proves that
+  ordinary non-RPC reads such as `0x43` do **not** serialize PrefixRead.
+  PrefixRead-to-request-data conversion is confined to the
+  `Remote_Procedure_Call / 0x07` path in this build.
 
 **TODO:**
 
@@ -178,13 +180,11 @@ Current evidence:
   with inner payload `05`. Matching cross-profile Virtual_READ controls
   returned Error Message payload `01`. All source XRAM rows have empty
   PrefixRead, so omitted prefix data does not explain the rejection.
-- [x] Execute one exact source-defined **prefixed**
-  `KMBUS_EEPROM_READ 0x43` request. Event 578 shape
-  `0x43 / 0x0001 / len 1 / PrefixRead 030000000101` succeeded locally and
-  returned raw byte `0x88`; the wire response echoed function `0x43`.
-  This proves the frame shape is accepted; later P-N-P evidence shows the six
-  bytes can affect the 0x0001 result, but their exact routing semantics remain
-  unproven.
+- [x] Execute the historical manually prefixed `0x43` experiment.
+  The controller accepted the frame and returned `0x88`, but later
+  fresh-session and host-implementation evidence shows that this was **not**
+  the captured Vitosoft standard wire shape. Preserve it only as evidence that
+  the controller accepts that extended frame.
 - [x] Expand to the bounded 13 exact Vitosoft-v6 GWG_BT2 0x43 block shapes:
   **13/13 successful responses**, but most higher-address blocks collapse to a
   repeated two-byte `54 98` pattern. This is not a validated EEPROM dump.
@@ -197,14 +197,23 @@ Current evidence:
   order `PNNPNPPN`. Result: prefixed and no-prefix distributions are exactly
   equal (`81 x3, 87 x1` each). Classification:
   **NO_ISOLATED_PREFIX_EFFECT**. Earlier routing claim withdrawn.
-- [ ] Recover the actual Vitosoft host binding from
-  `ecnEventType.PrefixRead/PrefixWrite` into the VS2 request serializer.
-  Public source only proves metadata presence plus a generic optional-Data
-  field; the mapping between them is not yet recovered.
-- [ ] Pause further live 0x43 address expansion until that serialization path
-  is established.
-- [ ] Reconstruct one real Vitosoft-defined 0x43 request including prefix before
-  considering another local EEPROM-style read.
+- [x] Recover the Vitosoft host binding from
+  `ecnEventType.PrefixRead/PrefixWrite` into request construction. Result:
+  `PrefixRead` is converted to `BlockDataToDevice` only on the
+  `Remote_Procedure_Call / FCRead 0x07` path. Standard non-RPC reads do not
+  consume it.
+- [x] Recover the exact ordinary serial VS2 construction:
+  `EventType.FCRead -> MRKey.FunctionCode -> LDAPMessage.FunctionCode`,
+  with Address/BlockLength mapped directly and optional Data coming only from
+  `BlockDataToDevice`. For `0x43 / 0x0001 / len 1` the captured host frame
+  is `41 05 00 43 00 01 01 4A`.
+- [x] Scan the extracted ServiceTool managed assemblies for an external
+  PrefixRead preprocessing path. Result: none found; only import/export setters
+  outside `vsmInterfaceCore.dll`.
+- [x] Close further live PrefixRead discrimination for 0x43. The no-prefix form
+  is the captured host shape; broad address expansion remains unjustified.
+- [ ] Investigate the semantics of the dynamic host-shaped 0x43 response only
+  if a new source-backed discriminator becomes available.
 - [ ] Keep all work read-only; no broad blind sweep and no KBUS/KMBUS writes.
 
 The exact slice additionally shows that `XRAM_READ` is used on GWG families
