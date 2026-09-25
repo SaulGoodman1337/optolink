@@ -486,6 +486,8 @@ Canonical KBus docs:
 
 ## Coding-plug physical/software correlation
 
+Tracking: **GitHub Issue #36**.
+
 This is the next independent evidence path when the EEPROM reader is available.
 
 Known physical state:
@@ -567,6 +569,7 @@ Next hardware work:
 - `config/optolink-splitter/research/vitosoft/kmbus-read-memory-analysis-2026-09-24.md`
 - GitHub Issue #25
 - GitHub Issue #30
+- GitHub Issue #36
 
 ## Working discipline for the replacement chat
 
