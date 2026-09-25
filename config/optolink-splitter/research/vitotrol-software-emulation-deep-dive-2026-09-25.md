@@ -353,6 +353,213 @@ At the time of staging, `optolink-splitter.service` was independently down due
 to the known codierstecker UTF-8 decode crash on an `FF...` response, so the
 probe has not yet produced a live controller result.
 
+### Local hardware verification of the NRF/remote-state hypothesis — 2026-09-25
+
+The cross-profile NRF surface was probed on the local WB2A through the existing
+VS1 Optolink-Splitter with room influence disabled. All temporary state changes
+were bounded and rolled back.
+
+#### Hidden participant/state block is real
+
+Read-only local values:
+
+~~~text
+0x7330 /2 = 0100   programming-unit software index
+0x7332 /2 = 0000   older-family FB A1/M1 software-index slot
+0x7334 /2 = 0000   older-family FB M2 software-index slot
+0x7336 /2 = FFFF   older-family FB M3 absent/uninitialised slot
+
+0x7340 /1 = 21     programming-unit type
+0x7341 /1 = 00     remote-control type KK absent
+0x7342 /1 = 00     remote-control type M1 absent
+0x7343 /1 = FF     M2/unused state on this controller
+~~~
+
+The exact VDensHO1 Vitosoft profile does not publish 0x7340..0x7344, but these
+addresses return a coherent programming-unit/remote-control structure. This is
+strong evidence that the firmware retains internal remote-participant state
+which is not exposed by the exact Vitosoft profile.
+
+#### 0x7342 is genuinely writable
+
+Vitosoft defines 0x7342 in the VBC550/Ecotronic NRF profiles as
+`NRF_BedienBDETyp_FBM1`, with:
+
+~~~text
+0x74 = BDETYP_F2M1
+0x78 = BDETYP_F3M1
+~~~
+
+On the local WB2A:
+
+~~~text
+0x7342: 00 -> 74 -> 00
+~~~
+
+Both writes were accepted and the changed value was observable by readback until
+explicit rollback. No A0, room-temperature, room-sensor, remote-software-index,
+current-alarm or fault-history state changed merely from setting 0x7342.
+
+Therefore 0x7342 is a real hidden writable runtime/configuration field, but it
+is not by itself remote detection or remote communication.
+
+#### 0x7342 does not satisfy the Vitotrol watchdog
+
+A bounded combination test used:
+
+~~~text
+0x7342 = 74
+0x27A0 = 01
+~~~
+
+with B0 still disabled. The result was:
+
+~~~text
+t ~= 0.0 s   A0=01, 7342=74, no current alarm yet
+t ~= 0.8 s   current alarm = BC
+~~~
+
+During the test:
+
+~~~text
+0x0A5C = 00000000
+0x0896 = C800
+0x089C = 03
+~~~
+
+The test stopped on BC and immediately restored:
+
+~~~text
+0x27A0 = 00
+0x7342 = 00
+~~~
+
+The current alarm cleared. The expected BC history entry remains at the newest
+fault-history slot. Thus the actual KM-BUS remote communication/alive watchdog
+is independent of the hidden 0x7342 type field.
+
+#### Write acceptance is length- and alias-dependent
+
+Several same-value writes were used only to classify handler behaviour:
+
+~~~text
+0x0896 /2  C800       -> rejected
+0x0896 /1  C8         -> ACK/success
+0x089C /1  03         -> ACK/success
+0x0A40 /4  00000000   -> rejected
+0x0A5C /4  00000000   -> rejected
+0x0A5C /1  00         -> ACK/success
+0x7332 /2  0000       -> rejected
+0x7332 /1  00         -> ACK/success
+~~~
+
+This is a critical protocol result: the virtual address space must not be
+assumed to be byte-linear. A multi-byte object at address X is not equivalent
+to independently addressable bytes X, X+1, ... . Cross-profile aliases can
+also make one request length accepted while the canonical local object remains
+read-only.
+
+Accordingly, a splitter response of `1;address;value` proves only that the
+particular write request shape was accepted. It does **not** prove that the
+canonical semantic object changed.
+
+#### One-byte room-temperature ACK does not inject room temperature
+
+With the safe baseline:
+
+~~~text
+A0 = 00
+B0 = 00
+0x0896 = C800 = 20.0 °C fallback
+0x089C = 03
+~~~
+
+one byte was temporarily written at 0x0896:
+
+~~~text
+wraw 0x0896 D7
+~~~
+
+If 0x0896 were a byte-linear little-endian room value, this would correspond to
+21.5 °C (`D7 00`). The write returned success, but repeated canonical two-byte
+reads over roughly two seconds remained:
+
+~~~text
+0x0896 /2 = C800
+~~~
+
+at every sample. No sensor-status, A0 or current-alarm change occurred. The
+original low-byte value was then explicitly written back.
+
+Therefore the one-byte ACK is **not semantic room-temperature injection**. The
+full VDensHO1 room-temperature object remains protected/read-only through this
+path.
+
+#### 0x089C ACK is also not persistent state injection
+
+A temporary write:
+
+~~~text
+0x089C: 03 -> 00
+~~~
+
+was acknowledged, but the next canonical read already returned 03 again. This
+is consistent with the sensor-status value being recomputed/overwritten by the
+controller rather than being a durable externally writable state.
+
+#### Cross-profile aliases eliminated as local Vitotrol hooks
+
+Additional local mapping resolved several apparent NRF candidates as address
+collisions:
+
+- `0x0A40` is the VDensHO1 solar-controller software-index location;
+- `0x0A44` is the VDensHO1 mixer software-index location;
+- `0x75A2` is VDensHO1 burner/BCU fault-history slot FA03, not remote-info;
+- `0x779C` is VDensHO1 LON receive-heartbeat configuration; local value is
+  `0x14 = 20 min`;
+- `0x778E` is a VDensHO1 EEPROM/I2C-related configuration/error location, not
+  the NRF remote-control selector.
+
+These addresses must not be repurposed according to VBC550/Ecotronic semantics
+on the WB2A.
+
+#### Restored final state
+
+After all bounded tests the controller was verified at:
+
+~~~text
+0x27A0 = 00
+0x27B0 = 00
+0x7342 = 00
+0x7332 = 0000
+0x0A5C = 00000000
+0x0896 = C800
+0x089C = 03
+current alarm code = 00
+~~~
+
+The Optolink-Splitter service was active. The only intentional persistent test
+artifact is the new BC entry in the system fault history from the bounded
+A0+0x7342 experiment.
+
+#### Updated interpretation
+
+The ordinary Virtual_WRITE route is now strongly constrained:
+
+1. hidden remote-type state exists and can be manipulated at 0x7342;
+2. setting that state does not satisfy the real Vitotrol communication
+   watchdog;
+3. canonical room value and remote software-index objects remain non-writable;
+4. ACKs from one-byte alias writes do not alter the canonical multi-byte
+   runtime objects;
+5. the unresolved state is therefore the KM-BUS RX-derived participant
+   alive/watchdog/runtime state, not merely the displayed type or room value.
+
+The next high-value discriminator is a read-only differential of the controller
+state while A0 transitions into BC, preferably through the already verified
+`0x41 KMBUS_RAM_READ` path under a guarded P300 session, or through firmware
+cross-reference once a regulation firmware dump is available.
+
 ### Why this lead remains useful
 
 This alias gives a concrete firmware-research discriminator:
