@@ -83,5 +83,49 @@
     "active f02 offsets 0x0E..0x13 exactly match live GFA P101..P106",
     "f02 GFA-domain assignment is promoted from hypothesis to direct hardware evidence",
     "physical offsets for P90/P100/P107/P108 remain unresolved"
-  ]
+  ],
+  "live_static_gfa": {
+    "transport": "production VS1 read-only GFA_READ 0x6B",
+    "rounds": 2,
+    "stable": true,
+    "values": {
+      "P80": "20",
+      "P81": "02",
+      "P82": "06",
+      "P83": "76",
+      "P90": "00",
+      "P100": "63",
+      "P101": "15",
+      "P102": "01",
+      "P103": "14",
+      "P104": "0C",
+      "P105": "04",
+      "P106": "D6",
+      "P107": "02",
+      "P108": "00"
+    },
+    "source_semantics": {
+      "P80": "BCU/FA chip ID",
+      "P81": "BCU software version",
+      "P82": "BCU software revision",
+      "P83": "appliance configuration",
+      "P90": "coding-card/BCU type FA42",
+      "P100": "minimum output",
+      "P107": "coding-card identity FA40",
+      "P108": "coding-card identity FA41"
+    },
+    "physical_negative_evidence": {
+      "active_f02_contains_0x20": false,
+      "active_f02_contains_0x06": false,
+      "active_f02_contains_0x76": false,
+      "conclusion": "P80/P82/P83 are not flat raw bytes in f02; P81 cannot be assigned by value coincidence."
+    },
+    "p100_candidates": [
+      "0x02B",
+      "0x046",
+      "0x07D",
+      "0x098"
+    ],
+    "p100_status": "ambiguous; two repeated-record field positions, no differential discriminator"
+  }
 }
