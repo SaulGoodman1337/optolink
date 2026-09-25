@@ -270,6 +270,121 @@ Despite the stronger PCB identity trail, no reliable public source found so far 
 
 Those remain photographic/component-identification tasks rather than facts.
 
+## Exact 7187393 high-resolution photo evidence - 2026-09-25
+
+Public source material now includes two independent photo sets of **exact PCB 7187393**, not just visually similar controls.
+
+### Michl product set
+
+Product page:
+https://www.michlsonlineshop.at/produkt/viessmann-7187393-leiterplatte/
+
+The page exposes static high-resolution front/detail/rear images. Relevant source files include:
+
+- `20240515_142244-scaled.jpg` - full component side;
+- `20240515_142302-scaled.jpg` - power/board-number detail;
+- `20240515_142306-scaled.jpg` - X3 / 145 / barcode detail;
+- `20240515_142325-scaled.jpg` - solder side / trace view.
+
+Direct visual observations from that exact board:
+
+- Viessmann sticker: **7187393**;
+- barcode/serial visible on the photographed sample: **7187393513594102**;
+- X3 silk grouping: **[1] [2] [145]**;
+- a separate adjacent connector is also silk-labelled **[145]**;
+- **X10** is a small black service/test header near the lower-right edge;
+- an unpopulated **J1** footprint immediately beside the main logic section has **three through-hole pads** and a pin-1 triangle;
+- the main logic device is a large rectangular QFP with approximately **100 leads**;
+- a vertical daughterboard is fitted along the upper edge;
+- the exposed daughterboard face carries at least two smaller QFP/TQFP-class ICs plus discrete support circuitry;
+- a full solder-side photograph is available and preserves enough routing detail for later passive continuity planning.
+
+The main MCU laser marking is **not legible** in this image set. Multiple crops and contrast transformations were checked; the source pixels do not support a reliable part-number transcription. No MCU identity is promoted from these photos.
+
+### Independent Kleinanzeigen 7187393 set
+
+Archived/deleted listing:
+https://www.kleinanzeigen.de/s-anzeige/viessman-steuerung-platine-7187393/3388584017-84-16390
+
+The archived page still exposes four CDN images. The largest tested CDN rendering is 1200 x 1600 (`rule=$_57.JPG`).
+
+Direct visual observations:
+
+- Viessmann board sticker again reads **7187393**;
+- second photographed board barcode/serial: **7187393513812107**;
+- the same X3 `[1] [2] [145]`, separate `[145]`, X10, J1, large QFP and vertical-daughterboard topology is visible;
+- this provides an independent second physical sample of the same layout;
+- even in the 1600-pixel version the main-QFP marking remains below reliable transcription quality.
+
+CDN image identifiers retained as source references only; third-party images are not copied into this repository:
+
+- `1ee1bfed-256b-4229-97c7-f4a3acceb146`
+- `385fcc69-292b-42d7-8a6e-276a7c0eaf19`
+- `a4a18677-b897-4865-ab4e-3fd80add6ff7`
+- `e8f3c5fb-5159-4b46-bc65-2038ed39af55`
+
+### J1 is now the highest-value exact-board passive trace target
+
+The earlier 7424735/VBC130 comparison board had a three-pad X15 candidate. Exact 7187393 evidence instead exposes a **three-pad J1** next to the main MCU.
+
+This is an important correction of scope:
+
+- do **not** transfer the VBC130 `X15` label or presumed routing to GG1/7187393;
+- on the actual GG1 candidate, trace **J1 -> passives -> MCU pins / ground / supply** first;
+- a three-pad footprint is compatible with a UART/test interface hypothesis, but the photos alone do not establish signal function;
+- no voltage should be applied to J1 before local continuity and rail mapping.
+
+### Related GG1-family comparison: PCB 7186950
+
+A high-resolution public photograph of **7186950** (GG1-era board) is available here:
+https://www.mig-welding.co.uk/forum/attachments/dscf2936-jpg.330026/
+
+Visual comparison with exact 7187393 shows a strongly shared architecture:
+
+- same large ~100-pin main-QFP position and surrounding routing pattern;
+- same three-pad **J1** position;
+- same X3 `[1] [2] [145]` and separate `[145]` region;
+- same X10 location;
+- same vertical-daughterboard concept;
+- closely matching power/relay layout.
+
+However, the assemblies are not identical. One visible discriminator is the silkscreened/circled Viessmann board variant marker: the photographed 7187393 sample shows **circled 1**, while the 7186950 comparison photograph shows **circled 4**. Therefore 7186950 is useful for family-level routing/component comparison only.
+
+The 7186950 main-QFP marking is also too faint for a defensible transcription. Image enhancement suggests there is laser text, but it is not readable enough to identify a device.
+
+### MCU inference boundary
+
+The package and pin count on exact 7187393 are visually compatible with 100-QFP microcontrollers such as the Renesas/Mitsubishi M16C parts seen on other Viessmann boards, including the previously researched M30624FGPFP comparison board. Renesas specifies M30624FGPFP as a 100-QFP, 20 x 14 mm device.
+
+That is **package compatibility only**. Current evidence does not prove that 7187393 uses M30624FGPFP, another M16C variant, or another 100-pin MCU family.
+
+A separate Viessmann Community report on a different A1 regulation board explicitly mentions an `M16C..` microcontroller, which shows that M16C use exists in the broader Viessmann regulation ecosystem, but it is not an identification source for 7187393.
+
+### WB2A / LGM29 boundary
+
+A Viessmann Community response for appliance **7176543** explicitly corrects a common confusion:
+
+> the appliance is not WB2 with LGM29; it is **WB2A with GG1 regulation**, with a 230-V ignition-transformer output.
+
+Source:
+https://community.viessmann.de/t5/Gas/Vitodens-200-7176543/td-p/250327
+
+Therefore:
+
+- do not import LGM29 PCB/firmware architecture from older WB2 into the local WB2A research;
+- `LGM29.22B2000` marketplace/repair results are legacy-WB evidence, not local WB2A/GG1 evidence;
+- keep the exact WB2A/GG1 main-regulation path (`7187393` candidate) separate from older LGM29 and from the later VBC130 comparison family.
+
+### Current outcome
+
+The online-photo work has now resolved the physical research target substantially:
+
+1. **7187393 is a real, directly photographed GG1-era main PCB and is directly correlated with WB2A elsewhere in this document.**
+2. **J1**, not VBC130 X15, is the exact-board three-pad trace target beside the main MCU.
+3. **X3 / [145] / separate [145] / X10** can be located unambiguously before opening the local appliance.
+4. The exact main MCU remains **unknown** because no found 7187393 photo resolves its laser marking.
+5. The next decisive evidence is a local perpendicular macro photo of the 7187393 main QFP and both faces of the vertical daughterboard, followed by unpowered continuity mapping.
+
 ## Main MCU: likely Renesas M30624FGPFP
 
 The enhanced crop of reference set A shows a 100-pin QFP with markings strongly consistent with:
@@ -626,7 +741,7 @@ If the local board is instead GG1 with another MCU, restart the decision tree fr
 - [x] Establish 7187393 as a strong exact WB2A/GG1 PCB candidate from direct public evidence.\n- [x] Establish 84346904 as the recurring vertical daughterboard paired with 7187393.\n- [ ] Photograph the actual local WB2A regulation board and labels.
 - [ ] Confirm or reject 7424735 as the local PCB number.
 - [ ] Confirm exact local main MCU.
-- [ ] Trace local X15 pads to MCU/passives.
+- [ ] Trace local **J1** three-pad footprint to MCU/passives on GG1/7187393; do not transfer VBC130 X15 naming.
 - [ ] Trace local X10.
 - [ ] Identify local external memories.
 - [ ] Identify local KM-BUS 145 physical-layer circuitry.
@@ -649,7 +764,7 @@ If the local board is instead GG1 with another MCU, restart the decision tree fr
 | X15 is a serial/debug/programming interface | low-medium | location/topology only; no continuity yet |
 | X15 is a full E8/E8a header | rejected | 3 pads vs. Renesas multi-signal interface |
 | Local WB2A uses the same 7424735 PCB | **unknown** | no local-board photo yet; WB2A spare data points to GG1/7825241 |
-| Local MCU is M30624FGPFP | **unknown** | depends on local-board identity |
+| Local / 7187393 MCU is M30624FGPFP | **unknown** | exact 7187393 photos show a ~100-pin QFP but marking is unreadable; package compatibility is not identity |
 | Local firmware can be read without ID | **unknown** | flash ID may be set |
 | 7187393 occurs on WB2A/GG1 hardware | high | direct WB2A community identification + independent WB3A occurrence |\n| 84346904 is a vertical PCB paired with 7187393 | medium-high | direct WB2A repair report + multiple marketplace photo sets |\n| Vertical 84346904 equals service-manual A4/Feuerungsautomat | **unknown** | manual separates A4 functionally, but no public part-number mapping found |
 
