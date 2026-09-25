@@ -192,23 +192,24 @@ The read transport is already production-verified. The missing identity fields a
 
 ## P1 - Coding-plug physical/software correlation
 
-**Hardware status:** blocked until **2026-09-25** because the replacement EEPROM reader/programmer is still in transit. Do not schedule more bench-dump work before the new reader is available.
+**Hardware status:** active 7833971 f01/f02 physical capture completed on 2026-09-25; the coding-plug domain mapping is now materially closed.
 
 **Goal:** map the two physical 24C04-class EEPROMs to the controller-visible GWG and GFA coding-plug domains without writing either EEPROM.
 
 **TODO:**
 
-- [ ] **Resume 2026-09-25 or later when the new EEPROM reader is available.** Label future captures explicitly as PCB side `f01/ST` or `f02/Microchip`.
+- [x] Side-labelled f01/ST and f02/Microchip captures available for both old plugs and the active 7833971.
 - [ ] Capture both EEPROMs of one spare three times each and compare repeatability.
 - [ ] Capture both EEPROMs of the second spare where practical.
-- [ ] Capture the active coding plug last, preserving its identity/revision and keeping the boiler unpowered/disconnected from the plug during bench reads.
+- [x] Capture active 7833971 f01/f02 and compare to live software views.
 - [x] Compare `0x1020[2:5]` with P103-P105. Result: GWG date slots are `FF FF FF`, while GFA remains `14 0C 04`; they are separate datasets. The comparison therefore does not resolve GFA integer-vs-BCD display or year base.
 - [ ] Immediately before or after the active-plug bench session, snapshot `0x1010`, `0x1020`, `0x1030..0x10C0`, `0x7656`.
 - [x] P90/P100-P108 read-only snapshot completed; see [gfa-coding-plug-p90-p108-read.md](gfa-coding-plug-p90-p108-read.md) and the linked live evidence.
 - [ ] Compare semantic field vectors, complement pairs, mirror records and checksums. Initial exact-byte scan is complete: the saved spare-chip1 images do not contain the live GFA vector contiguously; mirrored single-byte candidates are documented separately.
 - [x] Establish exact live software-view relations: `0x7656 = P80|P101|P107|P102 = 20 15 02 01` and `0x1040[0:2] = P107|P101 = 02 15`.
 - [x] Resolve the `0x7656` field order independently from the exact VDensHO1 catalog: byte0 type=`20`/P80, byte1 identification=`15`/P101, byte2 GWG revision=`02`/P107, byte3 GFA revision=`01`/P102. A private-v6 four-row extract remains optional same-source confirmation, not a blocker.
-- [ ] Keep the hypothesis "one EEPROM may serve GWG/regulation and the other GFA/fire-control" explicitly unproven until side-specific evidence supports it. The newly proven separation between GWG `0x1020` date slots and GFA P103-P105 makes the side-labelled second-EEPROM capture more valuable, but does not by itself assign a physical EEPROM to either domain.
+- [x] Resolve dual-domain assignment: f01 is P300/GWG; active f02 physically matches live GFA P101..P106. Keep only P90/P100/P107/P108 physical offsets unresolved.
+- [ ] y unproven until side-specific evidence supports it. The newly proven separation between GWG `0x1020` date slots and GFA P103-P105 makes the side-labelled second-EEPROM capture more valuable, but does not by itself assign a physical EEPROM to either domain.
 
 **Completion criterion:** side-labelled repeatable dumps plus a documented correlation matrix showing confirmed, rejected and still-unknown mappings.
 
