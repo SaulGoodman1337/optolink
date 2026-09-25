@@ -597,6 +597,61 @@ defined/source-backed `KMBUS_RAM_WRITE = 0x42`. This is a further reason not
 to infer a symmetric write primitive from the working 0x41 path.
 
 
+
+#### Remote-cluster differential and alternate transport closure
+
+A source-driven all-device comparison identified one additional non-colliding
+remote candidate from Ecotronic:
+
+~~~text
+0x0D0C  Softwareindex Vitotrol HK1
+0x0D0D  Softwareindex Vitotrol HK2
+0x0D0E  Softwareindex Vitotrol HK3
+~~~
+
+The local VDensHO1 baseline reads:
+
+~~~text
+0x0D0C = FF
+0x0D0D = FF
+0x0D0E = FF
+0x7301 = 0A
+0x7302 = 0A
+0x7330 = 0100
+0x7332 = 0000
+0x7334 = 0000
+0x7336 = FFFF
+0x7340 = 21
+0x7341 = 00
+0x7342 = 00
+0x7343 = FF
+~~~
+
+A bounded A0-to-BC differential monitored this entire cluster while
+`0x27A0` was temporarily set to `01`. The controller progressed to current
+alarm `BC`, but every value above remained unchanged; `0x0A5C`,
+`0x0896` and `0x089C` also remained in their absent-remote state. A0 was
+then immediately restored to zero and the current alarm cleared.
+
+Thus no currently source-derived Virtual datapoint in this remote-state cluster
+exposes the communication-alive transition. The liveness/watchdog state is
+therefore likely private to the KM-BUS receive/participant logic.
+
+Two alternate FunctionCode families were also closed offline:
+
+- `Virtual_MBUS / 0x21` is the ordinary meter M-Bus path used for ABB,
+  Kamstrup, Techem, Pollu and similar heat meters. The production catalog has
+  254 reads and one write, the latter being an M-Bus scan operation. It is not
+  the Viessmann KM-BUS/Vitotrol transport.
+- `PROZESS_WRITE / 0x78` has 30 production events; the temperature-related
+  entries belong to the VSorp process-control family. No room-temperature,
+  remote-control or Vitotrol injection event was found. OpenTherm and
+  MarktManager write families are likewise unrelated.
+
+This leaves no source-backed host FunctionCode presently capable of injecting a
+slave-side Vitotrol response into the local VDensHO1 KM-BUS receive path.
+
+
 #### Updated interpretation
 
 The ordinary Virtual_WRITE route is now strongly constrained:
