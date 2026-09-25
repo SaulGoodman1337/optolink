@@ -45,7 +45,7 @@ import sys
 import termios
 import time
 
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 SPLITTER = "optolink-splitter.service"
 PARTY = "optolink-party-emulator.service"
 SCHEDULE = "optolink-schedule-manager.service"
@@ -686,7 +686,7 @@ def main():
         log(f"Configured port: {port}; resolved: {os.path.realpath(port)}; 4800 8E2.")
         log(
             "READ_ONLY=yes; FRESH_P300_SESSION_PER_TRIAL=yes; BROAD_SWEEP=no; "
-            f"BYTEWISE_HIGH={'yes' if args.bytewise_high else 'no'}"
+            f"BYTEWISE_HIGH={'yes' if (args.execute or args.bytewise_high) else 'no'}"
         )
 
         def abort(signum, _frame):
@@ -697,7 +697,11 @@ def main():
             Services(),
             lambda: open_port(port, serial),
             log,
-            bytewise_high=args.bytewise_high,
+            # --execute is the sudo-allowlisted live entrypoint. For v1.2.1
+            # it intentionally runs only the bytewise high-address
+            # Physical_READ discriminator; the broader comparison remains
+            # available in source but is not selected by the live entrypoint.
+            bytewise_high=(args.execute or args.bytewise_high),
         )
 
     except Exception as exc:
