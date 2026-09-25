@@ -1028,3 +1028,69 @@ Evidence and implementation:
 - current evidence commit `8f350a34cb22207ad13fbf83a211692d8909ca20`
 - live log `/home/chatgpt-admin/wb2a-kbus-memberlist-read-20260925-103843-219422.log`
 
+## Non-RPC KBus host-path closure - 2026-09-25
+
+A full host-side follow-up against the verified Vitosoft-v6 archive closes the
+remaining serializer question for the legacy non-RPC KBus read families.
+
+### 0x55 KBUS_TRANSPARENT_READ
+
+All 850 source rows are Default, one-byte events with a 2-byte PrefixRead and
+no BlockFactor/Mapping override. In the current v6 managed path:
+
+- non-RPC Default reads bypass RPC conversion;
+- `PrefixRead` is not copied into `BlockDataToDevice`;
+- `MultiRequestDictionary.createMultiRequest()` serializes only function,
+  address, block length and existing `BlockDataToDevice`;
+- no `FunctionCodes.KBUS_*` special case exists in
+  `vsmInterfaceCore.dll`.
+
+Ignoring PrefixRead as the current serializer does collapses the 850 catalog
+events to only **11 unique standard request shapes**. Ten shapes collide. The
+largest collision is `0x55 / 0x0100 / 1`: 170 rows, 85 distinct PrefixRead
+values and 142 distinct German event names.
+
+Therefore a plain standard `0x55` request cannot be interpreted as a test of a
+specific catalog event. Do not guess where the 2-byte PrefixRead belongs.
+
+### Whole-archive alternate-path search
+
+A dedicated search of the verified v6 release asset found exact extended
+KBus/KM-BUS function-name strings only in the two copies of
+`vsmInterfaceCommon.dll` (MobileClient/Web), where they are enum/common
+definitions. No separate native/communication module containing the named
+extended KBus family or a second PrefixRead serializer was recovered.
+
+Private evidence:
+
+- workflow commit `78b3a16342004eb5e3ae42eb189eebef0a205309`;
+- run `36114832604`;
+- artifact `10854457460`;
+- private analysis commit `1d2973ffbc8adab50f3bbce68eaac1dd27403251`.
+
+### Remaining legacy families
+
+- `0x63 KBUS_INDIRECT_READ`: 97 events -> 97 unique standard shapes. The
+  participant prefix is redundant for differentiation because participant and
+  datapoint are already encoded in the address grid. Legacy DEKATEL/VCOM only;
+  no local participant mapping.
+- `0x61 KBUS_DIRECT_READ`: 11 unique legacy participant shapes; no VDensHO1
+  mapping.
+- `0x51 KBUS_DATAELEMENT_READ`: seven unique VCOM100/DEKATEL-M shapes; no
+  local discriminator.
+- `0x59 KBUS_EEPROM_LT_READ`: prefixless and serializable, but entirely
+  legacy DEKATEL/VCOM communication/participant EEPROM semantics; no local
+  equivalence.
+- `0x53/0x57/0x65`: no source read-event rows in the verified slice.
+
+### Decision
+
+There is currently **no justified next live Extended-KBus probe** derived from
+the Vitosoft-v6 catalog.
+
+Reopen only with a VDensHO1-specific request shape, a recovered historical
+serializer proving the missing 0x55 selector placement, or a strong
+controller-side/firmware discriminator. Until then keep these families
+offline-only and continue bounded known-address work through the already
+verified `0x41 KMBUS_RAM_READ` view.
+
