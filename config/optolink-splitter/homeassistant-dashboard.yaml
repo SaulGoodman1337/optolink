@@ -915,7 +915,7 @@ button_card_templates:
         service: browser_mod.sequence
         data:
           sequence:
-            - action: mqtt.publish
+            - service: mqtt.publish
               data:
                 topic: openv/schedule/editor/load
                 qos: 0
@@ -927,10 +927,10 @@ button_card_templates:
                       day: variables.day_slug
                     });
                   ]]]
-            - action: browser_mod.delay
+            - service: browser_mod.delay
               data:
                 time: 250
-            - action: browser_mod.popup
+            - service: browser_mod.popup
               data:
                 title: Zeitprogramm bearbeiten
                 initial_style: wide
