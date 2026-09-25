@@ -627,7 +627,7 @@ def self_test():
 
         def test_bytewise_high_allowlist(self):
             self.assertEqual(request_frame(0x03, 0xF000, 1).hex(), "41050003f00001f9")
-            self.assertEqual(request_frame(0x03, 0xFFFF, 1).hex(), "41050003ffff01f7")
+            self.assertEqual(request_frame(0x03, 0xFFFF, 1).hex(), "41050003ffff0107")
             with self.assertRaises(ValueError):
                 request_frame(0x03, 0xF010, 1)
 
