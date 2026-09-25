@@ -1009,9 +1009,17 @@ files/v_comm_dll.zip
 The manual identifies V-Comm as a VB6 ActiveX component by Peter Schulze,
 first public release May 2007.
 
-The embedded installer is a Wise installer. It has not yet been unpacked into
-its installed payload, so the bundled DLL/sample-project contents remain an
-open offline extraction task.
+The embedded installer is a Wise installer. This task is now **closed**:
+the installer was statically extracted and contains the original VB6 source,
+compiled DLL, Visual Basic sample project and Excel sample.
+
+Detailed reproducible analysis:
+[v-comm-dll-source-recovery-2026-09-25.md](../v-comm-dll-source-recovery-2026-09-25.md).
+
+The recovered `v_comm.cls` explicitly supports `VDensHO1 = 0x20C2`, but
+its transport is limited to normal P300 `Virtual_READ / 0x01` and
+`Virtual_WRITE / 0x02` with a two-byte address. An exhaustive audit of
+`SerialPort.Output` found no raw/service/monitor/high-address path.
 
 ### Walter/wkiffe maintained a VScotHO1 modification
 
@@ -1251,3 +1259,67 @@ The next static target is now more precise:
 
 This is a substantially narrower search than scanning arbitrary P300 function
 codes.
+
+
+## 2026-09-25 follow-up: original V-Comm source recovered from Wise installer
+
+The historical `files/v_comm_dll.zip` archive has now been fully resolved.
+
+Static Wise extraction recovered:
+
+```text
+MAINDIR/Source/v_comm.cls
+MAINDIR/Source/V_comm_dll.vbp
+MAINDIR/V_comm_dll.dll
+MAINDIR/Samples/VisualBasic/...
+MAINDIR/Samples/Excel/v-comm.xls
+```
+
+The key source hash is:
+
+```text
+v_comm.cls
+SHA256 12b7d426f2410c7e237fc0459d44cf4b192f96103b7fa798004a34a35091610d
+```
+
+The source explicitly contains:
+
+```text
+VDensHO1 = 0x20C2
+```
+
+and a dedicated VDensHO1 address map matching the local P300 model.
+
+The transport audit is conclusive:
+
+```text
+protocol start: 16 00 00
+protocol stop:  04
+
+reads:
+  41 05 00 01 <addr_hi> <addr_lo> <len> <checksum>
+
+writes:
+  function 0x02 with the same two-byte address model
+```
+
+Every `SerialPort.Output` site in the class was enumerated. There is no
+additional raw function-code sender, ROM/flash monitor, page selector, bank
+selector or address byte beyond the normal 16-bit target.
+
+Decision:
+
+**The surviving public V-Comm implementation is closed as the hidden
+VDensHO1/20C2 firmware reader.**
+
+This is especially useful because it is not a cross-family inference: the
+source itself names the exact local device ID `20C2`.
+
+The historical KarlKoch M30612MC readout claim therefore remains a genuinely
+different mechanism that has not yet been recovered.
+
+Detailed note:
+[v-comm-dll-source-recovery-2026-09-25.md](../v-comm-dll-source-recovery-2026-09-25.md).
+
+Public evidence commit:
+`e9d1d66c5c214a7dcb8fb7a88c931c273ec7f326`.
