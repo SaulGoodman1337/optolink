@@ -488,6 +488,22 @@ Canonical KBus docs:
 
 Tracking: **GitHub Issue #36**.
 
+Two older side-labelled plugs are now physically decoded and archived under
+`config/optolink-splitter/research/coding-plug/2026-09-25-old-plugs/`.
+
+New hard result:
+
+- f01 is the physical P300/GWG coding-plug image;
+- f01 `0x10` contains `7823363` / `7833968` as ASCII;
+- physical offset `x` maps to P300 `0x1000+x`;
+- 7823363 -> 7833968 changes GWG75 internal-pump minimum
+  **100% -> 50%**;
+- current operating 7833971 already reports GWG75=50%;
+- f02 is structurally different and its GFA assignment is still unproven.
+
+Next: physically dump the current operating 7833971 f01/f02 three times each,
+read-only with the boiler unpowered and plug disconnected.
+
 This is the next independent evidence path when the EEPROM reader is available.
 
 Known physical state:
