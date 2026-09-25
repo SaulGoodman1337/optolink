@@ -353,6 +353,36 @@ Current installed topology remains consistent:
 
 E9 provenance is closed: the current `E9=100%` was intentionally configured by the user.
 
+## Coding-plug physical capture update - two older plugs decoded
+
+Issue #36 now has a side-labelled physical capture from two older plugs.
+The four 512-byte raw dumps and machine-readable evidence are archived under:
+
+`config/optolink-splitter/research/coding-plug/2026-09-25-old-plugs/`
+
+Main results:
+
+- f01 contains ASCII `7823363` / `7833968` at physical offset `0x10`;
+- f01 maps directly to the known P300/GWG coding-plug address space:
+  physical offset `0x20` -> P300 `0x1020`, etc.;
+- invariant blocks at `0x20/0x60/0x80/0x90/0xC0` match the current live
+  7833971 source-decoded block layouts exactly;
+- 7823363 -> 7833968 f01 changes only 13/512 bytes;
+- source-decoded pump delta: GWG75 `100% -> 50%`;
+- current operating 7833971 also reports GWG75=50%;
+- f02 is structurally separate, shares a 226-byte prefix between both old
+  plugs and does not contain the known current flat P300/GFA vectors.
+
+Interpretation:
+
+- f01 = physical main-regulation/GWG coding-plug storage is strongly proven;
+- f02 = GFA/fire-control remains plausible but unproven;
+- the old-plug dumps are single historical captures, so 3x repeat-read
+  acceptance is not retroactively claimed.
+
+Next hardware gate is the current operating 7833971, read last and read-only:
+boiler unpowered, plug disconnected, f01/f02 three identical reads each.
+
 ## Priority 1 - new EEPROM reader: side-labelled coding-plug capture
 
 The replacement EEPROM reader/programmer is expected on 2026-09-25. Resume physical
