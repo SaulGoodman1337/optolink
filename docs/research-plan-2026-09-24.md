@@ -517,13 +517,27 @@ The previous E7 100->99->100 test proved mutation/readback/restore, not RAM-only
 
 ## P2 - KM-BUS / Vitotrol
 
+**Current software-only analysis:** [vitotrol-software-emulation-deep-dive-2026-09-25.md](../config/optolink-splitter/research/vitotrol-software-emulation-deep-dive-2026-09-25.md).
+
+New v6 deep-dive result:
+
+- the 22 exact VDensHO1 RPC events are now exhausted; they cover reset/fault-history and LON participant-list operations, not a Vitotrol/KM-BUS receive mailbox;
+- the production KBus write families remain source-negative for raw Vitotrol slave-frame injection;
+- no source-backed `KMBUS_RAM_WRITE`/EEPROM-write counterpart was recovered; `XRAM_WRITE` exists as an enum but has zero production event definitions;
+- **new strongest software-only lead:** global events `NRF_Raumtemperatur_M1~0x0896` and `NRF_Raumtemperatur_M2~0x0898` use `Virtual_WRITE`, while exact VDensHO1 exposes those same addresses as read-only room-temperature results. This is a firmware/profile discriminator, not yet a justified live write;
+- recent public physical-emulator evidence confirms discovery + register-0 + PING/PONG + room-temperature traffic, but also indicates an additional watchdog/rolling-state detail may matter for BC-free long-term operation.
+
 **TODO:**
 
-- [ ] Keep physical KM-BUS slave emulation as the reference path.
-- [ ] Use the reconstructed Vitotrol class/ID/slot and frame/CRC behavior for a physical emulator.
-- [ ] Treat `0x41`/`0x43` address spaces as their own protocol spaces until a deterministic mapping is demonstrated.
-- [ ] Do not treat A0=1 as emulation; the local BC fault already disproves that shortcut.
-- [ ] Revisit Optolink-only emulation only if a concrete receive-side/member/mailbox mechanism is found.
+- [x] Reconstruct the physical Vitotrol class/ID/slot, frame, CRC, discovery and room-temperature behavior as the protocol reference.
+- [x] Prove A0=1 alone is not emulation; the local BC fault closes that shortcut.
+- [x] Exhaust exact VDensHO1 RPC events for a receive/member/mailbox path.
+- [x] Exhaust production Vitosoft KBus write semantics for a source-backed raw-slave injection path.
+- [ ] Finish the cross-profile provenance of the writable NRF `0x0896/0x0898` aliases and identify the controller families that accept them.
+- [ ] Use the future local regulation-firmware dump to cross-reference `0x0896`, `0x089C`, `0x0A5C`, A0/BC watchdog state and the KM-BUS receive handler.
+- [ ] Only perform a software-state injection test after an exact source-backed VDensHO1 write primitive or firmware handler is identified.
+- [ ] Keep physical KM-BUS slave emulation as the reference implementation until software-only state injection is proven.
+- [ ] Treat `0x41`/`0x43` address spaces as separate protocol spaces until a deterministic mapping is demonstrated.
 
 ## Home Assistant dashboard implementation checkpoint
 
