@@ -390,10 +390,46 @@ discriminator.
 The `0x01 vs 0x41` pair is already locally closed: seven same-address
 comparisons, including non-zero dynamic pump objects, were byte-identical.
 
-The next justified read-only test is therefore a very small
-`0x03 Physical_READ vs 0x43` same-address comparison. Matching values would
-support an alias/common-view hypothesis; different values or different error
-behavior would prove that 0x43 reaches a distinct local service/view.
+The bounded `0x03 Physical_READ vs 0x43` discriminator has now been
+executed with a **fresh P300 session per sample**.
+
+Results:
+
+~~~text
+positive control, 0x00F8/2:
+0x01 -> 20c2, 20c2
+0x41 -> 20c2, 20c2
+corrected classification: STABLE_SAME
+
+0x00F8/2:
+0x03 -> 5491, 5497
+0x43 -> 5491, 5491
+classification: DYNAMIC_OR_INCONCLUSIVE
+
+0x0001/1:
+0x03 -> 81, 81
+0x43 -> 81, 81
+corrected classification: STABLE_SAME
+~~~
+
+This materially changes the interpretation of the strange `0x43` payloads:
+the same `0x81` low-address value is produced by ordinary `Physical_READ
+0x03`, and `0x03` also produces the same dynamic two-byte family at F8
+(`5491` / `5497`) seen through `0x43`.
+
+At the sampled addresses, **0x43 has not demonstrated a distinct local data
+view from 0x03**. The evidence now supports a local common/aliased service-view
+hypothesis much more strongly than an LGM27 EEPROM interpretation. Universal
+0x03/0x43 equivalence is still unproven.
+
+The first probe revision falsely labeled payload-identical pairs as
+`STABLE_DISTINCT` because its classifier included the echoed command byte.
+The raw frames were correct. Version 1.0.1 corrected comparison to ignore the
+expected command echo; version 1.0.2 additionally preserves the schedule
+manager across the maintenance window.
+
+Evidence:
+`vitosoft/physical-vs-kmbus-eeprom-2026-09-25-evidence.json`.
 
 Do **not** call the local P300 0x43 payload LGM27 EEPROM data. The LGM27 catalog
 rows belong to legacy GWG profiles, and the local VDensHO1 profile contains no
@@ -444,13 +480,15 @@ Good discriminators include:
 These addresses are candidates for a **bounded comparison**, not permission for
 a blind sweep.
 
-### 2. 0x43 KMBUS_EEPROM_READ - implemented locally, semantics still unresolved
+### 2. 0x43 KMBUS_EEPROM_READ - locally implemented, but not distinct from 0x03 in current samples
 
-Potentially useful for:
+The new local comparison shows stable equality with `Physical_READ 0x03` at
+`0x0001/1` and overlapping dynamic values at `0x00F8/2`. This makes a
+generic local physical/service-view alias substantially more plausible than a
+dedicated subordinate EEPROM interpretation.
 
-- KM-BUS participant identity/configuration;
-- persistent participant parameters;
-- correlating physical accessories with software views.
+Further 0x43 work should now require a **new source-backed discriminator**.
+Repeating or broadening the old GWG/LGM27 address set is not justified.
 
 Do not equate it with the boiler coding-plug EEPROM. No such link is proven.
 
