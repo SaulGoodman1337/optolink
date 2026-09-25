@@ -407,6 +407,13 @@ def apply(root: Path) -> Path:
             py_compile.compile(str(root / rel), doraise=True)
             if MARKERS[rel] not in read_text(root / rel):
                 raise PatchError(f"post-patch marker missing in {rel}")
+        if "community-scripts: fail-soft poll value conversion" not in read_text(
+            root / "optolinkvs2_switch.py"
+        ):
+            raise PatchError(
+                "post-patch fail-soft poll conversion guard missing in "
+                "optolinkvs2_switch.py"
+            )
     except Exception:
         # Transactional rollback: never leave only half of the scheduler patch.
         for rel in PATCHERS:
