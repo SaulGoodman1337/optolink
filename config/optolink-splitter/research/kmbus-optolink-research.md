@@ -1628,6 +1628,31 @@ unsupported status and does not define error byte `05`.
 Evidence:
 `vitosoft/kbus-virtual-read-live-2026-09-25-evidence.json`.
 
+## Local 0x5D KBUS_MEMBERLIST_READ gate - 2026-09-25
+
+The Collector-v6 slice contains one exact source definition for
+`KBUS_MEMBERLIST_READ`: event 2756, `0x5D / 0x0000 / 3`, empty PrefixRead,
+"Teilnehmer 00 am Viessmann-2-Draht-BUS". It belongs to legacy
+DEKATEL/VCOM300 profiles, not VDensHO1.
+
+The exact request was executed three times in fresh P300 sessions. All three
+returned the same valid Error Message:
+
+~~~text
+TX 41 05 00 5d 00 00 03 65
+RX 41 06 03 5d 00 00 01 05 6c
+~~~
+
+The pre/post identity controls both returned `20c2000300000103`.
+Classification: `STABLE_ERROR_RESPONSE`.
+
+This does not prove universal 0x5D unsupported status. It does show that the
+only source-defined legacy member-list request shape gives no local member-list
+success on the tested 20C2. No address/length expansion is justified.
+
+Evidence:
+`vitosoft/kbus-memberlist-read-live-2026-09-25-evidence.json`.
+
 ### F. Only then test additional read functions
 
 Current status / priorities:
@@ -1635,9 +1660,9 @@ Current status / priorities:
 1. `KBUS_VIRTUAL_READ` / 0x5F: two strong source-backed semantic anchors
    tested locally; both reproducibly returned Error Message payload `05`.
    Do not expand without a new local discriminator.
-2. `KBUS_MEMBERLIST_READ` / 0x5D: one source definition exists; analyze its
-   exact event semantics and request shape offline before considering a bounded
-   local gate.
+2. `KBUS_MEMBERLIST_READ` / 0x5D: the sole source-defined
+   `0x0000/3` shape was tested three times and returned stable Error Message
+   payload `05`. Do not invent further addresses or lengths.
 3. `KBUS_TRANSPARENT_READ` / 0x55: 850 definitions; continue offline
    clustering before any live use.
 4. `KBUS_EEPROM_LT_READ` / 0x59: 500 legacy definitions; offline semantics
