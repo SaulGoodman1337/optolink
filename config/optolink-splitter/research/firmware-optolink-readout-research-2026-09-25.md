@@ -719,3 +719,268 @@ The two strongest negative closures now are:
 
 Neither can directly address the assumed M30624 program range
 `0xC0000..0xFFFFF`.
+
+
+## 2026-09-25 follow-up: Viess_Data "Lese Dump" is another plain VS1 virtual dump
+
+A second historical OpenV tool with an explicitly named dump function has now
+been recovered from the wiki Git history:
+
+```text
+files/Viess_Data.zip
+wiki import commit: 22510b0
+import date:        2011-12-24
+author:             TerminatorIII
+archive timestamp:  2011-12-23
+```
+
+Unlike the native OptoLinkLogger binary, this archive contains the C# source.
+The relevant implementation is
+`Viess_Data/Viess_Data/Form_Main.cs`.
+
+The GUI button is literally named `Lese Dump` and creates a file named:
+
+```text
+HH_mm_ss KW200.Dump
+```
+
+The implementation is nevertheless unambiguous. The initial request after the
+normal `0x05` synchronization is:
+
+```text
+01 F7 <addr_hi> <addr_lo> 10
+```
+
+and subsequent requests use:
+
+```text
+F7 <addr_hi> <addr_lo> 10
+```
+
+The program:
+
+1. reads 16 returned bytes;
+2. appends them to the dump file;
+3. increments the 16-bit `Read_Adress` by 16;
+4. repeats until the user-selected end address.
+
+Therefore the Viess_Data `Lese Dump` feature is another **sequential
+16-bit VS1 Virtual_READ dump**, not an M16C program-ROM extractor.
+
+This independently confirms the earlier OptoLinkLogger closure. Historical UI
+labels containing the word "Dump" are not evidence for the special M30612
+firmware-read mechanism.
+
+Decision: close Viess_Data bulk dump as a direct program-ROM path.
+
+## 2026-09-25 follow-up: provenance gap points to the former OpenV developer forum
+
+The public historical trail now explains why the exact M30612 readout sequence
+may be absent from the surviving wiki repository.
+
+Contemporaneous HaustechnikDialog posts document that OpenV maintained a
+separate developer forum on `openv.de`:
+
+- in January 2010 MarcusT explicitly stated that an
+  `Entwickler-Forum` existed and was not publicly accessible, with access
+  managed by pshome;
+- posts from the same period describe the developer material as containing the
+  raw KW1/2 protocol work and reverse-engineering history;
+- by June 2010 participants reported that the internal forum had been closed;
+- in August/September 2010 `openv.de` itself disappeared, after which
+  Vitoopen/BrainHunter restored important public downloads into the wiki/SVN.
+
+This chronology matters because KarlKoch's explicit
+`M30612MC ... SW lässt sich ... über Optolink auslesen` statement entered the
+public KM-BUS documentation in October 2010. The detailed command sequence may
+therefore have remained in the former developer forum or another off-repository
+artifact even though the derived conclusion survived in the wiki.
+
+A full scan of the surviving OpenV wiki Git object history was also performed:
+
+```text
+~11,273 Git objects
+~1,649 blobs
+```
+
+Search terms included M30612/M16C, firmware, ROM, flash, bootloader,
+disassembly, monitor and readout terminology across normal and UTF-16 strings.
+
+Result:
+
+- no M30612 firmware image;
+- no 57,000-line disassembly;
+- no dedicated firmware-read utility;
+- no recovered special Optolink read sequence beyond the already known
+  ordinary tools.
+
+This negative result materially increases the value of archive recovery of the
+former `openv.de` developer material rather than repeating searches over the
+same surviving wiki files.
+
+## 2026-09-25 follow-up: Vitosoft programming-position and ROM-checksum trace
+
+A dedicated trace was executed against the verified Vitosoft-v6 archive.
+
+Private workflow:
+
+```text
+.github/workflows/programming-mode-trace.yml
+workflow commit:
+fa1658d106582a5c307f2864b07a30c0193cb940
+
+result commit:
+586a03a0443c3cd93a3ebc874241c9a93d22d4bc
+
+collector-output/20260925-programming-mode-trace/
+  README.md
+  summary.json
+```
+
+Result summary:
+
+```text
+matching event rows:            17
+direct DataPointType memberships: 32
+direct VDensHO1 memberships:     0
+```
+
+### ROM checksum objects are VBC550S/P, not VDensHO1
+
+The exact Vitosoft config-backup memberships resolve the earlier
+TerminatorIII ambiguity:
+
+```text
+ChecksummeROMBerechnet
+  address:  0x08F0
+  read:     Virtual_READ
+  length:   2
+  text:
+    "Aktuell ermittelte Checksumme über die vom Programm
+     belegten ROM-Bereiche. Muß mit der Checksumme des
+     Linkers uebereinstimmen."
+
+NRF_ChecksummeROMLinker
+  address:  0x08F4
+  read:     Virtual_READ
+  write fn: Virtual_WRITE
+  length:   2
+  text:
+    "vom Linker gebildete, im ROM gespeicherte Checksumme."
+```
+
+Recovered direct memberships:
+
+```text
+VBC550S  identification 2032
+VBC550P  identification 2033
+```
+
+No direct VDensHO1 membership exists.
+
+This is stronger than the earlier historical XML interpretation:
+`0x08F0/0x08F4` are genuine Vitosoft ROM-checksum concepts, but current
+evidence assigns them to VBC550S/P, not to the WB2A/VDensHO1 main regulation.
+
+### SC100 programming-position objects are also VBC550S/P
+
+Recovered events:
+
+```text
+SC100_ProgrammierstellungEin
+  address: 0x0C04
+  FCRead:  Virtual_READ
+  FCWrite: Virtual_WRITE
+  text:
+    "Für Diagnosezwecke: Umsetzung Lesen/Schreiben
+     Virtuell auf RPC von/zur SC100"
+
+SC100_ProgrammierstellungAus
+  address: 0x0C05
+  FCRead:  Virtual_READ
+  FCWrite: Virtual_WRITE
+  same diagnostic/proxy description
+```
+
+Direct memberships are again only:
+
+```text
+VBC550S / 2032
+VBC550P / 2033
+```
+
+This is useful architecture evidence for a controller-side virtual-to-RPC proxy
+toward an SC100 subordinate controller. It is **not evidence that VDensHO1
+exposes the same path**, and it must not be transferred to the local boiler
+without a controller-specific source.
+
+### Legacy GWG has an explicit fire-control programming-state flag
+
+Another exact event is closer to the older gas-wall-device line:
+
+```text
+GWG_Auftragsflag_Programmieren
+  address: 0x003D
+  FCRead:  Physical_READ
+  length:  1
+  text:
+    "zeigt an, ob der Feuerungsautomat in Programmierstellung steht"
+```
+
+Its recovered memberships are legacy `GWG_V*` profiles with identification
+`2053`, including `GWG_VBEM`, `GWG_VBES`, `GWG_VBT2` and `GWG_VWMS`
+variants.
+
+This proves that Viessmann service metadata explicitly models a
+**Feuerungsautomat programming state** on legacy GWG devices.
+
+It does **not** prove:
+
+- a programming state of the main regulation MCU;
+- a program-ROM read operation;
+- a VDensHO1 equivalent;
+- that the state is entered by an Optolink command represented in this event.
+
+### Interpretation for the WB2A firmware-acquisition problem
+
+The programming-position search separates three previously conflated concepts:
+
+```text
+main regulation program ROM
+    !=
+SC100 subordinate-controller programming proxy
+    !=
+legacy GWG Feuerungsautomat programming state
+```
+
+The Vitosoft evidence therefore closes "Programmierstellung" as a direct
+shortcut to the local M30624 main-regulation firmware.
+
+It remains useful as architectural evidence that Viessmann controllers can
+proxy service/programming operations to subordinate combustion controllers.
+
+## Updated hard boundary
+
+After the new trace, none of these currently provides a source-backed
+VDensHO1 program-ROM read:
+
+- VS1 Virtual_READ / `0xF7`;
+- Viess_Data `Lese Dump`;
+- OptoLinkLogger `Dump Data`;
+- PROZESS_READ / `0x7B`;
+- BE_READ / legacy `0x9E`;
+- KMBUS_RAM_READ / P300 `0x41`;
+- XRAM_READ / P300 `0x31`;
+- SC100 programming-position events;
+- legacy GWG fire-control programming-state flag.
+
+The strongest still-open evidence remains the historical statement that the
+M30612MC-based V200KW2 software itself was readable over Optolink.
+
+The active question is therefore narrower:
+
+> Which application-side monitor/page/copy mechanism was used to bridge the
+> 16-bit Optolink request space to the M30612 high program-ROM region?
+
+That mechanism, rather than another ordinary datapoint read function, is the
+next acquisition target.
