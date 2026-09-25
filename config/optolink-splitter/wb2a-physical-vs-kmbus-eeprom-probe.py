@@ -45,7 +45,7 @@ import sys
 import termios
 import time
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 SPLITTER = "optolink-splitter.service"
 PARTY = "optolink-party-emulator.service"
 SCHEDULE = "optolink-schedule-manager.service"
@@ -54,6 +54,13 @@ LOCK = "/run/lock/wb2a-physical-vs-kmbus-eeprom-probe.lock"
 ABORT_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 
 IDENT_EXPECTED = bytes.fromhex("20 c2 00 03 00 00 01 03")
+
+# Bytewise high-address discriminator. Physical_READ catalog definitions are
+# byte-sized, so this deliberately avoids the earlier 16-byte block request.
+BYTEWISE_HIGH_ADDRESSES = (
+    tuple(range(0xF000, 0xF010))
+    + tuple(range(0xFFF0, 0x10000))
+)
 
 # label, address, length, balanced function order
 GROUPS = (
@@ -88,6 +95,7 @@ ALLOWED_REQUESTS = {
     (0x03, 0xFFF0,16),
     (0x43, 0xFFF0,16),
 }
+ALLOWED_REQUESTS.update((0x03, address, 1) for address in BYTEWISE_HIGH_ADDRESSES)
 
 
 class ProbeError(RuntimeError):
@@ -406,7 +414,7 @@ def one_session(wire: Wire, function: int, address: int, length: int, log) -> di
         time.sleep(0.15)
 
 
-def run_guarded(services, opener, log):
+def run_guarded(services, opener, log, bytewise_high=False):
     split = services.state(SPLITTER)
     if (split.get("LoadState"), split.get("ActiveState"), split.get("SubState")) != ("loaded", "active", "running"):
         raise ProbeError("Require running splitter.")
@@ -422,6 +430,7 @@ def run_guarded(services, opener, log):
     wire = None
     failures = []
     group_results = []
+    bytewise_runs = []
     restart_epoch = None
 
     try:
@@ -453,27 +462,63 @@ def run_guarded(services, opener, log):
         wire.leave()
         time.sleep(0.15)
 
-        for label, address, length, order in GROUPS:
-            observations = []
+        if bytewise_high:
             log(
-                f"GROUP_START label={label} address=0x{address:04x} "
-                f"len={length} order=" + ",".join(f"0x{x:02x}" for x in order)
+                "BYTEWISE_HIGH_START ranges=0xf000-0xf00f,0xfff0-0xffff "
+                "function=0x03 len=1 passes=2"
             )
-            for n, function in enumerate(order, 1):
-                result = one_session(wire, function, address, length, log)
-                observations.append((function, result))
+            for pass_no in (1, 2):
+                values = {}
+                wire.enter_p300()
+                try:
+                    for address in BYTEWISE_HIGH_ADDRESSES:
+                        result = wire.transact(request_frame(0x03, address, 1))
+                        if (
+                            result["status"] != "SUCCESS"
+                            or result["command"] != 0x03
+                            or result["address"] != address
+                            or len(result["data"]) != 1
+                        ):
+                            raise ProbeError(
+                                f"Bytewise read failed at 0x{address:04x}: {result}"
+                            )
+                        values[address] = result["data"][0]
+                        log(
+                            f"BYTEWISE pass={pass_no} address=0x{address:04x} "
+                            f"data={result['data'].hex()}"
+                        )
+                finally:
+                    wire.leave()
+                    time.sleep(0.15)
+                bytewise_runs.append(values)
+                for base in (0xF000, 0xFFF0):
+                    block = bytes(values[base + i] for i in range(16))
+                    log(
+                        f"BYTEWISE_BLOCK pass={pass_no} base=0x{base:04x} "
+                        f"data={block.hex()}"
+                    )
+        else:
+            for label, address, length, order in GROUPS:
+                observations = []
                 log(
-                    f"TRIAL group={label} n={n} function=0x{function:02x} "
-                    f"status={result['status']} data={result['data'].hex() if result['data'] else '-'}"
+                    f"GROUP_START label={label} address=0x{address:04x} "
+                    f"len={length} order=" + ",".join(f"0x{x:02x}" for x in order)
                 )
+                for n, function in enumerate(order, 1):
+                    result = one_session(wire, function, address, length, log)
+                    observations.append((function, result))
+                    log(
+                        f"TRIAL group={label} n={n} function=0x{function:02x} "
+                        f"status={result['status']} data={result['data'].hex() if result['data'] else '-'}"
+                    )
 
-            f_a, f_b = order[0], order[1]
-            classification = classify_pair(observations, f_a, f_b)
-            group_results.append((label, f_a, f_b, observations, classification))
-            log(
-                f"GROUP_RESULT label={label} compare=0x{f_a:02x}:0x{f_b:02x} "
-                f"class={classification}"
-            )
+                f_a, f_b = order[0], order[1]
+                classification = classify_pair(observations, f_a, f_b)
+                group_results.append((label, f_a, f_b, observations, classification))
+                log(
+                    f"GROUP_RESULT label={label} compare=0x{f_a:02x}:0x{f_b:02x} "
+                    f"class={classification}"
+                )
 
     except BaseException as exc:
         failures.append(str(exc) or type(exc).__name__)
@@ -521,7 +566,30 @@ def run_guarded(services, opener, log):
             )
         log(f"SUMMARY label={label} class={classification}")
 
-    completed = len(group_results) == len(GROUPS) and not failures
+    if bytewise_high:
+        if len(bytewise_runs) == 2:
+            stable = [
+                address for address in BYTEWISE_HIGH_ADDRESSES
+                if bytewise_runs[0].get(address) == bytewise_runs[1].get(address)
+            ]
+            changed = [
+                address for address in BYTEWISE_HIGH_ADDRESSES
+                if bytewise_runs[0].get(address) != bytewise_runs[1].get(address)
+            ]
+            log(
+                f"BYTEWISE_SUMMARY stable={len(stable)}/{len(BYTEWISE_HIGH_ADDRESSES)} "
+                "changed=" + ",".join(f"0x{x:04x}" for x in changed)
+            )
+            for base in (0xF000, 0xFFF0):
+                a = bytes(bytewise_runs[0][base + i] for i in range(16))
+                b = bytes(bytewise_runs[1][base + i] for i in range(16))
+                log(
+                    f"BYTEWISE_COMPARE base=0x{base:04x} "
+                    f"pass1={a.hex()} pass2={b.hex()} equal={a == b}"
+                )
+        completed = len(bytewise_runs) == 2 and not failures
+    else:
+        completed = len(group_results) == len(GROUPS) and not failures
     log("EXECUTION_RESULT=" + ("PASS" if completed else "FAIL"))
     for e in failures:
         log("ERROR: " + e)
@@ -557,6 +625,12 @@ def self_test():
             observations = [(0x01, a), (0x41, b), (0x41, b), (0x01, a)]
             self.assertEqual(classify_pair(observations, 0x01, 0x41), "STABLE_SAME")
 
+        def test_bytewise_high_allowlist(self):
+            self.assertEqual(request_frame(0x03, 0xF000, 1).hex(), "41050003f00001f9")
+            self.assertEqual(request_frame(0x03, 0xFFFF, 1).hex(), "41050003ffff01f7")
+            with self.assertRaises(ValueError):
+                request_frame(0x03, 0xF010, 1)
+
         def test_write_and_unknown_blocked(self):
             with self.assertRaises(ValueError):
                 request_frame(0x04, 0x00F8, 2)
@@ -567,7 +641,7 @@ def self_test():
         unittest.defaultTestLoader.loadTestsFromTestCase(Tests)
     )
     if result.wasSuccessful():
-        print("PHYSICAL_VS_KMBUS_EEPROM_PROBE_TESTS=6/6")
+        print("PHYSICAL_VS_KMBUS_EEPROM_PROBE_TESTS=7/7")
         return 0
     return 1
 
@@ -576,19 +650,24 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--execute", action="store_true")
+    g.add_argument(
+        "--bytewise-high",
+        action="store_true",
+        help="read-only bytewise Physical_READ at 0xF000..0xF00F and 0xFFF0..0xFFFF",
+    )
     g.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
 
     if args.self_test:
         return self_test()
-    if not args.execute:
+    if not args.execute and not args.bytewise_high:
         print(
             f"WB2A Physical_READ vs KMBUS_EEPROM_READ probe {VERSION}: "
-            "plan only; no action without --execute."
+            "plan only; no action without --execute or --bytewise-high."
         )
         return 0
     if os.geteuid() != 0:
-        print("ERROR: --execute requires root.", file=sys.stderr)
+        print("ERROR: live execution requires root.", file=sys.stderr)
         return 1
 
     log = None
@@ -605,13 +684,21 @@ def main():
         log = Log(Path("/root") / f"wb2a-physical-vs-kmbus-eeprom-{stamp}-{os.getpid()}.log")
         log(f"WB2A Physical_READ vs KMBUS_EEPROM_READ probe {VERSION}; LOG={log.path}")
         log(f"Configured port: {port}; resolved: {os.path.realpath(port)}; 4800 8E2.")
-        log("READ_ONLY=yes; FRESH_P300_SESSION_PER_TRIAL=yes; BROAD_SWEEP=no")
+        log(
+            "READ_ONLY=yes; FRESH_P300_SESSION_PER_TRIAL=yes; BROAD_SWEEP=no; "
+            f"BYTEWISE_HIGH={'yes' if args.bytewise_high else 'no'}"
+        )
 
         def abort(signum, _frame):
             raise ProbeError("Interrupted by signal " + str(signum))
 
         previous = {sig: signal.signal(sig, abort) for sig in ABORT_SIGNALS}
-        return run_guarded(Services(), lambda: open_port(port, serial), log)
+        return run_guarded(
+            Services(),
+            lambda: open_port(port, serial),
+            log,
+            bytewise_high=args.bytewise_high,
+        )
 
     except Exception as exc:
         if log:
