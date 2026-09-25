@@ -10,7 +10,7 @@ Live action with --execute:
   2. stop optolink-splitter.service (release the single serial owner)
   3. open Optolink directly at 4800 8E2
   4. explicitly initialize P300/VS2
-  5. compare P300 Virtual_READ 0x01 with KMBUS_RAM_READ 0x41 on a fixed allowlist
+  5. compare P300 Virtual_READ 0x01 with KMBUS_RAM_READ 0x41 on a fixed allowlist, including bounded Vitotrol-state anchors
   6. leave interface in detection state, close serial
   7. restart splitter and Party if they were active
   8. require restored splitter journal to show "VS1/KW protocol initialized"
@@ -32,7 +32,7 @@ import sys
 import termios
 import time
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 SPLITTER = "optolink-splitter.service"
 PARTY = "optolink-party-emulator.service"
 SETTINGS = Path("/opt/optolink/settings_ini.py")
@@ -47,6 +47,14 @@ TARGETS = (
     ("internal_pump_identity", 0x5730, 1),
     ("internal_pump_sw_block", 0x0A54, 4),
     ("a1_remote_identity", 0x27A0, 1),
+    # Vitotrol/KM-BUS research: fixed read-only correlation anchors.
+    ("a1_room_actual", 0x0896, 2),
+    ("a1_room_sensor_status", 0x089C, 1),
+    ("a1_remote_sw_index", 0x0A5C, 4),
+    ("hidden_bde_type", 0x7340, 1),
+    ("hidden_remote_kk_type", 0x7341, 1),
+    ("hidden_remote_m1_type", 0x7342, 1),
+    ("hidden_remote_m2_type", 0x7343, 1),
 )
 
 IDENT_EXPECTED = bytes.fromhex("20 c2 00 03 00 00 01 03")
