@@ -1,6 +1,10 @@
 #!/opt/optolink/venv/bin/python
 """Controlled WB2A E7=100 heating-cycle probe with automatic restore.
 
+Version 1.0.1: bound MQTT publish waits so a broker/client stall cannot leave
+the experimental write probe alive indefinitely without progressing.
+
+
 Purpose
 -------
 Capture one natural space-heating burner cycle with A1 minimum pump speed E7
@@ -83,7 +87,10 @@ def connect():
 def request(client,responses,command,timeout=3.0):
     responses.clear()
     expected=int(command.split(";")[1],0)
-    client.publish(settings.mqtt_listen,command).wait_for_publish()
+    info=client.publish(settings.mqtt_listen,command)
+    info.wait_for_publish(timeout=2.0)
+    if not info.is_published():
+        raise TimeoutError(f"MQTT publish timeout: {command}")
     end=time.monotonic()+timeout
     while time.monotonic()<end:
         while responses:
