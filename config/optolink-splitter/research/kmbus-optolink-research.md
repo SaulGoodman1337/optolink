@@ -1653,24 +1653,57 @@ success on the tested 20C2. No address/length expansion is justified.
 Evidence:
 `vitosoft/kbus-memberlist-read-live-2026-09-25-evidence.json`.
 
+## Non-RPC KBus serializer closure - 2026-09-25
+
+The current Vitosoft-v6 managed Optolink path does not serialize
+`PrefixRead` for ordinary non-RPC Default reads. This matters critically for
+`KBUS_TRANSPARENT_READ / 0x55`:
+
+- all 850 catalog rows are one-byte Default events with a 2-byte PrefixRead;
+- without PrefixRead they collapse to only **11** distinct standard
+  `function,address,length` request shapes;
+- `0x55 / 0x0100 / 1` alone represents 170 catalog rows with 85 different
+  PrefixRead values.
+
+The full decompiled `vsmInterfaceCore.dll` contains no KBus-function-specific
+read serializer branch. A whole-archive v6 index search found the exact
+extended KBus function names only in `vsmInterfaceCommon.dll` enum/common
+definitions and recovered no alternate native PrefixRead serializer.
+
+Decision: **do not live-probe 0x55** until the missing selector wire format is
+source-proven.
+
+The remaining families are also offline-only for now:
+
+- `0x63`: standard shapes are unique, but source semantics are legacy
+  participant slots without a VDensHO1 participant mapping;
+- `0x61`: unique legacy immediate-participant reads, no local mapping;
+- `0x51`: VCOM100/DEKATEL-M data-element positions, no local discriminator;
+- `0x59`: prefixless and serializable, but legacy communication/participant
+  EEPROM only;
+- `0x53/0x57/0x65`: no source read-event definitions.
+
+Private host-path evidence: workflow run `36114832604`, artifact
+`10854457460`, analysis commit
+`1d2973ffbc8adab50f3bbce68eaac1dd27403251`.
+
 ### F. Only then test additional read functions
 
 Current status / priorities:
 
-1. `KBUS_VIRTUAL_READ` / 0x5F: two strong source-backed semantic anchors
-   tested locally; both reproducibly returned Error Message payload `05`.
-   Do not expand without a new local discriminator.
-2. `KBUS_MEMBERLIST_READ` / 0x5D: the sole source-defined
-   `0x0000/3` shape was tested three times and returned stable Error Message
-   payload `05`. Do not invent further addresses or lengths.
-3. `KBUS_TRANSPARENT_READ` / 0x55: 850 definitions; continue offline
-   clustering before any live use.
-4. `KBUS_EEPROM_LT_READ` / 0x59: 500 legacy definitions; offline semantics
-   only unless a local discriminator emerges.
-5. Direct/indirect/data-element families: useful for protocol reconstruction,
-   not yet justified for local live probing.
-6. `KBUS_INITIALISATION_READ` / 0x57 and `KBUS_GATEWAY_READ` / 0x65:
-   no event definitions in the verified slice; do not invent request shapes.
+1. `0x5F KBUS_VIRTUAL_READ`: two source-backed semantic anchors rejected
+   reproducibly with Error Message payload `05`; closed pending new local
+   evidence.
+2. `0x5D KBUS_MEMBERLIST_READ`: sole source shape rejected reproducibly with
+   payload `05`; closed pending VDensHO1-specific evidence.
+3. `0x55 KBUS_TRANSPARENT_READ`: current v6 host cannot distinguish the
+   catalog rows because their event-selecting PrefixRead is not serialized by
+   the standard non-RPC path; **no live test** until wire selection is proven.
+4. `0x59/0x63/0x61/0x51`: request shapes can be reconstructed, but all are
+   legacy-only and lack a VDensHO1 semantic discriminator; offline-only.
+5. `0x53/0x57/0x65`: no source read-event definitions; do not invent shapes.
+6. The only currently productive extended local read view remains bounded
+   known-address `0x41 KMBUS_RAM_READ` correlation.
 
 Use source-derived parameters whenever possible. Do not blindly substitute
 `0x00F8` into every function just because it works for 0x41/0x43.
