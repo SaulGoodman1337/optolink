@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "title": "WB2A A1 heating takt baseline and same-window pump clamp evidence",
+  "date_local": "2026-09-25",
+  "timezone": "Europe/Berlin",
+  "controller": {
+    "boiler": "Vitodens 200-W WB2A",
+    "device": "VDensHO1",
+    "identification": "20C2"
+  },
+  "source_log": "/home/chatgpt-admin/wb2a-a1-withdrawal-20260925-112847.csv",
+  "same_window_static_runtime": {
+    "note": "Read-only permanent-VS1 snapshot after the user enabled heating, before the later DHW takeover.",
+    "e7_pct": 30,
+    "gwg75_pct": 50,
+    "gwg76_s": 60,
+    "coding_plug_0x1070": "051d141841323c000000000000000000",
+    "a1_0x7663": "0124",
+    "a1_speed_pct": 36,
+    "final_internal_setpoint_0x0a3c": "32",
+    "final_internal_setpoint_pct": 50,
+    "internal_pump_0x7660": "0132",
+    "internal_pump_speed_pct": 50,
+    "dhw_0x650a": "00"
+  },
+  "pre_dhw_heating_baseline": {
+    "rows_with_dhw_zero": 1085,
+    "unique_pump_chain": [
+      {
+        "a1_speed_pct": 36,
+        "final_internal_setpoint_pct": 50,
+        "internal_pump_speed_pct": 50
+      }
+    ],
+    "flame_transitions": [
+      {
+        "timestamp": "2026-09-25T11:28:48.045+02:00",
+        "flame": 0,
+        "note": "capture begins mid-off-period"
+      },
+      {
+        "timestamp": "2026-09-25T11:29:11.343+02:00",
+        "flame": 1
+      },
+      {
+        "timestamp": "2026-09-25T11:29:52.872+02:00",
+        "flame": 0
+      },
+      {
+        "timestamp": "2026-09-25T11:34:00.458+02:00",
+        "flame": 1
+      },
+      {
+        "timestamp": "2026-09-25T11:34:38.722+02:00",
+        "flame": 0
+      },
+      {
+        "timestamp": "2026-09-25T11:38:46.575+02:00",
+        "flame": 1
+      },
+      {
+        "timestamp": "2026-09-25T11:39:20.518+02:00",
+        "flame": 0
+      }
+    ],
+    "complete_flame_on_durations_s": [
+      41.529,
+      38.264,
+      33.943
+    ],
+    "complete_between_flame_off_to_next_on_s": [
+      247.586,
+      247.853
+    ]
+  },
+  "interpretation": {
+    "established": [
+      "E7=30, GWG75=50, A1 runtime request=36, final internal-pump setpoint=50 and physical internal-pump speed=50 were observed in the same heating window.",
+      "Across 1085 pre-DHW samples the pump chain stayed exactly 36 -> 50 -> 50 while the flame repeatedly cycled.",
+      "Two complete flame-off to next-flame-on intervals were essentially identical at about 247.7 s.",
+      "Normal burner cycling/takt lock therefore did not withdraw or alter the A1 pump request or the final internal-pump setpoint in this capture."
+    ],
+    "leading_model": "For ordinary direct A1 heating, the observed data are consistent with final_internal_setpoint = max(A1_runtime_request, GWG75), subject to other operating-mode overrides.",
+    "not_established": [
+      "The data do not prove the exact firmware formula.",
+      "The approximately 247.7 s off interval is observed timing; no coding parameter is assigned to it here.",
+      "The later transition to A1=0/internal=100 belongs to DHW takeover and is not an A1-withdrawal/GWG76 event."
+    ]
+  },
+  "follow_up": {
+    "planned": "Controlled E7 30 -> 100 -> 30 heating-cycle comparison with radiators opened, guarded against DHW/flame-time writes.",
+    "dhw_takeover_false_trigger_fix_commit": "2718b6c53a55a30c6eacec17857fff628b3dc7c5"
+  }
+}
