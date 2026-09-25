@@ -46,7 +46,7 @@ import sys
 import termios
 import time
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 SPLITTER = "optolink-splitter.service"
 PARTY = "optolink-party-emulator.service"
 SCHEDULE = "optolink-schedule-manager.service"
@@ -496,11 +496,11 @@ def self_test():
             self.assertEqual(MEMBER_FRAME.hex(), "4105005d00000365")
 
         def test_error_response_decode(self):
-            r = decode_response(bytes.fromhex("4106035d000003056e"))
+            r = decode_response(bytes.fromhex("4106035d000001056c"))
             self.assertEqual(r["status"], "ERROR_MESSAGE")
             self.assertEqual(r["command"], 0x5D)
             self.assertEqual(r["address"], 0x0000)
-            self.assertEqual(r["length"], 3)
+            self.assertEqual(r["length"], 1)
             self.assertEqual(r["data"], b"\x05")
 
         def test_stable_error_classification(self):
