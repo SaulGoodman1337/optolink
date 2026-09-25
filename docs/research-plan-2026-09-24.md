@@ -30,48 +30,151 @@ Do not reopen these as generic tasks without new evidence:
 - treating P87 bit 1 as a named "flame stabilized" signal; only its measured timing relation is established;
 - blind GFA, burner-safety, EEPROM or coding-plug writes.
 
-## P0 - Internal-pump hidden selection logic
+## P0 - Burner-dependent A1 pump boost / firmware boundary
 
-**Completed hardware result:** the adjacent global result objects have already been tested on the local WB2A.
+**Important correction:** the earlier model that treated direct-A1 runtime as
+`0x7663 -> hidden clamp -> 0x0A3C -> 0x7660` is superseded.
 
-- `0x0A3A` is readable but remained `0` through the tested local heating start even while A1 runtime was active.
-- `0x0A3B` is readable but remained `0`; no separate M2 pump path is active.
-- `0x0A3C` tracks the final internal-pump command and matches `0x7660[1]` even when it diverges from `0x7663[1]`.
-- `0x7663` represents the A1 heating-circuit runtime command; `0x7660` represents the internal physical-pump runtime command.
-- Therefore the earlier hypothesis `0x0A3A = computed A1 request feeding 0x7663` is **rejected**. Do not schedule another generic A3A/A3B discriminator run.
+The integrated physical KM-BUS pump has multiple logical roles:
 
-Current best architecture:
+- **direct A1 heating:** heating-circuit pump A1, governed by E6/E7 and exposed
+  by `0x7663 / HKP_A1Drehzahl / Ausgang_HKP_A1`;
+- **DHW/storage heating:** internal boiler/DHW circulation role, governed by
+  `6C / 0x676C` (local value 100 %);
+- **boiler-circuit role:** separate internal-pump configuration such as
+  `K31 / 0x5731`, relevant to hydraulic-separation/mixer topologies.
 
-```text
-A1 demand + operating mode + E6/E7/E8/E9 + K31 + 6C + GWG75/76 + other overrides
-                                  |
-                                  v
-                      hidden controller selection
-                                  |
-                                  v
-                    0x0A3C ~= 0x7660[1]
-                                  |
-                                  v
-                         internal KM-BUS pump
-```
+`0x0A3C` and `0x7660` remain genuine internal-pump service/runtime
+surfaces, but their correlations are **not** proof of the direct-A1 control
+algorithm.
 
-**TODO:**
+### Actual research target
 
-- [x] Treat `0x0A3C` as the verified final command shadow, not a writable target; live correlation with `0x7660[1]` is established.
-- [x] Search remaining host-side/protected code for the selector. Focused decompilation of `MobileClient.exe`, `ViessmannCommonObjects.dll`, `vsmControlLibrary.dll`, FlowCalibration and the hydraulic host path found no `0x0A3C`/`0x7660` selector or arbitration method.
-- [x] Analyze both protected FlowCalibration states and host integration. Result: the path is hydraulic calibration for VD3XX/Neptun and writes normal E6/E7/E9 configuration; it does not expose a new volatile WB2A pump override.
-- [ ] Keep legacy `0x571D` / `0x581D` closed: both returned invalid-address on the local controller.
-- [ ] Use natural passive observations only when they answer a specific formula question, e.g. whether an A1 request above the GWG75 50% floor is passed through to the internal command.
-- [ ] Keep the documented external-demand/K34 path separate: it can force the internal circulation pump ON but is not proven to request 100% and can affect boiler heat demand via 9B.
-- [x] Transfer the hidden-selector algorithm itself to controller-firmware/MCU analysis. The focused host/decompilation layer exposed no `0x0A3C` / `0x7660` arbitration implementation.
-- [x] Complete the installed-pump characterization: `K30=01` (speed-controlled), `K31=100`, `K52=00`, `E5=00`, `E6=100`, `E7=30`, `E8=0`, `E9=100`, `0x0A54=01 11 01 01` with software index byte3=`01`; same-window runtime was idle (`A3C=0`, `7660=0000`, `7663=0000`).
-- [x] K30 is `01`, not `02`; therefore a mandatory internal-pump volume-flow telemetry search is deprioritized for this installation. The rejected Neptun `0x0C24` path remains unrelated to base VDensHO1.
-- [x] K30=`01` confirmed; continue the hidden runtime arbitration as a controller-firmware/MCU problem rather than a flow-sensor discovery problem.
-- [x] Characterization completed read-only; no K30/K31 write was performed.
+Find whether local VDensHO1 / 20C2 contains a **volatile burner-dependent A1
+pump boost/override** that can raise the direct heating-circuit pump during
+burner operation **without repeated E7 coding writes**.
 
-**Status: installed-pump characterization completed 2026-09-24.** The local controller identifies a speed-controlled internal pump (`K30=01`) without the K30=2 volume-flow capability flag, no hydraulic-separator sensor (`K52=0`), and software index `01`. The hidden selector upstream of `0x0A3C` remains a controller-firmware/MCU question.
+Repeated burner-triggered E7 writes are not a production solution. E7 is a
+coding/configuration surface and storage/endurance is not proven suitable for
+per-cycle automation.
 
-**E9 provenance resolved:** the user confirmed that the change from the earlier 50% baseline to the current `E9=100%` was intentional. This is not an unexplained controller drift. Keep the historical 50% capture as history; use 100% as the current configured value.
+### Historical Viessmann evidence
+
+The verified Vitosoft-v6 archive proves that Viessmann used burner-dependent
+pump concepts in other regulation families:
+
+- `0x571D K1D_KonfiPumpenbeiBrennerein`:
+  "Beimischpumpe EIN, wenn Brenner EIN";
+- `0x581D SR13_K1D_KonfiPumpenbeiBrennerein`;
+- legacy gas coding-card `0x1070` byte 5:
+  "Pumpe bei Brennerbetrieb";
+- corresponding NRx `0x1080` byte 5;
+- later `0x7751 K51_KonfiHydrWeicheIntPumpe`.
+
+None belongs to an exact VDensHO1 EventTypeGroup. Local `0x571D` and
+`0x581D` were already invalid. On VDensHO1 the `0x1070` byte-5 slot is
+explicitly `GWG75: Mindestdrehzahl Interne Pumpe`, so the older semantic must
+not be transferred.
+
+### Natural runtime result - 2026-09-25
+
+A dedicated **read-only** watcher captured two complete natural A1 heating
+burner cycles at E7=30.
+
+Machine evidence:
+
+`config/optolink-splitter/research/vitosoft/burner-a1-runtime-2026-09-25-evidence.json`
+
+Raw CSV on appliance:
+
+`/home/chatgpt-admin/wb2a-burner-a1-runtime-20260925-124401.csv`
+
+Key observations:
+
+- A1 pump speed stayed exactly **32 %** through prestart, flame-on, flame-off
+  and the inter-cycle wait;
+- `0x0A3A` stayed 0;
+- source-backed `0xA152` HKP1 and internal-pump relay bits became active
+  when heating hydraulics started and stayed unchanged through both burner
+  cycles;
+- the source-labelled `0xA152` burner-relay bit stayed 0 even with independent
+  flame confirmation, so it is not the local GFA burner-request/output path;
+- `0xA305 / nvoBoilerState_BLR_value` became nonzero with established flame,
+  followed burner modulation closely and returned to 0 at/just before flame
+  extinction; it is useful burner-output telemetry but not an independent
+  pre-flame pump-boost request;
+- no visible burner-dependent A1 speed boost occurred.
+
+Cycle timings:
+
+~~~text
+cycle 1:
+  GFA/mod start  12:50:58.755
+  flame on       12:51:07.750
+  flame off      12:51:35.366
+  flame duration 27.616 s
+
+cycle 2:
+  GFA/mod start  12:55:35.156
+  flame on       12:55:44.375
+  flame off      12:56:12.223
+  flame duration 27.848 s
+~~~
+
+Restart/startup timing:
+
+~~~text
+cycle1 flame off -> cycle2 GFA start = 239.790 s
+cycle1 flame off -> cycle2 flame on  = 249.009 s
+GFA start -> flame on                 =   9.219 s
+~~~
+
+Local coding-plug values `GWG65=4 min` and `GWG73=240 s` are both
+numerically compatible with a ~240 s interval. Do not assign that interval
+uniquely to either field yet.
+
+`0x555A / Kesselsoll_eff` reproducibly dropped 38 -> 18 °C immediately
+before both starts. The exact 20 K difference matches local `GWG72=20 K`.
+Treat this as strong numeric/temporal correlation, not yet firmware-level
+causal proof.
+
+### Exposed control-surface closure
+
+Exhaustive exact-VDensHO1 and global Vitosoft searches found:
+
+- no exact VDensHO1 `nvi*` pump-speed command;
+- `0x7663`, `0x0A3A`, `0x7660`, `0x0A3C` are read-only runtime/result
+  surfaces;
+- E6/E7/E8/E9 and K30/K31/K32/K34/6C are coding/configuration writes;
+- `0x7500 RelaistestGWG200x` is diagnostic relay test, not a source-backed
+  runtime A1 speed controller;
+- global KBus write search found only one pump-semantic write event, a legacy
+  Dekamatik shunt-pump object at `0x4301`;
+- no VDensHO1/HO1 KBus pump-speed write event exists in the recovered catalog.
+
+Therefore the Vitosoft-exposed service, LON and KBus layers are exhausted for
+a source-backed volatile direct-A1 pump-speed override.
+
+**TODO / next boundary:**
+
+- [x] Correct the pump-role model; do not conflate direct A1, DHW and
+  boiler-circuit pump roles.
+- [x] Prove through natural cycles that the active local configuration does
+  not visibly boost A1 speed with burner state.
+- [x] Exhaust exact VDensHO1 service/LON pump-control surfaces.
+- [x] Exhaust global Vitosoft KBus pump-write semantics for a VDensHO1 match.
+- [ ] Continue at regulation-firmware / MCU level once the local PCB/MCU is
+  identified.
+- [ ] Use physical coding-plug EEPROM correlation as the next independent
+  evidence path when the reader is available.
+- [ ] Only reopen a volatile pump-control path if new vendor/firmware evidence
+  produces a concrete local variable or algorithm.
+- [ ] Never substitute CFDM production commands, relay-test functions or
+  repeated E7 writes for the missing pump-speed function.
+
+**Current conclusion:** the desired burner-dependent A1 boost is a
+**firmware/MCU research question**, not an exposed Vitosoft service/LON/KBus
+control feature on the recovered VDensHO1 model.
 
 ## P0 - Complete GFA software identity
 
