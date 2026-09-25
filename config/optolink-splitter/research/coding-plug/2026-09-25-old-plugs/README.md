@@ -11,7 +11,7 @@ Four read-only 512-byte EEPROM images from two older physical coding plugs are a
 
 These are historical single captures per side. The 3x repeat-read criterion from Issue #36 is therefore **not** claimed for these files.
 
-The currently installed/operating coding plug is the software-visible **7833971 / 2015:0201** reference. A physical f01/f02 dump of that active plug is still pending.
+The currently installed/operating coding plug **7833971 / 2015:0201** has now also been physically captured. See `../2026-09-25-active-7833971/`.
 
 ## Integrity
 
@@ -41,7 +41,7 @@ The source-decoded blocks at physical offsets `0x30`, `0x40`, `0x50`, `0x60`, `0
 
 The invariant old/current blocks `0x1020`, `0x1060`, `0x1080`, `0x1090` and `0x10C0` are byte-identical.
 
-**Conclusion:** f01 is the physical main-regulation/GWG coding-plug storage behind the P300 `0x1000 + EEPROM offset` view. The future physical 7833971 dump should be used as the final same-plug byte-for-byte confirmation.
+**Conclusion:** f01 is the physical main-regulation/GWG coding-plug storage behind the P300 `0x1000 + EEPROM offset` view. The active 7833971 physical dump now provides the same-plug byte-for-byte confirmation.
 
 ## Decoded f01 comparison
 
@@ -122,24 +122,23 @@ Key observations:
 
 This strongly rejects f02 as a second flat copy of the normal GWG/P300 coding-plug image.
 
-The working hypothesis that f02 belongs to the second/GFA-related coding domain remains plausible, but is **not yet proven**. The absence of the current live GFA vector is not decisive because these are older plugs and the physical-to-GFA encoding may be transformed or record-based.
+The active 7833971 capture now closes this uncertainty: physical f02 offsets `0x0E..0x13` equal live GFA P101..P106 exactly (`15 01 14 0C 04 D6`). The two old f02 images carry `12 03 08 04 04 FB` at the same offsets. Therefore f02 contains the GFA/fire-control coding-plug dataset; at least P101..P106 are directly mapped.
 
-## Next decisive capture: active 7833971
+## Active 7833971 follow-up
 
-When the current operating plug can be read safely:
+The active physical capture is complete and documented in
+`../2026-09-25-active-7833971/`.
 
-1. boiler unpowered and plug disconnected;
-2. read active f01 three times, unchanged clip, verify 512 bytes + identical SHA256;
-3. read active f02 three times the same way;
-4. confirm f01 offset `0x10 = ASCII 7833971`;
-5. compare active f01 byte-for-byte with the already captured P300 `0x1010..` blocks;
-6. compare active f02 against current GFA P90/P100..P108 and the two old f02 record structures.
+It confirms:
 
-That capture should close the physical f01 mapping and materially test the f02/GFA-domain hypothesis.
+- f01 same-plug physical/P300 mapping;
+- f02 same-plug physical/GFA P101..P106 mapping.
+
+Still unresolved on f02: unique physical offsets for P90, P100, P107 and P108.
 
 ## Evidence level
 
 - raw EEPROM bytes: **hardware observation**
 - f01 -> P300/GWG mapping: **hardware observation + source metadata**, strongly established
 - GWG field names/conversions: **source metadata**, already documented in the repository
-- f02 -> GFA assignment: **hypothesis**, not yet proven
+- f02 -> GFA assignment: **hardware observation + live GFA_READ**, proven for P101..P106
