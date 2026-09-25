@@ -162,6 +162,114 @@ Until the actual installed board is photographed:
 
 This identity check is now the first gate of the PCB workstream.
 
+## Exact WB2A/GG1 board trail: 7187393 and 84346904
+
+Online evidence now gives a much stronger board trail for the actual WB2A/GG1 generation than the earlier VBC130 comparison board.
+
+### Direct WB2A -> GG1 -> 7187393 correlation
+
+A Viessmann Community case identifies one appliance explicitly as:
+
+- **Vitodens 200 WB2A**
+- appliance production family: **7176543**
+- Kesselkreisregelung: **GG1 7187362**
+- main PCB: **7187393**
+
+Source:
+https://community.viessmann.de/t5/Gas/Vitodens-200-WB2A-Startet-nicht-mehr/m-p/214246
+
+This is currently the strongest public direct correlation between an actual WB2A and a specific GG1 PCB number.
+
+A separate Viessmann Community case identifies a 2004 WB2A with appliance number `7176543...` and a GG1 production number `7185329 405099105`. This supports the important distinction that the visible 718xxxx/719xxxx labels on complete controls are production/component numbers and need not equal the PCB number.
+
+Source:
+https://community.viessmann.de/t5/Gas/Vitodens-200-WB2A-Ersatz-Platine-lieferbar/td-p/209270
+
+Viessmann staff explicitly states in another GG1 compatibility thread that numbers such as `7187362` and `7196527` are **Produktionsnummern einzelner Komponenten** and identifies `7825241` as the required GG1 order/material number for WB2A `7186846`.
+
+Source:
+https://origin-viessmann.lithium.com/t5/Gas/GG1-Kompatibilitaet/td-p/154525
+
+Therefore keep these identifier classes separate:
+
+- `7176543`, `7186846`, etc.: appliance production families;
+- `7187362`, `7185329`, `7196527`, etc.: regulation/component production numbers;
+- `7187393`: observed PCB/board number;
+- `7825241`: replacement/order material number for the GG1 regulation family.
+
+### 7187393 is shared within the GG1-era family
+
+A separate Viessmann Community case on a **Vitodens 300 WB3A 7176537** explicitly reports:
+
+`Leiterplatte: 7187393 522521106`
+
+Source:
+https://community.viessmann.de/t5/Gas/Vitodens-300-WB3A-71-76-537-Fehler-F4/td-p/247256
+
+Thus `7187393` is not a WB2A-exclusive application board. It appears in at least WB2A and WB3A GG1-era equipment. This makes the board number useful for PCB research but insufficient by itself to identify appliance-specific firmware/coding.
+
+### Vertical daughterboard 84346904
+
+A second WB2A repair case reports replacing `PCB 84346904` and explicitly describes it as `das stehende PCB auf der Hauptplatine`.
+
+Source:
+https://community.viessmann.de/t5/Gas/Vitodens-200-WB2A-Stoerung-F0-Zuendtrafo-liegt-ununterbrochen-an/td-p/219269
+
+Multiple independent marketplace listings pair **7187393** with **84346904**, including complete controls with 10-15 photographs:
+
+- https://www.ebay.de/itm/127115328332
+- https://www.ebay.de/itm/127843820272
+- https://www.ebay.de/itm/127843820279
+
+This makes the physical pairing **7187393 main PCB + 84346904 vertical PCB** high-confidence at the marketplace/photo level.
+
+### Service-manual architecture creates a new identification target
+
+The WB2A service manual `5681 543` does not expose board part numbers, but it separates the control electronics functionally into:
+
+- `A1` = **Grundleiterplatte**
+- `A2` = **Schaltnetzteil**
+- `A3` = **Optolink**
+- `A4` = **Feuerungsautomat**
+- `A5` = **Bedienteil**
+- `A6` = **Codierstecker**
+- `A7` = **Anschlussadapter**
+- `A8` = **Kommunikationsmodul LON**
+
+It also labels connector/function `145` as **KM-BUS** and the internal pump separately.
+
+Primary WB2A service manual:
+https://community.viessmann.de/viessmann/attachments/viessmann/customers-gas/126396/1/vitodens_200_serviceanleitung.pdf
+
+This separation is important for the firmware workstream. The currently observed `84346904` vertical PCB **must not yet be equated with A4/Feuerungsautomat**, but A4 is now an explicit physical-identification target when the local board is photographed.
+
+Required local evidence:
+
+1. determine whether `7187393` is printed/stickered on the local A1/main PCB;
+2. check whether the vertical board is `84346904`;
+3. trace/identify which physical assembly corresponds to service-manual `A4 Feuerungsautomat`;
+4. identify the MCU and memory on A1 and A4 separately;
+5. keep the coding-plug A6 EEPROM domain separate from both.
+
+### C105 as a board-location landmark
+
+The same direct WB2A/7187393 repair thread reports successful replacement of `C105`, where the failed part measured about 38 nF and the expected replacement was 220 nF X2/305 VAC. This is useful mainly as a **visual board landmark** for matching online photos to the 7187393 layout, not as a firmware clue.
+
+Do not generalize C105 repair advice to other control generations.
+
+### Current evidence boundary
+
+Despite the stronger PCB identity trail, no reliable public source found so far identifies:
+
+- the exact MCU on `7187393`;
+- the exact MCU on `84346904`;
+- a schematic for either PCB;
+- a debug/programming connector or pinout;
+- firmware dump files;
+- a proven relation between `84346904` and service-manual `A4 Feuerungsautomat`.
+
+Those remain photographic/component-identification tasks rather than facts.
+
 ## Main MCU: likely Renesas M30624FGPFP
 
 The enhanced crop of reference set A shows a 100-pin QFP with markings strongly consistent with:
@@ -515,7 +623,7 @@ If the local board is instead GG1 with another MCU, restart the decision tree fr
 - [x] Record M16C/62P flash-ID readout-protection mechanism.
 - [x] Correct X15 footprint count to three pads.
 - [x] Establish the WB2A identity conflict: local project baseline points to GG1/7825241, so 7424735 cannot yet be treated as the installed board.
-- [ ] Photograph the actual local WB2A regulation board and labels.
+- [x] Establish 7187393 as a strong exact WB2A/GG1 PCB candidate from direct public evidence.\n- [x] Establish 84346904 as the recurring vertical daughterboard paired with 7187393.\n- [ ] Photograph the actual local WB2A regulation board and labels.
 - [ ] Confirm or reject 7424735 as the local PCB number.
 - [ ] Confirm exact local main MCU.
 - [ ] Trace local X15 pads to MCU/passives.
@@ -543,7 +651,7 @@ If the local board is instead GG1 with another MCU, restart the decision tree fr
 | Local WB2A uses the same 7424735 PCB | **unknown** | no local-board photo yet; WB2A spare data points to GG1/7825241 |
 | Local MCU is M30624FGPFP | **unknown** | depends on local-board identity |
 | Local firmware can be read without ID | **unknown** | flash ID may be set |
-| Vertical daughterboard is burner/GFA electronics | low / unproven | no IC/trace evidence |
+| 7187393 occurs on WB2A/GG1 hardware | high | direct WB2A community identification + independent WB3A occurrence |\n| 84346904 is a vertical PCB paired with 7187393 | medium-high | direct WB2A repair report + multiple marketplace photo sets |\n| Vertical 84346904 equals service-manual A4/Feuerungsautomat | **unknown** | manual separates A4 functionally, but no public part-number mapping found |
 
 ## Research discipline
 
