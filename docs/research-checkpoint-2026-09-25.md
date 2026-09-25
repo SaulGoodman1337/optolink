@@ -781,6 +781,55 @@ the original E7 after the cycle.
 Helper commit:
 `07ac0f5adbefe4e5af8796a316b647d5a60204e9`.
 
+## Controlled E7=100 heating comparison completed
+
+After several radiators were opened, the guarded E7 comparison waited for
+DHW=0 and flame off, then changed only E7 from 30 % to 100 %.
+
+Immediate verified result:
+
+~~~text
+E7        100 %
+A1        100 %
+0x0A3C    100 %
+internal  100 %
+~~~
+
+This reconfirms the direct A1 request/result chain and shows that the 50 %
+GWG75 floor is not limiting once the A1 request itself is above 50 %.
+
+The following heating flame started at 11:59:48.900 CEST, initially around
+66 % modulation, then settled near 33 % while boiler temperature tracked the
+38.0 C target. Flame remained confirmed on at 12:06:20, so the continuous
+runtime was at least 391.1 s.
+
+Baseline at E7=30 immediately beforehand:
+
+- flame runs 41.529 s, 38.264 s, 33.943 s;
+- flame-off intervals 247.586 s and 247.853 s;
+- pump chain invariant at 36 -> 50 -> 50.
+
+The runtime difference is **not attributed to E7 alone**, because radiator
+load was intentionally increased at the same time.
+
+The user then returned the boiler to DHW-only. At the safe restore point:
+
+~~~text
+DHW=0, flame off, A1=0, 0x0A3C=0, internal pump=0
+~~~
+
+E7 was explicitly restored from 100 % to 30 % and verified by readback
+`0x1E`. All four production services were active afterwards.
+
+Evidence:
+
+- `config/optolink-splitter/research/vitosoft/e7-100-heating-cycle-2026-09-25-evidence.json`
+- evidence commit `28f7c1b46423cf19cf7c1ccd54e36ff1e46aa375`.
+
+The temporary E7 recorder itself stopped advancing its CSV around 12:00 while
+remaining alive. The remainder was captured through independent read-only
+snapshots. That helper must be hardened before reuse.
+
 ## Priority 4 - remaining firmware/KM-BUS work
 
 After the physical evidence above:
