@@ -286,6 +286,90 @@ def time_plus_minutes(value, delta, *, allow_24=False):
     return f"{hour:02d}:{minute:02d}"
 
 
+def normalize_editor_time(value, *, end=False):
+    value = value.strip()
+    if re.fullmatch(r"\d{2}:\d{2}:\d{2}", value):
+        value = value[:5]
+    if end and value == "00:00":
+        # Home Assistant time entities use 00:00 for midnight; in a same-day
+        # schedule end field that is the natural UI representation of 24:00.
+        return "24:00"
+
+    match = re.fullmatch(r"(\d{2}):(\d{2})", value)
+    if match is None:
+        return value
+
+    hour = int(match.group(1))
+    minute = int(match.group(2))
+    if hour > 23 or minute > 59:
+        return value
+
+    total = hour * 60 + minute
+    rounded = ((total + 5) // 10) * 10
+    if end:
+        if rounded >= 24 * 60:
+            return "24:00"
+        if rounded == 0:
+            rounded = 10
+    else:
+        rounded = min(rounded, 23 * 60 + 50)
+
+    hour, minute = divmod(rounded, 60)
+    return f"{hour:02d}:{minute:02d}"
+
+
+def editor_time_state(value, *, end=False):
+    if value is None:
+        return "01:00:00" if end else "00:00:00"
+    if end and value == "24:00":
+        return "00:00:00"
+    return f"{value}:00"
+
+
+def default_editor_interval(slots, slot):
+    occupied = []
+    for index, (start, end) in enumerate(slots):
+        if index == slot or start is None or end is None:
+            continue
+        occupied.append((to_minutes(start), to_minutes(end)))
+    occupied.sort()
+
+    preferred = 6 * 60
+    if slot > 0 and slots[slot - 1][1] is not None:
+        preferred = to_minutes(slots[slot - 1][1])
+
+    gaps = []
+    cursor = 0
+    for start, end in occupied:
+        if start > cursor:
+            gaps.append((cursor, start))
+        cursor = max(cursor, end)
+    if cursor < 24 * 60:
+        gaps.append((cursor, 24 * 60))
+
+    candidates = []
+    for gap_start, gap_end in gaps:
+        start = max(gap_start, preferred)
+        if start < gap_end:
+            candidates.append((start, gap_end))
+    if not candidates:
+        candidates = gaps
+
+    for start, gap_end in candidates:
+        if gap_end - start >= 10:
+            end = min(start + 60, gap_end)
+            hour, minute = divmod(start, 60)
+            start_text = f"{hour:02d}:{minute:02d}"
+            if end == 24 * 60:
+                end_text = "24:00"
+            else:
+                hour, minute = divmod(end, 60)
+                end_text = f"{hour:02d}:{minute:02d}"
+            return [start_text, end_text]
+
+    raise ValueError("Kein freies Zeitfenster mehr für diesen Tag")
+
+
 class ScheduleManager:
     def __init__(self):
         if not getattr(settings, "mqtt_broker", None):
@@ -321,6 +405,8 @@ class ScheduleManager:
         self.editor_clear_topic = f"{self.base_topic}/schedule/editor/clear"
         self.editor_reload_topic = f"{self.base_topic}/schedule/editor/reload"
         self.editor_slot_topics = {}
+        self.editor_time_topics = {}
+        self.editor_enabled_topics = {}
         for slot in range(4):
             for side in ("start", "end"):
                 topic = (
@@ -328,6 +414,16 @@ class ScheduleManager:
                     f"slot{slot + 1}/{side}/set"
                 )
                 self.editor_slot_topics[topic] = (slot, side)
+                time_topic = (
+                    f"{self.base_topic}/schedule/editor/"
+                    f"slot{slot + 1}/{side}_time/set"
+                )
+                self.editor_time_topics[time_topic] = (slot, side)
+            enabled_topic = (
+                f"{self.base_topic}/schedule/editor/"
+                f"slot{slot + 1}/enabled/set"
+            )
+            self.editor_enabled_topics[enabled_topic] = slot
 
         self.editor_command_topics = {
             self.editor_load_topic,
@@ -335,6 +431,8 @@ class ScheduleManager:
             self.editor_clear_topic,
             self.editor_reload_topic,
             *self.editor_slot_topics.keys(),
+            *self.editor_time_topics.keys(),
+            *self.editor_enabled_topics.keys(),
         }
         self.editor_target = None
         self.editor_slots = [[None, None] for _ in range(4)]
@@ -428,6 +526,7 @@ class ScheduleManager:
         if self.client is None:
             return
         for slot, (start, end) in enumerate(self.editor_slots, start=1):
+            enabled = start is not None and end is not None
             self.client.publish(
                 f"{self.base_topic}/schedule/editor/slot{slot}/start",
                 start or EDITOR_OFF,
@@ -436,6 +535,21 @@ class ScheduleManager:
             self.client.publish(
                 f"{self.base_topic}/schedule/editor/slot{slot}/end",
                 end or EDITOR_OFF,
+                retain=True,
+            )
+            self.client.publish(
+                f"{self.base_topic}/schedule/editor/slot{slot}/enabled",
+                "ON" if enabled else "OFF",
+                retain=True,
+            )
+            self.client.publish(
+                f"{self.base_topic}/schedule/editor/slot{slot}/start_time",
+                editor_time_state(start),
+                retain=True,
+            )
+            self.client.publish(
+                f"{self.base_topic}/schedule/editor/slot{slot}/end_time",
+                editor_time_state(end, end=True),
                 retain=True,
             )
 
@@ -523,6 +637,7 @@ class ScheduleManager:
         if value == EDITOR_OFF:
             self.editor_slots[slot] = [None, None]
         elif side == "start":
+            value = normalize_editor_time(value, end=False)
             start = parse_time(value, allow_24=False)
             self.editor_slots[slot][0] = start
             end = self.editor_slots[slot][1]
@@ -531,15 +646,43 @@ class ScheduleManager:
                     start, 60, allow_24=True
                 )
         else:
+            value = normalize_editor_time(value, end=True)
             end = parse_time(value, allow_24=True)
-            if end == "00:00":
-                raise ValueError("00:00 ist als Endzeit nicht sinnvoll")
             self.editor_slots[slot][1] = end
             start = self.editor_slots[slot][0]
             if start is None or to_minutes(start) >= to_minutes(end):
                 self.editor_slots[slot][0] = time_plus_minutes(
                     end, -60, allow_24=False
                 )
+
+        self.publish_editor_slots()
+        try:
+            preview = editor_schedule_from_slots(self.editor_slots)
+            self.publish_editor_status(
+                "dirty",
+                message=f"Entwurf geändert: {preview}",
+                valid=True,
+            )
+        except Exception as exc:
+            self.publish_editor_status(
+                "dirty",
+                message=str(exc),
+                valid=False,
+            )
+
+    def set_editor_enabled(self, slot, payload):
+        if self.editor_target is None:
+            raise ValueError("Zuerst ein Programm und einen Wochentag auswählen")
+
+        enabled = payload.strip().lower() in {"on", "1", "true", "yes"}
+        if enabled:
+            start, end = self.editor_slots[slot]
+            if start is None or end is None:
+                self.editor_slots[slot] = default_editor_interval(
+                    self.editor_slots, slot
+                )
+        else:
+            self.editor_slots[slot] = [None, None]
 
         self.publish_editor_slots()
         try:
@@ -607,6 +750,14 @@ class ScheduleManager:
                 self.clear_editor()
             elif topic == self.editor_apply_topic:
                 self.apply_editor()
+            elif topic in self.editor_enabled_topics:
+                self.set_editor_enabled(
+                    self.editor_enabled_topics[topic],
+                    payload,
+                )
+            elif topic in self.editor_time_topics:
+                slot, side = self.editor_time_topics[topic]
+                self.set_editor_slot(slot, side, payload)
             else:
                 slot, side = self.editor_slot_topics[topic]
                 self.set_editor_slot(slot, side, payload)
@@ -900,6 +1051,16 @@ def self_test():
     assert time_plus_minutes("23:30", 60, allow_24=True) == "24:00"
     assert time_plus_minutes("00:30", -60) == "00:00"
     assert editor_schedule_from_slots([[None, None] for _ in range(4)]) == "none"
+    assert normalize_editor_time("05:30:00") == "05:30"
+    assert normalize_editor_time("05:34:00") == "05:30"
+    assert normalize_editor_time("05:36:00") == "05:40"
+    assert normalize_editor_time("23:58:00") == "23:50"
+    assert normalize_editor_time("23:58:00", end=True) == "24:00"
+    assert normalize_editor_time("00:00:00", end=True) == "24:00"
+    assert editor_time_state("24:00", end=True) == "00:00:00"
+    defaults = [[None, None] for _ in range(4)]
+    defaults[0] = ["05:00", "20:00"]
+    assert default_editor_interval(defaults, 1) == ["20:00", "21:00"]
     print("schedule editor self-test OK")
 
 
