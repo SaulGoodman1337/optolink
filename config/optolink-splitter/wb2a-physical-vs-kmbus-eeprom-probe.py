@@ -45,7 +45,7 @@ import sys
 import termios
 import time
 
-VERSION = "1.0.2"
+VERSION = "1.1.0"
 SPLITTER = "optolink-splitter.service"
 PARTY = "optolink-party-emulator.service"
 SCHEDULE = "optolink-schedule-manager.service"
@@ -60,6 +60,13 @@ GROUPS = (
     ("virtual_vs_kmbus_ram_control", 0x00F8, 2, (0x01, 0x41, 0x41, 0x01)),
     ("physical_vs_kmbus_eeprom_f8",  0x00F8, 2, (0x03, 0x43, 0x43, 0x03)),
     ("physical_vs_kmbus_eeprom_0001",0x0001, 1, (0x03, 0x43, 0x43, 0x03)),
+    # M16C/62P memory-map discriminators. These are valid mapped regions on
+    # the M30624FG working hypothesis; no reserved address is touched.
+    ("m16c_sfr_0004",               0x0004, 4, (0x03, 0x43, 0x43, 0x03)),
+    ("m16c_ram_start_0400",         0x0400,16, (0x03, 0x43, 0x43, 0x03)),
+    ("m16c_ram_end_53f0",           0x53F0,16, (0x03, 0x43, 0x43, 0x03)),
+    ("m16c_dataflash_start_f000",   0xF000,16, (0x03, 0x43, 0x43, 0x03)),
+    ("m16c_dataflash_end_fff0",     0xFFF0,16, (0x03, 0x43, 0x43, 0x03)),
 )
 
 ALLOWED_REQUESTS = {
@@ -70,6 +77,16 @@ ALLOWED_REQUESTS = {
     (0x43, 0x00F8, 2),
     (0x03, 0x0001, 1),
     (0x43, 0x0001, 1),
+    (0x03, 0x0004, 4),
+    (0x43, 0x0004, 4),
+    (0x03, 0x0400,16),
+    (0x43, 0x0400,16),
+    (0x03, 0x53F0,16),
+    (0x43, 0x53F0,16),
+    (0x03, 0xF000,16),
+    (0x43, 0xF000,16),
+    (0x03, 0xFFF0,16),
+    (0x43, 0xFFF0,16),
 }
 
 
@@ -527,6 +544,8 @@ def self_test():
         def test_physical_and_43_frames(self):
             self.assertEqual(request_frame(0x03, 0x00F8, 2).hex(), "4105000300f80202")
             self.assertEqual(request_frame(0x43, 0x00F8, 2).hex(), "4105004300f80242")
+            self.assertEqual(request_frame(0x03, 0xF000, 16).hex(), "41050003f0001008")
+            self.assertEqual(request_frame(0x03, 0xFFF0, 16).hex(), "41050003fff01007")
 
         def test_classification_ignores_echoed_command(self):
             a = {
