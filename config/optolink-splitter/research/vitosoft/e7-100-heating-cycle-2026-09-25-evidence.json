@@ -160,5 +160,10 @@
       "No conclusion is made that E7=100 is an appropriate permanent setting."
     ],
     "value_for_research": "The experiment confirms the request/result topology and provides a high-flow reference state for future pump and combustion dynamics comparisons."
+  },
+  "interpretation_correction_2026_09_25": {
+    "status": "SUPERSEDES_CAUSAL_TOPOLOGY_WORDING_ONLY",
+    "note": "Raw measurements remain valid. The earlier wording that E7 -> A1 runtime request -> 0x0A3C -> physical internal pump represented one causal chain was too coarse. Direct A1 heating, DHW/internal-pump operation and boiler-circuit operation are distinct logical roles of the integrated pump. E7 is the direct-A1 regulated heating-circuit-pump minimum; 6C controls the internal pump in DHW; K31 applies to the boiler-circuit role. 0x0A3C/0x7660 correlations are retained as observations but are not used as proof of direct-A1 control topology.",
+    "production_decision": "Do not implement burner-triggered E7 writes as the solution. Continue searching for a source-backed internal burner-dependent A1 pump function or firmware/runtime state."
   }
 }
