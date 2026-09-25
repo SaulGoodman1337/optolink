@@ -1,0 +1,189 @@
+{
+  "schema": "optolink-research-evidence-v1",
+  "captured_at": "2026-09-25T09:57:56+02:00",
+  "controller": {
+    "model": "Vitodens 200-W WB2A",
+    "profile": "VDensHO1",
+    "identification": "20C2",
+    "identification_extension": "0103"
+  },
+  "purpose": "Bounded read-only discriminator between P300 Physical_READ 0x03 and KMBUS_EEPROM_READ 0x43, with 0x01 vs 0x41 positive comparison control.",
+  "helper": {
+    "path": "/usr/local/bin/wb2a-physical-vs-kmbus-eeprom-probe",
+    "executed_version": "1.0.0",
+    "log": "/root/wb2a-physical-vs-kmbus-eeprom-20260925-095756-217850.log",
+    "self_test_before": "5/5 PASS",
+    "execution_result": "PASS",
+    "policy": {
+      "read_only": true,
+      "fresh_p300_session_per_trial": true,
+      "broad_sweep": false,
+      "writes": false
+    },
+    "post_run_fixes": [
+      {
+        "commit": "3391e21f9a8179e9773d1760ee408a264d97bc9d",
+        "version": "1.0.1",
+        "reason": "Classifier originally included the echoed response command, falsely labeling payload-identical 0x01/0x41 and 0x03/0x43 pairs as STABLE_DISTINCT."
+      },
+      {
+        "commit": "3c1e37e79a628fce4c1ed0ed9683ba01fbf46ad9",
+        "version": "1.0.2",
+        "reason": "Preserve the schedule-manager service explicitly across the temporary P300 maintenance window."
+      }
+    ],
+    "corrected_offline_self_test": "6/6 PASS"
+  },
+  "preconditions": {
+    "production_vs1": true,
+    "port_vitoconnect": null,
+    "port_optolink": "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0",
+    "resolved_port": "/dev/ttyUSB0",
+    "serial": "4800 8E2",
+    "olbreath_seconds": 0.025
+  },
+  "identity_control": {
+    "function": "0x01",
+    "address": "0x00F8",
+    "length": 8,
+    "status": "SUCCESS",
+    "data": "20c2000300000103",
+    "frame": "410d010100f80820c2000300000103f8",
+    "result": "PASS"
+  },
+  "groups": [
+    {
+      "label": "virtual_vs_kmbus_ram_control",
+      "address": "0x00F8",
+      "length": 2,
+      "order": [
+        "0x01",
+        "0x41",
+        "0x41",
+        "0x01"
+      ],
+      "trials": [
+        {
+          "function": "0x01",
+          "status": "SUCCESS",
+          "data": "20c2",
+          "frame": "4107010100f80220c2e5"
+        },
+        {
+          "function": "0x41",
+          "status": "SUCCESS",
+          "data": "20c2",
+          "frame": "4107014100f80220c225"
+        },
+        {
+          "function": "0x41",
+          "status": "SUCCESS",
+          "data": "20c2",
+          "frame": "4107014100f80220c225"
+        },
+        {
+          "function": "0x01",
+          "status": "SUCCESS",
+          "data": "20c2",
+          "frame": "4107010100f80220c2e5"
+        }
+      ],
+      "helper_reported_classification": "STABLE_DISTINCT",
+      "corrected_classification": "STABLE_SAME",
+      "interpretation": "Positive control reconfirms byte-identical payloads for 0x01 and 0x41; only echoed command/checksum differ."
+    },
+    {
+      "label": "physical_vs_kmbus_eeprom_f8",
+      "address": "0x00F8",
+      "length": 2,
+      "order": [
+        "0x03",
+        "0x43",
+        "0x43",
+        "0x03"
+      ],
+      "trials": [
+        {
+          "function": "0x03",
+          "status": "SUCCESS",
+          "data": "5491",
+          "frame": "4107010300f8025491ea"
+        },
+        {
+          "function": "0x43",
+          "status": "SUCCESS",
+          "data": "5491",
+          "frame": "4107014300f80254912a"
+        },
+        {
+          "function": "0x43",
+          "status": "SUCCESS",
+          "data": "5491",
+          "frame": "4107014300f80254912a"
+        },
+        {
+          "function": "0x03",
+          "status": "SUCCESS",
+          "data": "5497",
+          "frame": "4107010300f8025497f0"
+        }
+      ],
+      "corrected_classification": "DYNAMIC_OR_INCONCLUSIVE",
+      "interpretation": "0x03 and 0x43 overlap on 0x5491; 0x03 changed later to 0x5497. No distinct address-space behavior is demonstrated."
+    },
+    {
+      "label": "physical_vs_kmbus_eeprom_0001",
+      "address": "0x0001",
+      "length": 1,
+      "order": [
+        "0x03",
+        "0x43",
+        "0x43",
+        "0x03"
+      ],
+      "trials": [
+        {
+          "function": "0x03",
+          "status": "SUCCESS",
+          "data": "81",
+          "frame": "41060103000101818d"
+        },
+        {
+          "function": "0x43",
+          "status": "SUCCESS",
+          "data": "81",
+          "frame": "4106014300010181cd"
+        },
+        {
+          "function": "0x43",
+          "status": "SUCCESS",
+          "data": "81",
+          "frame": "4106014300010181cd"
+        },
+        {
+          "function": "0x03",
+          "status": "SUCCESS",
+          "data": "81",
+          "frame": "41060103000101818d"
+        }
+      ],
+      "helper_reported_classification": "STABLE_DISTINCT",
+      "corrected_classification": "STABLE_SAME",
+      "interpretation": "Stable payload equality across fresh sessions; only echoed command/checksum differ."
+    }
+  ],
+  "recovery": {
+    "splitter_restored": true,
+    "party_restored": true,
+    "vs1_restored": true,
+    "vs1_marker": "2026-09-25 09:58:25 [INFO]: VS1/KW protocol initialized",
+    "maintenance_api_active": true,
+    "schedule_manager_note": "The v1.0.0 probe did not track the schedule manager. It was found inactive after the test and manually restarted at 09:59:50; the service then reported active/running and listening on 21 guarded schedule topics.",
+    "schedule_manager_restored": true
+  },
+  "conclusion": {
+    "evidence_level": "hardware_observation",
+    "statement": "At the two bounded local samples, 0x43 did not expose data distinct from 0x03. 0x0001/1 was stably identical (0x81) across both functions and fresh sessions; 0x00F8/2 showed overlapping dynamic values. This strongly supports a local common/aliased service-view hypothesis for 0x03 and 0x43, but does not prove universal equivalence.",
+    "rejected_interpretation": "These observations do not justify transferring GWG/LGM27 EEPROM semantics to local VDensHO1 P300 0x43."
+  }
+}
