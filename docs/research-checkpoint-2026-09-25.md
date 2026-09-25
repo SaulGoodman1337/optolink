@@ -830,6 +830,56 @@ The temporary E7 recorder itself stopped advancing its CSV around 12:00 while
 remaining alive. The remainder was captured through independent read-only
 snapshots. That helper must be hardened before reuse.
 
+## Pump role-model correction and burner-dependent A1 research target
+
+The pump model was corrected after re-checking WB2A/VDensHO1 source semantics.
+
+The integrated physical KM-BUS pump must be separated into logical roles:
+
+- direct A1 heating: heating-circuit pump, governed by E6/E7 and represented
+  by the A1 runtime surface `0x7663`;
+- DHW/storage heating: internal boiler/DHW circulation role, governed by
+  `6C / 0x676C` (local value 100 %);
+- boiler-circuit role with hydraulic separation/mixer: internal-pump coding
+  `31 / 0x5731`.
+
+Accordingly, the previous causal model
+`0x7663 -> hidden clamp -> 0x0A3C -> physical pump` is superseded.
+`0x0A3C` and `0x7660` remain valid internal-pump service surfaces, but
+their correlation must not be used to infer the direct-A1 control algorithm.
+
+The actual research target is now:
+
+> Find whether 20C2/VDensHO1 contains an internal burner-dependent A1-pump
+> boost/override that avoids persistent E7 writes.
+
+Private Vitosoft evidence proves that Viessmann used such concepts in other
+regulation families:
+
+- `0x571D K1D_KonfiPumpenbeiBrennerein`:
+  "Beimischpumpe EIN, wenn Brenner EIN";
+- `0x581D SR13_K1D_KonfiPumpenbeiBrennerein`;
+- legacy gas coding-card event `0x1070`, byte 5:
+  "Pumpe bei Brennerbetrieb";
+- NRx variant `0x1080`, byte 5;
+- later `0x7751 K51_KonfiHydrWeicheIntPumpe`.
+
+None belongs to an exact VDensHO1 EventTypeGroup. The local 0x571D/0x581D
+reads were already invalid. For VDensHO1 the `0x1070` byte-5 slot is
+explicitly `GWG75: Mindestdrehzahl Interne Pumpe`, so legacy semantics must
+not be transferred.
+
+Evidence:
+
+- burner/pump archive trace run `36123710024`, artifact `10859205686`;
+- exact VDensHO1 candidate run `36124347409`, artifact `10859586607`;
+- corrected public pump model commit
+  `bd7aa93083940c0ad168fe64acbcc38c6edb7e1d`.
+
+Conclusion: the function class exists in Viessmann firmware history, but no
+source-backed exposed burner-dependent A1 coding has yet been found on
+VDensHO1. Do not use repeated E7 writes as the production solution.
+
 ## Priority 4 - remaining firmware/KM-BUS work
 
 After the physical evidence above:
