@@ -568,6 +568,42 @@ The next archival discriminator is therefore specifically:
 No live `CB/C5/AE/9E/33/43` packet is justified on the local WB2A from the
 current evidence alone.
 
+## Hourly checkpoint: expanded external 2098 search
+
+An expanded public-web search was run for combinations of:
+
+```text
+openv.de
+M30612 / M30612MC
+V200KW2 / 2098
+01 CB / 01 C5 / 01 AE / 01 9E
+monitor / page / bank / selector / copy
+```
+
+The search re-confirmed the known HaustechnikDialog references to the private
+OpenV developer forum and to `openv.de/svn/xml/sim-2098.ini`, but did not
+recover a preserved developer-forum post, SVN artifact, or successful
+V200KW2 low-level-memory trace beyond the already documented `C7`
+identification path.
+
+The surviving public OpenV/vcontrold material still consistently models:
+
+```text
+2098 -> KW2
+2053 -> GWG low-level memory overrides
+```
+
+No source-backed selector/monitor/copy request shape was recovered in this
+checkpoint. Therefore the evidence threshold for beginning a bounded live
+`CB/C5/AE/9E/33/43` discriminator on the production WB2A is still not met.
+
+**Workstream-2 gate:** not yet open. The concrete missing prerequisite remains
+one of:
+
+1. a successful `2098` trace using a low-level GWG memory opcode;
+2. a contemporary selector/monitor/copy sequence tied to V200KW2/M30612; or
+3. an exact VDensHO1/20C2 equivalent service path.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
