@@ -2411,6 +2411,108 @@ Therefore:
   priority than a KarlKoch/M30612-specific artifact unless new evidence shows
   a raw/service extension.
 
+## Active continuation: original openv4j SourceForge history and 64-KiB memory-image tool
+
+The original SourceForge Git repository for `openv4j` is still directly
+reachable at:
+
+```text
+https://git.code.sf.net/p/openv4j/code
+```
+
+It contains 27 commits, including history that predates the later GitHub
+mirror/import.
+
+### V200KW2 memory-image provenance
+
+The V200KW2 memory-map fixture and segmented reader were already present in the
+initial SourceForge import on 2009-12-18.
+
+The code states that V200KW2 can fetch data in 32-byte segments, but the
+implementation makes the addressing limit explicit:
+
+```java
+dataSegments = new DataBlock[0x010000 / segmentSize];
+```
+
+The companion `openv4j-memory-image` command-line tool exposes:
+
+```text
+--full-scan
+fetch all 0x0000 to 0xffff
+```
+
+implemented as:
+
+```java
+container.addToDataContainer(0x0000, 0x010000);
+```
+
+The transport path sends each block with the ordinary KW request:
+
+```text
+F7 <addr_hi> <addr_lo> <length>
+```
+
+and writes use ordinary `F4`. A complete all-history search of the original
+SourceForge repository found no `CB/C5/AE/9E/33/43/6E` memory family,
+no third address byte and no selector/page/bank/monitor extension in this
+memory-image path.
+
+The preserved `V200KW2-MemMap.txt` contains selected 16-byte regions from
+`0x0000` through `0xA3FF`. On 2009-12-23 the author added the
+`0xA200..0xA2FF` blocks plus `0xA3F0`; all of those added bytes are
+`0xFF`.
+
+This is independent, pre-2010 evidence for the same boundary later encountered
+by TerminatorIII: a public V200KW2 memory-image tool could walk the ordinary
+16-bit KW address space, but it did not expose the M30612 program ROM.
+
+The phrase "32 byte segmentation" therefore means transfer/read batching, not
+a bank/page selector or wider MCU address.
+
+### Early public 20CB/VScot identity in v-control
+
+The preserved public binaries were also rechecked against the later
+Fritz-Ber/VScot fork history.
+
+Both:
+
+```text
+v-control1_2_5.exe
+v-control1_3_0M.exe
+```
+
+contain device identity strings for:
+
+```text
+2098  V200KW2
+20C2
+20CB  VScotHO1
+```
+
+The PE timestamp of the preserved `v-control1_2_5.exe` is
+2007-12-27, and its archive was imported into the Wiki on 2008-02-06.
+
+Therefore `20CB/VScotHO1` identity support was already present in an early
+public v-control binary before Fritz-Ber described his 2009/2010 VB2008E work.
+This does not prove that Fritz-Ber's private source was byte-for-byte identical,
+but it downgrades the hypothesis that his fork introduced a new low-level
+protocol/service layer. The surviving evidence remains consistent with a
+VB/.NET port and device/datapoint adaptation built on the existing v-control /
+V-Comm transport.
+
+### Workstream-2 gate impact
+
+Still closed.
+
+The original openv4j history provides another contemporary V200KW2 dump
+implementation, but it is explicitly a 16-bit `F7` memory-image reader.
+It contains no mechanism capable of constructing the M30612
+`0xE0000..0xFFFFF` program-ROM address.
+
+No live request is justified by this finding.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
