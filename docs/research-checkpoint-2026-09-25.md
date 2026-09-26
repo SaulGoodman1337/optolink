@@ -1085,3 +1085,46 @@ New physical discriminator:
 - P101..P106 remain the direct f02 coding-plug mapping;
 - P100 remains unresolved between two repeated-record field positions;
 - no writes were performed and all production services remained active.
+
+
+## 2026-09-26 addendum — Vitotrol software-only track paused on MCU firmware
+
+The software-only Vitotrol/KM-BUS emulation investigation is intentionally
+paused. The authoritative checkpoint is:
+
+`config/optolink-splitter/research/vitotrol-software-emulation-pause-checkpoint-2026-09-26.md`
+
+Do not restart blind A0/NRF/KBus/XRAM probing from older intermediate notes.
+
+Verified restore/current boundary:
+
+~~~text
+0x27A0 = 00
+0x7342 = 00
+0x0896 = C800
+0x089C = 03
+0x0A5C = 00000000
+current alarm clear
+no new BC after 2026-09-25 22:17:36
+~~~
+
+Key conclusions:
+
+- A0=1 only configures expected remote presence; without communication it raises BC.
+- direct Virtual_WRITE to effective room value `0x0896` is rejected.
+- `0x089C` has a write handler but controller logic immediately regenerates the effective status.
+- hidden `0x7340..0x7344` state is writable and the F2/F3 encoding is strongly compatible with Vitotrol 200/300 type identity, but `0x7342` alone does not create a live participant.
+- exact VDensHO1 RPC and exposed KBus write paths do not provide a source-backed Vitotrol RX/mailbox injection mechanism.
+- further progress now depends on regulation-firmware/MCU evidence from Issue #25.
+
+Preferred next breakthrough:
+
+~~~text
+Optolink-reachable monitor / bank / page / internal-memory / RPC path
+        or
+regulation firmware image with handler cross-references
+        ->
+identify KM-BUS RX + remote watchdog + room-state commit logic
+        ->
+resume bounded software-emulation experiments
+~~~
