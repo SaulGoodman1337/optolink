@@ -494,6 +494,63 @@ normal KW traffic only, not a firmware-read extension.
 Source:
 https://www.haustechnikdialog.de/Forum/t/59578/Vitotronic-vom-PC-steuern-ueberwachen?PostSort=1&page=20
 
+### SourceForge/vcontrold archaeology closes two false positives
+
+The recovered `openv/vcontrold` history contains the historical
+`sim-2098.ini`. It first appears in the reachable Git history in commit
+`91e7d84b2becaab5f14a6417dd097395ce8c8490` and later moved to
+`doc/examples/sim-2098.ini`.
+
+The recovered simulator contains ordinary KW reads only, for example:
+
+```text
+01 F7 08 00 02 = 3C 00
+01 F7 08 A7 04 = 87 03 1A 00
+```
+
+No `CB/C5/AE/9E/33/43`, page, bank, monitor or copy sequence was found in
+this recovered simulator. The historical `sim-2098.ini` lead is therefore
+closed as a hidden firmware-reader configuration in its surviving form.
+
+A second apparent lead was an old `vcontrold.xml` blob containing both:
+
+```xml
+<device ID="2098"/>
+```
+
+and the GWG macro:
+
+```text
+GETADDR -> SEND 01 CB
+```
+
+Object-to-path mapping identifies this blob as
+`doc/examples/vcontrold.xml`. That file contains multiple protocol
+definitions in one global configuration; coexistence of the selected device
+ID and the GWG macro does **not** establish that `2098` uses `CB`.
+
+The matching `vito.xml` history remains decisive: `2098` is bound to
+`KW2`, while low-level overrides such as `geteaddr`, `getpaddr`, and
+`getxaddr` are attached specifically to device `2053`.
+
+This also explains historical startup/debug output that appears to compile
+`CB` command bytecode in a `2098` setup: vcontrold compiles protocol
+definitions globally. Such output is not evidence that the frame was
+transmitted to or accepted by a V200KW2.
+
+### External exact-frame search result
+
+A targeted search for successful V200KW2 traces containing
+`01 CB`, `01 C5`, `01 AE`, or `getxaddr` did not recover an
+exact-family success case.
+
+Public mirrors of the vcontrold XML continue to show the same model:
+`2098 -> KW2`, `2053 -> GWG`, with the physical/EEPROM/XRAM overrides
+belonging to the GWG device-specific path.
+
+This is negative evidence rather than proof of absence, but it removes the
+strongest configuration-based false positives found so far.
+
 ### Updated workstream-1 gate
 
 Workstream 1 is now **partially satisfied**:
