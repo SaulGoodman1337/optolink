@@ -1624,6 +1624,68 @@ command sequence rather than in the public openv.de SVN tree.
 
 Still closed. No new live request is justified by this archive recovery.
 
+## Active continuation: TerminatorIII dump lineage resolved through Viess-Data source
+
+The historical TerminatorIII thread can now be tied directly to preserved
+source code rather than inferred only from forum descriptions.
+
+In `openv/openv#10`, TerminatorIII wrote on 2011-01-17 that he was developing
+his own tool to read all addresses into a binary file and had observed that
+ordinary reads returned no useful data above `0x8000`.
+
+By late 2011 his Windows tool had evolved into **Viess-Data**. A 2012 public
+discussion about adding a vcontrold socket transport explicitly distinguishes
+Viess-Data's existing **"Dump-Funktion"** from individually addressed
+datapoints.
+
+The earliest preserved `Viess_Data.zip` contains the C# implementation of
+that dump path. The request constructed after normal `0x05` synchronization
+is exactly:
+
+```text
+01 F7 <addr_hi> <addr_lo> 10
+```
+
+The state machine:
+
+1. initializes `Read_Adress` from the user-selected start address;
+2. requests 16 bytes with ordinary KW/VS1 `F7`;
+3. writes the returned bytes directly to `KW200.Dump`;
+4. increments `Read_Adress` by `0x10`;
+5. repeats until the selected end address.
+
+The implementation stores the address as a 16-bit-compatible value and emits
+only the two address bytes shown above. There is no:
+
+- GWG `CB/C5/AE/9E/33/43/6E` memory opcode;
+- selector/page/bank byte;
+- monitor-entry command;
+- ROM-to-RAM copy request;
+- >16-bit target address.
+
+This establishes a direct provenance chain:
+
+```text
+2011 TerminatorIII "all addresses -> binary file" experiment
+        ->
+later Viess-Data "Lese Dump"
+        ->
+ordinary sequential 16-bit F7 reads
+```
+
+Therefore TerminatorIII's public dump/tool lineage is conclusively **not**
+KarlKoch's separate M30612 firmware-readout mechanism.
+
+The two historical observations are compatible rather than contradictory:
+the public/user-level F7 dump could stop yielding meaningful data around the
+ordinary virtual-address boundary while KarlKoch's private/developer technique
+used an additional still-missing service/selector mechanism.
+
+### Workstream-2 gate impact
+
+Still closed. This removes another possible source of ambiguity but yields no
+new live request.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
@@ -1779,39 +1841,3 @@ The immediate evidence gap is now narrow and testable:
 
 Until that step is recovered, no claim should be made that WB2A firmware is
 readable through GWG/Optolink, but the route is not excluded.
-
-## Active continuation: KW carries documented GFA/PROZESS read types
-
-A separate protocol-history pass tightened the GWG -> KW compatibility boundary.
-
-The surviving OpenV `Protokoll-KW` page explicitly defines the two-byte KW
-request layout with additional read types beyond ordinary `Virtual_READ`:
-
-```text
-01 F7 <addr_hi> <addr_lo> <len>  Virtual_READ
-01 6B <addr_hi> <addr_lo> <len>  GFA_READ
-01 7B <addr_hi> <addr_lo> <len>  PROZESS_READ
-```
-
-The same page demonstrates both ordinary `V200KW2` traffic and identification
-of `0x2098`. A 2023 copy in `bertmelis/VitoWiFi/docs/protocol_vs1.md`
-preserves the same table. In the restored OpenV wiki Git history,
-`git log -S 6B -- Protokoll-KW.md` isolates commit `2874abc` as the point
-where the literal `6B` entry entered that page.
-
-This is narrower than the old GWG-memory hypothesis but stronger than merely
-assuming that every KW request must use `F7`: a documented two-byte KW
-carrier exists for GFA and process reads on the protocol family used by
-V200KW2.
-
-It still does **not** demonstrate that the one-byte GWG memory opcodes
-`CB/C5/AE/9E/33/43` are accepted by `2098`, nor does the page provide a
-V200KW2 GFA/PROZESS address with program-ROM, selector, monitor, page/bank or
-copy semantics.
-
-### Workstream-2 gate impact
-
-Still closed. The first justified discriminator remains source recovery, not a
-live probe: recover one exact V200KW2 event or contemporary trace using
-`GFA_READ 0x6B` or `PROZESS_READ 0x7B`, classify the addressed object, and
-only then decide whether a bounded read-only request is warranted.
