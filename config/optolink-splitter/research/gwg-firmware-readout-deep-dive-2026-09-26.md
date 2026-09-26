@@ -1470,6 +1470,160 @@ operation.
 
 Still closed. No new live request is justified by these six rows.
 
+## Active continuation: original openv.de SVN snapshot and non-ZIP archive audit
+
+The previous historical-archive scanner recursively inspected ZIP files, but
+only recognized containers whose filenames ended in `.zip`. A second pass was
+therefore run over every reachable OpenV Wiki Git blob using archive magic
+bytes rather than filename extensions.
+
+The audit covered 1,649 blobs and found no PE/self-extracting ZIP archive.
+It did identify historical containers that the ZIP-only pass had skipped,
+including:
+
+```text
+svn20100707-rev35.tgz
+trace.log.gz
+trace_r97.txt.gz
+trace_r97_2.txt.gz
+vitalk.tgz
+patch.gz
+vMon.jar
+```
+
+### Original openv.de SVN working copy recovered
+
+The most important artifact is `svn20100707-rev35.tgz`, imported into the
+Wiki on 2010-08-23 and described by the historical Wiki page as a snapshot of
+the SVN archive from 2010-07-07.
+
+Unlike the later SourceForge history, this archive contains an SVN 1.6 working
+copy with its original `.svn` metadata intact.
+
+The exact original repository identities are:
+
+```text
+vcontrold:
+  URL/root: http://openv.de/svn/vcontrold
+  working-copy revision: 35
+  repository UUID: 641cf739-d045-0410-8dd4-adb8ee2ff659
+
+xml:
+  URL/root: http://openv.de/svn/xml
+  working-copy revision: 32
+  repository UUID: ec234c39-d045-0410-ada0-f70c8351f8e9
+```
+
+The metadata also shows that the relevant files themselves substantially
+predate KarlKoch's October 2010 M30612 investigation:
+
+```text
+vcontrold/parser.c     r34, 2008-04-06, marcust
+vcontrold/Makefile     r35, 2008-05-05, marcust
+xml/vito.xml           r32, 2008-05-04
+xml/sim-2098.ini       r18, 2008-03-21
+```
+
+### No hidden local modifications in the archived working copy
+
+Every working file was compared with its pristine
+`.svn/text-base/*.svn-base` version.
+
+The XML files relevant to the 2098 bridge are byte-identical to their pristine
+SVN bases:
+
+```text
+vito.xml
+vcontrold.xml
+sim-2098.ini
+```
+
+The apparent differences in C/H/Makefile files are entirely explained by SVN
+keyword expansion, for example:
+
+```text
+/* $Id$ */
+->
+/* $Id: parser.c 34 2008-04-06 19:39:29Z marcust $ */
+```
+
+No uncommitted experimental parser, custom 2098 XML, selector command or
+developer-only request survived in this working-copy archive.
+
+### Original 2010 public 2098/GWG boundary
+
+The original openv.de XML snapshot already declares:
+
+```xml
+<device ID="2098" name="V200KW2" protocol="KW2"/>
+<device ID="2053" name="GWG_VBEM" protocol="GWG"/>
+```
+
+The low-level GWG-specific overrides remain attached to device `2053`.
+
+The preserved `sim-2098.ini` contains 68 request rows. All 68 use ordinary
+KW `F7`; no `CB/C5/AE/9E/33/43/6E` request occurs.
+
+This independently proves that the public openv.de SVN snapshot already kept
+`2098/KW2` separate from the low-level `2053/GWG` path before KarlKoch's
+October 2010 firmware work.
+
+### Historical compressed trace files
+
+The three previously unscanned gzip traces were materialized and reconstructed
+frame-by-frame using the actual serial sequence:
+
+```text
+write 04 -> receive 05 -> request bytes -> response read
+```
+
+Results:
+
+```text
+trace.log        639 requests
+trace_r97.txt    524 requests
+trace_r97_2.txt 1046 requests
+total           2209 requests
+```
+
+All 2,209 reconstructed requests are exactly five bytes long and use
+function code `F7`. There is no low-level GWG memory-family request and no
+long selector/service frame.
+
+Their Wiki discussion provenance also identifies them as 2013 vcontrold
+serial/timeout diagnostics (r95/r97), not firmware-dump experiments.
+
+### Other missed containers
+
+- `vitalk.tgz`: 2013 P300/Vitodens B3HA software; no 2098 firmware path.
+- `patch.gz`: build/portability patch for the old vcontrold source snapshot.
+- `vMon.jar`: 2015 network/OpenHAB client for a vcontrold endpoint; no MCU
+  monitor, M30612 or GWG low-level firmware semantics.
+- no PE/self-extracting ZIP artifact was found in the reachable Wiki blob set.
+
+### Consequence
+
+This closes two remaining archival ambiguities:
+
+1. the July 2010 public `openv.de` SVN snapshot itself contains no hidden
+   2098 firmware reader or uncommitted selector/monitor code;
+2. the significant non-ZIP attachments missed by the first archive pass do not
+   contain the missing M30612 readout sequence.
+
+The exact original SVN URLs and repository UUIDs are nevertheless valuable
+archive keys for searching external SVN caches, old mirrors and Wayback/CDX
+records.
+
+The timing is also important: the public snapshot's relevant source/XML
+content substantially predates KarlKoch's October 2010 M30612 investigation.
+That further strengthens the hypothesis that the missing mechanism lived in a
+private developer artifact, forum post, local script/tool or post-snapshot
+command sequence rather than in the public openv.de SVN tree.
+
+### Workstream-2 gate impact
+
+Still closed. No new live request is justified by this archive recovery.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
