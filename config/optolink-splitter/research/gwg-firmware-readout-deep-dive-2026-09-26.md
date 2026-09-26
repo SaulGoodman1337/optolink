@@ -702,6 +702,87 @@ This does not prove that the binaries contain no relevant code, but it removes
 another easy archival route: neither tool exposes a self-describing firmware
 reader or selector/monitor command set in its preserved public binary.
 
+## Active continuation: vcontrold parser/framer boundary
+
+The original SourceForge SVN source closes an important implementation
+question that remained open after the binary/string pass.
+
+In `parser.c`, `expand()` substitutes `$addr` by walking the complete
+address string in two-hex-character chunks and emitting one space-separated
+byte token for each pair. There is no one-byte or two-byte address limit in
+that expansion loop. The resulting command string is then compiled by
+`buildByteCode()` / `parseLine()`, where every ordinary `SEND` token is
+converted to one byte and appended to the command buffer.
+
+Relevant source path:
+
+```text
+trunk/vcontrold/parser.c
+$Id: parser.c 34 2008-04-06 19:39:29Z marcust $
+```
+
+This means that vcontrold itself is capable of representing an `addr` value
+longer than the one- or two-byte forms used by the surviving public
+configuration. A historical command could therefore have encoded additional
+selector/page/high-address bytes entirely in XML data without requiring an
+undocumented parser token or a special compiled binary.
+
+The framer boundary reinforces this result. In `framer.c`,
+`framer_send()` only constructs a special frame when the active protocol ID
+is the P300 lead-in (`0x41`). For non-P300 protocols it passes the already
+compiled byte buffer directly to `my_send()`. Therefore the KW/GWG path does
+not impose a separate fixed address width in the framer.
+
+What this proves:
+
+- the vcontrold parser is **not** the architectural reason the public GWG
+  command appears limited to an 8-bit address;
+- a multi-byte selector/address sequence was technically expressible in the
+  historical XML command layer;
+- the highest-value archival target shifts from hidden parser syntax to lost
+  `vito.xml` / protocol-command variants, developer configurations, traces,
+  and attachments containing unusually long `<addr>` values or explicit
+  selector bytes.
+
+What this does **not** prove:
+
+- that V200KW2 / device `2098` accepts a multi-byte `CB/C5/AE/9E/33/43`
+  request;
+- that the M30612 firmware space is directly addressable this way;
+- the byte order or semantics of any missing selector/page/high-address field.
+
+This narrows Priority 2 substantially: a hidden vcontrold bytecode opcode is
+no longer required to explain a >16-bit historical readout. The next search
+should concentrate on historical XML/configuration artifacts and transmitted
+frames.
+
+The `legacy` branch of `openv/vcontrold` carries the same address-expansion
+loop in `vcontrold/parser.c`, so this capability is not merely a later
+refactor. Its preserved `vcontrold/vcontrold.xml` is much simpler and defines
+the GWG read primitive as `SEND 01 CB`; the selected example device is
+`2098`. This coexistence is configuration-level only and still does not prove
+that a CB frame was accepted by 2098.
+
+A full inventory of numeric `<addr>` values in the surviving public
+`xml/kw/vito.xml` found only 2- and 4-hex-character values (one or two
+bytes), despite the parser being able to expand longer strings. The visible
+low-level `getxaddr`, `getpaddr`, and `geteaddr` uses remain associated
+with device `2053`, not `2098`. Therefore the missing bridge is absent from
+the current public XML rather than being prevented by the parser.
+
+There is also a second archival implication. The GWG test commands use
+`SEND BYTES`, and `execByteCode()` appends caller-supplied bytes to the
+preceding SEND buffer before calling `framer_send()`. A developer could thus
+have exercised an extended/custom request interactively without ever storing
+the full byte sequence as a long `<addr>` value. Historical simulator INIs,
+debug logs, shell/client examples and forum traces are therefore now as
+important as XML files for recovering the missing request shape.
+
+Source:
+
+- https://sourceforge.net/p/vcontrold/code/HEAD/tree/trunk/vcontrold/parser.c
+- https://sourceforge.net/p/vcontrold/code/HEAD/tree/trunk/vcontrold/framer.c
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
