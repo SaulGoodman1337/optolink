@@ -1523,6 +1523,82 @@ The stronger remaining models are now:
 Still closed. This finding narrows where to search, but does not provide a
 source-backed request shape suitable for a live discriminator.
 
+## Active continuation: full Vitosoft dataset recovered as Git-LFS artifacts
+
+A concrete public archive source for the raw Vitosoft dataset has now been
+identified in `MorrisonHB/Optolink_02`.
+
+The repository contains Git-LFS pointers for the files needed to reconstruct
+the exact V200KW2 event/access mapping rather than relying on generated
+catalogues:
+
+```text
+Optolink_02/XML/ecnEventType.xml
+  sha256 2338beb0e8544b6149bc4b2433ecabd9509edcdafc2e8e91f00182eba1aff7ba
+  size   9,935,374 bytes
+
+Optolink_02/XML/DPDefinitions.xml
+  sha256 efec27568d398021c767771af016143bd51fc196d2d408dbb80faff84d0b19e3
+  size   186,559,004 bytes
+
+Optolink_02/XML/ecnDataPointType.xml
+  sha256 c66a57be8004a64cf3bf686bf2aa51d77f7ee96e794e95b3d09318a78fe8f0a3
+  size   163,323 bytes
+
+Optolink_02/Datenbank/ecnViessmann.mdf
+  sha256 524ffe4317d451135ef59bb78f58013bdcc12cd3b8acefbed66abd08f10e90d6
+  size   91,947,008 bytes
+```
+
+Source repository:
+https://github.com/MorrisonHB/Optolink_02
+
+This matters because the current generated V200KW2 catalogue in
+`SoulSolistice/esphome_vitohome` explicitly reports six datapoints omitted
+from the normal KW/Virtual_READ path because their `FCRead` belongs to a
+non-standard access family:
+
+```text
+GFA_READ / RPC / PROZESS / KBUS / OT
+```
+
+The generated catalogue does not retain those six rows, so their exact names,
+addresses and function classes cannot be recovered from the YAML alone.
+
+### Next exact extraction step
+
+Once the LFS objects are materialized, join:
+
+```text
+V200KW2 datapoint type
+  -> DPDefinitions.xml event links
+  -> ecnEventType.xml access rows
+  -> FCRead / FCWrite / Address / BlockLength / ByteLength
+```
+
+and emit only rows where:
+
+```text
+device = V200KW2 / 0x2098
+FCRead != Virtual_READ
+```
+
+The immediate research question is whether any of the six omitted rows has
+firmware/service semantics. If all six resolve to ordinary burner-control,
+K-Bus, OpenTherm or process datapoints, this closes another possible
+firmware-read route. If one is a service/RPC path, it becomes the highest
+priority source-backed candidate for deeper analysis.
+
+The current execution environment cannot materialize Git-LFS payloads directly;
+the remote `optolink-splitter` host was also temporarily unavailable during
+this checkpoint. The hashes above make the next extraction deterministic once
+that host is reachable again.
+
+### Workstream-2 gate impact
+
+Still closed. The raw data source is now known, but no request shape from the
+six non-standard V200KW2 rows has yet been recovered.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
