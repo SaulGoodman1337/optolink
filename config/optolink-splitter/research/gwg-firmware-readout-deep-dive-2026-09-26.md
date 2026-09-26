@@ -2716,6 +2716,108 @@ firmware dump/disassembly.
 Still closed. These results remove three archival ambiguities but do not
 provide a request that constructs the M30612 20-bit ROM address.
 
+## Active continuation: VitoTest type-2 synchronization resolved at machine-code level
+
+The early 2007 VitoTest discussion contained a superficially interesting
+serial trace:
+
+```text
+16 00 00
+...
+16 00 00 04
+```
+
+At the time, Hanspeter/vitoopen described VitoTest 1.2 as trying an
+"alternative synchronization" when the controller did not react to
+`16 00 00`. Because the missing firmware path may require a stateful entry
+sequence, this old trace was re-examined rather than treating it as ordinary
+protocol noise.
+
+The preserved VitoTest 1.6 executable was statically disassembled. Two send
+helpers can be distinguished directly:
+
+```text
+0x402DE3:
+  constructs exactly three bytes on the stack
+  16 00 00
+  and calls the serial Write path with length 3
+
+0x402DC8:
+  accepts one byte as its argument
+  and calls the serial Write path with length 1
+```
+
+The synchronization state machine calls them separately:
+
+```text
+Start synch
+  -> call 0x402DE3
+  -> sends 16 00 00
+
+"try type 2"
+  -> push 04
+  -> call 0x402DC8
+  -> sends single byte 04
+```
+
+Therefore the old port-monitor display of:
+
+```text
+16 00 00 04
+```
+
+is consistent with two adjacent writes being shown together, not a distinct
+four-byte monitor/service request.
+
+Later VitoTest UI strings make the interpretation explicit:
+
+```text
+Online type 1
+Online type 2
+try type 2
+Start synch
+```
+
+and VitoTest 1.8 renames the same protocol concepts to the public
+`300er / KW / GWG` terminology.
+
+Historical source:
+https://www.haustechnikdialog.de/Forum/t/59578/Vitotronic-vom-PC-steuern-ueberwachen?page=5
+
+### Consequence
+
+The 2007 "alternative synchronization" is now closed as a candidate
+M30612 monitor-entry sequence.
+
+It is valuable historical protocol evidence, but it does not provide:
+
+- a 20-bit/far address carrier;
+- a page/bank/window selector;
+- a ROM-copy mailbox;
+- a new low-level memory opcode;
+- or a V200KW2-specific service state.
+
+The missing KarlKoch firmware-read mechanism must therefore be elsewhere.
+
+### Older VitoTest release recovery status
+
+A global GitHub code search and targeted public web search found no surviving
+VitoTest 1.3, 1.4 or 1.5 archive/mirror.
+
+The oldest exact historical filename recovered from the 2007 forum is:
+
+```text
+VitoTest.0100.zip
+```
+
+for version 1.0.
+
+The complete reachable OpenV Wiki Git history contains only versions
+1.6, 1.7 and 1.8, and no settings/command-history export. Thus the pre-1.6
+developer builds remain lost archival targets, but the one recoverable
+"alternative sync" behavior is ordinary protocol synchronization rather than
+the firmware bridge.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
