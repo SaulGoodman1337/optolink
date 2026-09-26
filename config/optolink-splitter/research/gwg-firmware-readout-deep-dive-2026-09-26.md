@@ -1365,6 +1365,86 @@ surface is now much smaller:
 
 No production-controller live test follows from this archival conclusion.
 
+## Active continuation: 64 KiB KW dump separated from MCU dump; GWG write evidence
+
+Three historical observations now sharpen the missing mechanism.
+
+### Hanspeter's 2011 logger was explicitly a 64 KiB KW-space dump
+
+In OpenV issue #21, Hanspeter/vitoopen wrote on 2011-01-04 that his
+in-development logger could read the **entire 64 KiB address space** of his
+V200KW2 via the normal KW protocol in under three minutes.
+
+Source:
+https://github.com/openv/openv/issues/21#issuecomment-339371365
+
+This is important negative evidence: the contemporary public/user-space
+"whole address space" dump was the ordinary 16-bit KW view. It does not
+explain KarlKoch's separate statement that roughly 128 KiB of M30612 program
+software had been read through Optolink.
+
+The two historical meanings of "dump" must therefore remain separated:
+
+- normal V200KW2 KW dump -> 64 KiB virtual address space;
+- KarlKoch M30612 dump -> ~128 KiB MCU program code, requiring an additional
+  selector/window/monitor/copy mechanism.
+
+### Private developer-forum fragment proves additional GWG low-level write semantics
+
+OpenV issue #245 preserves a verbatim quotation from the former private
+developer forum dated 2009-01-17. The quoted GWG EEPROM-write experiment used:
+
+```text
+01 AD 07 01 FB 04
+```
+
+and the discussion explains paired EEPROM bytes where the second byte is the
+first XOR FF.
+
+Source:
+https://github.com/openv/openv/issues/245#issuecomment-339633725
+
+This does **not** identify the missing firmware selector and must not be replayed
+on the production controller. It does prove that the private developer
+environment contained concrete low-level GWG write-frame knowledge beyond the
+surviving public read examples, strengthening the hypothesis that a setup or
+selector operation could have existed only in private forum/tool material.
+
+### M30612 architectural implication
+
+The surviving OpenV KM-Bus documentation identifies the V200KW2 controller as
+M30612MC and states that approximately 128 KiB of controller software was read
+through Optolink:
+
+https://github-wiki-see.page/m/openv/openv/wiki/KM-Bus
+
+Renesas/Mitsubishi M16C/60-family documentation distinguishes mask-ROM devices
+from flash variants; 128 KiB internal program-ROM configurations occupy the
+top 128 KiB of the 20-bit address space (E0000h..FFFFFh). This makes a normal
+16-bit KW address walk insufficient by construction.
+
+Renesas references:
+https://www.renesas.com/en/products/rom-ordering
+https://www.renesas.com/en/document/dst/m16c62-group-datasheet
+
+The historical method therefore fits an **application/service bridge** better
+than an ordinary flash-programming bootloader. Plausible bridge shapes remain:
+
+1. bank/high-nibble selector (notably the two 64 KiB halves E and F);
+2. monitor/service mode exposing a 16-bit window into program ROM;
+3. program-ROM -> RAM/XRAM/window copy followed by an ordinary read;
+4. undocumented request carrying a high-address selector separately from the
+   normal 16-bit address.
+
+This is an architectural narrowing, not yet a recovered wire protocol.
+
+### Workstream-2 gate
+
+Still closed. The new evidence makes the first useful discriminator more
+specific: recover a source-backed operation that selects the E/F program-ROM
+half, enters a monitor, or copies program ROM into a readable window. No blind
+test of guessed selector values is justified.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
