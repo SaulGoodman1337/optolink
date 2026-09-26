@@ -497,7 +497,8 @@ https://www.haustechnikdialog.de/Forum/t/59578/Vitotronic-vom-PC-steuern-ueberwa
 ### SourceForge/vcontrold archaeology closes two false positives
 
 The recovered `openv/vcontrold` history contains the historical
-`sim-2098.ini`. It first appears in the reachable Git history in commit`91e7d84b2becaab5f14a6417dd097395ce8c8490` and later moved to
+`sim-2098.ini`. It first appears in the reachable Git history in commit
+`91e7d84b2becaab5f14a6417dd097395ce8c8490` and later moved to
 `doc/examples/sim-2098.ini`.
 
 The recovered simulator contains ordinary KW reads only, for example:
@@ -996,6 +997,7 @@ likely to have lived in:
 
 The SourceForge SVN history itself is no longer a high-priority place to search
 for the selector/monitor/copy bridge.
+
 ## Active continuation: exact VDensHO1 exceptional read surface fully classified
 
 The verified private Vitosoft v6 snapshot
@@ -1495,7 +1497,8 @@ The most important artifact is `svn20100707-rev35.tgz`, imported into the
 Wiki on 2010-08-23 and described by the historical Wiki page as a snapshot of
 the SVN archive from 2010-07-07.
 
-Unlike the later SourceForge history, this archive contains an SVN 1.6 workingcopy with its original `.svn` metadata intact.
+Unlike the later SourceForge history, this archive contains an SVN 1.6 working
+copy with its original `.svn` metadata intact.
 
 The exact original repository identities are:
 
@@ -1995,6 +1998,7 @@ The public V200KW2 Vitosoft membership join remains important here: its 415
 event links contain no V200KW2 `GFA_READ` or `PROZESS_READ` datapoint.
 The only non-blank/non-`Virtual_READ` rows are the three reset RPCs,
 `RPCWink`, `Oelverbrauch_Reset` and `DatabaseVersionForExport`.
+
 So the transport supports more function classes than the normal 2098
 datapoint catalogue uses.
 
@@ -2493,7 +2497,8 @@ The PE timestamp of the preserved `v-control1_2_5.exe` is
 Therefore `20CB/VScotHO1` identity support was already present in an early
 public v-control binary before Fritz-Ber described his 2009/2010 VB2008E work.
 This does not prove that Fritz-Ber's private source was byte-for-byte identical,
-but it downgrades the hypothesis that his fork introduced a new low-levelprotocol/service layer. The surviving evidence remains consistent with a
+but it downgrades the hypothesis that his fork introduced a new low-level
+protocol/service layer. The surviving evidence remains consistent with a
 VB/.NET port and device/datapoint adaptation built on the existing v-control /
 V-Comm transport.
 
@@ -2992,6 +2997,7 @@ Thus `BE` is best read as **Bedienteil**, not bank extension.
 
 Consequence: `9E/9D` should no longer be treated as a candidate high-address
 selector without new evidence.
+
 ## Standard function-code surface contains no ROM / flash primitive
 
 The recovered Vitosoft function-code enumeration is broad.  Besides
