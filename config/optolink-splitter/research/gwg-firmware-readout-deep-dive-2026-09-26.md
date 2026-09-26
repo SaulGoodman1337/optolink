@@ -640,6 +640,50 @@ evidence.
 The archival priority remains the lost private developer-forum/SVN material
 and exact `2098` low-level traces.
 
+## Active workstream checkpoint: TerminatorIII extended XML closed as monitor lead
+
+The historical `files/TerminatorIII.zip` archive was re-extracted and compared
+at file level. It contains only:
+
+```text
+vito_V200KW2.xml
+vito_V200KW2_extended.xml
+```
+
+The archive entered the wiki history on 2011-01-21 in commit
+`fcd37fc74e15ddeb93c8402f8fed409aed1b6787`.
+
+The potentially interesting symbols:
+
+```text
+ChecksummeROMBerechnet       -> 0x08F0
+NRF_ChecksummeROMLinker     -> 0x08F4
+SC100_ProgrammierstellungEin -> 0x0C04
+SC100_ProgrammierstellungAus -> 0x0C05
+```
+
+occur **only** in `vito_V200KW2_extended.xml`, not in the normal
+`vito_V200KW2.xml`.
+
+The same extended file also contains a large foreign-family payload including
+many `SC100_*` and `WPR_*` datapoints. This is consistent with the earlier
+Vitosoft provenance work that mapped the ROM-checksum and SC100 programming
+positions to other controller families rather than to V200KW2 / 2098.
+
+Therefore the extended TerminatorIII XML must not be treated as evidence that
+V200KW2 exposes:
+
+- a ROM checksum service at `0x08F0/0x08F4`;
+- a firmware programming mode at `0x0C04/0x0C05`;
+- a selector/monitor/copy bridge through those addresses.
+
+No hidden parser command, page selector, bank selector or ROM-copy operation
+was found in the TerminatorIII archive. It is a datapoint catalogue, not a
+firmware-read implementation.
+
+This closes the strongest remaining interpretation of the TerminatorIII
+extended file as a direct path to the missing 2098 firmware-reader mechanism.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
