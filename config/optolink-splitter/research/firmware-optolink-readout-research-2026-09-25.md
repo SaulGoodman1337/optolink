@@ -1323,3 +1323,215 @@ Detailed note:
 
 Public evidence commit:
 `e9d1d66c5c214a7dcb8fb7a88c931c273ec7f326`.
+
+
+## 2026-09-26 follow-up: exact V200KW2/2098 profile excludes the low-level memory families
+
+The historical M30612 lead has now been compared against the **exact Vitosoft
+V200KW2 / identification 2098 profile memberships**, rather than against the
+global function-code inventory.
+
+Private reproducible trace:
+
+```text
+workflow:
+  .github/workflows/v200kw2-firmware-selector-trace.yml
+
+workflow source commit:
+  7f1207e20c8cf596699edb418191f21f6588f0cb
+
+result commit:
+  35d322e46278763e66fb9ada5950c674e6b0c18a
+
+collector-output/20260926-v200kw2-firmware-selector-trace/
+```
+
+The config-backup definitions resolve **465 unique exact 2098 events**.
+
+Their read-function distribution is:
+
+```text
+Virtual_READ            459
+Remote_Procedure_Call     4
+undefined                 1
+blank                     1
+```
+
+Critically, exact 2098 membership contains **zero** events using:
+
+```text
+Physical_READ
+EEPROM_READ
+XRAM_READ
+Port_READ
+BE_READ
+KMBUS_RAM_READ
+KMBUS_EEPROM_READ
+KBUS_*
+PROZESS_READ
+```
+
+The four exact RPCs are limited to:
+
+```text
+0xA051  Bedienparameter A1/M1 reset, prefix 00
+0xA051  Bedienparameter M2 reset,    prefix 01
+0xA051  Bedienparameter M3 reset,    prefix 02
+0xA000  RPCWink, handler 22
+```
+
+None provides a program-memory semantic or an extended address.
+
+### Consequence for the KarlKoch M30612 statement
+
+This is strong evidence that the historical firmware extraction was **not a
+normal catalogued V200KW2 service datapoint**.
+
+The standard service profile known to Vitosoft uses ordinary virtual reads for
+essentially everything. Therefore the statement that the M30612 software was
+readable through Optolink points more strongly toward one of:
+
+- a non-catalogued diagnostic/monitor mode;
+- a raw command sequence used manually;
+- a service window exposed only after setup/selection;
+- legacy developer tooling outside the ordinary datapoint model.
+
+### The explicit GWG hyperlink is now a focused clue
+
+At KarlKoch's exact 2010 wiki commit the device/protocol documentation already
+contained:
+
+```text
+V200KW2
+device ID 2098
+protocol KW
+```
+
+and `Protokoll-KW.md` already documented normal V200KW2 traffic such as:
+
+```text
+01 F7 55 25 02
+01 F7 00 F8 02
+```
+
+Nevertheless, KarlKoch wrote:
+
+```text
+M30612MC | SW lässt sich mit etwas Aufwand über [Optolink](Protokoll-GWG)
+           auslesen, Code ca. 128 KByte
+```
+
+Thus the firmware-read hyperlink points specifically to **Protokoll-GWG**
+despite a correct KW page being available in the same wiki state.
+
+This does not prove that the firmware was dumped by sending GWG frames to a
+KW2 controller. It does make the legacy GWG raw-function family a materially
+stronger archival clue than a simple broken-link explanation.
+
+The contemporaneous GWG page already listed the low-level type family:
+
+```text
+Virtual read         C7
+Physical read        CB
+EEPROM read          AE
+XRAM read            C5
+Port read            6E
+BE read              9E
+KMBUS RAM read       33
+KMBUS EEPROM read    43
+```
+
+No additional high-address command appears in the surviving public page
+history, so a plain one-step request from that table still cannot explain the
+20-bit M30612 ROM range. A multi-stage selector/window/monitor remains the
+better fit.
+
+## 2026-09-26 follow-up: 0x778F is an extended-XML false lead; 0x778E resolved for 2098
+
+The historical TerminatorIII
+`vito_V200KW2_extended.xml` contains:
+
+```text
+0x778F  K8F_KonfiZugriffParameterKR
+        "(8F) Zugriff auf Kesselregler - Parameter"
+```
+
+This initially looked like a possible service selector because it sits
+immediately beside the software/EEPROM diagnostic block.
+
+Exact Vitosoft membership now resolves the ambiguity:
+
+**0x778F is not a V200KW2/2098 member.**
+
+It belongs only to the broader/unfiltered candidate universe represented by
+the historical extended XML. Do not use it as a 2098 firmware-access selector.
+
+By contrast, these are exact 2098 members:
+
+```text
+0x778A  display-condition configuration
+0x778B  EEPROM status
+0x778C  regulation software version high byte
+0x778D  regulation software version low byte
+0x778E  K8E_KonfiZugriffStoerungen
+```
+
+The exact Vitosoft description of `0x778E` defines where faults may be
+displayed/reset:
+
+```text
+0  local control unit only
+1  local + remote FB1
+2  local + remote FB2
+3  local + remote FB3
+4  local + all remotes
+```
+
+Thus, for the historical 2098 profile, `0x778E` is a user-interface fault
+access/permission parameter, not a ROM/EEPROM programming gateway.
+
+The local VDensHO1 byte `0x778E=03` must still not be assigned the 2098
+semantics solely by address reuse without exact-profile evidence, but the old
+"EEPROM fault Boolean" interpretation is now even less plausible.
+
+## 2026-09-26 follow-up: current Vitosoft VS1 serializer cannot carry the legacy GWG low-level reads
+
+The same private trace re-checked the current Vitosoft-v6 VS1 serializer.
+
+`VS1Message` exposes only:
+
+```text
+F7  Virtual_READ
+F4  Virtual_WRITE
+6B  GFA_READ
+68  GFA_WRITE
+7B  PROZESS_READ
+78  PROZESS_WRITE
+```
+
+and serializes only:
+
+```text
+<command> <addr_hi> <addr_lo> <length> [data]
+```
+
+`getVS1MessageFromLDAPMessage()` likewise maps only the Virtual/GFA/PROZESS
+families into VS1 messages.
+
+Although the generic Vitosoft function-code enum still contains
+Physical/XRAM/EEPROM/KMBUS/KBus names, the recovered current VS1 host path does
+not serialize those legacy GWG wire types.
+
+The apparent static-search hit for address bytes 2/3 was a false positive:
+other RPCs serialize 32-bit **values** with `BitConverter.GetBytes(value)`;
+no serializer uses address bits above 15 for VS1 target addressing.
+
+### Updated interpretation
+
+The historical M30612 acquisition mechanism now sits outside **both**:
+
+1. exact normal V200KW2/2098 event membership; and
+2. the current Vitosoft VS1/KW serializer.
+
+This is the strongest evidence so far that the missing method was a special
+developer/diagnostic path rather than an ordinary service datapoint.
