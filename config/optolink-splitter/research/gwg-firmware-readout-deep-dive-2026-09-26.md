@@ -2305,6 +2305,112 @@ This shifts archival priority toward:
 
 No live request follows from the VitoTest capability alone.
 
+## Active continuation: V-Comm DLL base package vs. lost VScotHO1 forks
+
+The historical `files/v_comm_dll.zip` was revisited because it is easy to
+misclassify the outer ZIP as documentation-only.
+
+### Surviving public base package
+
+The Wiki contains exactly one historical blob for:
+
+```text
+files/v_comm_dll.zip
+```
+
+It was imported on 2010-08-31 by BrainHunter after the original
+`openv.de/upload/v_comm_dll.zip` link disappeared.
+
+The outer ZIP contains:
+
+```text
+AUTHORS.txt
+COPYING.txt
+MANUAL.txt
+setup_vcomm.exe
+```
+
+The installer is a Wise installer. A previous static Wise extraction recovered
+the actual VB6 source from inside it:
+
+```text
+Source/v_comm.cls
+Source/V_comm_dll.vbp
+Samples/VisualBasic/...
+V_comm_dll.dll
+```
+
+The recovered base source explicitly supports the exact later local family
+identity:
+
+```text
+VDensHO1 = 0x20C2
+```
+
+but the complete serial-output audit is restrictive:
+
+- protocol activation is ordinary VS2/P300;
+- read requests hard-code function `0x01 = Virtual_READ`;
+- write requests hard-code function `0x02 = Virtual_WRITE`;
+- target addresses are serialized as exactly two bytes;
+- there is no raw-send API;
+- there is no alternate physical/XRAM/EEPROM function selector;
+- there is no monitor/page/bank/window/copy command;
+- there is no third/high address byte.
+
+Therefore the surviving public V-Comm source is not a hidden firmware reader
+and cannot itself express the 20-bit M30612 program-ROM address space.
+
+### Separate private derivatives did exist
+
+Contemporary HaustechnikDialog posts establish at least two later derivatives
+that are **not** the same as the surviving public archive:
+
+1. In July 2010, Fritz-Ber reported a VB2008E port of `vcomm.dll`, tested
+   with VScotHO1, and temporarily offered the source through a personal FTP
+   server.
+2. On 2010-11-20, user `wkiffe` / Walter reported that he had modified
+   `v_comm_dll` for VScotHO1 so that values could be read successfully.
+   His problem report concerned normal `V_Set_Temperature` state recovery
+   after a write, not a firmware service.
+3. On 2013-12-10 Walter explicitly offered to publish the VB6 source of his
+   VScotHO1-modified version. Four days later another user told him to upload
+   it to the OpenV Wikispaces download area.
+
+A complete file-addition audit of the reachable Wiki history from
+2013-12-10 through the end of 2014 shows no matching Walter/wkiffe
+`v_comm_dll`, VB6 project, source archive or similarly named upload.
+The December 2013 additions contain only unrelated material; later 2014
+source archives are Viess-Data/configuration projects from other authors.
+
+So the Walter/Fritz-Ber variants are genuine historical lost-source targets,
+not hidden revisions of the preserved `v_comm_dll.zip`.
+
+### Relevance to the M30612 bridge
+
+These lost forks are worth recovering as historical transport evidence, but
+their currently documented purpose was VScotHO1 device/address support and
+ordinary parameter read/write.
+
+No surviving post attributes to either fork:
+
+```text
+M30612 / M16C firmware dump
+program-ROM read
+20-bit/far address
+selector/page/bank/window
+monitor entry
+ROM-to-RAM/XRAM copy
+low-level CB/C5/AE/9E/33/43 bridge to 2098
+```
+
+Therefore:
+
+- **public V-Comm base**: closed as firmware-reader hypothesis;
+- **Walter/Fritz-Ber forks**: keep as archival recovery targets, but lower
+  priority than a KarlKoch/M30612-specific artifact unless new evidence shows
+  a raw/service extension.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
