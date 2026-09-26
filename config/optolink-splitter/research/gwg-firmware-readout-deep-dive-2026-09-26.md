@@ -998,6 +998,103 @@ likely to have lived in:
 The SourceForge SVN history itself is no longer a high-priority place to search
 for the selector/monitor/copy bridge.
 
+## Active continuation: exact VDensHO1 exceptional read surface fully classified
+
+The verified private Vitosoft v6 snapshot
+`vitosoft-private-archive-20260924-143439`
+(SHA256 `3d31380d6dfabf8ede9e305b115e847fb0670511e253a4ed4e59feef2f7adfee`)
+was revisited using only targeted derived metadata.
+
+To avoid re-expanding the 4.2 GiB installation, an isolated 7-Zip binary was
+extracted under `/tmp` and only
+`derived/metadata/vdensho1-all-events.csv` was read from the verified archive.
+No Vitosoft executable was run.
+
+The exact `VDensHO1 / 20C2` profile contains 581 events. Its exceptional
+read-function surface consists of exactly:
+
+```text
+22 x Remote_Procedure_Call
+ 1 x undefined
+```
+
+All 23 entries have now been classified.
+
+### The 22 exact-profile RPC definitions
+
+They collapse to five concrete RPC endpoint families:
+
+| Endpoint | Events | Metadata meaning | Effective role |
+| --- | ---: | --- | --- |
+| `0xA010` | 17 | `Teilnehmerliste_LON_0` plus entries `00..15` | LON participant-list readout |
+| `0xA051` | 2 | `Bedienparameter...FunktionReset` | operating-parameter reset for A1/M1 or M2; AccessMode is Write |
+| `0xA050` | 1 | `Konfi_FunktionReset_GWG` | coding/configuration reset; AccessMode is Write |
+| `0xA029` | 1 | `valmRPCClearErrorHistoryTable` | clear error-history table; AccessMode ReadWrite, RPCHandler 22 |
+| `0xA009` | 1 | `vlogRPCClearMemberList` | clear participant list; AccessMode is Write |
+
+The `0xA010` entries use one-byte prefixes `00..0F`, six-byte RPC blocks and
+extract the participant identifier from those blocks. Existing host-IL analysis
+already resolves this endpoint through `OptolinkHandler::rpcA010` as the LON
+participant-list system block.
+
+The three reset/clear families are explicitly named and typed as reset/list
+maintenance operations. None exposes:
+
+- arbitrary source addresses;
+- page/bank/high-address fields;
+- a program-ROM selector;
+- a memory-copy buffer;
+- firmware image bytes;
+- a generic monitor request.
+
+Three of the 22 rows have `FCRead=Remote_Procedure_Call` even though their
+`AccessMode` is Write. They must not be counted as demonstrated read services
+merely because both low-level FC columns are populated.
+
+### The sole undefined exact-profile read is host metadata
+
+The one exact-profile row with `FCRead=undefined` is:
+
+```text
+event 12646
+DatabaseVersionForExport
+description: "DatabaseVersion For Export. Used to show the current database version"
+address: <empty>
+block length: 5
+FCRead / FCWrite: undefined / undefined
+```
+
+It has no controller address and is not an undocumented Optolink transaction.
+
+### Consequence for the preferred firmware path
+
+This closes the complete **Vitosoft-catalogued exceptional read surface** for
+the exact local `VDensHO1 / 20C2` profile.
+
+There is no remaining exact-profile RPC/undefined event that can plausibly be
+reinterpreted as a firmware/ROM/monitor/page/bank/copy service.
+
+This does **not** prove that the running controller firmware contains no hidden
+service outside the Vitosoft event catalogue. It does prove that such a service
+is not hiding among the 23 non-`Virtual_READ`/non-`GFA_READ` read
+definitions previously left only as aggregate counts.
+
+Combined with the already closed local paths:
+
+- `KMBUS_RAM_READ 0x41` -> mirrored logical objects;
+- `XRAM_READ 0x31` -> all six source-derived local shapes rejected;
+- `KMBUS_EEPROM_READ 0x43` -> not a demonstrated linear EEPROM/ROM space;
+- exact VDensHO1 RPC surface -> LON/reset/list/error-history semantics only;
+
+the preferred Optolink firmware path now depends even more strongly on either:
+
+1. a historical/private application monitor not represented in Vitosoft
+   metadata; or
+2. a controller service entered through a sequence not modelled as a normal
+   Vitosoft event.
+
+No new live probe follows from this result.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
