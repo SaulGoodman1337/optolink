@@ -170,6 +170,11 @@ The notes are intentionally split into two layers:
   static recovery of the original V-Comm VB6 source from the historical Wise
   installer; exact VDensHO1/20C2 support is present, but transport is limited
   to 16-bit P300 Virtual_READ/Virtual_WRITE and contains no firmware-ROM path.
+- [gwg-firmware-readout-deep-dive-2026-09-26.md](gwg-firmware-readout-deep-dive-2026-09-26.md) —
+  focused reconstruction of KarlKoch's historical M30612/V200KW2 firmware-read
+  clue: complete OpenV wiki history, GWG/KW wire-format boundary, vcontrold raw
+  test-command semantics, archive inventory and the current selector/window/
+  monitor hypotheses with explicit read-only live-test gates.
 - [vitotrol-kmbus-wire-protocol.md](vitotrol-kmbus-wire-protocol.md) —
   byte-level physical Vitotrol/KM-BUS reference reconstructed from two working
   emulator implementations: discovery, identity, PING/PONG, CRC and room-
@@ -221,3 +226,5 @@ captures.
 - [m2-conversion-pump-assessment.md](m2-conversion-pump-assessment.md) —
   assessment of converting the local A1 + DHW topology to a real M2 mixer
   circuit, including implications for internal-pump speed and burner startup.
+
+[executed on device: optolink-splitter (adb0c2e1-4670-4fc7-a00a-6548706280dd)]
