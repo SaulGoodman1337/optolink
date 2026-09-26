@@ -1095,6 +1095,122 @@ the preferred Optolink firmware path now depends even more strongly on either:
 
 No new live probe follows from this result.
 
+## Active continuation: replaced Wiki blobs and global RPC sanity check
+
+Two remaining archival false-positive classes were audited after the exact
+VDensHO1 service-surface classification.
+
+### Historical archive blobs no longer present in the current Wiki tree
+
+The complete reachable OpenV Wiki Git history contains:
+
+```text
+76 archive blobs (.zip/.rar/.7z)
+6 archive blobs whose content differs from the file currently stored at the
+  same path
+```
+
+The six superseded archive versions are historical revisions of:
+
+```text
+Viess-ion_1_2_0_4.zip
+Vies-sion_V1.2.zip
+xml_ohneVS.zip
+13102012_vito.zip
+vito.zip
+vito_VScotHO1.zip
+```
+
+They were materialized directly from Git blob objects and recursively unpacked.
+The historical-only extraction produced 76 files.
+
+No historical-only file or binary string recovered:
+
+- `M30612` / `M16C`;
+- a ROM/flash monitor;
+- page/bank/window selector semantics;
+- a firmware dump implementation;
+- a persisted multi-byte `CB/C5/AE/9E/43/6E` selector sequence;
+- a >16-bit protocol address definition.
+
+The older `vito.xml` / `vcontrold.xml` variants still show the familiar
+public GWG low-level macros and `2098 -> KW` identification, not a
+V200KW2-specific low-level bridge.
+
+### Vies-sion readPages / rdPage is not a memory-page mechanism
+
+The superseded `Vies-sion_V1.2.zip` initially looked interesting because its
+.NET binary contains symbols:
+
+```text
+readSystemValues(string readPages, ...)
+updController(string rdPage)
+```
+
+and the archive contains `SystemAdresses.txt`.
+
+The binary was decompiled to IL with the already isolated `monodis` tooling.
+
+The result is unambiguous:
+
+- `readPages` is compared against `Parameter.Category`, `"All"` and
+  `"Bedien"`; it selects UI/data categories, not MCU memory pages;
+- the `rdPage` argument in `updController()` is not used at all;
+- the configured read header is `41050001`, the normal P300
+  `Virtual_READ` request prefix;
+- each read message is constructed as
+  `msghdrrd + AddrString + LenString`;
+- `Parameter::get_AddrString()` formats the address with `"X4"`;
+- `Parameter::get_LenString()` formats length with `"X2"`.
+
+So the effective request is limited to a normal four-hex-digit / 16-bit
+address plus one-byte length.
+
+The accompanying `SystemAdresses.txt` contains 886 ordinary
+`<4-hex-address><2-hex-length>` entries. It is an address catalogue, not a
+page/bank map.
+
+This closes `Vies-sion` as a hidden page/high-address firmware-reader lead.
+
+### Global Vitosoft RPC sanity check
+
+The global low-level Vitosoft catalogue contains 1,034 rows that use
+`Remote_Procedure_Call` for read and/or write, spanning 113 unique RPC
+addresses.
+
+A metadata/name scan across that entire RPC population found no endpoint named
+or described as:
+
+- firmware/ROM/flash read;
+- bootloader;
+- monitor;
+- program-memory page/bank/window;
+- memory-copy/readback;
+- software-image download/upload.
+
+The superficially service-like hits are configuration reset, service-PIN,
+LON/MBus configuration/trending, error/list maintenance and similar application
+services. They do not expose a generic memory address field.
+
+This global check is weaker than the exact VDensHO1 classification because an
+unnamed private service could still exist outside the event database. It does,
+however, remove the hypothesis that an obvious generic firmware RPC is present
+elsewhere in the same Vitosoft event catalogue and merely absent from the
+local profile.
+
+### Resulting archival priority
+
+The remaining preferred-path evidence gap is now concentrated even further on
+material that was **never represented by the surviving public/configuration
+catalogues**:
+
+1. a private OpenV developer-forum post or attachment;
+2. a local KarlKoch tool/script/configuration;
+3. an undocumented controller monitor/service entry sequence;
+4. a trace captured while such a service was active.
+
+No live test is justified by these negative findings.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
