@@ -1535,3 +1535,30 @@ The historical M30612 acquisition mechanism now sits outside **both**:
 
 This is the strongest evidence so far that the missing method was a special
 developer/diagnostic path rather than an ordinary service datapoint.
+
+## 2026-09-26 follow-up: dedicated GWG firmware-readout reconstruction
+
+A separate archival deep-dive has now been completed for KarlKoch's explicit
+M30612/V200KW2 -> Optolink -> GWG clue.
+
+New evidence boundary:
+
+- the full OpenV wiki history was cloned locally: 7619 commits / 11273 objects;
+- every surviving `Protokoll-GWG.md` revision was diffed;
+- the public GWG frame is consistently one-byte addressed:
+  `01 <type> <addr> <len> 04`;
+- no deleted ROM/page/bank/high-address command was found in that page history;
+- historical vcontrold confirms the low-level families CB/AE/C5/6E/9E/33/43;
+- vcontrold also contains a real `SEND BYTES` raw-forwarding primitive;
+- however the stock GWG test commands use `<len>1</len>` and the CLI path
+  truncates raw input to that command length, so unrestricted multi-byte
+  selector injection is **not** proven by the stock configuration;
+- 121 historical source/binary archive candidates are now inventoried for
+  recursive inspection.
+
+Current interpretation: the historical firmware dump still best fits a
+selector/window/monitor/copy mechanism outside normal V200KW2 datapoints.
+Detailed evidence and next gates are documented in
+[gwg-firmware-readout-deep-dive-2026-09-26.md](gwg-firmware-readout-deep-dive-2026-09-26.md).
+
+[executed on device: optolink-splitter (adb0c2e1-4670-4fc7-a00a-6548706280dd)]
