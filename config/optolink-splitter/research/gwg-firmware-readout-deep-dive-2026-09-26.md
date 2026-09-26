@@ -2513,6 +2513,91 @@ It contains no mechanism capable of constructing the M30612
 
 No live request is justified by this finding.
 
+## Active continuation: raw carriers and the unused KW2 GFA constants
+
+Three remaining implementation-level questions were checked.
+
+### Contemporary vcontrold raw mode
+
+The 2011-era Windows `vcontrold-v0.97` binary contains debug symbols for
+`parseLine`, `execByteCode`, `expand` and `buildByteCode`, and its
+built-in help explicitly exposes:
+
+```text
+raw
+Raw Modus, Befehle WAIT,SEND,RECV,PAUSE Abschluss mit END
+```
+
+The surviving source confirms that `SEND` parses an arbitrary sequence of
+hex-byte tokens up to the normal command buffer limit. It does not impose a
+one- or two-byte address model.
+
+This is not a later addition: the recovered original
+`svn20100707-rev35.tgz` openv.de SVN working copy already contains the same
+`rawModus` and `SEND BYTES` parser path.
+
+Thus both VitoTest and contemporary vcontrold were capable of replaying a
+private multi-byte monitor/selector request. Neither program needs to contain
+the semantics of that request itself.
+
+No preserved raw command file or user command history containing the missing
+M30612 sequence has been recovered.
+
+### Current openv4j GFA/process constants
+
+The current upstream `aploese/openv4j` was also audited because its 2024
+overhaul declares:
+
+```text
+KW2_GFA_READ_REQUEST      0x6B
+KW2_GFA_WRITE_REQUEST     0x68
+KW2_PROCESS_READ_REQUEST  0x7B
+KW2_PROCESS_WRITE_REQUEST 0x78
+```
+
+However, `0x6B/0x68/0x7B/0x78` are declarations only in the production
+adapter. There is no send method, test case or captured V200KW2 response using
+them. The implemented KW read path remains `F7 + 16-bit address + length`.
+
+Therefore the constants do not establish that V200KW2/2098 accepts GFA or
+process requests, and they do not justify a live `0x6B` probe.
+
+### Strict imported-comment wire scan
+
+The locally cached complete OpenV imported-comment corpus (3,237 comments)
+was rescanned with strict frame recognition rather than loose byte-string
+matching.
+
+The scan required both:
+
+1. exact-family context (`2098`, `V200KW2`, `20C2`, `VDensHO1`,
+   `M30612` or `M16C`); and
+2. a literal low-level GWG request beginning with `01` or an explicit
+   `SEND`, using `CB/C5/AE/9E/33/43/6E`.
+
+Result:
+
+```text
+source-backed exact-family low-level GWG request comments: 0
+```
+
+Earlier apparent `CB` hits were false positives from device-identification
+bytes such as `20 CB 03 4A ...`, not function-code frames.
+
+A separate search for vcontrold `raw`-mode discussion found no historical
+private M30612/V200KW2 command script.
+
+### Consequence
+
+The historical tooling clearly had enough raw transport flexibility to carry
+a 20-bit/selector/monitor protocol if a developer knew the bytes. What remains
+missing is the byte sequence or service semantics themselves.
+
+### Workstream-2 gate impact
+
+Still closed. No new production-controller request is source-backed by these
+findings.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
