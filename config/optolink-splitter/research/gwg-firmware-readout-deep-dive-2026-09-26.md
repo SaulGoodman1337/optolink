@@ -873,6 +873,131 @@ The result also strengthens the distinction between two historical meanings of
 The OptoLinkLogger lead is therefore closed as a selector/page/high-address
 implementation.
 
+## Active continuation: original SourceForge SVN history audited
+
+The original SourceForge repository is still reachable directly at:
+
+```text
+https://svn.code.sf.net/p/vcontrold/code/
+```
+
+An isolated Subversion client was extracted under `/tmp` on the splitter
+host; no system package was installed. The complete repository history
+(`r1..r107`) was enumerated with changed paths.
+
+### Initial public import predates the KarlKoch firmware work
+
+Revision 1, committed by `brainhunter` on 2010-12-13 as
+`upload des orginal`, imported the old public layout:
+
+```text
+/vcontrold/
+/xml-32/xml/sim-2098.ini
+/xml-32/xml/vcontrold.xml
+/xml-32/xml/vito.xml
+```
+
+The imported XML working-copy timestamps are 2010-08-31. That snapshot
+therefore predates KarlKoch's October 2010 M30612/V200KW2 firmware notes.
+
+This materially lowers the probability that the initial SourceForge import
+ever contained the later/private firmware-readout mechanism.
+
+### Deleted r2 svn-commit.tmp recovered
+
+Revision 2 temporarily added `/svn-commit.tmp`; revision 3 deleted it.
+Using an SVN peg revision (`svn-commit.tmp@2`) recovered the file.
+
+Its complete meaningful content is only the original commit message plus the
+list of files staged in the first import:
+
+```text
+upload des orginal
+...
+A xml-32/xml/vito.xml
+A xml-32/xml/sim-2098.ini
+A xml-32/xml/vcontrold.xml
+A vcontrold/parser.c
+...
+```
+
+It contains no hidden command, trace, attachment name, monitor sequence or
+firmware-read reference.
+
+### r2 already contains the known public low-level GWG machinery
+
+The r2 public XML already defines:
+
+```text
+GETADDR   -> 01 CB
+GETBADDR  -> 01 9E
+GETPADDR  -> 01 6E
+GETEADDR  -> 01 AE
+GETXADDR  -> 01 C5
+GETKMADDR -> 01 43
+```
+
+and the interactive `SEND BYTES` test forms.
+
+At the same revision:
+
+```xml
+<device ID="2098" name="V200KW2" protocol="KW2"/>
+```
+
+is present in `vito.xml`, while the low-level EEPROM/port/XRAM overrides are
+attached specifically to device `2053`.
+
+This confirms that the separation between `2098/KW2` and the low-level
+`2053/GWG` path is not a later cleanup; it was already present in the
+restored public source snapshot.
+
+### r7 "additional XML commands" contains no firmware bridge
+
+Revision 7 (2010-12-14) is described as:
+
+```text
+Zusatzliche Befehle ins XML eingefugt
+V200KW1 ID 2094 hinzugefugt
+```
+
+A byte-level r2 -> r7 diff shows ordinary datapoint additions, error markers,
+setpoint/write commands and the `2094` device identifier. It introduces no:
+
+- `2098` low-level protocol override;
+- M30612/M16C reference;
+- page/bank/window selector;
+- monitor/service entry;
+- ROM-copy request;
+- extended address form.
+
+### Full SVN deletion history
+
+Across r1..r107 the only meaningful deleted standalone file from the original
+root is the recovered `svn-commit.tmp`. Other deletions are build/readme
+files or whole directories removed during the 2013 trunk/branches/tags
+restructure.
+
+No deleted firmware reader, private XML, trace or simulator variant appears in
+the SourceForge SVN path history.
+
+### Consequence
+
+The original SourceForge SVN can now be treated as a **restored public subset**,
+not as an archive of KarlKoch's missing private firmware-readout work.
+
+The most important temporal clue is that its core XML snapshot predates the
+October 2010 M30612 investigation. The missing mechanism is therefore more
+likely to have lived in:
+
+1. the private OpenV developer forum;
+2. an uncommitted/private XML or command file;
+3. a local developer tool/script;
+4. an attachment or archive never imported into SourceForge.
+
+The SourceForge SVN history itself is no longer a high-priority place to search
+for the selector/monitor/copy bridge.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
