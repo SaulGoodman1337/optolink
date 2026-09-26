@@ -897,8 +897,7 @@ Revision 1, committed by `brainhunter` on 2010-12-13 as
 /xml-32/xml/vito.xml
 ```
 
-The imported XML working-copy timestamps are 2010-08-31. That snapshot
-therefore predates KarlKoch's October 2010 M30612/V200KW2 firmware notes.
+The imported XML working-copy timestamps are 2010-08-31. That snapshottherefore predates KarlKoch's October 2010 M30612/V200KW2 firmware notes.
 
 This materially lowers the probability that the initial SourceForge import
 ever contained the later/private firmware-readout mechanism.
@@ -1797,8 +1796,7 @@ mask-ROM variant.
 
 Sources:
 
-- Mitsubishi/Renesas M16C/61 group datasheet, memory map and type-number table:
-  https://datasheet4u.com/pdf/444783/M30612MA-323FP.pdf
+- Mitsubishi/Renesas M16C/61 group datasheet, memory map and type-number table:  https://datasheet4u.com/pdf/444783/M30612MA-323FP.pdf
 - Renesas M16C/60, M16C/20, M16C/Tiny Series Software Manual:
   https://www.renesas.com/en/document/mah/m16c60-m16c20-m16ctiny-series-software-manual
 
@@ -1925,6 +1923,309 @@ The result is therefore a search-method improvement rather than a protocol
 breakthrough. Future forum archaeology should prioritize later posts by
 vitoopen/Hanspeter and other early developers that explicitly quote or
 paraphrase older private-forum material.
+
+## Active continuation: V200KW2 protocol-300 carrier and 64-KiB logger evidence
+
+A high-value historical statement survives in `openv/openv#21`
+("Protokoll 300 Implementierung?"). On 2011-01-04, Hanspeter/vitoopen stated
+that his own V200KW2 was running with the **300 protocol**, not merely KW, and
+that he used protocol 300 because he needed its "erweiterte Adressierung" for
+a cascade-control setup.
+
+The same comment also records a contemporary logger he was developing which
+could read the **entire 64-KiB address range of his V200KW2 over the KW
+protocol in under three minutes**, at more than 360 bytes/s net.
+
+Source:
+
+- https://github.com/openv/openv/issues/21
+
+This is unusually close in time and authorship to the 2010 developer work and
+changes the transport picture in two useful ways.
+
+First, it is direct field evidence that at least one V200KW2/2098 accepted the
+300/VS2 protocol. Therefore the missing bridge does not have to be confined to
+the public VS1/KW serializer.
+
+Second, the explicit "64KB" description of the KW logger independently bounds
+that ordinary KW scan to the 16-bit address space. It is not evidence for the
+M30612 program-ROM reader at `0xE0000..0xFFFFF`; rather, it reinforces the
+need for an additional selector/service/copy mechanism for the firmware dump.
+
+### Cross-check against reverse-engineered Vitosoft framing
+
+The independent `sarnau/InsideViessmannVitosoft` reverse engineering gives
+the following VS1 function-code carrier:
+
+```text
+F4  Virtual_Write
+F7  Virtual_Read
+68  GFA_Write
+6B  GFA_Read
+78  PROZESS_WRITE
+7B  PROZESS_READ
+```
+
+All VS1 forms still carry exactly a **two-byte address**.
+
+For VS2/300, the recovered frame likewise contains only:
+
+```text
+protocol/message byte
+function-code byte
+address high byte
+address low byte
+block length
+[data]
+checksum
+```
+
+The same reverse engineering exposes protocol identifiers
+`LDAP = 0x00` and `RDAP = 0x10`; RDAP is marked as unused in the traffic
+observed by that project. It also recovers a much larger internal Vitosoft
+function-code enum including `Physical_READ`, `XRAM_READ`, `BE_READ`,
+`PROZESS_READ` and `GFA_READ`.
+
+Sources:
+
+- https://github.com/sarnau/InsideViessmannVitosoft/blob/main/VitosoftCommunication.md
+- https://github.com/sarnau/InsideViessmannVitosoft/blob/main/Viessmann2MQTT.py
+- https://github.com/sarnau/InsideViessmannVitosoft/blob/main/vcontrold_test.py
+
+The public V200KW2 Vitosoft membership join remains important here: its 415
+event links contain no V200KW2 `GFA_READ` or `PROZESS_READ` datapoint.
+The only non-blank/non-`Virtual_READ` rows are the three reset RPCs,
+`RPCWink`, `Oelverbrauch_Reset` and `DatabaseVersionForExport`.
+
+So the transport supports more function classes than the normal 2098
+datapoint catalogue uses.
+
+### Interpretation of "extended addressing"
+
+The 2011 phrase "erweiterte Adressierung" can now be classified much more
+tightly and should **not** be treated as evidence for a 20-bit MCU memory
+address.
+
+A later Hanspeter/vitoopen description in `openv/openv#176` explains the
+same cascade use case explicitly: Optolink is connected only to a V333 cascade
+master, while the extended addressing of protocol 300 is required to read data
+from V100 controllers behind that master over LON.
+
+That gives the historical phrase a concrete role:
+
+```text
+Optolink at cascade master
+        ->
+extended protocol-300 addressing
+        ->
+remote LON member/controller
+```
+
+The documented VS2/300 data frame itself still carries exactly two datapoint
+address bytes. The independently recovered implementation represents `LDAP`
+as protocol identifier `0x00` and `RDAP` as `0x10`, while the ordinary
+message body remains:
+
+```text
+protocol/message
+function code
+address high
+address low
+block length
+[data]
+```
+
+No recovered implementation turns that address field into a 20-bit local
+memory pointer.
+
+Therefore protocol-300 "extended addressing" is now **strongly downgraded as a
+firmware-ROM lead**. Its source-backed purpose is remote/controller routing in
+a cascade. A historical RDAP implementation would still be useful for protocol
+completeness, but without separate evidence it does not justify interpreting
+its routing selector as an M30612 page/bank/high-address selector.
+
+### Workstream-2 gate impact
+
+Still closed.
+
+This run establishes a source-backed alternative carrier (300/VS2) on a real
+V200KW2, but no source-backed request yet constructs the M30612 20-bit ROM
+address or an equivalent selector/window/copy operation. No live request is
+justified from this finding alone.
+
+## Active continuation: 2053 programming-state lead classified
+
+A global Vitosoft event/resource search found a superficially interesting
+GWG datapoint:
+
+```text
+GWG_Auftragsflag_Programmieren
+address      0x003D
+FCRead       Physical_READ
+AccessMode   Read
+BitPosition  0
+BitLength    1
+```
+
+The verified German text resource resolves it as:
+
+```text
+description:
+  "zeigt an, ob der Feuerungsautomat in Programmierstellung steht"
+
+value 0: Regelbetrieb
+value 1: Programmierstellung
+```
+
+The same physical byte contains ordinary burner-state flags:
+
+```text
+bit 0  Programmieren
+bit 4  ExtPWM
+bit 5  Blockieren
+bit 6  Heizbetrieb
+bit 7  WWBetrieb
+```
+
+This is therefore a one-bit **status indication**, not a documented command
+that enters a firmware monitor.
+
+Most importantly, all 20 datapoint profiles carrying this event resolve to:
+
+```text
+Identification = 2053
+```
+
+with different GWG extended IDs (`VBEM/VBES/VBT2/VWMS`). No
+V200KW2/`2098` profile carries the event.
+
+A search for a write-capable counterpart found none in the Vitosoft event
+catalogue. The only explicit `Programmierstellung Ein/Aus` events are the
+separate `SC100` mechanism at `0x0C04/0x0C05`, linked only to
+`VBC550P/VBC550S`. Their German description states that they are diagnostic
+translation between virtual read/write and RPC to/from SC100; they are not a
+2098 path.
+
+Other generic service-looking candidates were also mapped by device:
+
+- `RPCServicePIN/A001..A003` -> Vitocom LAN only;
+- `servicedaten1..9/F020..F030` -> VBlock/puffermgm profiles only;
+- ROM checksum/programming-position events -> Ecotronic/VBC550 families only.
+
+Thus the current Vitosoft database contains no catalogue-backed write that can
+be used to transpose the old 2053 "Programmierstellung" state to V200KW2.
+
+### KarlKoch contemporary Optolink capability statement
+
+KarlKoch's October-2010 `KM-Bus-Interface` edit contains an independent
+capability statement from the same reverse-engineering period:
+
+> the Optolink protocol is substantially more powerful for controller access,
+> including direct reading and writing of RAM and ports.
+
+This is consistent with the documented GWG low-level primitives and explains
+why KarlKoch linked his M30612 firmware-read note to GWG material. It does
+**not** identify the missing ROM/high-address operation and does not prove that
+the normal 2098 parser accepts the 2053 low-level opcodes.
+
+### Complete imported-comment inventory
+
+The GitHub search index was bypassed by enumerating all issue comments through
+the public API. The imported OpenV issue corpus contains:
+
+```text
+3,237 comments
+```
+
+A focused pass over the early-developer authors and strict low-level terms
+(`M30612/M16C/ROM/RAM/XRAM/EEPROM/dump/disassembly/physical/monitor/`
+`programming/boot/bank/selector/mailbox/20-bit/LDE/STE`) found no additional
+private-forum fragment describing the V200KW2 firmware readout.
+
+The two previously recovered private-forum quotations remain the only explicit
+survivors in this corpus:
+
+- 2009 GWG EEPROM value/complement handling;
+- 2008 Vitosolic address list.
+
+A 2012 discussion saying that "Dump" does not work for all addresses/controllers
+was also resolved: it refers to Viess-Data's ordinary virtual-address dump and
+to non-linear Vitosoft datapoint semantics, not to MCU program-ROM access.
+
+### Public Windows-tool deep string pass
+
+ASCII and UTF-16 resource/string scans were repeated over the preserved public
+`v-control`, `VitoTest`, `voIdent`, `RS232Test`, `OptoLinkLogger`
+and contemporary vcontrold binaries.
+
+No additional M30612/M16C ROM-monitor, page/bank/window, mailbox or far-address
+command vocabulary was recovered. The OptoLinkLogger "whole memory" wording is
+the already decompiled ordinary 16-bit dump path; VitoTest "Page" strings are
+UI/printing resources; v-control's apparent `C5` occurrence is a coding
+parameter label.
+
+### Workstream-2 gate impact
+
+Still closed.
+
+The old GWG family demonstrably has a `2053` programming-state status bit,
+but there is no source-backed transition from that state to V200KW2/`2098`,
+no write that enters it, and no 20-bit source-address request.
+
+No live request follows from this finding.
+
+## Active continuation: semantic Vitosoft service-description pass
+
+A second pass over the verified public Vitosoft dataset joined the German
+text resources to the event definitions instead of relying only on event IDs.
+
+The search deliberately used a tight technical vocabulary:
+
+```text
+Firmware
+Program-ROM / Programmspeicher / ROM
+Flash
+Arbeitsspeicher / RAM / EEPROM
+Speicheradresse / Speicherbereich
+Programmierstellung
+Diagnosezweck
+Debug
+Boot / Bootloader
+Kopieren / Mailbox
+Quelladresse / Zieladresse / Speicherabbild
+```
+
+Generic terms such as plain `Speicher` were excluded because they generate
+large numbers of unrelated warm-water/puffer-storage false positives.
+
+The join recovered **84** event definitions with genuinely technical
+memory/diagnostic wording. Examples include:
+
+- `ChecksummeROMBerechnet @ 0x08F0`;
+- `NRF_ChecksummeROMLinker @ 0x08F4`;
+- the SC100 diagnostic/programming-position family;
+- old GWG programming-state metadata;
+- M-Bus scan debug RPC;
+- firmware-version metadata.
+
+Each of those 84 symbolic event definitions was then mapped back through
+`DPDefinitions.xml` to its attached datapoint/device profiles.
+
+Result:
+
+```text
+technical semantic events linked to V200KW2* = 0
+```
+
+That includes `V200KW2`, `V200KW2_4`, `V200KW2_5` and `V200KW2_6`.
+
+This independently closes another catalogue-level escape hatch: there is no
+normally catalogued V200KW2 event whose *name* looks harmless but whose German
+description reveals ROM/RAM/EEPROM/programming/diagnostic memory semantics.
+
+The result does not exclude an application-private monitor that is absent from
+the Vitosoft event database. It does make such an out-of-catalogue/private
+service more likely than a missed ordinary datapoint.
 
 ## Current technical interpretation
 
