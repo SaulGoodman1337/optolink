@@ -1445,6 +1445,84 @@ specific: recover a source-backed operation that selects the E/F program-ROM
 half, enters a monitor, or copies program ROM into a readable window. No blind
 test of guessed selector values is justified.
 
+## Active continuation: Vitosoft FCRead census narrows the hidden-path hypothesis
+
+A new cross-check against the current `SoulSolistice/esphome_vitohome`
+Vitosoft-export tooling materially narrows the search space.
+
+That project parses Viessmann's own `ecnEventType.xml` `FCRead` field and
+documents the GWG access modes found in a current Vitosoft export. Across all
+22 `GWG_*` device tokens (4,143 events), the only normal GWG `FCRead`
+values observed are:
+
+```text
+Physical_READ
+Virtual_READ
+EEPROM_READ
+XRAM_READ
+Port_READ
+BE_READ
+KMBUS_EEPROM_READ
+blank
+```
+
+The only additional read class reported in that GWG population is 34
+`KBUS_VIRTUAL_READ` rows (0.8%), described there as a genuine K-bus tunnel
+rather than another GWG memory access mode. No `KMBUS_RAM` datapoint occurs
+in the Vitosoft export.
+
+Source:
+https://github.com/SoulSolistice/esphome_vitohome/blob/066b7d35889c95e862ea6a7ba84377fe4eeafa78/components/vitohome/optolink/THIRD_PARTY.md
+
+The same codebase maps the seven Vitosoft names 1:1 to the known public GWG
+wire families:
+
+```text
+Physical_READ      -> CB
+Virtual_READ       -> C7
+EEPROM_READ        -> AE
+XRAM_READ          -> C5
+Port_READ          -> 6E
+BE_READ            -> 9E
+KMBUS_EEPROM_READ  -> 43
+```
+
+Sources:
+https://github.com/SoulSolistice/esphome_vitohome/blob/066b7d35889c95e862ea6a7ba84377fe4eeafa78/docs/design_notes.md
+https://github.com/dannerph/esphome_vitoconnect/blob/4485924dfcdccb94db852d10606511b96dab4545/components/vitoconnect/vitoconnect_optolinkGWG.h
+
+The latter also preserves the corresponding Vitosoft numeric function-code
+mapping for the known GWG families (for example `Physical_READ=3`,
+`XRAM_READ=49`, `BE_READ=53`, `KMBUS_RAM_READ=65`,
+`KMBUS_EEPROM_READ=67`).
+
+### Consequence
+
+This is **not** proof that a 2010 private developer build lacked another
+service command: the export is current and describes datapoint access, while
+KarlKoch's method could have lived outside the datapoint database entirely.
+
+It does, however, close an important hypothesis:
+
+> the missing M30612 firmware path is unlikely to be an ordinary, undocumented
+> GWG datapoint `FCRead` mode hidden among the standard Vitosoft datapoint
+> definitions.
+
+The stronger remaining models are now:
+
+1. a separate developer/service command not represented as a normal datapoint;
+2. a stateful selector/monitor setup followed by one of the ordinary GWG
+   low-level reads;
+3. a ROM-to-RAM/XRAM/mailbox copy operation exposed outside the standard
+   `FCRead` catalogue;
+4. a historical private-tool extension that never entered the public/current
+   Vitosoft datapoint export.
+
+### Workstream-2 gate impact
+
+Still closed. This finding narrows where to search, but does not provide a
+source-backed request shape suitable for a live discriminator.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
