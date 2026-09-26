@@ -1128,3 +1128,31 @@ identify KM-BUS RX + remote watchdog + room-state commit logic
         ->
 resume bounded software-emulation experiments
 ~~~
+
+## 2026-09-26 addendum — GWG firmware-readout reconstruction
+
+The M30612/V200KW2 firmware-over-Optolink lead now has a dedicated archival
+reconstruction.
+
+New evidence:
+
+- full OpenV wiki history locally scanned: 7619 commits / 11273 objects;
+- the entire `Protokoll-GWG.md` revision chain contains no removed high-address,
+  ROM, page, bank or monitor opcode;
+- public GWG framing remains one-byte addressed;
+- historical vcontrold confirms CB/AE/C5/6E/9E/33/43 low-level reads;
+- `SEND BYTES` exists as raw parser forwarding, but stock GWG test commands
+  constrain user-supplied raw data to one byte through their command length;
+- 121 historical source/binary artifacts are inventoried for recursive search.
+
+The active hypothesis is therefore a **multi-stage selector/window/monitor/copy
+mechanism**, not a plain one-step GWG physical read.
+
+Next evidence gates: inspect vcontrold 0.97/0.98, unpack all high-value archives,
+prove or disprove GWG low-level opcode reachability on V200KW2/KW, then build a
+bounded read-only live discriminator only from source-backed wire semantics.
+
+Canonical note:
+`config/optolink-splitter/research/gwg-firmware-readout-deep-dive-2026-09-26.md`.
+
+[executed on device: optolink-splitter (adb0c2e1-4670-4fc7-a00a-6548706280dd)]
