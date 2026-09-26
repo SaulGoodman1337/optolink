@@ -2875,6 +2875,81 @@ https://github.com/openv/openv/issues/312
 Still closed. The trace narrows what **not** to test, but supplies no valid
 selector/monitor/copy sequence.
 
+## Active continuation: Solarix provenance and lost 2098 workspace
+
+The public 2007-2009 development chronology identifies `Solarix` as a
+high-value provenance target for the original V200KW2 / `2098` work.
+
+In April 2007 Solarix was working against a real Vitotronic 200 KW2, announced
+a Linux CLI shell named `vitosh`, and asked pshome for the protocol-stack code.
+pshome replied that he intended to send Solarix the VB packet builder and reply
+parser. By March 2009 marcusT explicitly described the XML data flow as:
+
+> only Solarix supplied information for his 2098, while marcusT supplied the
+> GWG information.
+
+In October 2009 Solarix also described himself as having been substantially
+involved in development of the Linux/KW2 version.
+
+Public sources:
+
+- https://www.haustechnikdialog.de/Forum/t/59578/Vitotronic-vom-PC-steuern-ueberwachen?page=4&print=1
+- https://www.haustechnikdialog.de/Forum/t/59578/Vitotronic-vom-PC-steuern-ueberwachen?page=17
+- https://www.haustechnikdialog.de/Forum/t/59578/Vitotronic-vom-PC-steuern-ueberwachen?PostSort=0&page=19
+
+The recovered original OpenV SVN 1.6 working copy adds an important boundary.
+`solarix` occurs as the last-change author only below `vcontrold/examples/`.
+The surviving files are revision 22, dated 2008-03-15, and include
+`readme.txt`, `rrd.min.cmds`, `rrd.tmpl` and `vupdate.sh`. `vupdate.sh`
+is explicitly labelled `RDD Update V200KW2` and invokes tools below
+`/root/vitotools/`, but these files contain only normal vclient/RRD usage.
+No parser, XML protocol definition or raw request file in the recovered SVN is
+last-authored by Solarix.
+
+This makes `vitosh`, `vitotools`, Solarix personal backups, historical
+`pingos.de` files, private developer-platform attachments and raw 2098 traces
+explicit archival targets. This provenance does **not** prove that Solarix knew
+KarlKoch's later firmware-read mechanism; it only identifies the best surviving
+public trail for lost early 2098 protocol material.
+
+### Workstream-2 gate impact
+
+Still closed. No selector, monitor, copy service or successful 2098 low-level
+memory read was recovered.
+
+## M30612 reference-dump side track: useful architecture target, not Viessmann evidence
+
+A public service-data trail for the ORION 32DDA / TV82100 identifies an
+`M30612SFP` controller. A surviving service manual states that the controller
+is paired with an external EPROM containing the appliance software. A genuine
+program image from that platform would be useful to validate M16C/61 vector
+layout, disassembler settings and characteristic far-memory (`LDE`/`STE`)
+code patterns independently of Viessmann.
+
+However, the readily indexed `ORION 32DDA (TV82100-M30612) 100Hz` item
+labelled `TV DUMP` on Electronica-PT reports only about 0.6 KiB compressed.
+A second dump catalog explicitly describes the exact-model artifact as
+`24C16.e2p`. The Electronica-PT binary endpoint also returned HTTP 403 when
+requested outside the site's download flow. This public `TV DUMP` is therefore
+best classified as configuration EEPROM material, **not** a confirmed M30612
+program image.
+
+Related public evidence:
+
+- https://www.reptips.dk/Reptips/orion-pro8000.pdf
+- https://www.electronica-pt.com/esquema/firmware/tv-dumps/orion/orion-32dda-%28tv82100-m30612%29-100hz-63246/
+- https://www.bios-downloads.com/product-category/bios/tv/orion/
+- https://www.elektroda.pl/rtvforum/topic770910.html
+
+The Elektroda repair thread separately names `SEI 8000-3.1` as the external
+flash/BIOS device beside `M30612SFP` and `24C16`. Recovering an image of
+that external program device remains a useful architecture-reference target,
+but it would provide no Viessmann Optolink service semantics by itself.
+
+### Workstream-2 gate impact
+
+None. This side track can validate M16C static-analysis tooling only.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
