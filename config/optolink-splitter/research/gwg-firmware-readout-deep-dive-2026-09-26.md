@@ -2818,6 +2818,63 @@ developer builds remain lost archival targets, but the one recoverable
 "alternative sync" behavior is ordinary protocol synchronization rather than
 the firmware bridge.
 
+## Active continuation: exact 20C2 CB negative control from openv/openv#312
+
+A real `20C2` controller trace survives in imported issue
+`openv/openv#312` (2016, Vitodens 333).
+
+The configured command generated this request repeatedly:
+
+```text
+01 CB 55 5A 02 04
+```
+
+and the controller produced only periodic `05` bytes before vcontrold timed
+out and retried.
+
+This is useful negative evidence, but its boundary is important.
+
+The public GWG `Physical_READ / CB` shape is:
+
+```text
+01 CB <one-byte-address> <len> 04
+```
+
+The failing 20C2 request instead inserts the ordinary two-byte virtual/KW
+address `0x555A` directly after `CB`:
+
+```text
+CB 55 5A 02 04
+   ^^^^^
+   two-byte address transplanted into a one-byte-GWG command family
+```
+
+Therefore issue #312 demonstrates that this **naive hybrid frame** did not
+work on that 20C2 installation.
+
+It does **not** prove that:
+
+- every correctly shaped `CB` request is rejected by 20C2;
+- 20C2 lacks all low-level GWG compatibility;
+- a stateful selector/monitor mode could not enable a low-level read;
+- or KarlKoch's V200KW2 method used this malformed direct-transposition form.
+
+The trace is consequently retained as a negative control:
+
+> direct substitution of a normal 16-bit KW address into the public one-byte
+> GWG `CB` frame is known to fail on a real 20C2 controller.
+
+No live repetition is justified; it would only reproduce a historically
+documented malformed/unsupported request shape.
+
+Source:
+https://github.com/openv/openv/issues/312
+
+### Workstream-2 gate impact
+
+Still closed. The trace narrows what **not** to test, but supplies no valid
+selector/monitor/copy sequence.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
