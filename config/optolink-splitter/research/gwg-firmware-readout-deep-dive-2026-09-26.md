@@ -2598,6 +2598,124 @@ missing is the byte sequence or service semantics themselves.
 Still closed. No new production-controller request is source-backed by these
 findings.
 
+## Active continuation: voIdent IL, v-control 3.0 identity, and exact WB2A vconnect
+
+Three historical ambiguities were resolved at code level.
+
+### voIdent protocol path reconstructed from IL
+
+All preserved `voIdent` releases were statically decompiled as .NET IL.
+The serialized identification requests were recovered directly from their
+initialized byte arrays.
+
+The surviving releases contain only these protocol requests:
+
+```text
+GWG:
+01 C7 F8 04 04
+
+KW:
+01 F7 00 F8 04
+
+P300 (later release):
+41 05 00 01 00 F8 04 02
+```
+
+The oldest preserved `voIdent_v1.0` binary contains only the GWG
+`C7 F8` request for device identification.
+
+Version 1.1 adds an explicit protocol analyzer. Its static arrays contain
+`C7 F8` for identification and `F7 00F8` for distinguishing KW after the
+P300 synchronization attempt. The later history documents that v1.2 allowed
+the user to choose GWG or KW for identification; v1.4 later enabled P300
+identification.
+
+The v1.5 protocol analyzer performs only the documented synchronization and
+ordinary identification operations:
+
+```text
+04
+16 00 00
+01 F7 00 F8 04
+```
+
+and then, according to the selected protocol, identifies with one of the
+three requests above.
+
+There are no other SerialPort write paths carrying a physical/XRAM/EEPROM,
+monitor, selector, page/bank or far-address request.
+
+This code-level result confirms Hanspeter's historical statement that GWG
+`C7` was usable as a generic identification path, but it does not reveal a
+generic low-level GWG-memory bridge.
+
+### Historical "v-control 3.0" is represented by the preserved beta
+
+The full history of `v-control.md` resolves an archive naming ambiguity.
+The historical download page states:
+
+```text
+Release: v-control1_2_5.zip
+Beta:    v-control1_3_0M.zip
+
+neue Features (3.0):
+- Protokolle 300, KW, GWG
+- Solardaten
+- Lesen/Schreiben fuer Heizkreis M2
+```
+
+Contemporary forum users refer to this software as `v-control 3.0` or
+`v-control3.0beta`.
+
+Therefore the preserved `v-control1_3_0M.zip` is the public beta carrying
+the documented 3.0 feature set; the forum wording does not establish a
+separate lost `v-control 3.0` executable.
+
+This matters because that preserved binary has already been subjected to
+ASCII/UTF-16/resource scans and contains no M30612/M16C firmware-monitor,
+page/bank/window/copy or far-address vocabulary. Its device table includes
+`2098/V200KW2`, `20C2` and `20CB/VScotHO1`, but that metadata is not a
+firmware service.
+
+### Exact WB2A / 20C2 independent implementation: fnobis vconnect
+
+The imported OpenV discussion contains an exact-hardware report from
+Frank Nobis (`fnobis`) on 2010-11-16:
+
+```text
+Vitodens200 WB2A
+configured in vcontrold with 2098/V200KW2
+device identification returns 20C2 / VDensHO1
+```
+
+His later independently written `vconnect` source is preserved in
+`openv/vconnect`. Its documentation states that the implementation was
+hard-coded for his `20C2` controller.
+
+The source is read-only P300. The complete request constructor is:
+
+```text
+41 05 00 01 <addr_hi> <addr_lo> <len> <checksum>
+```
+
+with exactly two address bytes. No GWG low-level family, GFA/process service,
+selector, page/bank, monitor or wider address exists in the source.
+
+Thus the historical ability to use a `2098` vcontrold profile against this
+WB2A while reading identity `20C2` is a datapoint/configuration compatibility
+fact, not evidence of a hidden 2098-to-20C2 low-level memory bridge.
+
+### External M30612 mirror check
+
+A global GitHub code search for the exact M30612/V200KW2 identifiers and
+KarlKoch wording found no independent source or mirror of the reported
+firmware dump/disassembly.
+
+### Workstream-2 gate impact
+
+Still closed. These results remove three archival ambiguities but do not
+provide a request that constructs the M30612 20-bit ROM address.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
