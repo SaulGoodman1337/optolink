@@ -1365,239 +1365,110 @@ surface is now much smaller:
 
 No production-controller live test follows from this archival conclusion.
 
-## Active continuation: 64 KiB KW dump separated from MCU dump; GWG write evidence
+## Active continuation: six omitted V200KW2 FCRead rows resolved from public LFS data
 
-Three historical observations now sharpen the missing mechanism.
+The previously identified public Git-LFS source in
+`MorrisonHB/Optolink_02` was successfully materialized on the
+`optolink-splitter` host via GitHub's media endpoint.
 
-### Hanspeter's 2011 logger was explicitly a 64 KiB KW-space dump
-
-In OpenV issue #21, Hanspeter/vitoopen wrote on 2011-01-04 that his
-in-development logger could read the **entire 64 KiB address space** of his
-V200KW2 via the normal KW protocol in under three minutes.
-
-Source:
-https://github.com/openv/openv/issues/21#issuecomment-339371365
-
-This is important negative evidence: the contemporary public/user-space
-"whole address space" dump was the ordinary 16-bit KW view. It does not
-explain KarlKoch's separate statement that roughly 128 KiB of M30612 program
-software had been read through Optolink.
-
-The two historical meanings of "dump" must therefore remain separated:
-
-- normal V200KW2 KW dump -> 64 KiB virtual address space;
-- KarlKoch M30612 dump -> ~128 KiB MCU program code, requiring an additional
-  selector/window/monitor/copy mechanism.
-
-### Private developer-forum fragment proves additional GWG low-level write semantics
-
-OpenV issue #245 preserves a verbatim quotation from the former private
-developer forum dated 2009-01-17. The quoted GWG EEPROM-write experiment used:
+All downloaded objects matched the LFS pointer hashes exactly:
 
 ```text
-01 AD 07 01 FB 04
+ecnDataPointType.xml
+c66a57be8004a64cf3bf686bf2aa51d77f7ee96e794e95b3d09318a78fe8f0a3
+
+ecnEventType.xml
+2338beb0e8544b6149bc4b2433ecabd9509edcdafc2e8e91f00182eba1aff7ba
+
+DPDefinitions.xml
+efec27568d398021c767771af016143bd51fc196d2d408dbb80faff84d0b19e3
 ```
 
-and the discussion explains paired EEPROM bytes where the second byte is the
-first XOR FF.
-
-Source:
-https://github.com/openv/openv/issues/245#issuecomment-339633725
-
-This does **not** identify the missing firmware selector and must not be replayed
-on the production controller. It does prove that the private developer
-environment contained concrete low-level GWG write-frame knowledge beyond the
-surviving public read examples, strengthening the hypothesis that a setup or
-selector operation could have existed only in private forum/tool material.
-
-### M30612 architectural implication
-
-The surviving OpenV KM-Bus documentation identifies the V200KW2 controller as
-M30612MC and states that approximately 128 KiB of controller software was read
-through Optolink:
-
-https://github-wiki-see.page/m/openv/openv/wiki/KM-Bus
-
-Renesas/Mitsubishi M16C/60-family documentation distinguishes mask-ROM devices
-from flash variants; 128 KiB internal program-ROM configurations occupy the
-top 128 KiB of the 20-bit address space (E0000h..FFFFFh). This makes a normal
-16-bit KW address walk insufficient by construction.
-
-Renesas references:
-https://www.renesas.com/en/products/rom-ordering
-https://www.renesas.com/en/document/dst/m16c62-group-datasheet
-
-The historical method therefore fits an **application/service bridge** better
-than an ordinary flash-programming bootloader. Plausible bridge shapes remain:
-
-1. bank/high-nibble selector (notably the two 64 KiB halves E and F);
-2. monitor/service mode exposing a 16-bit window into program ROM;
-3. program-ROM -> RAM/XRAM/window copy followed by an ordinary read;
-4. undocumented request carrying a high-address selector separately from the
-   normal 16-bit address.
-
-This is an architectural narrowing, not yet a recovered wire protocol.
-
-### Workstream-2 gate
-
-Still closed. The new evidence makes the first useful discriminator more
-specific: recover a source-backed operation that selects the E/F program-ROM
-half, enters a monitor, or copies program ROM into a readable window. No blind
-test of guessed selector values is justified.
-
-## Active continuation: Vitosoft FCRead census narrows the hidden-path hypothesis
-
-A new cross-check against the current `SoulSolistice/esphome_vitohome`
-Vitosoft-export tooling materially narrows the search space.
-
-That project parses Viessmann's own `ecnEventType.xml` `FCRead` field and
-documents the GWG access modes found in a current Vitosoft export. Across all
-22 `GWG_*` device tokens (4,143 events), the only normal GWG `FCRead`
-values observed are:
+The public dataset identifies `V200KW2` as datapoint type ID `26`.
+Joining:
 
 ```text
-Physical_READ
-Virtual_READ
-EEPROM_READ
-XRAM_READ
-Port_READ
-BE_READ
-KMBUS_EEPROM_READ
-blank
+ecnDatapointType ID 26
+  -> ecnDataPointTypeEventTypeLink
+  -> ecnEventType numeric row
+  -> ecnEventType.xml symbolic ID
 ```
 
-The only additional read class reported in that GWG population is 34
-`KBUS_VIRTUAL_READ` rows (0.8%), described there as a genuine K-bus tunnel
-rather than another GWG memory access mode. No `KMBUS_RAM` datapoint occurs
-in the Vitosoft export.
+resolves 415 V200KW2 event links with no missing join keys.
 
-Source:
-https://github.com/SoulSolistice/esphome_vitohome/blob/066b7d35889c95e862ea6a7ba84377fe4eeafa78/components/vitohome/optolink/THIRD_PARTY.md
-
-The same codebase maps the seven Vitosoft names 1:1 to the known public GWG
-wire families:
+The read-function distribution is:
 
 ```text
-Physical_READ      -> CB
-Virtual_READ       -> C7
-EEPROM_READ        -> AE
-XRAM_READ          -> C5
-Port_READ          -> 6E
-BE_READ            -> 9E
-KMBUS_EEPROM_READ  -> 43
+Virtual_READ            407
+Remote_Procedure_Call     4
+undefined                 2
+blank                     2
 ```
 
-Sources:
-https://github.com/SoulSolistice/esphome_vitohome/blob/066b7d35889c95e862ea6a7ba84377fe4eeafa78/docs/design_notes.md
-https://github.com/dannerph/esphome_vitoconnect/blob/4485924dfcdccb94db852d10606511b96dab4545/components/vitoconnect/vitoconnect_optolinkGWG.h
+The **six non-blank, non-Virtual_READ rows** that were omitted by the generated
+catalogue are now resolved exactly:
 
-The latter also preserves the corresponding Vitosoft numeric function-code
-mapping for the known GWG families (for example `Physical_READ=3`,
-`XRAM_READ=49`, `BE_READ=53`, `KMBUS_RAM_READ=65`,
-`KMBUS_EEPROM_READ=67`).
+| Event | Address | FCRead | Access | Prefix / handler | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| `BedienparameterA1M1FunktionReset` | `0xA051` | `Remote_Procedure_Call` | Write | prefix `00` | A1/M1 operating-parameter reset |
+| `BedienparameterM2FunktionReset` | `0xA051` | `Remote_Procedure_Call` | Write | prefix `01` | M2 operating-parameter reset |
+| `BedienparameterM3FunktionReset` | `0xA051` | `Remote_Procedure_Call` | Write | prefix `02` | M3 operating-parameter reset |
+| `Oelverbrauch_Reset` | `0x7574` | `undefined` | Write | FCWrite `Virtual_WRITE` | oil-consumption reset |
+| `RPCWink` | `0xA000` | `Remote_Procedure_Call` | ReadWrite | RPCHandler `22`, block length `0` | generic RPC wink service |
+| `DatabaseVersionForExport` | no controller address | `undefined` | Read | block length `5` | host/export metadata |
+
+Two further V200KW2 rows have blank `FCRead` values:
+
+```text
+ecnStatusEventType
+ecnsysEventType~ErrorNotification
+```
+
+They do not define an Optolink memory-read transaction.
+
+### RPCWink cross-check
+
+`RPCWink @ 0xA000` is not V200KW2-specific. The same event is linked to 22
+datapoint types spanning multiple Vitotronic generations, Vitocom LAN devices,
+Ecotronic, VBC550 and other controller families.
+
+Its public event definition carries:
+
+```text
+FCRead       Remote_Procedure_Call
+FCWrite      Remote_Procedure_Call
+AccessMode   ReadWrite
+Parameter    Byte
+BlockLength  0
+ByteLength   0
+RPCHandler   22
+```
+
+It provides no source-address field, high-address selector, page/bank value,
+copy-buffer descriptor or firmware block length.
+
+This independently reproduces the earlier private exact-2098 trace in
+`firmware-optolink-readout-research-2026-09-25.md`, which had already
+identified the same three `A051` reset RPCs and `RPCWink @ A000`.
+
+The public and private datasets differ in total V200KW2 membership counts
+(415 public LFS links versus 465 unique exact events in the private trace), but
+their exceptional RPC surface agrees on the relevant service candidates.
 
 ### Consequence
 
-This is **not** proof that a 2010 private developer build lacked another
-service command: the export is current and describes datapoint access, while
-KarlKoch's method could have lived outside the datapoint database entirely.
+The six omitted generated-catalogue rows do **not** reveal the missing M30612
+firmware reader.
 
-It does, however, close an important hypothesis:
-
-> the missing M30612 firmware path is unlikely to be an ordinary, undocumented
-> GWG datapoint `FCRead` mode hidden among the standard Vitosoft datapoint
-> definitions.
-
-The stronger remaining models are now:
-
-1. a separate developer/service command not represented as a normal datapoint;
-2. a stateful selector/monitor setup followed by one of the ordinary GWG
-   low-level reads;
-3. a ROM-to-RAM/XRAM/mailbox copy operation exposed outside the standard
-   `FCRead` catalogue;
-4. a historical private-tool extension that never entered the public/current
-   Vitosoft datapoint export.
+This closes the public-LFS exceptional-`FCRead` lead as a direct path to
+workstream 2. The remaining firmware mechanism must still be outside ordinary
+V200KW2 datapoint metadata, most plausibly a historical/private monitor,
+selector/window setup, raw developer command sequence, or ROM-to-RAM/mailbox
+operation.
 
 ### Workstream-2 gate impact
 
-Still closed. This finding narrows where to search, but does not provide a
-source-backed request shape suitable for a live discriminator.
-
-## Active continuation: full Vitosoft dataset recovered as Git-LFS artifacts
-
-A concrete public archive source for the raw Vitosoft dataset has now been
-identified in `MorrisonHB/Optolink_02`.
-
-The repository contains Git-LFS pointers for the files needed to reconstruct
-the exact V200KW2 event/access mapping rather than relying on generated
-catalogues:
-
-```text
-Optolink_02/XML/ecnEventType.xml
-  sha256 2338beb0e8544b6149bc4b2433ecabd9509edcdafc2e8e91f00182eba1aff7ba
-  size   9,935,374 bytes
-
-Optolink_02/XML/DPDefinitions.xml
-  sha256 efec27568d398021c767771af016143bd51fc196d2d408dbb80faff84d0b19e3
-  size   186,559,004 bytes
-
-Optolink_02/XML/ecnDataPointType.xml
-  sha256 c66a57be8004a64cf3bf686bf2aa51d77f7ee96e794e95b3d09318a78fe8f0a3
-  size   163,323 bytes
-
-Optolink_02/Datenbank/ecnViessmann.mdf
-  sha256 524ffe4317d451135ef59bb78f58013bdcc12cd3b8acefbed66abd08f10e90d6
-  size   91,947,008 bytes
-```
-
-Source repository:
-https://github.com/MorrisonHB/Optolink_02
-
-This matters because the current generated V200KW2 catalogue in
-`SoulSolistice/esphome_vitohome` explicitly reports six datapoints omitted
-from the normal KW/Virtual_READ path because their `FCRead` belongs to a
-non-standard access family:
-
-```text
-GFA_READ / RPC / PROZESS / KBUS / OT
-```
-
-The generated catalogue does not retain those six rows, so their exact names,
-addresses and function classes cannot be recovered from the YAML alone.
-
-### Next exact extraction step
-
-Once the LFS objects are materialized, join:
-
-```text
-V200KW2 datapoint type
-  -> DPDefinitions.xml event links
-  -> ecnEventType.xml access rows
-  -> FCRead / FCWrite / Address / BlockLength / ByteLength
-```
-
-and emit only rows where:
-
-```text
-device = V200KW2 / 0x2098
-FCRead != Virtual_READ
-```
-
-The immediate research question is whether any of the six omitted rows has
-firmware/service semantics. If all six resolve to ordinary burner-control,
-K-Bus, OpenTherm or process datapoints, this closes another possible
-firmware-read route. If one is a service/RPC path, it becomes the highest
-priority source-backed candidate for deeper analysis.
-
-The current execution environment cannot materialize Git-LFS payloads directly;
-the remote `optolink-splitter` host was also temporarily unavailable during
-this checkpoint. The hashes above make the next extraction deterministic once
-that host is reachable again.
-
-### Workstream-2 gate impact
-
-Still closed. The raw data source is now known, but no request shape from the
-six non-standard V200KW2 rows has yet been recovered.
+Still closed. No new live request is justified by these six rows.
 
 ## Current technical interpretation
 
