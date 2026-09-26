@@ -1771,6 +1771,122 @@ surfaces rather than repeat scans of the public Wiki text corpus.
 Still closed. The public text-history scan yields no source-backed live
 discriminator.
 
+## Active continuation: M30612 architecture constrains the missing firmware bridge
+
+The historical KarlKoch note identifies the V200KW2 controller CPU as
+`M30612MC` and describes an approximately 128 KiB firmware image.
+
+The surviving Mitsubishi M16C/61 documentation makes that size/address
+combination technically significant.
+
+For the documented `M30612MCA` family member:
+
+```text
+M = mask-ROM version
+C = 128 KiB ROM capacity
+
+internal ROM:
+0xE0000 .. 0xFFFFF
+```
+
+The historical Wiki notation `M30612MC` does not preserve the complete order
+suffix/package code, so it should not be expanded into an exact local part
+number without board evidence. However, the documented `MC` family code and
+KarlKoch's approximately 128 KiB image size agree with the M16C/61 128-KiB
+mask-ROM variant.
+
+Sources:
+
+- Mitsubishi/Renesas M16C/61 group datasheet, memory map and type-number table:
+  https://datasheet4u.com/pdf/444783/M30612MA-323FP.pdf
+- Renesas M16C/60, M16C/20, M16C/Tiny Series Software Manual:
+  https://www.renesas.com/en/document/mah/m16c60-m16c20-m16ctiny-series-software-manual
+
+### Addressing consequence
+
+The M16C/60 software architecture distinguishes two important address classes:
+
+```text
+general instruction addressing:
+  0x00000 .. 0x0FFFF   (64 KiB)
+
+special 20-bit addressing:
+  0x00000 .. 0xFFFFF   (1 MiB)
+```
+
+The special 20-bit memory forms are used by instructions such as `LDE` and
+`STE`, including absolute 20-bit addresses, 20-bit displacement forms and
+the concatenated `[A1A0]` address-register form.
+
+Therefore the 128-KiB internal ROM region at:
+
+```text
+0xE0000 .. 0xFFFFF
+```
+
+cannot be represented by an ordinary two-byte/16-bit physical address alone.
+
+This sharpens the central protocol question substantially.
+
+KarlKoch's reported Optolink dump mechanism must have caused the running
+firmware to construct or otherwise reach a **20-bit/far program-memory
+address**. A plain public GWG one-byte address and a plain KW `F7` two-byte
+address are insufficient representations of that physical ROM location.
+
+### Architectural implications for the missing mechanism
+
+The strongest remaining implementations are now:
+
+1. **20-bit pointer service** — a service request carries three address bytes
+   or an equivalent high-byte/high-nibble field and firmware performs
+   `LDE`-style program-memory reads;
+2. **selector/window service** — a high page/bank selector is stored
+   separately, while a subsequent one-/two-byte low address accesses a window;
+3. **ROM-to-RAM/XRAM copy service** — a 20-bit source pointer is written into
+   a mailbox/descriptor and firmware copies a block into an ordinary readable
+   RAM/XRAM region;
+4. **private application monitor** — a developer-only parser/service operates
+   outside the public Vitosoft datapoint catalogue and exposes far-memory
+   reads directly.
+
+The mask-ROM classification also makes a normal **flash programming/bootloader
+update path** a poor explanation for the historical dump. The relevant
+V200KW2 mechanism is more plausibly a read service implemented by the running
+application/diagnostic firmware rather than a flash-ROM programming command.
+
+This does not prove which of the four models KarlKoch used.
+
+### New archival search signatures
+
+Further historical/binary searches should prioritize:
+
+```text
+M30612 / M16C
+E0000 / FFFFF
+20-bit / far address / far pointer
+LDE / STE
+3-byte source address
+page / bank / window
+copy / mailbox / buffer
+high address byte or nibble E/F
+```
+
+The complete reachable public Wiki text-history scan found no independent
+`E0000`, `LDE`, `STE`, far-address or 20-bit service description beyond
+KarlKoch's existing `M30612MC` statement.
+
+No live request follows from this architecture result. In particular, it does
+**not** justify guessing an `E0`/`0E` selector or injecting a three-byte
+address into an undocumented production-controller command.
+
+### Workstream-2 gate impact
+
+Still closed, but the missing bridge is now more tightly specified:
+
+> recover a request/service that transports or internally constructs a
+> 20-bit source address capable of reaching `0xE0000..0xFFFFF`, or a
+> selector/copy mechanism demonstrably equivalent to it.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
