@@ -684,6 +684,24 @@ firmware-read implementation.
 This closes the strongest remaining interpretation of the TerminatorIII
 extended file as a direct path to the missing 2098 firmware-reader mechanism.
 
+## Active workstream checkpoint: voIdent / VitoTest binary string pass
+
+A targeted static string pass was run over the preserved `voIdent` releases
+(v1.0, v1.1, v1.3, v1.5) and `VitoTest` releases (v1.6, v1.7, v1.8).
+
+Results:
+
+- `voIdent` embeds the expected V200KW2 / `2098` device metadata and protocol
+  selection strings;
+- no `M30612`, `M16C`, ROM/flash monitor, page/bank/window/copy, or low-level
+  `CB/C5/AE/9E` firmware-read strings were recovered;
+- `VitoTest` produced no protocol-specific firmware-read vocabulary in the
+  static string pass; apparent "monitor" hits are Windows API/UI symbols only.
+
+This does not prove that the binaries contain no relevant code, but it removes
+another easy archival route: neither tool exposes a self-describing firmware
+reader or selector/monitor command set in its preserved public binary.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
