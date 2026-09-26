@@ -1926,6 +1926,26 @@ breakthrough. Future forum archaeology should prioritize later posts by
 vitoopen/Hanspeter and other early developers that explicitly quote or
 paraphrase older private-forum material.
 
+## Active continuation: V200KW2 protocol-300 evidence
+
+Historical issue `openv/openv#21` records Hanspeter/vitoopen on 2011-01-04 stating that his V200KW2 was operating with protocol 300 and that he used its extended addressing for a cascade-control setup. The same comment says his KW logger could read the complete 64-KiB address range of that V200KW2 in under three minutes at more than 360 bytes/s net.
+
+Source: https://github.com/openv/openv/issues/21
+
+Independent reverse engineering in `sarnau/InsideViessmannVitosoft` confirms that VS1/KW exposes the extra GFA and PROZESS function-code carriers in addition to virtual read/write, while both VS1 and VS2 keep a two-byte data-address field. The VS2 family also defines LDAP and RDAP protocol identifiers; RDAP is marked unused in the traffic observed by that project.
+
+Sources:
+- https://github.com/sarnau/InsideViessmannVitosoft/blob/main/VitosoftCommunication.md
+- https://github.com/sarnau/InsideViessmannVitosoft/blob/main/Viessmann2MQTT.py
+
+This proves that at least one fielded V200KW2 accepted protocol 300, so the missing bridge is not constrained to ordinary KW transport. It does not prove that the historic phrase "extended addressing" means a wider MCU memory pointer: the documented 300 frame itself stays 16-bit-addressed, while cascade installations require remote/member routing.
+
+The highest-value archival target is therefore Hanspeter's 2010/2011 protocol-300 logger or cascade/RDAP implementation. That code can distinguish whether "extended addressing" was only member routing or carried additional selector/window state.
+
+### Workstream-2 gate impact
+
+Still closed. There is still no source-backed request that constructs the M30612 program-ROM address or an equivalent selector/window/copy operation. No live request follows from this finding alone.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
