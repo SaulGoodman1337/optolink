@@ -604,6 +604,42 @@ one of:
 2. a contemporary selector/monitor/copy sequence tied to V200KW2/M30612; or
 3. an exact VDensHO1/20C2 equivalent service path.
 
+## Active continuation: legacy v-control binary pass
+
+The preserved public `v-control` archives were unpacked and scanned directly:
+
+```text
+v-control1_2_5.exe
+v-control1_3_0M.exe
+```
+
+These are VB6 applications from the same historical ecosystem and therefore
+plausible places for a hidden developer/debug readout path.
+
+Static string analysis did **not** recover any of the expected firmware-read
+markers:
+
+```text
+M30612
+M16C
+firmware
+ROM / FLASH
+MONITOR
+PAGE / BANK / WINDOW
+COPY / DUMP
+```
+
+The only apparent `C5` hit is ordinary UI text
+(`C5 Minimalbegrenzung Vorlauf`), not opcode evidence.
+
+This makes the preserved public `v-control 1.2.5/1.3.0M` binaries a weak
+candidate for KarlKoch's firmware-dump mechanism. They should not be treated
+as evidence for a hidden M30612 readout path without deeper code-level
+evidence.
+
+The archival priority remains the lost private developer-forum/SVN material
+and exact `2098` low-level traces.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
