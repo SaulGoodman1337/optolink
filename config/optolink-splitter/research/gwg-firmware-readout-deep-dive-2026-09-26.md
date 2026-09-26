@@ -497,8 +497,7 @@ https://www.haustechnikdialog.de/Forum/t/59578/Vitotronic-vom-PC-steuern-ueberwa
 ### SourceForge/vcontrold archaeology closes two false positives
 
 The recovered `openv/vcontrold` history contains the historical
-`sim-2098.ini`. It first appears in the reachable Git history in commit
-`91e7d84b2becaab5f14a6417dd097395ce8c8490` and later moved to
+`sim-2098.ini`. It first appears in the reachable Git history in commit`91e7d84b2becaab5f14a6417dd097395ce8c8490` and later moved to
 `doc/examples/sim-2098.ini`.
 
 The recovered simulator contains ordinary KW reads only, for example:
@@ -997,7 +996,6 @@ likely to have lived in:
 
 The SourceForge SVN history itself is no longer a high-priority place to search
 for the selector/monitor/copy bridge.
-
 ## Active continuation: exact VDensHO1 exceptional read surface fully classified
 
 The verified private Vitosoft v6 snapshot
@@ -1497,8 +1495,7 @@ The most important artifact is `svn20100707-rev35.tgz`, imported into the
 Wiki on 2010-08-23 and described by the historical Wiki page as a snapshot of
 the SVN archive from 2010-07-07.
 
-Unlike the later SourceForge history, this archive contains an SVN 1.6 working
-copy with its original `.svn` metadata intact.
+Unlike the later SourceForge history, this archive contains an SVN 1.6 workingcopy with its original `.svn` metadata intact.
 
 The exact original repository identities are:
 
@@ -1998,7 +1995,6 @@ The public V200KW2 Vitosoft membership join remains important here: its 415
 event links contain no V200KW2 `GFA_READ` or `PROZESS_READ` datapoint.
 The only non-blank/non-`Virtual_READ` rows are the three reset RPCs,
 `RPCWink`, `Oelverbrauch_Reset` and `DatabaseVersionForExport`.
-
 So the transport supports more function classes than the normal 2098
 datapoint catalogue uses.
 
@@ -2497,8 +2493,7 @@ The PE timestamp of the preserved `v-control1_2_5.exe` is
 Therefore `20CB/VScotHO1` identity support was already present in an early
 public v-control binary before Fritz-Ber described his 2009/2010 VB2008E work.
 This does not prove that Fritz-Ber's private source was byte-for-byte identical,
-but it downgrades the hypothesis that his fork introduced a new low-level
-protocol/service layer. The surviving evidence remains consistent with a
+but it downgrades the hypothesis that his fork introduced a new low-levelprotocol/service layer. The surviving evidence remains consistent with a
 VB/.NET port and device/datapoint adaptation built on the existing v-control /
 V-Comm transport.
 
@@ -2949,6 +2944,208 @@ but it would provide no Viessmann Optolink service semantics by itself.
 ### Workstream-2 gate impact
 
 None. This side track can validate M16C static-analysis tooling only.
+
+## KarlKoch chronology and what the GWG link actually implies
+
+The Wiki history now gives an unusually precise chronology for the central
+KarlKoch clue.
+
+KarlKoch created `KM-Bus.md` on 2010-10-04 and added the processor/software
+analysis paragraph at **2010-10-04 15:50:12 +0200** (Wiki commit
+`da56ba2f73ae09d03597d75210d8a76444595503`).  That edit is the one which
+states that the V200KW2 uses an `M30612MC`, that its software can be read with
+some effort via Optolink, that the code is about 128 KiB, and that the
+disassembly is about 57,000 lines.  The same edit links to `Protokoll-GWG`.
+
+This link does **not** point to a new 2010 firmware-read opcode.  The complete
+`Protokoll-GWG.md` history shows that the public low-level table containing
+`C7/C4`, `CB/C8`, `AE/AD`, `C5/C3`, `6E/6D`, `9E/9D` and
+`33/43` had already been published on **2008-02-05**.  KarlKoch did not edit
+that page.
+
+A second KarlKoch edit from the same afternoon is more informative.  In
+`KM-Bus-Interface.md` at 2010-10-04 16:00:39 he explicitly describes
+Optolink as substantially more powerful than KM-Bus because it permits direct
+reading and writing of **RAM and ports**.  He does not claim a public direct
+ROM-read primitive there.
+
+Current interpretation:
+
+- Karl's GWG link most likely points to already-known low-level building
+  blocks, not to a newly documented `ROM_READ` command.
+- A composed mechanism using RAM / a service buffer / MCU registers is
+  therefore at least as plausible as a hidden one-shot ROM opcode.
+- This remains historical evidence, not an executable sequence.
+
+## `BE_READ/BE_WRITE` is Bedienteil, not Bank Extension
+
+The former hypothesis that `9E/9D` might represent a bank-extension selector
+can now be closed.
+
+The original 2010 OpenV XML defines `GETBADDR` with `SEND 01 9E`, while
+the corresponding user command `bget` is described as:
+
+`Testabfrage, Bedienteil Adresse eingeben`
+
+The only recovered `getb*` usage is attached to the old `2053` GWG device.
+Thus `BE` is best read as **Bedienteil**, not bank extension.
+
+Consequence: `9E/9D` should no longer be treated as a candidate high-address
+selector without new evidence.
+## Standard function-code surface contains no ROM / flash primitive
+
+The recovered Vitosoft function-code enumeration is broad.  Besides
+Virtual/Physical/EEPROM/XRAM/Port/BE/KM-Bus access it contains RPC, process,
+GFA, OpenTherm and multiple KBUS transfer families.  It contains **no**
+`ROM_READ`, `FLASH_READ`, `PROGRAM_READ`, page/bank selector or monitor
+function.
+
+The recovered VS1/KW implementation is narrower still.  The source-backed VS1
+wire commands are:
+
+```text
+F7  Virtual Read
+F4  Virtual Write
+6B  GFA Read
+68  GFA Write
+7B  Process Read
+78  Process Write
+```
+
+`Physical_READ` exists in the VS2 function-code enumeration, but no recovered
+VS1 serializer maps it to a 16-bit `CB` request.  Therefore a speculative
+frame such as `01 CB <addr_hi> <addr_lo> <len>` has no current source basis
+and must not be confused with the known 1-byte-address GWG `CB` form.
+
+Sources:
+
+- `InsideViessmannVitosoft/VitosoftCommunication.md`
+- `InsideViessmannVitosoft/vcontrold_test.py`
+- original OpenV SVN XML `vcontrold.xml` / `vito.xml`
+
+## What the recovered GWG physical/port mappings imply
+
+The original `2053` GWG XML provides a useful semantic control.
+
+`Port_READ` uses address `01` with individual bits for real outputs:
+
+- bit 0: heating-circuit pump M1
+- bit 1: DHW/heating changeover valve
+- bit 2: circulation pump
+
+On the M30612/M16C/61 itself, MCU port P1 is an SFR at `0x03E1`, not
+`0x0001`.  The historical GWG port address therefore behaves like a
+**logical port number**, not a raw low byte of the MCU SFR address.  This makes
+`6E/6D` unsuitable as evidence for arbitrary direct SFR access on 2098.
+
+The old `Physical_READ` mappings are different.  The recovered XML contains
+27 `2053` one-byte physical overrides spanning `0x00..0xF8`; examples are:
+
+```text
+virtual 0800  outside temperature       -> physical 6F
+virtual 0802  boiler temperature        -> physical 70
+virtual 2301  operating mode M1         -> physical 51
+virtual 551E  burner state              -> physical 22
+```
+
+This looks like a compact device-specific data/RAM map rather than a generic
+20-bit bus.  It is consistent with `CB` exposing physical process variables
+on the old GWG platform.  It does not prove that `CB/C8` reach M30612 SFRs
+on 2098; indeed a valid 2098 `CB` transaction is still unproven.
+
+## M30612 DMAC as a possible 20-bit bridge
+
+The M16C/61 architecture supplies one technically interesting way to bridge
+the Optolink address-width mismatch without a ROM-specific protocol opcode.
+
+For DMA0 the relevant M16C/61 registers include:
+
+```text
+SAR0    0x0020..0x0022   20-bit source pointer
+DAR0    0x0024..0x0026   20-bit destination pointer
+TCR0    0x0028..0x0029   transfer counter
+DM0CON  0x002C           DMA control
+DM0SL   0x03B8           DMA request-cause select / software request
+```
+
+The hardware manual allows the DMA source/destination pointer to name
+`0x00000..0xFFFFF`, which includes the M30612 128-KiB mask-ROM region
+`0xE0000..0xFFFFF`.  Software-triggered DMA is documented.
+
+There is, however, an important limitation: the M16C/61 DMAC cannot increment
+both source and destination simultaneously.  A normal multi-byte ROM-to-RAM
+memcpy is therefore not directly available as one DMA block.  A possible
+construction would instead use a forward-moving ROM source and one fixed RAM
+mailbox byte, trigger one transfer at a time, read the mailbox, then repeat.
+
+That construction currently has a decisive unresolved dependency:
+`DM0SL` is at `0x03B8`.  The historical GWG `Port_READ/WRITE` interface
+does not appear to expose raw SFR addresses, and no 2098 `Physical_WRITE`
+mapping to M30612 SFRs is documented.  A complete OpenV-corpus search for
+`DMA`, `DMAC`, `SAR0`, `DAR0`, `DM0CON`, `DM0SL`, `03B8`,
+`LDE`, `STE` and 20-bit/far-pointer terminology found no relevant
+historical M30612 discussion.
+
+Architecture sources:
+
+- https://dtsheet.com/doc/292952/mitsubishi-m30610mca
+- https://datasheet4u.com/pdf/444783/M30612MA-323FP.pdf
+- https://pdf.elecfans.com/MITSUBISHI/M30612SAGP.html
+
+### Assessment
+
+The DMA model is now an **architecture-plausible hypothesis**, not a
+source-backed Optolink mechanism.  It is useful because it demonstrates that
+the M30612 itself can turn a 20-bit ROM source into a low-memory readback path,
+which matches KarlKoch's emphasis on low-level RAM/port access.  It does not
+open Workstream 2.
+
+### Workstream-2 gate impact
+
+Still closed.  There is still neither a source-backed selector/monitor/copy
+sequence nor a successful relevant low-level memory read on 2098/20C2.
+
+## Exact-family low-level wire search and `pingos.de` archive boundary
+
+A targeted GitHub issue/comment search was repeated for literal low-level wire
+forms together with `2098`, `20C2` and `V200KW2`: `01 CB`, `SEND: CB`,
+`01 C5`, `01 AE` and `01 9E`.  Apart from the already documented issue #312
+negative control, the apparent matches resolve to copies of the generic GWG XML
+macro block (`SEND 01 CB`, `SEND 01 9E`, `SEND 01 AE`, `SEND 01 C5`, etc.)
+embedded in unrelated support discussions.  They do not contain successful
+exact-family low-level transactions.
+
+This strengthens the existing corpus result: no public OpenV issue/comment trace
+currently demonstrates a correctly shaped `CB/C5/AE/9E` memory read succeeding
+on `2098` or `20C2`.  The only exact `20C2` CB wire trace remains the malformed
+16-bit-address hybrid from issue #312, which timed out.
+
+The Solarix `pingos.de` archival trail was also checked directly against the
+Internet Archive CDX index.  The wildcard inventory returns only six archived
+URLs: the site root, `avatar.gif`, `neureghomesite.gif`, an `/opel/` page and
+`robots.txt` (plus the www root variant).  No `vitosh`, `vitotools`, Viessmann,
+XML, tarball or ZIP path is present in the indexed archive.  Public web search
+likewise finds `vitosh` only in the 2007 HaustechnikDialog development thread.
+
+Consequences:
+
+- `pingos.de` is no longer a promising Wayback recovery path for Solarix's lost
+  2098 workspace unless a previously unknown exact URL or external mirror turns
+  up.
+- Public OpenV issue archaeology for a successful exact-family low-level GWG
+  read is now close to exhausted; future effort should prioritize private
+  developer artifacts, personal backups and firmware/static-analysis evidence.
+- Workstream 2 remains closed: there is still no source-backed selector/monitor/
+  copy sequence and no successful relevant low-level memory read on 2098/20C2.
+
+Sources:
+
+- https://github.com/openv/openv/issues/312
+- https://github.com/openv/openv/issues/201
+- https://github.com/openv/openv/issues/211
+- https://github.com/openv/openv/issues/366
+- https://www.haustechnikdialog.de/Forum/t/59578/Vitotronic-vom-PC-steuern-ueberwachen?page=4&print=1
+- Internet Archive CDX wildcard inventory for `pingos.de/*`, checked 2026-09-26
 
 ## Current technical interpretation
 
