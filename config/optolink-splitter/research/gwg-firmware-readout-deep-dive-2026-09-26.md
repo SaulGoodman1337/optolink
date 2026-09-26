@@ -1887,6 +1887,45 @@ Still closed, but the missing bridge is now more tightly specified:
 > 20-bit source address capable of reaching `0xE0000..0xFFFFF`, or a
 > selector/copy mechanism demonstrably equivalent to it.
 
+## Active continuation: private developer-forum quote recovery pass
+
+A targeted search of the imported Wikispaces issue/comments was run for
+phrases indicating later quotations from the former private OpenV developer
+forum.
+
+Two explicit surviving private-forum fragments were recovered:
+
+1. `openv/openv#245`: Hanspeter/vitoopen explicitly quotes a private forum
+   post dated 2009-01-17 about GWG EEPROM writes. The fragment documents the
+   paired-byte EEPROM validity scheme (value followed by value XOR `0xFF`)
+   and the requirement to start on an even EEPROM address.
+2. `openv/openv#173`: Hanspeter/vitoopen explicitly cites Vitosolic
+   addresses from the earlier developer forum (January 2008), including
+   `0x6551`, `0x6552`, `0x6560`, `0x6564`, `0x6566`, `0x6568`
+   and `0x656A`.
+
+These fragments are useful provenance evidence: material from the private
+forum did survive indirectly in later public Wikispaces discussions.
+
+However, the targeted quote-recovery pass found no surviving private-forum
+fragment containing:
+
+```text
+2098 / V200KW2
+M30612 / M16C
+program ROM / firmware dump
+20-bit / far address
+selector / page / bank / window
+monitor entry
+ROM-to-RAM/XRAM copy
+CB/C5/AE/9E/33/43 applied to 2098
+```
+
+The result is therefore a search-method improvement rather than a protocol
+breakthrough. Future forum archaeology should prioritize later posts by
+vitoopen/Hanspeter and other early developers that explicitly quote or
+paraphrase older private-forum material.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
