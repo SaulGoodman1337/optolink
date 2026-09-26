@@ -897,7 +897,8 @@ Revision 1, committed by `brainhunter` on 2010-12-13 as
 /xml-32/xml/vito.xml
 ```
 
-The imported XML working-copy timestamps are 2010-08-31. That snapshottherefore predates KarlKoch's October 2010 M30612/V200KW2 firmware notes.
+The imported XML working-copy timestamps are 2010-08-31. That snapshot
+therefore predates KarlKoch's October 2010 M30612/V200KW2 firmware notes.
 
 This materially lowers the probability that the initial SourceForge import
 ever contained the later/private firmware-readout mechanism.
@@ -1796,7 +1797,8 @@ mask-ROM variant.
 
 Sources:
 
-- Mitsubishi/Renesas M16C/61 group datasheet, memory map and type-number table:  https://datasheet4u.com/pdf/444783/M30612MA-323FP.pdf
+- Mitsubishi/Renesas M16C/61 group datasheet, memory map and type-number table:
+  https://datasheet4u.com/pdf/444783/M30612MA-323FP.pdf
 - Renesas M16C/60, M16C/20, M16C/Tiny Series Software Manual:
   https://www.renesas.com/en/document/mah/m16c60-m16c20-m16ctiny-series-software-manual
 
@@ -2226,6 +2228,82 @@ description reveals ROM/RAM/EEPROM/programming/diagnostic memory semantics.
 The result does not exclude an application-private monitor that is absent from
 the Vitosoft event database. It does make such an out-of-catalogue/private
 service more likely than a missed ordinary datapoint.
+
+## Active continuation: 2010 loss window and VitoTest raw-command carrier
+
+The external/public chronology around the missing M30612 work can now be
+tightened further.
+
+Contemporary HaustechnikDialog posts establish:
+
+- by 2010-06-15, the old internal OpenV forum was already described as closed;
+- by 2010-08-16, users reported `openv.de`/its SVN as unreachable;
+- on 2010-09-04, Hanspeter/vitoopen wrote that BrainHunter had restored the
+  important public downloads and vcontrold SVN on SourceForge after the
+  developer site disappeared;
+- KarlKoch's surviving M30612 firmware-read/disassembly note was added in
+  early October 2010.
+
+This sequence matters: the public infrastructure had already collapsed and
+only selected public artifacts were rescued **before** the M30612 work was
+documented. The missing firmware-readout mechanism is therefore increasingly
+unlikely to have existed in the rescued July-2010 public SVN snapshot.
+
+### VitoTest as a plausible private raw-command carrier
+
+The preserved `VitoTest_V1.8/History.txt` documents the tool lineage:
+
+```text
+1.2  2007-04-23: "Send" implemented, hex mode
+1.4  2007-11-27: GWG/type 3 implemented
+1.6  2009-09-01: XML configuration code removed for public distribution
+1.7  2013-02-23: persist last 10 Send Commands
+1.8  2013-11-10: selectable 300/KW/GWG protocol
+```
+
+A 2010 public example also shows VitoTest command files issuing literal raw
+frames such as:
+
+```text
+wait05
+SEND 01 F7 57 04 01
+wait05
+SEND 01 F4 57 04 01 2
+```
+
+Therefore VitoTest was technically capable of carrying a developer-supplied
+raw handshake without requiring any special vcontrold parser support.
+
+However, the complete reachable Wiki Git history contains only:
+
+```text
+VitoTest_V1.6.zip
+VitoTest_V1.7.zip
+VitoTest_V1.8.zip
+```
+
+and no persisted VitoTest settings/history artifact (`*.ini`, `*.cfg`,
+`*.cmd`, `*.reg`) containing historical user Send commands.
+
+The surviving distribution binaries expose only ordinary device-ID examples
+and UI/settings strings. No M30612/2098 monitor/page/bank/copy sequence is
+embedded as a default/sample command.
+
+### Consequence
+
+VitoTest remains a credible **carrier** KarlKoch or another developer could
+have used for a private Optolink firmware-read sequence, but the sequence
+itself is not preserved in the public distributions.
+
+This shifts archival priority toward:
+
+1. personal VitoTest settings or screenshots from early developers;
+2. forum posts containing command-file snippets;
+3. old home-directory/backup mirrors rather than application installers;
+4. external archives made after the public `openv.de` collapse in August
+   2010.
+
+No live request follows from the VitoTest capability alone.
 
 ## Current technical interpretation
 
