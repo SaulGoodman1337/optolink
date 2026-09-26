@@ -1,6 +1,9 @@
 # Vitotrol software-only emulation deep dive — 2026-09-25
 
-Status: **active research / software-only path not yet proven**
+Status: **PAUSED on 2026-09-26 — waiting for regulation-MCU / firmware evidence from Issue #25**
+
+
+> **Pause checkpoint:** Further live Vitotrol-state probing is intentionally suspended. See [vitotrol-software-emulation-pause-checkpoint-2026-09-26.md](vitotrol-software-emulation-pause-checkpoint-2026-09-26.md) for the verified local restore state, closed hypotheses, firmware reopen criteria and the exact dependency on the MCU/firmware track.
 
 ## Objective
 
