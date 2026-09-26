@@ -625,3 +625,29 @@ identify KM-BUS RX + remote watchdog + room-state commit logic
         ->
 resume bounded software-emulation experiments
 ~~~
+
+## 2026-09-26 addendum — GWG/M30612 firmware-readout deep dive active
+
+A dedicated local archival workspace now exists on `optolink-splitter` under
+`/home/chatgpt-admin/research/`. The production `/opt/optolink` checkout is not
+used for this research.
+
+Key new firmware-readout boundary:
+
+- full OpenV wiki history cloned and scanned: 7619 commits / 11273 objects;
+- all `Protokoll-GWG.md` revisions diffed: no deleted ROM/page/bank command;
+- public GWG remains one-byte addressed: `01 <type> <addr> <len> 04`;
+- historical low-level GWG reads confirmed: CB, AE, C5, 6E, 9E, 33, 43;
+- vcontrold `SEND BYTES` is a genuine raw-forwarding primitive, but the stock
+  GWG test commands are length-1 and do not prove arbitrary multi-byte payloads;
+- 121 historical archive/source candidates are inventoried for recursive scan.
+
+Do not resume blind opcode probing. Continue by extracting contemporary
+vcontrold 0.97/0.98, recursively inspecting the archive set, reconstructing
+GWG/KW parser compatibility, and only then deriving a source-backed read-only
+live discriminator.
+
+Canonical note:
+`config/optolink-splitter/research/gwg-firmware-readout-deep-dive-2026-09-26.md`.
+
+[executed on device: optolink-splitter (adb0c2e1-4670-4fc7-a00a-6548706280dd)]
