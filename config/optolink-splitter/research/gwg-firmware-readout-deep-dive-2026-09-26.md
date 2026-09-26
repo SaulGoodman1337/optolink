@@ -783,6 +783,96 @@ Source:
 - https://sourceforge.net/p/vcontrold/code/HEAD/tree/trunk/vcontrold/parser.c
 - https://sourceforge.net/p/vcontrold/code/HEAD/tree/trunk/vcontrold/framer.c
 
+## Active continuation: OptoLinkLogger dump path fully decompiled
+
+A high-value historical lead was recovered from
+`files/OptoLinkLogger_v0.0.4.zip`.
+
+The included README dates the configurable data-dump feature to version 0.0.3
+on 2010-12-29:
+
+```text
+Daten Dump mit konfigurierbaren Parametern (Start-Adr., Länge)
+```
+
+This is temporally close to the 2010 V200KW2/M30612 work and the binary embeds
+explicit support metadata for V200KW2 / device `2098`.
+
+The .NET assembly was decompiled to IL using an isolated `monodis` runtime
+extracted under `/tmp`; no packages were installed on the splitter host.
+
+### Exact dump request shape
+
+The static request buffer is initialized as:
+
+```text
+F7 00 18 30
+```
+
+The dump state machine sends the VS1 lead-in byte `01` after the normal
+`05` synchronization byte and then sends that four-byte request buffer.
+Therefore the effective wire request is:
+
+```text
+01 F7 <addr_hi> <addr_lo> <len>
+```
+
+The private implementation data in the assembly independently contains
+examples such as:
+
+```text
+01 F7 08 00 FE
+01 F7 00 18 30
+F7 00 F8 04
+```
+
+### The configurable uint32 address is truncated to 16 bits
+
+The UI/settings expose `DumpStartAddr` and `DumpLength` as `uint32`, but
+`SetReadAddr(uint32 nAddr)` writes only:
+
+```text
+s_ReadRequest[1] = (nAddr >> 8) & 0xff
+s_ReadRequest[2] = nAddr & 0xff
+```
+
+No bits above bit 15 are encoded anywhere in the request.
+
+`SetReadLen()` writes one byte to `s_ReadRequest[3]`.
+
+`TS_DumpAll()`:
+
+1. explicitly aborts unless the selected protocol is `VS1`;
+2. reads `DumpStartAddr` / `DumpLength`;
+3. splits the dump into blocks of at most `0xFE` bytes;
+4. calls `SetReadAddr()` for each block;
+5. increments the software-side `uint32` address;
+6. sends the normal VS1 `F7` request.
+
+If the configured address crosses `0xFFFF`, the high software-side bits are
+discarded on the next call to `SetReadAddr()`. The transmitted address
+therefore wraps in the 16-bit VS1 address space.
+
+### Consequence
+
+The historical OptoLinkLogger "Dump Data" function is conclusively **not** the
+missing M30612 program-ROM readout mechanism.
+
+It is a sequential normal-VS1 virtual-address dump. This strongly explains why
+a contemporary user could create a binary dump yet observe no useful data in
+the high part of the ordinary address space.
+
+The result also strengthens the distinction between two historical meanings of
+"dump":
+
+- public/user tool dump: sequential `F7` reads in the ordinary 16-bit VS1
+  space;
+- KarlKoch M30612 firmware readout: a different, still-lost mechanism required
+  to reach the ~128 KiB MCU program ROM.
+
+The OptoLinkLogger lead is therefore closed as a selector/page/high-address
+implementation.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
