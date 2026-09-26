@@ -379,6 +379,138 @@ A bounded production test remains gated on recovering either:
 2. a selector/monitor sequence that explicitly precedes such a read; or
 3. an exact VDensHO1/20C2 service path with equivalent semantics.
 
+## 2026-09-26 workstream 1: partial 2098 bridge recovered
+
+The search for a V200KW2 / `2098` bridge produced a concrete but limited
+result from the imported OpenV Wikispaces discussion archive.
+
+### GWG framing is source-backed on V200KW2 / 2098 for device identification
+
+OpenV issue #10 preserves a 2010 V200KW2 trace from TerminatorIII. The request:
+
+```text
+01 C7 F8 04 04
+```
+
+returned:
+
+```text
+20 98 00 02
+```
+
+on an actual V200KW2. This is the GWG `Virtual_READ / C7` family rather than
+the normal two-byte-address KW `F7` request.
+
+In the same thread, Hanspeter (`vitoopen`) explicitly states that a general
+client can use the GWG protocol to identify controllers and switch to a
+"higher" protocol such as KW or 300 afterwards.
+
+Source:
+https://github.com/openv/openv/issues/10
+
+This changes the evidence boundary:
+
+- GWG framing/opcode compatibility on `2098`: **proven for C7 identification**;
+- general acceptance of all GWG low-level opcodes on `2098`: **not proven**;
+- `CB/C5/AE/9E/33/43` on `2098`: **still not recovered**.
+
+The missing bridge has therefore narrowed from "does KW2 accept any GWG
+traffic?" to "does KW2 expose the low-level GWG memory families, and if so
+under what selector/monitor state?"
+
+### Ordinary 16-bit dump attempt produced a useful negative boundary
+
+The same imported discussion later records TerminatorIII's attempt to build a
+binary dump by reading the ordinary 16-bit address space. In January 2011 he
+reported that this worked as a general address dumper, but that there were no
+data above `0x8000`.
+
+This is not evidence that physical MCU ROM ends at `0x8000`. It is evidence
+that an ordinary address walk did not expose the ~128 KiB M30612 program ROM.
+
+That result independently supports the existing conclusion that KarlKoch's
+firmware readout required an additional mechanism rather than a plain
+sequential virtual-address read.
+
+### KarlKoch's firmware possession is independently corroborated
+
+The full 2010 history of `KM-Bus.md` shows that KarlKoch created the page and
+documented internal V200KW2 firmware structures before adding the explicit
+M30612 readout note.
+
+On 2010-10-05 he documented, among other details:
+
+- eleven internal V200KW2 participant tables;
+- internal slot mappings;
+- command dispatch groupings;
+- specific firmware behavior around KM-Bus participant state.
+
+This level of internal implementation detail is consistent with the same
+author's statement that he had an approximately 57,000-line V200KW2
+disassembly. No firmware binary or disassembly file is present in the surviving
+wiki Git history.
+
+### Lost private developer forum becomes a primary archival target
+
+HaustechnikDialog preserves multiple contemporary references to a non-public
+OpenV developer forum:
+
+- a 2007 pshome statement says the private forum contained the "raw"
+  information for the KW1/KW2 protocol and the history of how it was
+  discovered;
+- in January 2010 marcusT confirms that the developer forum was not public and
+  that pshome managed access;
+- by August 2010 users report that `openv.de` was unreachable and old source
+  links were already disappearing.
+
+Sources:
+
+- https://www.haustechnikdialog.de/Forum/t/59578/Vitotronic-vom-PC-steuern-ueberwachen?page=15
+- https://www.haustechnikdialog.de/Forum/p/1294186
+- https://www.haustechnikdialog.de/Forum/p/1392876
+
+This makes the former developer forum / SVN / `openv.de` archive a stronger
+candidate for the missing KarlKoch readout method than the public wiki page
+history.
+
+### Related historical simulator lead
+
+A 2009 HaustechnikDialog post references a pshome V200KW2 simulator file:
+
+```text
+http://openv.de/svn/xml/sim-2098.ini
+```
+
+and shows ordinary KW examples such as:
+
+```text
+01 F7 08 00 02 = 3C 00
+```
+
+The simulator artifact is therefore another concrete historical filename to
+recover from mirrors/backups. The surviving reference currently demonstrates
+normal KW traffic only, not a firmware-read extension.
+
+Source:
+https://www.haustechnikdialog.de/Forum/t/59578/Vitotronic-vom-PC-steuern-ueberwachen?PostSort=1&page=20
+
+### Updated workstream-1 gate
+
+Workstream 1 is now **partially satisfied**:
+
+1. a GWG command on `2098` is source-backed (`C7` identification);
+2. a plain 16-bit address dump was historically attempted and did not expose
+   the high firmware image;
+3. the exact low-level memory-family bridge is still missing.
+
+The next archival discriminator is therefore specifically:
+
+> recover a `2098` example using `CB/C5/AE/9E/33/43`, or recover the
+> selector/monitor/copy setup sequence that makes such a read meaningful.
+
+No live `CB/C5/AE/9E/33/43` packet is justified on the local WB2A from the
+current evidence alone.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
