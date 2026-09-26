@@ -1211,6 +1211,160 @@ catalogues**:
 
 No live test is justified by these negative findings.
 
+## Active continuation: private OpenV forum fragment recovered through public issue comments
+
+A new archival route was confirmed in the imported OpenV Wikispaces discussion
+history: later public posts can contain fragments quoted from the former
+private OpenV forum.
+
+OpenV issue #245 contains a 2015 reply by Hanspeter (`vitoopen`) explicitly
+quoting a private-forum post dated 2009-01-17 22:31. The quoted material
+contains protocol implementation detail that is absent from the surviving
+public wiki page itself.
+
+Source:
+https://github.com/openv/openv/issues/245#issuecomment-339633725
+
+### Archival consequence
+
+The former private forum is therefore not completely opaque. At least some
+private material survived indirectly as quotations in later Wikispaces
+discussions that were subsequently imported into GitHub issues/comments.
+
+A targeted search of other issue-comment hits for phrases such as "alten
+Forum", "Forum vom" and similar quotation markers did not recover another
+comparable private protocol fragment in this pass. Issue #245 is currently the
+strongest demonstrated example.
+
+Imported comment bodies and quoted historical fragments should therefore be
+treated as a first-class archival source alongside wiki revisions, attachments
+and SourceForge history.
+
+### 2098 relevance
+
+The recovered 2009 fragment does not name V200KW2, device `2098`,
+M30612/M16C, a page/bank selector, monitor entry or a program-ROM copy
+operation.
+
+No `2098` trace using the low-level GWG memory families was recovered in the
+accompanying GitHub issue/comment searches. The live-test gate remains closed.
+
+## Active continuation: private OpenV developer-site provenance narrowed
+
+The historical ownership and timeline of the lost private development
+environment can now be stated more precisely.
+
+### pshome is Peter Schulze
+
+The recovered original V-Comm distribution contains:
+
+```text
+AUTHORS.txt:
+Peter Schulze <v-control@mailsnake.com>
+
+COPYING.txt / MANUAL.txt:
+Copyright 2007 Peter Schulze
+```
+
+This matches the contemporary HaustechnikDialog history where Marcus later
+refers to `pshome` as "Peter" while discussing the Windows V-Control
+development.
+
+This identity is useful here only as project provenance: it ties the recovered
+V-Comm source, `pshome`, the `v-control@mailsnake.com` contact and the lost
+OpenV developer infrastructure to the same maintainer.
+
+### Development platform chronology
+
+The public HaustechnikDialog thread preserves a useful sequence:
+
+- **2007-04-12:** pshome states that he will provide the development platform
+  and asks productive contributors to contact him by email.
+- **2007-06-24:** a later contemporary quotation of pshome's post says that a
+  login to "our forum" gives access to the raw KW1/KW2 protocol information
+  and the history of how it was reverse engineered.
+- **2007-12-29:** pshome explicitly offers a login to the
+  `Entwicklerforum` for KM-Bus/Optolink protocol details.
+- **2009-02/03:** users still ask for access; Kathrin reports that pshome is
+  less active but still forwards V-Control requests to people continuing the
+  development.
+- **2009-10-26:** Marcus reports that Peter/pshome plans no further Windows
+  V-Control development but has released the communication libraries.
+- **2010-01-05:** Marcus explicitly confirms that the developer forum still
+  exists but is not public and that pshome manages the accounts.
+- **2010-08-23:** Walter can no longer find the PSHOME forum through search.
+- **2010-08-27:** TerminatorIII reports that the public V-Comm source link is
+  dead.
+- **2010-09-04:** hgy/Vitoopen describes `openv.de` as the
+  **"nicht mehr existierende Entwicklerseite"** and says BrainHunter restored
+  the important downloads to the Wiki and recreated the vcontrold SVN on
+  SourceForge.
+- **2010-10-04:** KarlKoch begins adding the detailed V200KW2/M30612 firmware
+  analysis to the OpenV Wiki.
+
+Relevant surviving public thread pages:
+
+```text
+https://www.haustechnikdialog.de/Forum/t/59578/Vitotronic-vom-PC-steuern-ueberwachen?page=4
+https://www.haustechnikdialog.de/Forum/t/59578/Vitotronic-vom-PC-steuern-ueberwachen?page=9
+https://www.haustechnikdialog.de/Forum/t/59578/Vitotronic-vom-PC-steuern-ueberwachen?PostSort=1&page=20
+https://www.haustechnikdialog.de/Forum/t/59578/Vitotronic-vom-PC-steuern-ueberwachen?PostSort=0&page=23
+```
+
+### Implication for the missing M30612 method
+
+The chronology matters:
+
+1. the private developer environment held protocol material that was
+   intentionally not public;
+2. the public `openv.de` developer site and source links were already lost by
+   August/September 2010;
+3. the reconstructed SourceForge import contains an August-2010 public XML
+   snapshot and only the important recovered downloads;
+4. KarlKoch's detailed M30612/disassembly documentation appears one month
+   later.
+
+Therefore absence of the firmware-readout method from SourceForge/Wikispaces
+does not imply that it never existed in the OpenV development environment.
+The surviving sources explicitly say that the restored public repositories
+were a recovery of the important downloads, not a complete preservation of the
+private developer site/forum.
+
+### Archive-index checks
+
+Targeted Wayback-availability checks for known paths such as:
+
+```text
+openv.de/forum/
+openv.de/svn/
+openv.de/svn/xml/sim-2098.ini
+```
+
+did not yield a useful 2010-era developer-forum snapshot.
+
+The historical Common Crawl indexes `CC-MAIN-2008-2009` and
+`CC-MAIN-2009-2010` were also queried for `openv.de` / `www.openv.de`.
+No usable captured URL set was recovered. Some wildcard index requests return
+gateway errors, so this is **not proof that no crawl ever existed**; it only
+means those archive indexes currently do not provide a recoverable path.
+
+### Current archival conclusion
+
+The private OpenV developer forum/site is now the strongest known provenance
+for information that is missing from all surviving public repositories.
+
+However, no forum URL, attachment, trace or selector/monitor request has yet
+been recovered. Workstream 1 therefore remains open, but its unresolved
+surface is now much smaller:
+
+- search for mirrors/backups of the former private OpenV developer site;
+- search surviving participants' public technical archives for old exported
+  logs/configs;
+- search for a KarlKoch-local readout tool or trace rather than further copies
+  of the known public vcontrold XML.
+
+No production-controller live test follows from this archival conclusion.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
