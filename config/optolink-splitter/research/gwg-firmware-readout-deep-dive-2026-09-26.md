@@ -298,6 +298,87 @@ The already recovered V-Comm source remains closed as the hidden reader; see
 3. That any known selector exposes the 20-bit M30612 program address space.
 4. That the later WB2A / VDensHO1 implements the same monitor path.
 
+## 2026-09-26 follow-up: contemporary vcontrold binaries and 2098 boundary
+
+A follow-up pass on the `optolink-splitter` host inspected the preserved
+`vcontrold-v0.97.zip` and `vcontrold-v0.98.zip` artifacts plus the surviving
+OpenV XML configurations.
+
+### Contemporary parser capability confirmed
+
+Both historical archives contain only Windows binaries (`vcontrold.exe` and
+`vclient.exe`), not source. Static strings from the 0.97 binary nevertheless
+confirm that the parser already supported:
+
+```text
+SEND BYTES
+Laenge des Hex Strings > Sendelaenge des Befehls, sende nur %d Byte
+```
+
+This moves the raw-byte forwarding capability from a post-2013 source
+observation into the contemporary 2011 toolchain. It also confirms that the
+command-length truncation behavior was already present there.
+
+The surviving GWG XML test commands use shapes such as:
+
+```text
+SYNC;GETXADDR;SEND BYTES;SEND 01 04;RECV 1
+```
+
+which corresponds to a user-supplied one-byte address inserted between the
+GWG function prefix and the fixed `01 04` length/terminator tail.
+
+### Exact device applicability remains limited to GWG / 2053
+
+The surviving `universal_vito.xml` binds the low-level interactive commands
+`get`, `vget`, `bget`, `pget`, `eget`, `xget`, and `kmget` to device
+`2053`. For example, the EEPROM/XRAM/KM-BUS test commands all carry:
+
+```xml
+<device ID="2053">
+    <addr>dummy</addr>
+    <len>1</len>
+</device>
+```
+
+No equivalent binding for V200KW2 / device `2098` was found in the preserved
+OpenV XML set.
+
+A follow-up search through the reachable `openv/vcontrold` Git history likewise
+found `2098` consistently associated with the normal `KW2` protocol, but did
+not recover a `2098`-specific use of the GWG low-level test command family.
+
+### Consequence for the firmware-readout hypothesis
+
+This weakens the simple interpretation that KarlKoch merely sent ordinary
+`CB/C5/AE/9E/33/43` GWG reads directly to a V200KW2.
+
+The evidence now points more strongly to a missing bridge step:
+
+```text
+Optolink/KW2
+    -> selector / monitor / service / copy operation
+    -> exposed low-address window or alternate parser state
+    -> low-level read
+```
+
+The missing element is therefore more likely to be a preparatory
+selector/monitor/window/copy operation than the raw read primitive itself.
+
+### Live-test decision
+
+No new packet was sent to the local WB2A during this pass.
+
+Reason: the low-level GWG reads are source-backed for `2053`, but there is
+still no exact-family evidence that the same opcodes or frame semantics are
+valid on `2098`, much less on local `20C2`.
+
+A bounded production test remains gated on recovering either:
+
+1. a `2098`-specific low-level example;
+2. a selector/monitor sequence that explicitly precedes such a read; or
+3. an exact VDensHO1/20C2 service path with equivalent semantics.
+
 ## Current technical interpretation
 
 A direct one-step read of M30612 program ROM using the public GWG frame is
@@ -334,61 +415,83 @@ closures.
 
 ## Next steps
 
-### 1. Recover contemporary vcontrold behavior
+### Priority 1 — recover the missing 2098 bridge
 
-Extract `vcontrold-v0.97.zip` and `vcontrold-v0.98.zip` from
-the wiki Git objects and compare:
-
-- parser tokenization;
-- `SEND BYTES` implementation;
-- command-length handling;
-- GWG XML test commands;
-- any undocumented command families.
-
-### 2. Recursively inspect all high-value archives
-
-Unpack nested archives and search source/binary strings for the monitor/page/
-bank/copy vocabulary and M16C/M30612 identifiers.
-
-### 3. Reconstruct the GWG -> KW compatibility boundary
-
-Determine whether any surviving tool/source sends
-`CB/AE/C5/6E/9E/33/43` to a V200KW2/2098 target, or whether a KW
-equivalent of those functions existed.
-
-A source-backed example of even one low-level GWG-family read on 2098 would
-materially strengthen the path.
-
-### 4. Search for selector state
-
-Look for writes or RPCs that precede repeated low-level reads and whose value
-changes monotonically by page/block.
-
-The target signature is a sequence such as:
+Search the surviving OpenV wiki/object history, former developer-forum mirrors,
+attachments, release bundles and external mirrors for combinations of:
 
 ```text
-set page/bank/window
+2098
+V200KW2
+M30612
+M16C
+CB AE C5 6E 9E 33 43
+ROM FLASH MONITOR PAGE BANK WINDOW COPY DUMP
+```
+
+Highest-value evidence is a sequence showing a setup/selector operation
+followed by repeated low-level reads.
+
+### Priority 2 — reverse the contemporary vcontrold binaries narrowly
+
+The 0.97/0.98 binaries are now worth targeted static analysis because they
+contain the parser and debug information/string evidence from the relevant era.
+
+Focus on:
+
+- `execByteCode` / `SEND BYTES` handling;
+- command-length enforcement;
+- protocol macro expansion;
+- any unreachable or undocumented parser tokens;
+- literal function-code tables beyond the public XML.
+
+The goal is not full reverse engineering of vcontrold, but to prove whether a
+hidden command form could carry a selector or additional address bytes.
+
+### Priority 3 — recursively unpack all high-value historical archives
+
+Continue the 121-artifact inventory recursively, including nested installers
+and self-extracting archives. Search both filenames and extracted binary
+strings for monitor/page/bank/copy vocabulary, M30612/M16C identifiers and
+firmware/disassembly artifacts (`.asm`, `.lst`, `.map`, `.bin`, `.rom`,
+`.hex`, `.mot`, `.s19`, `.obj`).
+
+### Priority 4 — reconstruct the GWG -> KW compatibility boundary
+
+Establish whether any surviving tool, config, forum example or binary sends
+`CB/AE/C5/6E/9E/33/43` to V200KW2 / `2098`.
+
+A single source-backed example would justify a small compatibility test.
+Without one, do not transpose the GWG opcodes to KW2 or WB2A.
+
+### Priority 5 — identify selector-state signatures
+
+Search for command sequences with the structure:
+
+```text
+set selector/page/bank/window
 read small block
 increment selector
 read next block
 ```
 
-### 5. Only then design a live discriminator
+Also search for copy/mailbox variants where a high ROM address is written into
+a request structure and the resulting block is read back from RAM/XRAM.
 
-A production-controller test should be attempted only after the request shape
-is source-backed.
+### Priority 6 — design the first bounded live discriminator
 
-The first live test should be read-only and bounded:
+Only after a request shape is source-backed:
 
-- establish a known harmless baseline read;
-- alter only the source-backed selector dimension;
-- verify deterministic response change;
-- restore/exit any service state if the source specifies an exit sequence;
+- start from a known harmless baseline read;
+- change exactly one selector dimension;
+- use the smallest possible read length;
+- repeat once to establish determinism;
+- restore/exit service state exactly as documented;
 - stop immediately on reset, alarm, protocol desynchronization or undefined
   response behavior.
 
-No blind write sweep, function-code sweep or unlock sequence is justified by
-the current evidence.
+No blind write sweep, function-code sweep, erase/unlock or guessed monitor
+entry sequence is justified.
 
 ## Relevance to the WB2A / Vitotrol work
 
@@ -431,5 +534,3 @@ The immediate evidence gap is now narrow and testable:
 
 Until that step is recovered, no claim should be made that WB2A firmware is
 readable through GWG/Optolink, but the route is not excluded.
-
-[executed on device: optolink-splitter (adb0c2e1-4670-4fc7-a00a-6548706280dd)]
