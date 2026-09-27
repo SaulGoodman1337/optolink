@@ -13,6 +13,8 @@ Current corrections that must be preserved:
 - Collector v6 `20260924-143439` completed Deep/SQL/All-Devices/Tool-Dumps and is the preferred private source snapshot.
 - Missing device-profile linkage is not a capability proof; `0x0A3C` is the known counterexample.
 - SQL firmware-update tables are fully exported and empty; do not reopen that as an unfinished SQL task.
+- Full aligned P300 `EEPROM_READ / 0x05` mapping over `0x0000..0xFFFF` is complete: 640/4096 aligned 16-byte blocks succeed; 16 distinct 512-byte high windows are exact aliases of active coding-plug f01.
+- Low `EEPROM_READ 0x0000..0x07FF` is repeatable (`0/2048` changed bytes over two passes). Raw `0x0000..0x0597` is a strict value/complement table; collapsing primary bytes exposes an exact protected `0x7656 = 20 15 02 01` identity copy. No exact linear f02 image was found.
 
 ## Historical checkpoint — 2026-09-23
 
@@ -189,9 +191,9 @@ The notes are intentionally split into two layers:
   hardware-stable candidates (EA2AB→3301/29 and FB27D→0705/7), destination
   stability checks and explicit boundary between copy-like evidence and proof.
 - [p300-eeprom-read-map-2026-09-27.md](p300-eeprom-read-map-2026-09-27.md) —
-  read-only mapping of local P300 EEPROM_READ 0x05: stable low service page,
-  segmented high-address aliases, and hardware proof that 0x1000..0x11FF maps
-  byte-for-byte to the active 512-byte coding-plug image rather than program ROM.
+  full aligned 16-bit mapping of local P300 EEPROM_READ 0x05: 16 exact f01
+  alias windows, stable protected low service/configuration table with exact
+  `0x7656` identity correlation, and no obvious linear f02 mirror.
 - [vitotrol-kmbus-wire-protocol.md](vitotrol-kmbus-wire-protocol.md) —
   byte-level physical Vitotrol/KM-BUS reference reconstructed from two working
   emulator implementations: discovery, identity, PING/PONG, CRC and room-
