@@ -30,6 +30,9 @@ printf 'Repository: %s\nRef:        %s\n' "$CS_REPO" "$CS_REF" >&2
 [[ -d "$APP_DIR/.git" && -f "$APP_DIR/settings_ini.py" ]] ||
   die "No Optolink-Splitter installation found in $APP_DIR"
 
+# Ensure an active pump override releases P300/serial ownership before update.
+systemctl stop optolink-pump-override.service >/dev/null 2>&1 || true
+
 info "Updating base system"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -71,6 +74,7 @@ ln -sf /usr/local/bin/wb2a-schedule-probe /usr/bin/wb2a-schedule-probe
 install_repo_file tools/optolink-schedule-manager.py   /usr/local/bin/optolink-schedule-manager 0755
 
 install_repo_file tools/optolink-party-emulator.py   /usr/local/bin/optolink-party-emulator 0755
+install_repo_file tools/optolink-pump-override.py   /usr/local/bin/optolink-pump-override 0755
 
 install_repo_file config/optolink-splitter/wb2a-single-session-logger.py   /usr/local/bin/wb2a-single-session-logger 0755
 ln -sf /usr/local/bin/wb2a-single-session-logger /usr/bin/wb2a-single-session-logger
@@ -109,12 +113,14 @@ install_repo_file config/optolink-splitter/optolink-splitter.service   /etc/syst
 install_repo_file config/optolink-splitter/optolink-party-emulator.service   /etc/systemd/system/optolink-party-emulator.service 0644
 install_repo_file config/optolink-splitter/optolink-schedule-manager.service   /etc/systemd/system/optolink-schedule-manager.service 0644
 install_repo_file config/optolink-splitter/optolink-maintenance-api.service   /etc/systemd/system/optolink-maintenance-api.service 0644
+install_repo_file config/optolink-splitter/optolink-pump-override.service   /etc/systemd/system/optolink-pump-override.service 0644
 
 install_repo_file config/optolink-splitter/vcontrol-mapping.md   /root/optolink-vcontrol-mapping.md 0644
 
 systemctl daemon-reload
 systemctl enable optolink-splitter.service >/dev/null 2>&1 || true
 systemctl enable optolink-party-emulator.service >/dev/null 2>&1 || true
+chown root:root /usr/local/bin/optolink-pump-override /etc/systemd/system/optolink-pump-override.service
 chown root:root   /usr/local/bin/optolink-apply-vdensho1-ha-profile   /usr/local/bin/optolink-apply-vscotho1-profile   /usr/local/bin/optolink-party-test   /usr/local/bin/optolink-debug   /usr/local/bin/optolink-maintenance   /usr/local/bin/wb2a-schedule-probe   /usr/local/bin/optolink-schedule-manager   /usr/local/bin/optolink-party-emulator   /usr/local/bin/wb2a-single-session-logger   /usr/local/bin/wb2a-rkr-cycle-logger   /usr/local/bin/wb2a-pump-start-logger   /usr/local/bin/wb2a-e7-persistence-probe   /usr/local/bin/wb2a-kmbus-p300-read-probe   /usr/local/bin/wb2a-xram-p300-read-probe   /usr/local/bin/wb2a-kmbus-eeprom-p300-read-probe   /usr/local/bin/wb2a-kmbus-eeprom-map-probe   /usr/local/bin/wb2a-kmbus-prefix-ab-probe   /usr/local/bin/wb2a-kmbus-prefix-isolated-probe   /usr/local/bin/wb2a-physical-vs-kmbus-eeprom-probe   /usr/local/bin/wb2a-kbus-virtual-read-probe   /usr/local/bin/wb2a-kbus-memberlist-read-probe   /usr/local/bin/wb2a-a1-withdrawal-watch   /etc/systemd/system/optolink-splitter.service   /etc/systemd/system/optolink-party-emulator.service   /etc/systemd/system/optolink-schedule-manager.service   /etc/systemd/system/optolink-maintenance-api.service   /root/optolink-vcontrol-mapping.md
 # Keep ChatGPT remote access narrowly scoped to this guarded read-only helper.
 if id chatgpt-admin >/dev/null 2>&1; then
@@ -150,10 +156,14 @@ PY_MAINT_API
 then
   systemctl enable optolink-maintenance-api.service >/dev/null 2>&1 || true
   systemctl restart optolink-maintenance-api.service
+  systemctl enable optolink-pump-override.service >/dev/null 2>&1 || true
+  systemctl restart optolink-pump-override.service
   ok "Maintenance MQTT API active"
+  ok "Pump minimum override MQTT service active"
 else
   systemctl disable --now optolink-maintenance-api.service >/dev/null 2>&1 || true
-  warn "Maintenance MQTT API disabled because mqtt_broker is not configured"
+  systemctl disable --now optolink-pump-override.service >/dev/null 2>&1 || true
+  warn "Maintenance MQTT API and pump override disabled because mqtt_broker is not configured"
 fi
 
 info "Refreshing private update entrypoint"

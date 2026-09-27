@@ -1,5 +1,3 @@
-[Reading 81 lines from start (total: 81 lines, 0 remaining)]
-
 #!/opt/optolink/venv/bin/python
 """Guarded volatile E7 RAM override characterization at confirmed RAM 0x20A5.
 
@@ -81,5 +79,3 @@ def main():
         os.close(fd)
 
 if __name__=='__main__': raise SystemExit(main())
-
-[executed on device: optolink-splitter (adb0c2e1-4670-4fc7-a00a-6548706280dd)]

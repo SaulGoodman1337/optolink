@@ -1,0 +1,18 @@
+[Unit]
+Description=Optolink WB2A heating pump minimum-speed override
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/optolink
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/local/bin/optolink-pump-override
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

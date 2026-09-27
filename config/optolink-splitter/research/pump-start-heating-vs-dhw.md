@@ -1,5 +1,3 @@
-[Reading 4257 lines from start (total: 4257 lines, 0 remaining)]
-
 # WB2A pump behavior: heating vs DHW
 
 Status: **read-only investigation active; exposed-result mapping largely resolved**
@@ -4258,4 +4256,60 @@ New guarded tools:
 
 These tools have fixed address/value allowlists and burner/WW guards; they are not generic Physical_WRITE utilities.
 
-[executed on device: optolink-splitter (adb0c2e1-4670-4fc7-a00a-6548706280dd)]
+## Downstream RAM search follow-up — 2026-09-27
+
+Two narrow fixed-block probes were completed in a safe `WW=0`, flame-off state with immediate restoration afterward.
+
+- Physical block `0x20A0..0x20BF`: Virtual A1 and A3C both reached 100, but the only changing physical byte was `0x20A5` itself (`30 -> 100 -> 100 -> 30`). Nearby historical 50-valued bytes `0x20A2/0x20A3` did not change. Therefore the downstream A1/A3C working variables are not colocated in this block.
+- Physical block `0x0A20..0x0A3F`: while Virtual `0x0A3C` changed `50 -> 100 -> 50` and A1 changed `30 -> 100 -> 30`, the complete physical block remained byte-identical. Therefore Virtual address `0x0A3C` is not a direct Physical-RAM alias.
+
+Both probes passed the fault-history guard and restored E7/RAM to 30.
+
+## E7 cache source/reload characterization — 2026-09-27
+
+Further tests corrected the earlier interpretation of the volatile E7 override.
+
+The physical pump-configuration cache around `0x20A0` is now directly mapped for three source-backed virtual coding values:
+
+```text
+Virtual E6 0x27E6 (max speed)      -> Physical RAM 0x20A4
+Virtual E7 0x27E7 (min speed)      -> Physical RAM 0x20A5
+Virtual E9 0x27E9 (reduced min)    -> Physical RAM 0x20A6
+```
+
+Baseline was `E6=100, E7=30, E9=100`, matching physical bytes `64 1E 64`. Controlled `E6 100->99->100` changed only `0x20A4 64->63->64`; controlled `E9 100->99->100` changed only `0x20A6 64->63->64`.
+
+The backing source was not found as a simple visible byte mirror. Under documented persistent E7 `30->100->30`, among all 72 historical stable-30 Physical-RAM candidates only `0x20A5` followed exactly `30->100->30`. The complete low 256-byte `EEPROM_READ` space showed zero changed bytes, and direct `EEPROM_READ 0x27E7/1` was rejected with `31 01`. This points to an internal parameter/configuration store outside the currently exposed raw RAM and EEPROM_READ windows.
+
+Reload-trigger testing also showed that Ident, E7, GFA, WW, A1 and A3C Virtual_READ operations do not themselves force the cache reload. The reload is periodic/background driven.
+
+A dedicated latency probe measured the time from `Physical_WRITE 0x20A5=31` to the next automatic restore to configured E7=30 in 12 repetitions using only Physical_READ polling:
+
+```text
+min     1.726 s
+median  2.076 s
+mean    2.091 s
+max     2.254 s
+```
+
+Therefore the practical override requirement is much less aggressive than the initial sub-second estimate. A local optolink-side service can poll `0x20A5` every roughly 200–500 ms and rewrite 100 only when the periodic firmware task has restored 30. Actual Physical_WRITE frequency should then be approximately one write per ~2.1-second firmware reload cycle rather than continuous 4–5 Hz writes. Home Assistant only needs to provide the desired override state.
+
+## Reactive reload repair vs fixed refresh — 2026-09-27
+
+A fixed 1.5 s refresh test was not sufficiently stable under realistic serial/request overhead. Actual write spacing drifted to roughly 1.3..1.7 s, and the independent firmware reload occasionally landed shortly after a write. This produced short intervals with RAM/E7 back at 30 and, in some samples, A1 falling back to 30.
+
+A nominal 1.0 s fixed refresh improved this but did not eliminate the phase problem: because the firmware reload task is independent, a reload can still occur immediately after a scheduled write, leaving a window until the next fixed refresh.
+
+A reactive strategy was therefore tested instead. The confirmed E7 cache byte `0x20A5` was polled locally; only when the firmware restored it from 100 to configured 30 was a new one-byte Physical_WRITE to 100 issued. During a 12.2 s guarded burner-off test:
+
+```text
+polls            67
+reload repairs    5
+repair write time ~0.050..0.051 s
+runtime samples  20
+A1<100 or A3C<100 samples: 0
+```
+
+Observed reload/repair times were approximately 1.101, 3.514, 6.055, 8.441 and 11.089 seconds after start. In every sampled runtime point, both A1 and A3C remained at 100. After the test, RAM/E7 were restored to 30, A1 returned to 30, A3C to 50, and the fault-history guard passed.
+
+Conclusion: a local event-driven repair loop is preferable to fixed-period writes. The service should poll `0x20A5`, write 100 only after observing the firmware's periodic restore to 30, and stop immediately when the override condition ends. This minimizes writes while avoiding observable pump-setpoint dips in the tested condition.

@@ -1,5 +1,3 @@
-[Reading 112 lines from start (total: 112 lines, 0 remaining)]
-
 #!/opt/optolink/venv/bin/python
 """Fast guarded E7 RAM-copy discriminator for local WB2A/20C2.
 
@@ -112,5 +110,3 @@ def main():
         os.close(fd)
 
 if __name__=='__main__': raise SystemExit(main())
-
-[executed on device: optolink-splitter (adb0c2e1-4670-4fc7-a00a-6548706280dd)]

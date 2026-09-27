@@ -121,6 +121,10 @@ cs_repo_fetch tools/optolink-party-emulator.py /usr/local/bin/optolink-party-emu
 chmod 755 /usr/local/bin/optolink-party-emulator
 chown root:root /usr/local/bin/optolink-party-emulator
 
+cs_repo_fetch tools/optolink-pump-override.py /usr/local/bin/optolink-pump-override
+chmod 755 /usr/local/bin/optolink-pump-override
+chown root:root /usr/local/bin/optolink-pump-override
+
 cs_repo_fetch config/optolink-splitter/wb2a-single-session-logger.py /usr/local/bin/wb2a-single-session-logger
 chmod 755 /usr/local/bin/wb2a-single-session-logger
 chown root:root /usr/local/bin/wb2a-single-session-logger
@@ -142,6 +146,10 @@ chown root:root /etc/systemd/system/optolink-schedule-manager.service
 cs_repo_fetch config/optolink-splitter/optolink-maintenance-api.service /etc/systemd/system/optolink-maintenance-api.service
 chmod 644 /etc/systemd/system/optolink-maintenance-api.service
 chown root:root /etc/systemd/system/optolink-maintenance-api.service
+
+cs_repo_fetch config/optolink-splitter/optolink-pump-override.service /etc/systemd/system/optolink-pump-override.service
+chmod 644 /etc/systemd/system/optolink-pump-override.service
+chown root:root /etc/systemd/system/optolink-pump-override.service
 
 cs_repo_fetch config/optolink-splitter/vcontrol-mapping.md /root/optolink-vcontrol-mapping.md
 
@@ -173,6 +181,7 @@ systemctl enable optolink-splitter.service
 # Fresh installs intentionally start with mqtt_broker=None. Install the API
 # unit now but leave it disabled until MQTT is configured and the updater runs.
 systemctl disable --now optolink-maintenance-api.service >/dev/null 2>&1 || true
+systemctl disable --now optolink-pump-override.service >/dev/null 2>&1 || true
 
 msg_info "Activating validated VDensHO1 permanent-VS1 profile"
 if COMMUNITY_SCRIPTS_REPO="$CS_REPO" \
