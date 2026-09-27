@@ -4321,3 +4321,42 @@ A fresh guarded persistence probe was run in permanent VS1 with `WW=0`, flame of
 A second bounded test set E7 to 31, waited six seconds, then read E7 before restoring 30. The readback was still 31 after six seconds. Because the independently measured firmware reload task restores the volatile physical cache byte `0x20A5` every roughly 1.7..2.25 seconds, survival for six seconds proves that normal Virtual_WRITE updates the upstream configuration source from which that periodic task reloads E7. It is not merely a one-shot modification of the `0x20A5` working byte.
 
 This still does not distinguish a long-lived RAM/configuration store from nonvolatile EEPROM/NVRAM. The local metadata/search surface exposes only parameter-reset/master-reset mechanisms (`A050/A051`, coding 7C) rather than a source-backed non-destructive controller soft reboot. Those reset mechanisms are not suitable for a persistence test because they alter/reset configuration state. A true NVRAM proof therefore still requires a controlled regulation power-cycle/restart while a temporary E7 value is held, followed by immediate readback and restoration.
+
+## E7 power-cycle persistence proof — 2026-09-27
+
+A controlled power-cycle test conclusively resolved E7 persistence on the local WB2A/VDensHO1 20C2 controller.
+
+Preconditions before the test:
+
+```text
+E7 = 30
+WW = 0
+flame off
+current fault = 0
+```
+
+Sequence:
+
+```text
+Virtual_WRITE E7: 30 -> 31
+readback before restart: 31
+physical power-cycle / real controller restart
+first E7 readback after controller returned: 31
+restore Virtual_WRITE E7: 31 -> 30
+final readback: 30
+```
+
+Therefore normal E7 Virtual_WRITE is persistent across a real regulation power-cycle. It does not merely update a volatile controller-side configuration cache. The exact physical nonvolatile medium need not be identified to reach the engineering conclusion: repeated burner-cycle E7 writes would be repeated persistent configuration writes and are not acceptable as the production pump-override mechanism.
+
+Post-test guard state:
+
+```text
+E7 = 30
+0x5738 current fault = 00
+A132 current alarm byte index 28 = 00
+optolink-splitter.service = active
+optolink-party-emulator.service = active
+optolink-schedule-manager.service = active
+```
+
+This closes the dynamic E7 Virtual_WRITE path for per-burner-cycle control. The remaining production-safe direction is a genuinely volatile/runtime pump-control primitive that is compatible with the permanent VS1 splitter, or a controller/topology solution that provides burner-dependent pump behavior without repeated persistent coding writes.
