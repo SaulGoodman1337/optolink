@@ -4313,3 +4313,11 @@ A1<100 or A3C<100 samples: 0
 Observed reload/repair times were approximately 1.101, 3.514, 6.055, 8.441 and 11.089 seconds after start. In every sampled runtime point, both A1 and A3C remained at 100. After the test, RAM/E7 were restored to 30, A1 returned to 30, A3C to 50, and the fault-history guard passed.
 
 Conclusion: a local event-driven repair loop is preferable to fixed-period writes. The service should poll `0x20A5`, write 100 only after observing the firmware's periodic restore to 30, and stop immediately when the override condition ends. This minimizes writes while avoiding observable pump-setpoint dips in the tested condition.
+
+## E7 Virtual_WRITE backing-source test — 2026-09-27
+
+A fresh guarded persistence probe was run in permanent VS1 with `WW=0`, flame off and E7 baseline 30. One minimal `30 -> 31 -> 30` Virtual_WRITE sequence completed successfully. During the temporary value, E7 remained 31 for more than 2 seconds; `0x778B` remained `0x00` and `0x778E` remained `0x01` throughout eight post-write samples and eight restore samples. The current `0x778E` baseline therefore differs from the older observed `0x03`, reinforcing that it is not a usable write-counter/busy indicator.
+
+A second bounded test set E7 to 31, waited six seconds, then read E7 before restoring 30. The readback was still 31 after six seconds. Because the independently measured firmware reload task restores the volatile physical cache byte `0x20A5` every roughly 1.7..2.25 seconds, survival for six seconds proves that normal Virtual_WRITE updates the upstream configuration source from which that periodic task reloads E7. It is not merely a one-shot modification of the `0x20A5` working byte.
+
+This still does not distinguish a long-lived RAM/configuration store from nonvolatile EEPROM/NVRAM. The local metadata/search surface exposes only parameter-reset/master-reset mechanisms (`A050/A051`, coding 7C) rather than a source-backed non-destructive controller soft reboot. Those reset mechanisms are not suitable for a persistence test because they alter/reset configuration state. A true NVRAM proof therefore still requires a controlled regulation power-cycle/restart while a temporary E7 value is held, followed by immediate readback and restoration.
