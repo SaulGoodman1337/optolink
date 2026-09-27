@@ -175,6 +175,23 @@ The notes are intentionally split into two layers:
   clue: complete OpenV wiki history, GWG/KW wire-format boundary, vcontrold raw
   test-command semantics, archive inventory and the current selector/window/
   monitor hypotheses with explicit read-only live-test gates.
+- [workstep2-checkpoint-2026-09-26.md](workstep2-checkpoint-2026-09-26.md) —
+  consolidated current handoff for Arbeitsschritt 2: proven Physical_READ RAM,
+  mapped P300 communication ring, M16C-style DMA/SFR correlation, stable far-
+  pointer descriptor cluster, corrected 0x1A79 interpretation, closed leads and
+  the remaining 20-bit selector/mailbox/private-monitor question.
+- [physical-scheduler-map-2026-09-26.md](physical-scheduler-map-2026-09-26.md) —
+  live/offline resolution of the far-pointer cluster as linked 11-byte scheduler
+  records (`next16|callback32|tick16|period16|flag8`), including ~1 kHz tick-rate
+  correlation and the resulting reclassification away from a selector table.
+- [physical-copy-candidates-2026-09-26.md](physical-copy-candidates-2026-09-26.md) —
+  strict 3+3+2 scan for far program-source / low-RAM / length tuples, with two
+  hardware-stable candidates (EA2AB→3301/29 and FB27D→0705/7), destination
+  stability checks and explicit boundary between copy-like evidence and proof.
+- [p300-eeprom-read-map-2026-09-27.md](p300-eeprom-read-map-2026-09-27.md) —
+  read-only mapping of local P300 EEPROM_READ 0x05: stable low service page,
+  segmented high-address aliases, and hardware proof that 0x1000..0x11FF maps
+  byte-for-byte to the active 512-byte coding-plug image rather than program ROM.
 - [vitotrol-kmbus-wire-protocol.md](vitotrol-kmbus-wire-protocol.md) —
   byte-level physical Vitotrol/KM-BUS reference reconstructed from two working
   emulator implementations: discovery, identity, PING/PONG, CRC and room-

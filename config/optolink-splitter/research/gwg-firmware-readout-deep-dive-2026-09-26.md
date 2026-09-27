@@ -3308,3 +3308,371 @@ The immediate evidence gap is now narrow and testable:
 
 Until that step is recovered, no claim should be made that WB2A firmware is
 readable through GWG/Optolink, but the route is not excluded.
+
+## 2026-09-26 cautious live read-only follow-up
+
+At the user's request, live work remained strictly read-only and source-backed. After each research read, the current GFA fault status, current alarm block, and all ten system fault-history slots were re-read and compared with the baseline.
+
+Baseline controls:
+- Virtual_READ 0x00F8/2 -> 20C2
+- 0x5738 current GFA fault status -> 00
+- A132 byte 28 current alarm error code -> 00
+- system fault-history slots 0x7507..0x7558 contained only the already-known historical 2026-09-25 entries.
+
+Two exact-local GFA branch reads not previously recorded in the research notes were then tested through the already hardware-verified production VS1 GFA_READ path:
+- P11 / 0x400B ("Additional detail") -> 00
+- P89 / 0x4059 ("60 Hz" in the local GFA branch) -> 00
+
+After both reads:
+- 0x5738 remained 00;
+- A132 byte 28 remained 00;
+- all ten system fault-history slots were byte-identical to the baseline.
+Only the live timestamp fields inside A132 advanced normally.
+
+No new controller fault, history entry, protocol error, reset, or service disturbance was observed. No unknown opcode, write, erase, unlock, or blind address sweep was issued.
+
+These two values add local runtime evidence for the exact VDensHO1/GFA branch but do not reveal the missing M30612 program-ROM bridge. Workstream 2 remains closed.
+
+## 2026-09-26 P300 Physical_READ semantic discriminator
+
+With the production services intentionally stopped for exclusive serial ownership, five source-backed old-GWG physical addresses were read through the already verified P300 `Physical_READ 0x03` path. Each physical read was followed by the current GFA fault, A132 alarm block, and all ten system fault-history slots.
+
+Results:
+
+| Historical 2053 meaning | old physical addr | local 20C2 Physical_READ | paired local Virtual_READ |
+| --- | ---: | ---: | --- |
+| outside temperature | 0x6F/1 | 0x91 | 0x0800/2 -> B1 00 |
+| boiler temperature | 0x70/1 | 0x54 | 0x0802/2 -> FE 01 |
+| boiler setpoint | 0x71/1 | 0x91 | 0x5502/2 -> P300 error |
+| M1 operating mode | 0x51/1 | 0x88 | 0x2301/1 -> 03 |
+| burner state | 0x22/1 | 0x00 | 0x551E/1 -> P300 error |
+
+Every Physical_READ returned SUCCESS. After every test, 0x5738 remained 00, A132 current alarm code remained 00, and all ten system history slots were byte-identical to the baseline. No new fault or protocol disturbance was observed.
+
+Interpretation: the local 20C2 P300 Physical_READ address space is live, but the old 2053 GWG physical-address semantics do not carry over directly. In particular 0x6F and 0x51 do not reproduce their historical outside-temperature / operating-mode values. This weakens the hypothesis that P300 0x03 is merely the old GWG compact process-variable map and makes a lower-level physical/service address space more plausible. It still does not prove raw M16C SFR access.
+
+## 2026-09-26 guarded VitoTest Physical_READ address checks
+
+A dedicated one-target helper, `tools/vitotest-physical-read-guard.py`, was used to test only the four VitoTest V1.8 simulator Physical_READ addresses through the already locally verified P300 `Physical_READ / 0x03` function. No GWG `CB` frame was sent.
+
+For each target, the helper:
+- verified identity `20C2`;
+- captured a baseline of current GFA fault `0x5738`, current alarm block `0xA132`, and all ten system fault-history slots `0x7507..0x7558`;
+- issued exactly one P300 `0x03` read;
+- immediately re-read the same fault controls;
+- stopped if the current fault/alarm became nonzero or any history slot changed;
+- restored splitter, Party emulator and schedule manager.
+
+Results:
+- VitoTest `CB BD 01` analogue -> P300 `0x03 / 0x00BD / 1` -> **SUCCESS, 0x97**
+- VitoTest `CB 2F 01` analogue -> P300 `0x03 / 0x002F / 1` -> **SUCCESS, 0x00**
+- VitoTest `CB 3F 01` analogue -> P300 `0x03 / 0x003F / 1` -> **SUCCESS, 0x00**
+- VitoTest `CB 9B 03` analogue -> P300 `0x03 / 0x009B / 3` -> **SUCCESS, 0x98 0x54 0x98**
+
+All four post-read fault guards passed:
+- `0x5738 = 00`;
+- `A132[28] = 00`;
+- all ten system fault-history slots byte-identical to each target's baseline;
+- only the live timestamp inside A132 advanced normally.
+
+A final production-path check after service restoration again returned `0x5738 = 00`; splitter, Party emulator and schedule manager were all active.
+
+Interpretation: these four old VitoTest GWG physical addresses map to readable data under the local 20C2 P300 Physical_READ service. This is new exact-device evidence that the physical/service address space is live beyond the previously tested 0x0001/0x00F8 samples. It does **not** yet establish that these addresses are raw M16C bus addresses or expose program ROM.
+
+## 2026-09-26 Physical_READ architecture discriminator
+
+The same one-target/fault-guard method was then applied to four fixed 16-bit addresses already present in the bounded M16C working-hypothesis probe. The SFR candidate at 0x0004 was deliberately not used because peripheral-register reads can have device-specific side effects.
+
+Results on the exact 20C2:
+- `0x03 / 0x0400 / 16` -> `05 3B 00 00 01 00 00 00 64 74 00 00 00 01 01 00`
+- `0x03 / 0x53F0 / 16` -> `84 59 A8 4D 48 85 8B 81 BC 7C EF 7E 71 9F FF CA`
+- `0x03 / 0xF000 / 16` -> `54 97` repeated eight times
+- `0x03 / 0xFFF0 / 16` -> `54 98` repeated eight times
+
+All four successful reads passed the same immediate fault guard: current GFA fault remained 00, A132 current alarm byte remained 00, and all ten system fault-history slots were byte-identical before/after.
+
+The first attempt to initialize the F000 test saw unexpected control byte 0x56 instead of ENQ 0x05. The helper aborted before identity or target transmission and restored all three services. A fresh current-fault check returned 00; the subsequent isolated retry initialized normally and produced the F000 result above.
+
+Interpretation: Physical_READ 0x03 clearly accepts these addresses, but the highly regular `54 97` / `54 98` patterns at F000/FFF0 are not persuasive evidence of direct M16C data-flash contents. The 16-bit service remains demonstrably distinct from a proven raw MCU bus mapping. 0x0400/0x53F0 remain useful discriminators for repeatability/correlation tests, but the firmware-read gate remains closed.
+
+## 2026-09-26 Virtual_READ vs Physical_READ discriminator at 0x0400 / 0x53F0
+
+A fixed A/B sequence was run on the two architecture anchors:
+`Virtual_READ 0x01 -> Physical_READ 0x03 -> Physical_READ 0x03 -> Virtual_READ 0x01`.
+The same identity and full fault-history guard was applied before and after each complete target sequence.
+
+### 0x0400 / 16
+
+Both Virtual_READ attempts returned the same P300 error response:
+`status=ERROR, data=01`.
+
+Physical_READ succeeded twice:
+- sample 1: `05 15 7C 01 01 00 00 00 6E F8 00 00 00 01 01 00`
+- sample 2: `05 15 7C 01 01 00 00 00 85 F8 00 00 00 01 01 00`
+
+Only byte offset 8 changed (`6E -> 85`) across the immediate repeated reads. Thus this Physical_READ location exposes dynamic state while the corresponding Virtual_READ address is not a valid virtual datapoint.
+
+### 0x53F0 / 16
+
+Both Virtual_READ attempts again returned:
+`status=ERROR, data=01`.
+
+Physical_READ succeeded twice with byte-identical payload:
+`84 59 A8 4D 48 85 8B 81 BC 7C EF 7E 71 9F FF CA`.
+
+The first attempt to start this target sequence saw unexpected initialization control byte `0x17` before any identity or target request. The helper aborted, restored all services, and a current-fault check returned `0x5738 = 00`. The isolated retry then completed normally.
+
+For both completed target sequences the post-read guard passed:
+- `0x5738 = 00`;
+- `A132[28] = 00`;
+- all ten system fault-history slots unchanged.
+
+### Interpretation
+
+This materially strengthens the conclusion that P300 `Physical_READ / 0x03` is not merely another encoding of ordinary Virtual_READ. At 0x0400 and 0x53F0, Virtual_READ rejects the address while Physical_READ returns 16-byte data. The dynamic byte at 0x0400 is compatible with a RAM-like/service-state region; 0x53F0 is stable over the immediate repeat. This still does not prove direct linear M16C bus addressing, but the physical/service space is now demonstrably independent from the normal virtual datapoint namespace.
+
+## 2026-09-26 bounded Physical_READ correlation capture
+
+A dedicated fixed-address read-only logger was added at
+`tools/physical-read-correlation-logger.py`. It samples only the already
+validated Physical_READ blocks `0x0400/16` and `0x53F0/16`, alongside
+known Virtual_READ observables (`0x0810`, `0xA305`, `0xA307`,
+`0xA38F`, `0x55D3`). The same 20C2 identity and full current-fault /
+history guard is applied before and after the capture.
+
+The first live start attempt received unexpected control byte `00` during
+P300 initialization. The helper aborted before identity or target traffic,
+restored all services, and a production-path check returned `0x5738 = 00`.
+A single fresh retry initialized normally.
+
+Eight one-second samples were then captured successfully while the burner was
+idle (modulation 0, CFDM off, flame false, fan 0 rpm). `0x53F0/16` remained
+byte-identical throughout:
+
+~~~text
+84 59 A8 4D 48 85 8B 81 BC 7C EF 7E 71 9F FF CA
+~~~
+
+By contrast, `0x0400/16` changed deterministically:
+
+~~~text
+05 2C 96 00 01 00 00 00 A3 08 00 00 00 01 01 00
+05 2B A0 00 01 00 00 00 09 09 00 00 00 01 01 00
+05 2A AA 00 01 00 00 00 6D 09 00 00 00 01 01 00
+05 29 B4 00 01 00 00 00 D3 09 00 00 00 01 01 00
+05 28 BE 00 01 00 00 00 3C 0A 00 00 00 01 01 00
+05 27 C8 00 01 00 00 00 A2 0A 00 00 00 01 01 00
+05 26 D2 00 01 00 00 00 06 0B 00 00 00 01 01 00
+05 25 DC 00 01 00 00 00 6B 0B 00 00 00 01 01 00
+~~~
+
+Interpreting bytes 8..9 as little-endian gives
+`0x08A3, 0x0909, 0x096D, 0x09D3, 0x0A3C, 0x0AA2, 0x0B06, 0x0B6B`,
+increments of approximately 100..105 counts per elapsed second. Bytes 1..2
+viewed big-endian decrease by exactly 246 per sample.
+
+This strongly supports a live timer/counter-like internal state at or behind
+Physical_READ `0x0400`, while `0x53F0` is stable over the short capture.
+It is stronger evidence for a RAM/service-state view, but still not proof that
+the numeric Physical_READ address is a direct linear M16C bus address.
+
+The post-capture fault guard passed with `0x5738 = 00`, current alarm byte
+zero and all ten system fault-history slots unchanged.
+
+## 2026-09-26 workstep 2: static 20-bit bridge reconstruction
+
+A focused static pass is documented in
+`firmware-20bit-bridge-static-2026-09-26.md`.
+
+Key result: the recovered Vitosoft host model is explicitly 16-bit
+(`EventType.Address` and the LDAP request address are `ushort`). Any
+20-bit program-memory bridge must therefore use separate payload/selector
+bytes or controller-side state.
+
+The strongest positive architectural precedent is the recovered
+`VitosorpAccessController` RPC proxy: it rewrites a normal target to fixed
+endpoint `0xA400` and transports the original 16-bit target plus requested
+length in the RPC payload. This proves the transport/controller architecture
+supports secondary-address proxies, but this specific proxy remains only
+16-bit and is not linked to 2098/20C2.
+
+Global RPC metadata was re-counted: 1,010 RPC read rows exist, but all actual
+three-byte PrefixRead rows (30) belong to M-Bus header service `0xA095`.
+No catalogued ROM/flash/page/bank monitor was recovered. Exact V200KW2/2098
+contains only four RPC rows: three parameter-reset prefixes at `0xA051` and
+`RPCWink~0xA000`; the latter maps to no-payload RPCWriteStandard and is not
+an address selector.
+
+Conversely, the global Physical_READ catalogue contains only 78 compact rows,
+51 unique addresses `0x20..0xDD`, maximum length 3 and no PrefixRead. The
+real local 20C2 implementation has already accepted Physical_READ at
+`0x0400`, `0x53F0`, `0xF000` and `0xFFF0`. This proves the controller's
+16-bit physical/service space is substantially broader than the Vitosoft
+catalogue exposes.
+
+Conclusion: the missing firmware bridge is most likely controller/private-tool
+state outside normal Vitosoft metadata. No guessed selector or Physical_READ
+payload is justified yet.
+
+## 2026-09-26 Arbeitsschritt 2: static high-address carrier audit
+
+A targeted static audit of the recovered Vitosoft serializers and the exact V200KW2/2098 exceptional event surface found no source-backed >16-bit address carrier.
+
+Key result: the ordinary host abstraction is intrinsically 16-bit. Decompiled types and request construction use `ushort` for EventType.Address, MRKey Min/MaxAddress and the MultiRequest physical address; BaseDataService loads addresses with `Convert.ToUInt16(...,16)`. Therefore a genuine M16C program-ROM bridge cannot be hidden merely as a wider normal EventType address.
+
+The known VitosorpAccessController demonstrates a fixed-endpoint address proxy (`0xA400` read / `0xA401` write), but serializes only `addr_hi addr_lo len`. No inspected serializer uses byte 2/3 of EventType.Address or shifts an address by 16/24 bits. Existing byte[2]/byte[3] hits are 32-bit data values, not addresses.
+
+Exact V200KW2/2098 non-ordinary FCRead rows remain limited to three reset RPCs at A051, RPCWink at A000, and one undefined/write-only reset object. None has ROM/page/bank/window/copy semantics.
+
+Conclusion: Arbeitsschritt 2 must now focus on a separately stored selector/mailbox/window or private monitor/service protocol outside the normal Vitosoft event-address model. No live selector/RPC request is justified from current evidence.
+
+## 2026-09-26 Arbeitsschritt 2: Physical_READ linearity + private-service scan
+
+A fixed overlap check was added to `tools/physical-read-correlation-logger.py`.
+It addresses no new bytes outside the already successful `0x0400/16` and
+`0x53F0/16` blocks.
+
+Observed on exact local 20C2:
+
+~~~text
+53F0/16 = 84 59 A8 4D 48 85 8B 81 BC 7C EF 7E 71 9F FF CA
+53F8/8  =                         BC 7C EF 7E 71 9F FF CA
+53F0/16 = 84 59 A8 4D 48 85 8B 81 BC 7C EF 7E 71 9F FF CA
+~~~
+
+The overlap matched byte-for-byte before and after.
+
+At `0x0400` the same addressing relation held. The dynamic first two bytes
+of the `0x0408/8` slice advanced between surrounding reads, while offsets
+10..15 remained aligned with the containing `0x0400/16` block.
+
+This establishes byte-linear addressing inside both proven Physical_READ
+regions. It is stronger than merely observing stable/dynamic opaque blocks.
+It still does not prove that the numeric Physical_READ address is globally
+identical to the MCU CPU address, but it is compatible with a linear
+memory/service view.
+
+The full current-fault/history guard passed and production services were
+restored; final `0x5738 = 00`.
+
+### Private Vitosoft service/mailbox scan
+
+A fresh static scan of the verified private Vitosoft archive inspected managed
+communication code plus `vsmGWG99Native.dll` for address rewrites, request
+payloads, selector/page/bank/mailbox vocabulary and possible wider address
+construction.
+
+Result summary:
+
+~~~text
+structural candidate contexts: 909
+priority payload/address-rewrite contexts: 434
+possible wide-address contexts: 0
+~~~
+
+No managed-code context constructs a 20/24/32-bit target address.
+
+The native GWG helper exports only:
+
+~~~text
+CheckGWG
+TestCall_GWG99Native
+~~~
+
+Initial disassembly of `CheckGWG` shows it opening a serial port, performing
+a GWG identification exchange and accepting device IDs `20 53` or `20 54`.
+This is a GWG-interface presence/device check, not evidence of a firmware
+monitor, selector or ROM reader.
+
+No live selector/write request was sent from these findings.
+
+### Native GWG helper closed as firmware-service lead
+
+Targeted disassembly of the two exports and their direct helper chain in
+`vsmGWG99Native.dll` resolves the native component's purpose.
+
+`CheckGWG`:
+- opens the supplied serial port with Win32 serial APIs;
+- waits for GWG ENQ `05`;
+- transmits control/STX `01`;
+- constructs exactly the three request bytes `C7 F8 04`;
+- reads a four-byte result;
+- accepts identification beginning `20 53` or `20 54`;
+- sends EOT `04` and retries on timeout.
+
+The request-construction helper is explicit in native code:
+
+~~~text
+C7 F8 04
+length = 3
+~~~
+
+No selector, page/bank byte, physical/XRAM service, ROM read, copy/mailbox
+operation or wider address is present in this exported check path.
+
+Thus the native GWG99 DLL is an interface/device-presence check around ordinary
+GWG identification, not the missing firmware-read bridge.
+
+## 2026-09-26 Arbeitsschritt 2: raw MCU RAM and Optolink communication path mapped
+
+A two-pass read-only Physical_READ capture of the complete `0x0400..0x53FF` range has materially changed the status of this workstream. The capture contains the exact P300 request currently being executed at RAM `0x196C`, plus valid P300 response frames. Physical_READ therefore exposes the controller's live communication RAM rather than only an abstract process map.
+
+The P300 storage has been resolved as a 128-byte ring at `0x19EE..0x1A6D`, with cursors at `0x1A6E/0x1A70` and a base pointer at `0x1A72`. A 24-transaction read-only probe showed the cursors moving by `0x2B` bytes per transaction and wrapping modulo `0x80`, with a constant three-byte separation.
+
+Read-only SFR probes further resolve the transport: DMA1 has source `0x019AF`, destination `0x03A2` (U0TB), count `0x000F`, and DM1SL `0x0A`; UART0 mode is `0x75`, compatible with Optolink 8E2 framing. Thus the local Optolink transmit path is tied directly to the `0x19xx` RAM ring through DMA1/UART0. DMA0 independently targets U1TB from RAM `0x0161B`.
+
+Immediately after the ring metadata, RAM contains literal U0TB address `0x03A2` at `0x1A79` and stable program-range pointer `0xF5C28` at `0x1A7D`. This is a concrete communication-handler/descriptor foothold, though the exact role of the far pointer remains to be proven.
+
+System-mode bytes `PM0=00`, `PM1=08` also show that the low flash Block-A mapping is not enabled, so prior regular `0xF000/0xFFF0` Physical_READ data must not be treated as direct data-flash content.
+
+Detailed evidence and tooling are recorded in `physical-ram-optolink-map-2026-09-26.md`, `tools/physical-ram-snapshot.py`, `tools/physical-comm-ring-probe.py` and `tools/analyze-physical-ram-snapshot.py`.
+
+Workstep-2 status: low-memory raw/near-raw MCU access and the Optolink communication mailbox are now established. The remaining missing step is specifically a 20-bit/far source selector or ROM-to-RAM/private monitor invocation. No guessed write or selector was used.
+
+### Offline task/stack discriminator
+
+The paired full-RAM snapshots contain a 90-byte `0x55` fill run at `0x1D45..0x1D9E` and a second 20-byte run at `0x1E45..0x1E58`. The first is followed by the most far-pointer-dense 64-byte window in the image (`0x1DC0..0x1DFF`, six stable program-range values), while the following `0x1E01..0x1E3C` area changes between passes. This is consistent with a prefilled task/stack region containing saved program addresses, but remains a classification hypothesis rather than a proven stack pointer location.
+
+## 2026-09-26 Arbeitsschritt 2: descriptor stability follow-up
+
+A new fixed-target read-only descriptor probe confirms four stable far-range values during 16 consecutive transactions: `0xF5239`, `0xF5281`, `0xF531E` and `0xF5C28`. The first three occur in RAM at 11-byte spacing (`0x18F8/0x1903/0x190E`), consistent with a repeated descriptor/table structure; `0xF5C28` remains stable at `0x1A7D` adjacent to the communication ring.
+
+The earlier interpretation of `RAM 0x1A79 = 0x03A2` as a fixed U0TB pointer is corrected. The new run repeatedly returned `0x03B2` at that field. Renesas documents `0x03A2` as U0TB but `0x03B2` as unassigned/reserved in the M16C/62P SFR map, so `0x1A79` is dynamic state, not a proven UART-register pointer.
+
+The highest-value foothold is now the stable far-pointer/callback cluster. The 20-bit selector/copy invocation itself remains unrecovered.
+
+## 2026-09-26 Arbeitsschritt 2: scheduler/callback structure resolved
+
+The far-pointer cluster is now structurally classified. The real record starts are 0x18F6, 0x1901, 0x190C and 0x1917, each exactly 11 bytes apart. The record layout is:
+
+~~~text
+next/link16 | callback32 | tick16 | period16 | flag8
+~~~
+
+Callbacks are 0xF5239, 0xF5281, 0xF531E and 0xF5339; period-like fields are 2000, 250, 2000 and 1100. A bounded host-time correlation measured approximately 1005 ticks/s for the changing tick fields, consistent with a nominal 1 kHz controller clock.
+
+The same 11-byte layout is present at multiple linked nodes elsewhere in RAM, including callbacks 0xE97F1, 0xE9815, 0xE9C24, 0xE9CA6, 0xEADCB, 0xF157F, 0xF5C28 and 0xFA711. Their next/link words move among known RAM nodes while callback and period fields remain stable.
+
+This reclassifies the cluster as scheduler/control-flow state rather than a selector/mailbox table. 0xF5C28 remains a high-value communication-adjacent callback anchor, but the missing 20-bit firmware bridge must be sought in separate copy/monitor/service state.
+
+## 2026-09-26 Arbeitsschritt 2: far-source / low-RAM copy candidates
+
+A strict offline 3+3+2 search over the two complete 0x0400..0x53FF RAM snapshots found exactly two stable shapes containing a high program-range pointer, a low-RAM pointer and a small count: 0x1DE5 = EA2AB -> 3301 / 29 bytes, and 0x1E6A = FB27D -> 0705 / 7 bytes.
+
+Both destination blocks are stable across the paired snapshots; the 29-byte block at 0x3301 is unique in the captured RAM. Fixed read-only live probes confirmed candidate A as fully stable and candidate B as normally stable. A four-target Physical_READ discriminator showed neither tuple follows the current P300 read target, so these are not simply Physical_READ request arguments.
+
+Because both lie in task/stack-like RAM, they remain copy-descriptor/call-frame candidates rather than proof of ROM-to-RAM service state. They nevertheless match the exact architectural primitive needed for a 20-bit program source to become visible in low RAM.
+
+## 2026-09-26 Arbeitsschritt 2: idle correlation of copy-shaped candidates
+
+A 60-second read-only correlation window observed 66 samples while the burner remained completely idle (flame/rpm/modulation/CFDM all zero; boiler temperature 48.0 C). Both far-source/low-RAM tuples and both destination blocks remained byte-identical for the full window. No natural state transition occurred, and the final fault-history guard passed.
+
+This rules out rapid idle-time scratch behavior but does not yet prove copy semantics. A future discriminator needs a naturally occurring controller transition rather than a longer repeat of the same idle state.
+
+## 2026-09-27 bounded live DMA source-pointer watch
+
+The M16C DMAC hypothesis was tested only as a read-only passive discriminator. Fixed, source-backed Physical_READ windows were sampled for 60 seconds: DMA0 registers at 0x0020/16, DMA1 at 0x0030/16, and DMA request-select state at 0x03B0/16. No DMA register was written and no software DMA request was triggered.
+
+Across 154 samples, DMA1 was invariant at SAR1=0x019AF, DAR1=0x003A2 (UART0 transmit buffer), TCR1=22, DM1CON=0x15, DM1SL=0x0A. DMA0 showed seven ordinary UART1 transfer states, with SAR0 confined to 0x0161B..0x01622, DAR0 fixed at 0x003AA (UART1 transmit buffer), and DM0SL fixed at 0x0F. No observed DMA source address entered the M16C program-ROM range 0xE0000..0xFFFFF.
+
+This is strong negative evidence for a naturally active DMA-based ROM reader during ordinary controller operation / Optolink servicing. It does not rule out a DMA mechanism that is configured only after an unavailable private monitor/selector command. Fault-history and current-fault guards passed and all previously active services were restored.

@@ -4214,3 +4214,11 @@ Machine evidence:
 - exposed-control closure commit
   `67016d7045f7a4a9e5c65fd87dc30cceb3a4798e`.
 
+
+## E7 -> Physical RAM differential mapper — 2026-09-27
+
+A dedicated guarded mapper was added as `tools/e7-physical-ram-differential-probe.py`. It is intentionally restricted to one experiment: E7 `30 -> 31 -> 30`, only when both WW state and GFA flame state are zero. For each state it captures the complete readable `Physical_READ` RAM (`0x0400..0x53ff`) and reports only byte locations following exactly `30 -> 31 -> 30`. This is intended to identify a volatile/runtime copy of E7 without guessing RAM addresses.
+
+The first execution did not perform any write. For the complete 300-second safety window the controller remained in `WW=1, flame=1`, E7 stayed 30, and the probe aborted with `safe E7-write window not present`. All three Optolink services were restored automatically. A future execution during a safe burner/WW-off window can complete the differential capture.
+
+A fresh Vitosoft catalogue check confirms that the pump runtime/result objects `0x7663` (A1 output/speed), `0x7660` (internal pump), `0x0A3A` (A1 result) and `0x0A3C` (internal-pump result) are declared read-only for their pump semantics. E7 `0x27E7` remains the only source-backed writable A1 minimum-speed control on the local family. Therefore no normal documented volatile pump-setpoint write replaces E7 at this point.
