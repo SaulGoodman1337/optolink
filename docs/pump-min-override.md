@@ -78,3 +78,21 @@ journalctl -u optolink-pump-override -n 100 --no-pager
 ```
 
 The retained status topic reports reasons such as `ready`, `engaged`, `reload_repaired`, `active`, `flame_off`, `dhw_started`, `released`, `busy` or `error`.
+
+## Production architecture rejection: exclusive P300 ownership
+
+The initially prepared production service that would hold the serial adapter in P300 for the complete burner cycle is rejected because it pauses normal Optolink/Home Assistant telemetry for the full override duration. The installer/updater no longer deploys or enables that service.
+
+A read-only protocol-handover latency test then measured whether brief periodic VS1 -> P300 -> VS1 switches could preserve useful telemetry. On the local 20C2 hardware the measured transition was:
+
+```text
+VS1 -> P300 switch:  1680.5 ms
+P300 identity:          51.8 ms
+P300 -> VS1 switch:  4237.0 ms
+VS1 identity:           21.0 ms
+total:                5990.3 ms
+```
+
+Since the controller reloads the E7 RAM cache approximately every 2.1 seconds, protocol-switching for every repair is not viable. It would consume more time than the reload interval and repeatedly interrupt production polling.
+
+Therefore a production pump override must preserve the permanent VS1 session. At present the only source-backed writable pump-minimum path available inside that session is normal E7 Virtual_WRITE/F4. Its nonvolatile persistence/endurance semantics remain unresolved, so flame-by-flame E7 rewriting is not enabled by the updater.
