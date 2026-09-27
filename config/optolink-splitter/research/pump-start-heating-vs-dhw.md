@@ -1,3 +1,5 @@
+[Reading 4257 lines from start (total: 4257 lines, 0 remaining)]
+
 # WB2A pump behavior: heating vs DHW
 
 Status: **read-only investigation active; exposed-result mapping largely resolved**
@@ -4222,3 +4224,38 @@ A dedicated guarded mapper was added as `tools/e7-physical-ram-differential-prob
 The first execution did not perform any write. For the complete 300-second safety window the controller remained in `WW=1, flame=1`, E7 stayed 30, and the probe aborted with `safe E7-write window not present`. All three Optolink services were restored automatically. A future execution during a safe burner/WW-off window can complete the differential capture.
 
 A fresh Vitosoft catalogue check confirms that the pump runtime/result objects `0x7663` (A1 output/speed), `0x7660` (internal pump), `0x0A3A` (A1 result) and `0x0A3C` (internal-pump result) are declared read-only for their pump semantics. E7 `0x27E7` remains the only source-backed writable A1 minimum-speed control on the local family. Therefore no normal documented volatile pump-setpoint write replaces E7 at this point.
+## Volatile E7 RAM override proven — 2026-09-27
+
+A guarded differential search identified physical RAM `0x20A5` as the active E7 working copy. With normal E7 at 30%, it was the only stable candidate following both `30 -> 31 -> 30` and an independent `30 -> 32 -> 30` control. The second control used only `0x20A5` plus dynamic control address `0x0EDA`; only `0x20A5` tracked the exact test value.
+
+A one-byte P300 `Physical_WRITE` smoke test at `0x20A5` then established causality. With WW=0 and flame=0:
+
+```text
+before        E7=30  RAM=30  A1 request=30  A3C=50
+RAM 0x20A5=31 E7=31  RAM=31  A1 request=31  A3C=50
+restore 30    E7=30  RAM=30  A1 request=30  A3C=50
+```
+
+No normal E7 `Virtual_WRITE` was used. Fault/current-alarm history remained unchanged. This proves `0x20A5` is a live volatile working variable feeding the A1 pump-speed path.
+
+A hold test showed that firmware reloads the configured value into this RAM byte automatically. After `RAM=31`, `0x20A5` and Virtual_READ E7 had returned to 30 after roughly one second; the A1 request lagged by about one additional sample and then returned to 30.
+
+A fixed short 100% test in the same safe burner-off state showed:
+
+```text
+t=0.0 s  E7=100 RAM=100 A1=30  A3C=100
+t=0.5 s  E7=30  RAM=30  A1=100 A3C=100
+t=1.0 s  E7=30  RAM=30  A1=30  A3C=50
+```
+
+Thus a Physical_WRITE override at `0x20A5` can drive the pump-control chain to 100%, but the firmware's periodic configuration refresh removes the override in substantially less than one second. A burner-selective Home Assistant implementation would therefore require a bounded refresh loop faster than that reload interval plus immediate stop/restore behavior. The persistent E7 coding itself need not be rewritten for such an override.
+
+New guarded tools:
+
+- `tools/e7-physical-ram-targeted-probe.py`
+- `tools/e7-ram-physical-write-smoke.py`
+- `tools/e7-ram-override-hold-probe.py`
+
+These tools have fixed address/value allowlists and burner/WW guards; they are not generic Physical_WRITE utilities.
+
+[executed on device: optolink-splitter (adb0c2e1-4670-4fc7-a00a-6548706280dd)]
