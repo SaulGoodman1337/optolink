@@ -1,0 +1,111 @@
+{
+  "date": "2026-09-27",
+  "controller": "VDensHO1 / 20C2",
+  "operation": "P300 EEPROM_READ 0x05 read-only mapping",
+  "safety": {
+    "writes_used": false,
+    "erase_unlock_private_opcodes_used": false,
+    "fault_guard": "PASS",
+    "services_restored": [
+      "optolink-splitter.service",
+      "optolink-party-emulator.service",
+      "optolink-schedule-manager.service"
+    ]
+  },
+  "full_16bit_grid_scan": {
+    "request_shape": "4096 aligned reads, 16 bytes each, starts 0x0000,0x0010,...,0xFFF0",
+    "addresses_tested": 4096,
+    "successful_blocks": 640,
+    "successful_bytes": 10240,
+    "full_image_sha256_with_ff_fill_for_failed_blocks": "b4eccc272cb5186f50442ef9fa11c3b0e9c0790f679db341ae9fe025ce2dfc60",
+    "successful_ranges": [
+      "0x0000-0x07FF",
+      "0x1000-0x11FF",
+      "0x1400-0x15FF",
+      "0x2000-0x21FF",
+      "0x2400-0x25FF",
+      "0x5000-0x51FF",
+      "0x5400-0x55FF",
+      "0x6000-0x61FF",
+      "0x6400-0x65FF",
+      "0x9000-0x91FF",
+      "0x9400-0x95FF",
+      "0xA000-0xA1FF",
+      "0xA400-0xA5FF",
+      "0xD000-0xD1FF",
+      "0xD400-0xD5FF",
+      "0xE000-0xE1FF",
+      "0xE400-0xE5FF"
+    ],
+    "caveat": "A 16-byte-rejected aligned block may still contain a shorter or unaligned request shape that succeeds; this scan does not exclude that."
+  },
+  "active_f01_aliases": {
+    "reference_file": "7173085-3_CHL-G_3F1_94V-0_f01.bin",
+    "reference_sha256": "6b60b5b9de3dc90cbbe2bba2f7878ef4db36e117577f3402970170746e5cf63f",
+    "exact_512_byte_windows": [
+      "0x1000-0x11FF",
+      "0x1400-0x15FF",
+      "0x2000-0x21FF",
+      "0x2400-0x25FF",
+      "0x5000-0x51FF",
+      "0x5400-0x55FF",
+      "0x6000-0x61FF",
+      "0x6400-0x65FF",
+      "0x9000-0x91FF",
+      "0x9400-0x95FF",
+      "0xA000-0xA1FF",
+      "0xA400-0xA5FF",
+      "0xD000-0xD1FF",
+      "0xD400-0xD5FF",
+      "0xE000-0xE1FF",
+      "0xE400-0xE5FF"
+    ],
+    "match": "512/512 bytes in every listed window"
+  },
+  "low_2k_verify": {
+    "range": "0x0000-0x07FF",
+    "passes": 2,
+    "changed_bytes": 0,
+    "size_bytes": 2048,
+    "sha256_pass1": "5308cae96adb984c7cdf0cf24819f3fff28df808e44e5cfaa3ed152b38ecf177",
+    "sha256_pass2": "5308cae96adb984c7cdf0cf24819f3fff28df808e44e5cfaa3ed152b38ecf177"
+  },
+  "low_protected_table": {
+    "raw_pair_range": "0x0000-0x0597",
+    "pair_count": 716,
+    "rule": "for every 2-byte pair, byte0 XOR byte1 == 0xFF",
+    "trailing_erased_range": "0x0598-0x07FF",
+    "trailing_value": "0xFF",
+    "collapsed_primary_byte_count": 716,
+    "collapsed_sha256": "7bc02b73fb4aa34baf97de05931a7af4a6f444f8ca91f82818832c7af8fa547e",
+    "identity_correlations": [
+      {
+        "raw_address": "0x0050-0x0057",
+        "raw": "20 DF 15 EA 02 FD 01 FE",
+        "collapsed_logical_offset": "0x0028",
+        "collapsed": "20 15 02 01",
+        "matches": "P300 0x7656 coding-card summary exactly"
+      },
+      {
+        "raw_address": "0x04D0-0x04D3",
+        "raw": "02 FD 15 EA",
+        "collapsed_logical_offset": "0x0268",
+        "collapsed": "02 15",
+        "matches": "same two-byte identity tuple as 0x1040[0:2] = P107|P101; correlation only, not a proven field mapping"
+      }
+    ],
+    "not_found_in_raw_or_collapsed_low_map": [
+      "ASCII 7833971",
+      "complete known active f01 blocks 0x1010,0x1020,0x1030,0x1040,0x1050,0x1060,0x1070,0x1080,0x1090,0x10C0",
+      "f02 direct P101..P106 vector 15 01 14 0C 04 D6",
+      "GFA P100..P108 vector 63 15 01 14 0C 04 D6 02 00",
+      "GFA P90/P100..P108 vector 00 63 15 01 14 0C 04 D6 02 00"
+    ]
+  },
+  "f02_result": {
+    "reference_file": "7173085-3_CHL-G_3F1_94V-0_f02.bin",
+    "reference_sha256": "e20316f2053b5002fc52b213b7f6bd7f8b63944a3202bf4b865c999091113e9a",
+    "result": "No exact 512-byte f02 window appeared in the complete aligned 16-byte EEPROM_READ scan.",
+    "boundary": "This excludes an obvious aligned linear f02 mirror for this request shape, not every possible shorter/unaligned/private access path."
+  }
+}
