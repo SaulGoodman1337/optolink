@@ -4,22 +4,11 @@
 
 The local 20C2 controller keeps coding address E7 (A1 heating-pump minimum speed) in physical RAM at `0x20A5`. The firmware reloads the configured E7 value in a background cycle of roughly 2.1 seconds. A guarded one-byte Physical_WRITE to `0x20A5` affects the live A1 pump request without rewriting the persistent E7 coding.
 
-`optolink-pump-override.service` exposes this as a Home Assistant/MQTT switch.
+`optolink-pump-override.service` was a historical prototype exposing this as a Home Assistant/MQTT switch. It was rejected for production because exclusive P300 ownership interrupts normal telemetry. The Home Assistant, runtime, operational and diagnostic sections below describe that discarded prototype, not a deployed service.
 
 ## Rollout
 
-Run the normal private updater on the Optolink LXC:
-
-```bash
-update
-```
-
-The updater installs:
-
-- `/usr/local/bin/optolink-pump-override`
-- `/etc/systemd/system/optolink-pump-override.service`
-
-When MQTT is configured, the updater enables and starts the service automatically. Fresh installations install the unit but leave it disabled until MQTT is configured and a later `update` is run.
+The current installer (`install/optolink-splitter-install.sh`) and updater (`tools/optolink-splitter-update.sh`) contain no references to `optolink-pump-override`. Neither fresh installation nor `update` installs or enables the discarded prototype.
 
 ## Home Assistant
 
@@ -95,4 +84,6 @@ total:                5990.3 ms
 
 Since the controller reloads the E7 RAM cache approximately every 2.1 seconds, protocol-switching for every repair is not viable. It would consume more time than the reload interval and repeatedly interrupt production polling.
 
-Therefore a production pump override must preserve the permanent VS1 session. At present the only source-backed writable pump-minimum path available inside that session is normal E7 Virtual_WRITE/F4. Its nonvolatile persistence/endurance semantics remain unresolved, so flame-by-flame E7 rewriting is not enabled by the updater.
+Therefore a production pump override must preserve the permanent VS1 session. At present the only source-backed writable pump-minimum path available inside that session is normal E7 Virtual_WRITE/F4.
+
+The controlled test documented in [commit `72e42ab030c2c6c7fda65febef387a3b1b12d843`](https://github.com/SaulGoodman1337/optolink/commit/72e42ab030c2c6c7fda65febef387a3b1b12d843) on 2026-09-27 proved persistence on the local WB2A/VDensHO1 20C2 controller: E7 was changed from 30 to 31, remained 31 after a real regulation power-cycle, and was successfully restored to 30 (confirmed by readback). The exact nonvolatile medium and write endurance remain undetermined, but burner-cycle E7 writes are persistent configuration writes and are rejected as a production override mechanism; flame-by-flame E7 rewriting is not enabled by the updater.
