@@ -532,7 +532,8 @@ poll_list = {
                     "min": 10,
                     "max": 60,
                     "poll": [
-                        ("NORMAL", "warmwasser_solltemperatur", 0x6300, 1, 1, False),
+                        ("NORMAL", "warmwasser_solltemperatur",         0x6300, 1, 1, False),
+                        ("NORMAL", "warmwasser_solltemperatur_reduziert", 0x6301, 1, 1, False),
                     ],
                 },
             ],

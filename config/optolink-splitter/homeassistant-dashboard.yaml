@@ -1589,6 +1589,19 @@ views:
             grid_options:
               columns: 12
               rows: 2
+          - type: tile
+            entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
+            name: Warmwasser Soll Nacht
+            icon: mdi:weather-night
+            show_entity_picture: false
+            vertical: false
+            features:
+              - type: numeric-input
+                style: slider
+            features_position: bottom
+            grid_options:
+              columns: 12
+              rows: 2
           - type: heading
             heading: Komfort
             heading_style: subtitle
