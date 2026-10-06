@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Stable /usr/bin/update bootstrap.
+#
+# This tiny wrapper intentionally contains almost no application logic. It
+# reads the persisted repository/ref/target tuple, fetches private-run.sh from
+# that ref and lets private-run materialize the complete repository snapshot.
+# Keeping this layer small makes recovery possible even when application files
+# need a larger update.
+#
+# A GitHub token is optional while the repository is public and is never the
+# first download path; this avoids the historical "expired PAT causes 401"
+# failure mode.
+
 CONF="/etc/community-scripts-private.conf"
 TOKEN_FILE="/etc/community-scripts-github-token"
 
