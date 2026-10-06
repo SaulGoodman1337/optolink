@@ -40,10 +40,14 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import yaml
-          path = Path("config/optolink-splitter/homeassistant-dashboard.yaml")
-          with path.open(encoding="utf-8") as handle:
-              yaml.safe_load(handle)
-          print("dashboard YAML OK")
+          paths = [
+              Path("config/optolink-splitter/homeassistant-dashboard.yaml"),
+              Path("config/optolink-splitter/homeassistant-dashboard-dev.yaml"),
+          ]
+          for path in paths:
+              with path.open(encoding="utf-8") as handle:
+                  yaml.safe_load(handle)
+              print(f"{path.name}: YAML OK")
           PY
 
       - name: Validate production shell scripts
@@ -65,6 +69,16 @@ jobs:
       - name: Validate service-program mapping
         run: |
           python3 tools/optolink-service-programs.py --self-test
+
+      - name: Verify DEV dashboard isolation
+        run: |
+          test -f config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q '^# DEVELOPMENT Lovelace dashboard' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'title: Heizung DEV' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q '^  control_pair:' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Raumtemperatur' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Warmwasser' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          ! grep -q 'title: Heizung DEV' config/optolink-splitter/homeassistant-dashboard.yaml
 
       - name: Verify production dependencies exist
         run: |
