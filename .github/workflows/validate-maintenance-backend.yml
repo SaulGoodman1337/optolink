@@ -116,7 +116,7 @@ jobs:
       - name: Verify DHW day and night controls
         run: |
           grep -q '"warmwasser_solltemperatur".*0x6300' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
-          grep -q '"warmwasser_solltemperatur_reduziert".*0x6301' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q '"warmwasser_solltemperatur_reduziert".*0x6758' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
           grep -q 'name: Warmwasser Tagestemperatur' config/optolink-splitter/homeassistant-dashboard.yaml
           grep -q 'name: Warmwasser Nachttemperatur' config/optolink-splitter/homeassistant-dashboard.yaml
 
