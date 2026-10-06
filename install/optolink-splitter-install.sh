@@ -5,7 +5,7 @@
 # Source: https://github.com/philippoo66/optolink-splitter
 
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
-CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
+CS_REF="${COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha}"
 
 cs_repo_fetch() {
   local rel="${1:?repo-relative path}"
