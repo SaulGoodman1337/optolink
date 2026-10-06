@@ -150,6 +150,10 @@ jobs:
           grep -q 'entity: switch.vitodens_200_wb2a_befuellungsprogramm' config/optolink-splitter/homeassistant-dashboard.yaml
           grep -q '2F:1' docs/service-programs.md
           grep -q '2F:2' docs/service-programs.md
+          grep -q 'Hardware-Verifikation' docs/service-programs.md
+          grep -q '06.10.2026' docs/service-programs.md
+          grep -q '0 → 1 → 0' README.md
+          grep -q '0 → 2 → 0' README.md
 
       - name: Verify WB2A clock synchronization surface
         run: |
