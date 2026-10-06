@@ -180,11 +180,22 @@ The production profile exposes warm water as two native setpoints while preservi
 
 Codieradresse 58 has the WB2A semantics `0 = Zusatzfunktion aus`, `10..60 °C = zweiter Trinkwassertemperatur-Sollwert`. The controller uses this second setpoint for the fourth DHW time phase. The historical Home Assistant entity ID is preserved for compatibility.
 
-The repository dashboard is stored at:
+The production dashboard is stored at:
 
 ```text
 config/optolink-splitter/homeassistant-dashboard.yaml
 ```
+
+A separate visual-development dashboard is available at:
+
+```text
+config/optolink-splitter/homeassistant-dashboard-dev.yaml
+```
+
+The DEV file can be loaded as a second Home Assistant dashboard. It currently
+contains the modernized **Heizung DEV** main page with grouped day/night
+controls, compact status groups and modern graph cards. Production remains
+unchanged until a tested DEV design is deliberately promoted.
 
 The schedule manager accepts only the 21 verified WB2A day blocks and validates complete 8-byte schedules before writing. Maintenance writes are similarly constrained by the shared guarded maintenance core and explicit confirmation semantics.
 
