@@ -23,11 +23,6 @@ import time
 from datetime import datetime
 
 APP_DIR = "/opt/optolink"
-if APP_DIR not in sys.path:
-    sys.path.insert(0, APP_DIR)
-
-from c_settings_adapter import settings  # type: ignore  # noqa: E402
-from homeassistant_publish import connect_mqtt  # type: ignore  # noqa: E402
 
 ADDR_SYSTEM_TIME = 0x088E
 REQUEST_TIMEOUT = 5.0
@@ -114,16 +109,25 @@ def parse_response_addr(response: str) -> int | None:
 
 class ClockSync:
     def __init__(self) -> None:
-        if not getattr(settings, "mqtt_broker", None):
+        if APP_DIR not in sys.path:
+            sys.path.insert(0, APP_DIR)
+
+        from c_settings_adapter import settings  # type: ignore
+        from homeassistant_publish import connect_mqtt  # type: ignore
+
+        self.settings = settings
+        self.connect_mqtt = connect_mqtt
+
+        if not getattr(self.settings, "mqtt_broker", None):
             raise RuntimeError("MQTT is disabled in settings_ini.py")
-        if not getattr(settings, "mqtt_listen", None):
+        if not getattr(self.settings, "mqtt_listen", None):
             raise RuntimeError("mqtt_listen is disabled")
-        if not getattr(settings, "mqtt_respond", None):
+        if not getattr(self.settings, "mqtt_respond", None):
             raise RuntimeError("mqtt_respond is disabled")
-        if not getattr(settings, "mqtt_topic", None):
+        if not getattr(self.settings, "mqtt_topic", None):
             raise RuntimeError("mqtt_topic is not configured")
 
-        self.base_topic = settings.mqtt_topic.rstrip("/")
+        self.base_topic = self.settings.mqtt_topic.rstrip("/")
         self.status_topic = f"{self.base_topic}/clock_sync/status"
         self.system_time_topic = f"{self.base_topic}/systemzeit"
 
@@ -133,7 +137,7 @@ class ClockSync:
         self.responses: list[tuple[int, str]] = []
 
     def on_message(self, client, userdata, message) -> None:  # noqa: ANN001
-        if message.topic != settings.mqtt_respond:
+        if message.topic != self.settings.mqtt_respond:
             return
         response = message.payload.decode(errors="replace").strip()
         with self.response_cond:
@@ -144,11 +148,11 @@ class ClockSync:
             self.response_cond.notify_all()
 
     def connect(self) -> None:
-        self.client = connect_mqtt(retries=5, delay=2)
+        self.client = self.connect_mqtt(retries=5, delay=2)
         if self.client is None:
             raise RuntimeError("MQTT connection failed")
         self.client.on_message = self.on_message
-        self.client.subscribe(settings.mqtt_respond)
+        self.client.subscribe(self.settings.mqtt_respond)
         time.sleep(0.4)
 
     def disconnect(self) -> None:
@@ -170,7 +174,7 @@ class ClockSync:
             start_seq = self.response_seq
 
         log(f"TX {command}")
-        self.client.publish(settings.mqtt_listen, command).wait_for_publish()
+        self.client.publish(self.settings.mqtt_listen, command).wait_for_publish()
         deadline = time.monotonic() + timeout
 
         with self.response_cond:
