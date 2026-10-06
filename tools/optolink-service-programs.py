@@ -47,11 +47,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 APP_DIR = "/opt/optolink"
-if APP_DIR not in sys.path:
-    sys.path.insert(0, APP_DIR)
-
-from c_settings_adapter import settings  # type: ignore  # noqa: E402
-from homeassistant_publish import connect_mqtt  # type: ignore  # noqa: E402
 
 ADDR_SERVICE_PROGRAM = 0x572F
 
@@ -111,16 +106,25 @@ class ServiceProgramManager:
     """Translate two HA switches into the single guarded 0x572F mode byte."""
 
     def __init__(self) -> None:
-        if not getattr(settings, "mqtt_broker", None):
+        if APP_DIR not in sys.path:
+            sys.path.insert(0, APP_DIR)
+
+        from c_settings_adapter import settings  # type: ignore
+        from homeassistant_publish import connect_mqtt  # type: ignore
+
+        self.settings = settings
+        self.connect_mqtt = connect_mqtt
+
+        if not getattr(self.settings, "mqtt_broker", None):
             raise RuntimeError("MQTT is disabled in settings_ini.py")
-        if not getattr(settings, "mqtt_listen", None):
+        if not getattr(self.settings, "mqtt_listen", None):
             raise RuntimeError("mqtt_listen is disabled")
-        if not getattr(settings, "mqtt_respond", None):
+        if not getattr(self.settings, "mqtt_respond", None):
             raise RuntimeError("mqtt_respond is disabled")
-        if not getattr(settings, "mqtt_topic", None):
+        if not getattr(self.settings, "mqtt_topic", None):
             raise RuntimeError("mqtt_topic is not configured")
 
-        self.base_topic = settings.mqtt_topic.rstrip("/")
+        self.base_topic = self.settings.mqtt_topic.rstrip("/")
 
         self.venting_command_topic = (
             f"{self.base_topic}/service_programs/venting/set"
@@ -153,14 +157,14 @@ class ServiceProgramManager:
         self.last_message = "Noch kein Controller-Read"
 
     def connect(self) -> None:
-        self.client = connect_mqtt(retries=10, delay=3)
+        self.client = self.connect_mqtt(retries=10, delay=3)
         if self.client is None:
             raise RuntimeError("MQTT connection failed")
 
         self.client.on_message = self.on_message
         self.client.subscribe(
             [
-                (settings.mqtt_respond, 0),
+                (self.settings.mqtt_respond, 0),
                 (self.venting_command_topic, 0),
                 (self.filling_command_topic, 0),
             ]
@@ -194,7 +198,7 @@ class ServiceProgramManager:
     def on_message(self, client, userdata, message) -> None:  # noqa: ANN001
         payload = message.payload.decode(errors="replace").strip()
 
-        if message.topic == settings.mqtt_respond:
+        if message.topic == self.settings.mqtt_respond:
             with self.response_cond:
                 self.response_seq += 1
                 self.responses.append((self.response_seq, payload))
@@ -238,7 +242,7 @@ class ServiceProgramManager:
             start_seq = self.response_seq
 
         log(f"TX {command}")
-        self.client.publish(settings.mqtt_listen, command).wait_for_publish()
+        self.client.publish(self.settings.mqtt_listen, command).wait_for_publish()
         deadline = time.monotonic() + timeout
 
         with self.response_cond:
