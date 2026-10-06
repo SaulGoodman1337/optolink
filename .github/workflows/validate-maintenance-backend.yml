@@ -27,6 +27,7 @@ jobs:
             tools/optolink-maintenance-api.py \
             tools/optolink-party-emulator.py \
             tools/optolink-clock-sync.py \
+            tools/optolink-service-programs.py \
             tools/optolink-schedule-manager.py \
             tools/wb2a-schedule-probe.py \
             tools/optolink-debug.py \
@@ -53,12 +54,17 @@ jobs:
           bash -n tools/optolink-party-test.sh
           bash -n tools/private-run.sh
           bash -n tools/private-update.sh
+          bash -n tools/fetch-wb2a-service-manual.sh
           bash -n install/optolink-splitter-install.sh
           bash -n ct/optolink-splitter.sh
 
       - name: Validate clock codec
         run: |
           python3 tools/optolink-clock-sync.py --self-test
+
+      - name: Validate service-program mapping
+        run: |
+          python3 tools/optolink-service-programs.py --self-test
 
       - name: Verify production dependencies exist
         run: |
@@ -132,6 +138,19 @@ jobs:
           ! grep -q '\[\[ -c /dev/ttyUSB0 \]\]' tools/optolink-apply-vdensho1-ha-profile.sh
           ! grep -q '\[\[ -c /dev/ttyUSB0 \]\]' install/optolink-splitter-install.sh
 
+      - name: Verify WB2A filling and venting surface
+        run: |
+          grep -q 'ADDR_SERVICE_PROGRAM = 0x572F' tools/optolink-service-programs.py
+          grep -q 'MODE_VENTING = 1' tools/optolink-service-programs.py
+          grep -q 'MODE_FILLING = 2' tools/optolink-service-programs.py
+          grep -q '"name": "entlueftungsprogramm"' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q '"name": "befuellungsprogramm"' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q '"name": "serviceprogramm_status"' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q 'entity: switch.vitodens_200_wb2a_entlueftungsprogramm' config/optolink-splitter/homeassistant-dashboard.yaml
+          grep -q 'entity: switch.vitodens_200_wb2a_befuellungsprogramm' config/optolink-splitter/homeassistant-dashboard.yaml
+          grep -q '2F:1' docs/service-programs.md
+          grep -q '2F:2' docs/service-programs.md
+
       - name: Verify WB2A clock synchronization surface
         run: |
           grep -q 'ADDR_SYSTEM_TIME = 0x088E' tools/optolink-clock-sync.py
@@ -149,13 +168,21 @@ jobs:
           test -f docs/operations.md
           test -f docs/home-assistant.md
           test -f docs/development.md
+          test -f docs/service-programs.md
+          test -f docs/manuals/README.md
+          test -f docs/images/optolink-system-overview.svg
+          test -f docs/images/service-communication-security.svg
           grep -Fq '[Dokumentationsindex](docs/README.md)' README.md
           grep -Fq '[Architektur](docs/architecture.md)' README.md
           grep -Fq '[Betrieb / Runbook](docs/operations.md)' README.md
           grep -Fq '[Home Assistant](docs/home-assistant.md)' README.md
           grep -Fq '[Entwicklungsleitfaden](docs/development.md)' README.md
+          grep -Fq '![Optolink-Splitter Systemübersicht](docs/images/optolink-system-overview.svg)' README.md
+          grep -Fq '![Dienstekommunikation und Sicherheitsmodell](docs/images/service-communication-security.svg)' README.md
+          grep -Fq '[WB2A Befüllungs-/Entlüftungsprogramm](docs/service-programs.md)' README.md
           grep -Fq '0x088E' docs/architecture.md
           grep -Fq '0x6758' docs/home-assistant.md
+          grep -Fq '0x572F' docs/home-assistant.md
 
       - name: Validate systemd service contracts
         run: |
@@ -168,3 +195,5 @@ jobs:
           grep -Fxq 'ExecStart=/usr/local/bin/optolink-clock-sync' config/optolink-splitter/optolink-clock-sync.service
           grep -Fxq 'User=optolink' config/optolink-splitter/optolink-clock-sync.service
           grep -Fxq 'OnUnitActiveSec=15min' config/optolink-splitter/optolink-clock-sync.timer
+          grep -Fxq 'ExecStart=/usr/local/bin/optolink-service-programs' config/optolink-splitter/optolink-service-programs.service
+          grep -Fxq 'User=optolink' config/optolink-splitter/optolink-service-programs.service
