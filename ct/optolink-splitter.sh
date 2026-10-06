@@ -113,10 +113,6 @@ function update_script() {
   chmod 755 /usr/local/bin/optolink-apply-vdensho1-ha-profile
   grep -E '^HELPER_REV=' /usr/local/bin/optolink-apply-vdensho1-ha-profile || true
 
-  # Keep the previous VScotHO1 helper as an explicit rollback option.
-  cs_repo_fetch tools/optolink-apply-vscotho1-profile.sh /usr/local/bin/optolink-apply-vscotho1-profile
-  chmod 755 /usr/local/bin/optolink-apply-vscotho1-profile
-
   cs_repo_fetch tools/optolink-party-test.sh /usr/local/bin/optolink-party-test
   chmod 755 /usr/local/bin/optolink-party-test
   ln -sf /usr/local/bin/optolink-party-test /usr/bin/optolink-party-test
@@ -146,11 +142,6 @@ function update_script() {
   cs_repo_fetch tools/optolink-schedule-manager.py /usr/local/bin/optolink-schedule-manager
   chmod 755 /usr/local/bin/optolink-schedule-manager
   chown root:root /usr/local/bin/optolink-schedule-manager
-
-  cs_repo_fetch config/optolink-splitter/wb2a-single-session-logger.py /usr/local/bin/wb2a-single-session-logger
-  chmod 755 /usr/local/bin/wb2a-single-session-logger
-  chown root:root /usr/local/bin/wb2a-single-session-logger
-  ln -sf /usr/local/bin/wb2a-single-session-logger /usr/bin/wb2a-single-session-logger
 
   cs_repo_fetch tools/optolink-party-emulator.py /usr/local/bin/optolink-party-emulator
   chmod 755 /usr/local/bin/optolink-party-emulator
@@ -222,7 +213,6 @@ echo -e "${INFO}${YW}Party emulation:${CL} ${GN}systemctl status optolink-party-
 echo -e "${INFO}${YW}Schedule manager:${CL} ${GN}systemctl status optolink-schedule-manager${CL}"
 echo -e "${INFO}${YW}Serial devices:${CL} ${GN}optolink-ports${CL}"
 echo -e "${INFO}${YW}VDensHO1 HA profile:${CL} ${GN}optolink-apply-vdensho1-ha-profile${CL}"
-echo -e "${INFO}${YW}Legacy rollback profile:${CL} ${GN}optolink-apply-vscotho1-profile${CL}"
 echo -e "${INFO}${YW}Maintenance API:${CL} ${GN}systemctl status optolink-maintenance-api${CL}"
 echo -e "${INFO}${YW}Maintenance CLI:${CL} ${GN}optolink-maintenance status${CL}"
 echo -e "${INFO}${YW}Inside the container, run '${GN}update${YW}' to update Optolink-Splitter.${CL}"
