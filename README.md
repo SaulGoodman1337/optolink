@@ -198,6 +198,8 @@ Die WB2A-Servicefunktion **Codieradresse 2F** ist über einen eigenen Guarded Ma
 
 Home Assistant erhält zwei getrennte Schalter, intern bleibt es aber ein gemeinsames Drei-Zustands-Register. `optolink-service-programs` liest vor jeder Änderung, schreibt nur 0/1/2, prüft den Controller-Readback und versucht bei einer fehlgeschlagenen Verifikation den vorherigen Modus wiederherzustellen. Der Dienst pollt den Modus außerdem, damit die automatische Abschaltung der Therme nach 20 Minuten in HA sichtbar wird.
 
+**Hardwarestatus:** Befüllung und Entlüftung sind auf der produktiven VDensHO1 / 20C2 / SW03 / WB2A am **06.10.2026 live verifiziert**. Die Übergänge `0 → 1 → 0` und `0 → 2 → 0` wurden über `0x572F` erfolgreich ausgeführt und per Controller-Readback bestätigt.
+
 Details und Sicherheitshinweise: [WB2A Befüllungs-/Entlüftungsprogramm](docs/service-programs.md).
 
 Die zugrunde liegende Viessmann-Serviceanleitung ist Drittmaterial. Das Repository enthält deshalb die Quellenreferenz unter [docs/manuals/README.md](docs/manuals/README.md) und einen Fetch-Helfer für eine lokale Arbeitskopie:
