@@ -15,6 +15,13 @@ cs_repo_fetch() {
     return 0
   fi
 
+  # Prefer the public raw endpoint. This deliberately ignores stale saved
+  # credentials when the repository is public.
+  if curl -fsSL "https://raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel" -o "$dest"; then
+    return 0
+  fi
+
+  rm -f "$dest"
   if [[ -n "${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}" ]]; then
     curl -fsSL \
       -H "Authorization: Bearer $COMMUNITY_SCRIPTS_GITHUB_TOKEN" \
@@ -25,10 +32,8 @@ cs_repo_fetch() {
     return 0
   fi
 
-  # Transitional fallback: this works only while the repository is public.
-  curl -fsSL "https://raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel" -o "$dest"
+  return 1
 }
-
 configure_private_update() {
   local target="${1:?ct script path}"
   local update_dir="/usr/local/lib/community-scripts"
