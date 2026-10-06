@@ -33,6 +33,14 @@ The service manual states that both programs are service functions for trained
 personnel. The Home Assistant dashboard therefore carries explicit safety and
 operating notes; this daemon intentionally does not hide or weaken those
 requirements.
+
+Hardware verification
+---------------------
+On 2026-10-06 the production VDensHO1 / 20C2 / SW03 / WB2A was tested with
+both service modes through this guarded path. 0x572F=1 activated venting and
+0x572F=2 activated filling; both modes were confirmed by controller readback
+and the controller returned to 0x572F=0 afterwards. Values 0, 1 and 2 are
+therefore hardware-verified for this local appliance.
 """
 
 from __future__ import annotations
