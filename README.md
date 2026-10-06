@@ -41,13 +41,15 @@ Before modifying the installed runtime, both patchers run their built-in self-te
 
 The production updater does **not** deploy research probes or arbitrary-write tooling.
 
-## Existing machine: switch to this production branch
+## Existing machine: one-command migration and update
 
-On an existing installation, edit:
+Run this **as root inside the existing Optolink-Splitter LXC**:
 
-`/etc/community-scripts-private.conf`
+```bash
+curl -fsSL https://raw.githubusercontent.com/SaulGoodman1337/optolink/optolink-splitter-ha/tools/optolink-splitter-ha-bootstrap.sh | bash
+```
 
-and ensure it contains:
+The bootstrap verifies that an existing installation is present, downloads this branch through the branch-aware runner, executes the production updater and persists:
 
 ```text
 COMMUNITY_SCRIPTS_REPO=SaulGoodman1337/optolink
@@ -55,13 +57,13 @@ COMMUNITY_SCRIPTS_REF=optolink-splitter-ha
 COMMUNITY_SCRIPTS_TARGET=tools/optolink-splitter-update.sh
 ```
 
-Then run:
+After that, normal future updates are simply:
 
 ```bash
 update
 ```
 
-After the first successful run the updater writes this branch back into the update configuration, so subsequent `update` commands remain on `optolink-splitter-ha`.
+No GitHub token is required while the repository is public. A token remains supported for a future private-repository configuration.
 
 The repository is public, so no token is required. A stored token is still supported if the repository becomes private again.
 
