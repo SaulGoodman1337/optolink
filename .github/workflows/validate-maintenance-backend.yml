@@ -76,9 +76,13 @@ jobs:
           grep -q '^# DEVELOPMENT Lovelace dashboard' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'title: Heizung DEV' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           ! grep -q '^  control_pair:' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'type: custom:grid-layout' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q '"(max-width: 700px)"' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q '"(max-width: 1200px)"' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'grid-template-columns: minmax(520px, 900px) minmax(520px, 900px)' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'type: custom:layout-card' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'type: custom:mushroom-number-card' config/optolink-splitter/homeassistant-dashboard-dev.yaml
-          grep -q 'heading: Raumtemperatur' config/optolink-splitter/homeassistant-dashboard-dev.yaml
-          grep -q 'heading: Warmwasser' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'primary: Büro' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'display_mode: slider' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           ! grep -q 'title: Heizung DEV' config/optolink-splitter/homeassistant-dashboard.yaml
 
