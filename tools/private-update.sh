@@ -38,7 +38,15 @@ fi
 bootstrap="$(mktemp)"
 trap 'rm -f "$bootstrap"' EXIT
 
-if [[ -n "$TOKEN" ]]; then
+# Prefer the unauthenticated raw URL. A stale/expired saved token must not
+# break updates while the repository is public. Authentication is only the
+# fallback for a private repository.
+if curl -fsSL \
+  "https://raw.githubusercontent.com/$REPO/$REF/tools/private-run.sh" \
+  -o "$bootstrap"; then
+  :
+elif [[ -n "$TOKEN" ]]; then
+  rm -f "$bootstrap"
   curl -fsSL \
     -H "Authorization: Bearer $TOKEN" \
     -H "Accept: application/vnd.github.raw+json" \
@@ -46,7 +54,8 @@ if [[ -n "$TOKEN" ]]; then
     "https://api.github.com/repos/$REPO/contents/tools/private-run.sh?ref=$REF" \
     -o "$bootstrap"
 else
-  curl -fsSL "https://raw.githubusercontent.com/$REPO/$REF/tools/private-run.sh" -o "$bootstrap"
+  echo "Could not download tools/private-run.sh from $REPO @ $REF." >&2
+  exit 3
 fi
 
 COMMUNITY_SCRIPTS_GITHUB_TOKEN="$TOKEN" \
