@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
-REF="${COMMUNITY_SCRIPTS_REF:-main}"
+REF="${COMMUNITY_SCRIPTS_REF:-optolink-web}"
 TOKEN="${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
 TARGET="${1:-}"
 
@@ -27,12 +27,16 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
 archive="$tmp_dir/repo.tar.gz"
-curl -fsSL \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Accept: application/vnd.github+json" \
-  -H "X-GitHub-Api-Version: 2022-11-28" \
-  "https://api.github.com/repos/$REPO/tarball/$REF" \
-  -o "$archive"
+if [[ -n "$TOKEN" ]]; then
+  curl -fsSL \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "https://api.github.com/repos/$REPO/tarball/$REF" \
+    -o "$archive"
+else
+  curl -fsSL "https://codeload.github.com/$REPO/tar.gz/$REF" -o "$archive"
+fi
 
 mkdir -p "$tmp_dir/repo"
 tar -xzf "$archive" -C "$tmp_dir/repo" --strip-components=1
