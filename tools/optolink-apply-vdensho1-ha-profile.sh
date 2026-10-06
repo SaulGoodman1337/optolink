@@ -21,10 +21,16 @@ cs_repo_fetch() {
     return 0
   fi
 
-  local token="${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}"
-  if [[ -n "$token" ]]; then
+  # Prefer the public raw endpoint. This deliberately ignores stale saved
+  # credentials when the repository is public.
+  if curl -fsSL "https://raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel" -o "$dest"; then
+    return 0
+  fi
+
+  rm -f "$dest"
+  if [[ -n "${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}" ]]; then
     curl -fsSL \
-      -H "Authorization: Bearer $token" \
+      -H "Authorization: Bearer $COMMUNITY_SCRIPTS_GITHUB_TOKEN" \
       -H "Accept: application/vnd.github.raw+json" \
       -H "X-GitHub-Api-Version: 2022-11-28" \
       "https://api.github.com/repos/$CS_REPO/contents/$rel?ref=$CS_REF" \
@@ -32,11 +38,8 @@ cs_repo_fetch() {
     return 0
   fi
 
-  # Public-repository fallback. Do not block non-interactive image updates
-  # waiting for a token on /dev/tty.
-  curl -fsSL "https://raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel" -o "$dest"
+  return 1
 }
-
 if [[ ! -d "$APP_DIR" || ! -f "$APP_DIR/settings_ini.py" ]]; then
   echo "Optolink-Splitter installation not found in $APP_DIR" >&2
   exit 1
