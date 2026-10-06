@@ -1,3 +1,5 @@
+# One guarded clock check/sync. Success is based on 0x088E readback, not the write ACK.
+
 [Unit]
 Description=Synchronize Viessmann WB2A system clock via Optolink-Splitter
 After=network-online.target optolink-splitter.service
