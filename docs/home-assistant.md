@@ -75,7 +75,8 @@ Die Entity bekommt ihren Zustand von einem anderen MQTT-Produzenten. Beispiele:
 - Maintenance API;
 - Schedule Manager;
 - Party Emulator;
-- Clock Sync.
+- Clock Sync;
+- Service-Program Manager (Befüllen / Entlüften).
 
 Damit kann Home Assistant einen einheitlichen Geräteknoten darstellen, obwohl ein Teil der Zustände nicht direkt vom Poll-Loop stammt.
 
@@ -111,6 +112,8 @@ Beispiele:
 | Zeitprogramme | über Schedule Manager |
 | Wartung | über Maintenance API |
 | Party | über Party Emulator |
+| Entlüftungsprogramm | Codieradresse 2F / `0x572F=1`, über Service-Program Manager |
+| Befüllungsprogramm | Codieradresse 2F / `0x572F=2`, über Service-Program Manager |
 
 Komplexe Operationen werden **nicht** direkt aus einem HA-Template auf den Bus geschrieben, sondern über einen spezialisierten Dienst mit Validierung und Readback geführt.
 
@@ -145,7 +148,30 @@ sensor.vitodens_200_wb2a_systemzeit_sync_status
 - **Abweichung**: beim letzten Clock-Sync gemessene Differenz zur Hostzeit;
 - **Sync Status**: Synchron, Korrigiert, Nur geprüft oder Fehler.
 
-## 7. Zeitprogramm-Editor
+## 7. Befüllungs- und Entlüftungsschalter
+
+Home Assistant stellt das gemeinsame Controllerregister `0x572F` als zwei
+bedienbare Schalter dar:
+
+```text
+switch.vitodens_200_wb2a_entlueftungsprogramm
+switch.vitodens_200_wb2a_befuellungsprogramm
+sensor.vitodens_200_wb2a_serviceprogramm_status
+```
+
+Die Schalter schreiben nicht direkt auf den Splitter. Ihre Topics führen zu
+`optolink-service-programs`, das den aktuellen Modus liest, den gewünschten
+Zielwert 0/1/2 schreibt und den Controllerzustand erneut verifiziert.
+
+Da beide Schalter dasselbe Drei-Zustands-Register repräsentieren, kann nur ein
+Serviceprogramm aktiv sein. Der Dienst verhindert außerdem, dass ein OFF-Befehl
+des bereits inaktiven Schalters das jeweils andere aktive Programm beendet.
+
+Die Diagnose-Ansicht enthält für beide Schalter einen Bestätigungsdialog sowie
+einen Info-Dialog mit Ablauf und Sicherheitshinweisen aus der WB2A-
+Serviceanleitung.
+
+## 8. Zeitprogramm-Editor
 
 Home Assistant schreibt die 8-Byte-Blöcke nicht direkt.
 
@@ -163,7 +189,7 @@ HA Editor
 
 Die `select`-/`time`-/`switch`-Entities im Editor sind daher Staging-State und keine direkten Controllerregister.
 
-## 8. Dashboard
+## 9. Dashboard
 
 Die vollständige Dashboard-Konfiguration liegt in:
 
@@ -182,7 +208,7 @@ Sie verwendet unter anderem folgende HACS-Abhängigkeiten:
 
 Das Dashboard ist eine Darstellungsschicht. Die fachliche Quelle für Entitäten und Register bleibt die Python-Profil-Datei.
 
-## 9. Entity-ID-Stabilität
+## 10. Entity-ID-Stabilität
 
 Bei Adresskorrekturen sollte der interne Datenpunktname nach Möglichkeit stabil bleiben, wenn die semantische Bedeutung der Entity identisch bleibt. So bleiben Home-Assistant-Registry, Dashboards und Automationen erhalten.
 
@@ -191,7 +217,7 @@ Beispiel: Die Korrektur des zweiten WW-Sollwerts von einem falschen Adresskandid
 
 Ein Name darf dagegen nicht aus Kompatibilitätsgründen erhalten bleiben, wenn er fachlich eine andere Funktion vortäuschen würde.
 
-## 10. Neue Entity hinzufügen
+## 11. Neue Entity hinzufügen
 
 Vor einem produktiven Merge:
 
