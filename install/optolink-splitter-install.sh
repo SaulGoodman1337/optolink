@@ -189,26 +189,34 @@ fi
 # mqtt_broker defaults to None.
 msg_ok "Created systemd service"
 
-msg_info "Checking serial adapter"
-if [[ -c /dev/ttyUSB0 ]]; then
-  if ! runuser -u optolink -- test -r /dev/ttyUSB0 || ! runuser -u optolink -- test -w /dev/ttyUSB0; then
-    msg_warn "/dev/ttyUSB0 is present but the optolink service user cannot read/write it"
-    stat -c 'Device permissions: %A owner=%U group=%G uid=%u gid=%g' /dev/ttyUSB0 || true
+msg_info "Checking configured serial adapter"
+optolink_port="$(runuser -u optolink -- /opt/optolink/venv/bin/python - <<'PY_PORT'
+import sys
+sys.path.insert(0, "/opt/optolink")
+import settings_ini
+print(getattr(settings_ini, "port_optolink", None) or "")
+PY_PORT
+)"
+
+if [[ -n "$optolink_port" && -c "$optolink_port" ]]; then
+  if ! runuser -u optolink -- test -r "$optolink_port" || ! runuser -u optolink -- test -w "$optolink_port"; then
+    msg_warn "$optolink_port is present but the optolink service user cannot read/write it"
+    stat -Lc 'Device permissions: %A owner=%U group=%G uid=%u gid=%g' "$optolink_port" || true
     id optolink || true
-    msg_warn "Fix the USB serial device permissions on the Proxmox host, then restart the container/service"
+    msg_warn "Fix the serial-device permissions on the Proxmox host, then restart the container/service"
   fi
 
   systemctl start optolink-splitter.service
   sleep 2
   if systemctl is-active --quiet optolink-splitter.service; then
-    msg_ok "Optolink-Splitter is running"
+    msg_ok "Optolink-Splitter is running on $optolink_port"
   else
     msg_warn "Service was started but did not stay active; check serial-device permissions and configuration"
     journalctl -u optolink-splitter.service -n 20 --no-pager || true
   fi
 else
-  msg_warn "No real character device found at /dev/ttyUSB0. The service is enabled but was not started."
-  msg_warn "Connect/pass through the Optolink USB adapter, then run: systemctl start optolink-splitter"
+  msg_warn "Configured Optolink serial device is unavailable: ${optolink_port:-<not configured>}"
+  msg_warn "Pass through the configured adapter, then run: systemctl start optolink-splitter"
 fi
 
 motd_ssh
