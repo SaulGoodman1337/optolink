@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Repository materializer used by the installed `update` command.
+#
+# It downloads one exact repository ref into a temporary directory, exports
+# that directory as COMMUNITY_SCRIPTS_ROOT and executes only the requested
+# repo-relative script. This keeps updates reproducible: all files used by one
+# update come from the same downloaded branch snapshot.
+#
+# Public codeload is preferred so a stale saved PAT cannot break updates. The
+# authenticated GitHub API is only a fallback for a private repository.
+
 REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 REF="${COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha}"
 TOKEN="${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
