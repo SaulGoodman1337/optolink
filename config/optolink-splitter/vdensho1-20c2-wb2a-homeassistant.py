@@ -48,6 +48,27 @@ Hardware write tests on this exact appliance have so far covered 0x2323
 values 2 and 4, and 0x6773 values 0 and 7.
 """
 
+# ---------------------------------------------------------------------------
+# How to read this file
+# ---------------------------------------------------------------------------
+# This is a declarative profile consumed by the optolink-splitter Home
+# Assistant adapter; it is not an executable daemon.
+#
+# "poll" entries are controller datapoints read by the splitter. The first
+# field selects a poll group, followed by the stable datapoint name, Optolink
+# address, byte length and decoder/scale information expected by the upstream
+# adapter.
+#
+# "nopoll" entries are Home Assistant entities whose state is produced by a
+# local helper service (maintenance, schedules, Party or clock sync) instead of
+# by the splitter poll loop.
+#
+# For writable entities, keep the write surface intentionally small. Complex
+# operations such as schedules and maintenance are routed through dedicated
+# managers rather than exposing an unrestricted raw write from Home Assistant.
+# Stable datapoint names matter because they become Home Assistant entity IDs.
+# See docs/home-assistant.md for the full model.
+
 poll_list = {
     "device": {
         "identifiers": ["viessmann_vitodens_200_w_wb2a_20c2"],
