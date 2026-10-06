@@ -128,6 +128,11 @@ cs_repo_fetch tools/optolink-party-emulator.py /usr/local/bin/optolink-party-emu
 chmod 755 /usr/local/bin/optolink-party-emulator
 chown root:root /usr/local/bin/optolink-party-emulator
 
+cs_repo_fetch tools/optolink-clock-sync.py /usr/local/bin/optolink-clock-sync
+chmod 755 /usr/local/bin/optolink-clock-sync
+chown root:root /usr/local/bin/optolink-clock-sync
+/usr/local/bin/optolink-clock-sync --self-test
+
 
 
 cs_repo_fetch config/optolink-splitter/optolink-party-emulator.service /etc/systemd/system/optolink-party-emulator.service
@@ -141,6 +146,14 @@ chown root:root /etc/systemd/system/optolink-schedule-manager.service
 cs_repo_fetch config/optolink-splitter/optolink-maintenance-api.service /etc/systemd/system/optolink-maintenance-api.service
 chmod 644 /etc/systemd/system/optolink-maintenance-api.service
 chown root:root /etc/systemd/system/optolink-maintenance-api.service
+
+cs_repo_fetch config/optolink-splitter/optolink-clock-sync.service /etc/systemd/system/optolink-clock-sync.service
+chmod 644 /etc/systemd/system/optolink-clock-sync.service
+chown root:root /etc/systemd/system/optolink-clock-sync.service
+
+cs_repo_fetch config/optolink-splitter/optolink-clock-sync.timer /etc/systemd/system/optolink-clock-sync.timer
+chmod 644 /etc/systemd/system/optolink-clock-sync.timer
+chown root:root /etc/systemd/system/optolink-clock-sync.timer
 
 cs_repo_fetch config/optolink-splitter/vcontrol-mapping.md /root/optolink-vcontrol-mapping.md
 
@@ -172,6 +185,7 @@ systemctl enable optolink-splitter.service
 # Fresh installs intentionally start with mqtt_broker=None. Install the API
 # unit now but leave it disabled until MQTT is configured and the updater runs.
 systemctl disable --now optolink-maintenance-api.service >/dev/null 2>&1 || true
+systemctl disable --now optolink-clock-sync.timer >/dev/null 2>&1 || true
 
 msg_info "Activating validated VDensHO1 permanent-VS1 profile"
 if COMMUNITY_SCRIPTS_REPO="$CS_REPO" \
