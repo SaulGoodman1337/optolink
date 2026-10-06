@@ -10,6 +10,11 @@ The helper reads the controller first and only writes when the absolute drift
 exceeds DRIFT_THRESHOLD_SECONDS or the weekday byte disagrees with the date.
 Every write is verified by a fresh readback; the transport ACK itself is not
 treated as authoritative.
+
+Hardware verification on the local 20C2/WB2A (2026-10-06) confirmed a forced
+8-byte write to 0x088E followed by a successful readback at zero seconds host
+drift. The controller returned transport status 255 for that write, which is
+exactly why this helper treats post-write readback as authoritative.
 """
 
 from __future__ import annotations
@@ -212,6 +217,9 @@ class ClockSync:
         return raw, decoded, weekday
 
     def write_clock(self, raw: bytes) -> str | None:
+        # A successful controller write is not guaranteed to produce splitter
+        # response code 1. The live WB2A test returned 255; synchronize() always
+        # decides success from a fresh decoded 0x088E readback instead.
         command = f"wraw;0x088E;{raw.hex().upper()}"
         try:
             return self.request(command)
