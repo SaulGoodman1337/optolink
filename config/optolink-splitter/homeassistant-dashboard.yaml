@@ -4741,6 +4741,30 @@ views:
                   name: GFA
             grid_options:
               columns: full
+          - type: custom:button-card
+            template: diag_group3_blue
+            name: Systemzeit
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_systemzeit_anzeige
+                  name: Therme
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_systemzeit_abweichung
+                  name: Drift
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_systemzeit_sync_status
+                  name: Sync
+            grid_options:
+              columns: full
 
 
       - type: grid
