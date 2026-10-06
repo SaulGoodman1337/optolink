@@ -3,7 +3,7 @@ set -euo pipefail
 
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha}"
-HELPER_REV="2026-09-25-r10-failsoft-poll"
+HELPER_REV="2026-10-06-r11-configured-serial"
 APP_DIR="/opt/optolink"
 VALIDATED_UPSTREAM_REF="c1ee204a1421447721603c5f21c6da7337fdac97"
 
@@ -396,7 +396,21 @@ fi
 echo "Discovery dry-run OK."
 systemctl daemon-reload
 
-if [[ -c /dev/ttyUSB0 ]]; then
+optolink_port="$(runuser -u optolink -- "$APP_DIR/venv/bin/python" - <<'PY'
+import sys
+sys.path.insert(0, "/opt/optolink")
+import settings_ini
+print(getattr(settings_ini, "port_optolink", None) or "")
+PY
+)"
+
+serial_ready=0
+if [[ -n "$optolink_port" && -c "$optolink_port" ]]; then
+  serial_ready=1
+fi
+
+if [[ "$serial_ready" == "1" ]]; then
+  echo "Configured Optolink serial device: $optolink_port"
   echo "Restarting Optolink-Splitter with VDensHO1 profile..."
   systemctl restart optolink-splitter.service
   sleep 3
@@ -410,7 +424,12 @@ if [[ -c /dev/ttyUSB0 ]]; then
   fi
 else
   systemctl stop optolink-splitter.service 2>/dev/null || true
-  echo "No /dev/ttyUSB0 present; profile installed but service left stopped."
+  if [[ -z "$optolink_port" ]]; then
+    echo "No port_optolink is configured; profile installed but service left stopped."
+  else
+    echo "Configured Optolink serial device is not available: $optolink_port"
+    echo "Profile installed but service left stopped."
+  fi
 fi
 
 mqtt_enabled="$(runuser -u optolink -- "$APP_DIR/venv/bin/python" - <<'PY'
@@ -421,7 +440,7 @@ print("1" if getattr(settings_ini, "mqtt_broker", None) else "0")
 PY
 )"
 
-if [[ "$mqtt_enabled" == "1" && -c /dev/ttyUSB0 ]]; then
+if [[ "$mqtt_enabled" == "1" && "$serial_ready" == "1" ]]; then
   if systemctl cat optolink-party-emulator.service >/dev/null 2>&1; then
     echo "Starting persistent Party emulation service..."
     systemctl enable optolink-party-emulator.service >/dev/null 2>&1 || true
@@ -515,8 +534,11 @@ PY
     echo "Optolink remains active. Retry later with:" >&2
     echo "  cd /opt/optolink && ./venv/bin/python homeassistant_publish.py" >&2
   fi
+elif [[ "$mqtt_enabled" != "1" ]]; then
+  echo "MQTT is disabled in settings_ini.py; discovery was validated but not published."
 else
-  echo "MQTT is disabled; discovery was validated but not published."
+  echo "MQTT is configured, but the Optolink serial device is unavailable: ${optolink_port:-<not configured>}"
+  echo "Discovery was validated but not published because the splitter is not running."
 fi
 
 echo "VDensHO1/20C2 Home Assistant profile is active."
