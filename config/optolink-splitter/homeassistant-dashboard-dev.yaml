@@ -1729,6 +1729,18 @@ views:
                       border: 1px solid color-mix(in srgb, #ffb300 40%, var(--divider-color));
                       background: color-mix(in srgb, #ffb300 6%, var(--ha-card-background, var(--card-background-color)));
                     }
+                    @media (max-width: 700px) {
+                      ha-card {
+                        --mush-card-primary-font-size: 12px;
+                        --mush-card-secondary-font-size: 10px;
+                        --mush-card-primary-line-height: 15px;
+                        --mush-card-secondary-line-height: 13px;
+                        --mush-icon-size: 30px;
+                        --mush-control-height: 34px;
+                        --mush-control-spacing: 6px;
+                        --mush-spacing: 8px;
+                      }
+                    }
               - type: custom:mushroom-number-card
                 entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
                 name: Nacht
@@ -1745,6 +1757,18 @@ views:
                       border-radius: 16px;
                       border: 1px solid color-mix(in srgb, #5c6bc0 40%, var(--divider-color));
                       background: color-mix(in srgb, #5c6bc0 6%, var(--ha-card-background, var(--card-background-color)));
+                    }
+                    @media (max-width: 700px) {
+                      ha-card {
+                        --mush-card-primary-font-size: 12px;
+                        --mush-card-secondary-font-size: 10px;
+                        --mush-card-primary-line-height: 15px;
+                        --mush-card-secondary-line-height: 13px;
+                        --mush-icon-size: 30px;
+                        --mush-control-height: 34px;
+                        --mush-control-spacing: 6px;
+                        --mush-spacing: 8px;
+                      }
                     }
 
           - type: heading
@@ -1793,6 +1817,18 @@ views:
                       border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
                       background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
                     }
+                    @media (max-width: 700px) {
+                      ha-card {
+                        --mush-card-primary-font-size: 12px;
+                        --mush-card-secondary-font-size: 10px;
+                        --mush-card-primary-line-height: 15px;
+                        --mush-card-secondary-line-height: 13px;
+                        --mush-icon-size: 30px;
+                        --mush-control-height: 34px;
+                        --mush-control-spacing: 6px;
+                        --mush-spacing: 8px;
+                      }
+                    }
               - type: custom:mushroom-number-card
                 entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
                 name: Nacht
@@ -1809,6 +1845,18 @@ views:
                       border-radius: 16px;
                       border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
                       background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
+                    }
+                    @media (max-width: 700px) {
+                      ha-card {
+                        --mush-card-primary-font-size: 12px;
+                        --mush-card-secondary-font-size: 10px;
+                        --mush-card-primary-line-height: 15px;
+                        --mush-card-secondary-line-height: 13px;
+                        --mush-icon-size: 30px;
+                        --mush-control-height: 34px;
+                        --mush-control-spacing: 6px;
+                        --mush-spacing: 8px;
+                      }
                     }
 
           - type: heading
@@ -1847,6 +1895,20 @@ views:
             fill_container: true
             primary_info: name
             secondary_info: state
+            card_mod:
+              style: |
+                @media (max-width: 700px) {
+                  ha-card {
+                    --mush-card-primary-font-size: 12px;
+                    --mush-card-secondary-font-size: 10px;
+                    --mush-card-primary-line-height: 15px;
+                    --mush-card-secondary-line-height: 13px;
+                    --mush-icon-size: 30px;
+                    --mush-control-height: 34px;
+                    --mush-control-spacing: 6px;
+                    --mush-spacing: 8px;
+                  }
+                }
             visibility:
               - condition: state
                 entity: switch.vitodens_200_wb2a_heizkreis_m1_partybetrieb
@@ -3938,6 +4000,20 @@ views:
             display_mode: slider
             layout: horizontal
             fill_container: true
+            card_mod:
+              style: |
+                @media (max-width: 700px) {
+                  ha-card {
+                    --mush-card-primary-font-size: 12px;
+                    --mush-card-secondary-font-size: 10px;
+                    --mush-card-primary-line-height: 15px;
+                    --mush-card-secondary-line-height: 13px;
+                    --mush-icon-size: 30px;
+                    --mush-control-height: 34px;
+                    --mush-control-spacing: 6px;
+                    --mush-spacing: 8px;
+                  }
+                }
             visibility:
               - condition: state
                 entity: automation.nachtabsenkungheizung
@@ -3954,6 +4030,20 @@ views:
             display_mode: slider
             layout: horizontal
             fill_container: true
+            card_mod:
+              style: |
+                @media (max-width: 700px) {
+                  ha-card {
+                    --mush-card-primary-font-size: 12px;
+                    --mush-card-secondary-font-size: 10px;
+                    --mush-card-primary-line-height: 15px;
+                    --mush-card-secondary-line-height: 13px;
+                    --mush-icon-size: 30px;
+                    --mush-control-height: 34px;
+                    --mush-control-spacing: 6px;
+                    --mush-spacing: 8px;
+                  }
+                }
             visibility:
               - condition: state
                 entity: automation.nachtabsenkungheizung
@@ -4075,6 +4165,20 @@ views:
             display_mode: slider
             layout: horizontal
             fill_container: true
+            card_mod:
+              style: |
+                @media (max-width: 700px) {
+                  ha-card {
+                    --mush-card-primary-font-size: 12px;
+                    --mush-card-secondary-font-size: 10px;
+                    --mush-card-primary-line-height: 15px;
+                    --mush-card-secondary-line-height: 13px;
+                    --mush-icon-size: 30px;
+                    --mush-control-height: 34px;
+                    --mush-control-spacing: 6px;
+                    --mush-spacing: 8px;
+                  }
+                }
             visibility:
               - condition: state
                 entity: automation.nachtabsenkungwarmwasser
@@ -4091,6 +4195,20 @@ views:
             display_mode: slider
             layout: horizontal
             fill_container: true
+            card_mod:
+              style: |
+                @media (max-width: 700px) {
+                  ha-card {
+                    --mush-card-primary-font-size: 12px;
+                    --mush-card-secondary-font-size: 10px;
+                    --mush-card-primary-line-height: 15px;
+                    --mush-card-secondary-line-height: 13px;
+                    --mush-icon-size: 30px;
+                    --mush-control-height: 34px;
+                    --mush-control-spacing: 6px;
+                    --mush-spacing: 8px;
+                  }
+                }
             visibility:
               - condition: state
                 entity: automation.nachtabsenkungwarmwasser
