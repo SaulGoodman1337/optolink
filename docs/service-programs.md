@@ -93,6 +93,25 @@ sensor.vitodens_200_wb2a_serviceprogramm_status
 
 Intern bleibt es **ein einziges 3-Zustands-Register**.
 
+## Hardware-Verifikation
+
+Der komplette Serviceprogramm-Pfad ist auf der produktiven **VDensHO1 / 20C2 / SW03 / WB2A** am **06.10.2026** live verifiziert.
+
+Bestätigt wurden:
+
+- Read `0x572F = 0` im Normalzustand;
+- Aktivierung **Entlüftungsprogramm** über `2F:1` / `0x572F = 1`;
+- Controller-Readback des aktiven Entlüftungsmodus;
+- Rückkehr auf `2F:0` / `0x572F = 0`;
+- Aktivierung **Befüllungsprogramm** über `2F:2` / `0x572F = 2`;
+- Controller-Readback des aktiven Befüllungsmodus;
+- Rückkehr auf `2F:0` / `0x572F = 0`;
+- korrekte Abbildung der beiden Modi über die getrennten Home-Assistant-Schalter.
+
+Damit gelten sowohl das Mapping **Codieradresse 2F → Optolink `0x572F`** als auch die produktiven Write-/Readback-Pfade für die Werte **0, 1 und 2** auf dieser Anlage als hardwareverifiziert.
+
+Die Servicefunktionen bleiben trotzdem bewusst über den Guarded Manager geführt, weil sie reale hydraulische Serviceabläufe auslösen.
+
 ## Sicherheitslogik
 
 `optolink-service-programs`:
