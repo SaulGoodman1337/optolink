@@ -75,9 +75,11 @@ jobs:
           test -f config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q '^# DEVELOPMENT Lovelace dashboard' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'title: Heizung DEV' config/optolink-splitter/homeassistant-dashboard-dev.yaml
-          grep -q '^  control_pair:' config/optolink-splitter/homeassistant-dashboard-dev.yaml
-          grep -q 'name: Raumtemperatur' config/optolink-splitter/homeassistant-dashboard-dev.yaml
-          grep -q 'name: Warmwasser' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          ! grep -q '^  control_pair:' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'type: custom:mushroom-number-card' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'heading: Raumtemperatur' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'heading: Warmwasser' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'display_mode: slider' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           ! grep -q 'title: Heizung DEV' config/optolink-splitter/homeassistant-dashboard.yaml
 
       - name: Verify production dependencies exist
