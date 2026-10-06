@@ -1,81 +1,134 @@
-# Optolink
+# Optolink-Splitter + Home Assistant
 
-Standalone Proxmox VE helpers, configuration, diagnostics and research for local Viessmann Optolink access.
+This branch is the **production branch** for the local Optolink-Splitter deployment.
 
-This repository was split from `SaulGoodman1337/community-scripts` with path-filtered Git history. The relevant Optolink commit history, authors and timestamps were retained; commit SHAs changed as expected because the history was filtered.
+It deliberately contains only the components required to operate the splitter with the validated VDensHO1 / 20C2 Home Assistant integration. Firmware reverse engineering, EEPROM/KBus experiments, one-off probes, data captures and Optolink-Web are intentionally excluded.
 
-## Included components
+## Branch purpose
 
-| Component | Purpose | Default port |
-| --- | --- | ---: |
-| **Optolink-Splitter** | Privileged Debian LXC for a physical Viessmann Optolink adapter, MQTT and TCP/IP access | TCP `65234` |
-| **Optolink-Web** | Unprivileged Debian LXC with a browser UI for an existing Optolink-Splitter | Web `8080` |
+Use this branch on the actual Optolink machine.
 
-## Install on a Proxmox VE host
+Production scope:
 
-For the current public repository:
+- upstream `philippoo66/optolink-splitter`;
+- validated VDensHO1 / 20C2 / WB2A Home Assistant poll profile;
+- MQTT discovery and dashboard configuration;
+- guarded maintenance API and CLI;
+- guarded weekly schedule manager;
+- Party-mode emulation;
+- updater and Proxmox LXC installer;
+- only the runtime patchers needed by the validated profile.
 
-```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/SaulGoodman1337/optolink/main/ct/optolink-splitter.sh)"
+Out of scope:
+
+- firmware readout/reverse engineering;
+- EEPROM, physical-memory and KBus experiments;
+- VitoTest archives;
+- temporary loggers and diagnostic research probes;
+- pump-minimum override experiments;
+- Optolink-Web.
+
+Those items are preserved on `optolink-research` or `optolink-web`.
+
+## Safety model
+
+The profile helper pins the upstream Optolink-Splitter source to the hardware-validated upstream commit `c1ee204a1421447721603c5f21c6da7337fdac97`. It applies only the two runtime integrations required by this deployment:
+
+1. validated read-only VS1/GFA support;
+2. phased polling scheduler.
+
+Before modifying the installed runtime, both patchers run their built-in self-tests. The profile helper creates timestamped backups and rolls back the profile/runtime files if validation fails.
+
+The production updater does **not** deploy research probes or arbitrary-write tooling.
+
+## Existing machine: switch to this production branch
+
+On an existing installation, edit:
+
+`/etc/community-scripts-private.conf`
+
+and ensure it contains:
+
+```text
+COMMUNITY_SCRIPTS_REPO=SaulGoodman1337/optolink
+COMMUNITY_SCRIPTS_REF=optolink-splitter-ha
+COMMUNITY_SCRIPTS_TARGET=tools/optolink-splitter-update.sh
 ```
 
-or:
+Then run:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/SaulGoodman1337/optolink/main/ct/optolink-web.sh)"
-```
-
-If the repository is private, use the authenticated `csrun` bootstrap described in [docs/private-access.md](docs/private-access.md).
-
-## Existing LXC migration
-
-Existing Optolink LXCs that were installed from `SaulGoodman1337/community-scripts` can retain their current compatibility wrapper. Change only the stored repository:
-
-```bash
-sed -i \
-  's|^COMMUNITY_SCRIPTS_REPO=.*|COMMUNITY_SCRIPTS_REPO=SaulGoodman1337/optolink|' \
-  /etc/community-scripts-private.conf
-
 update
 ```
 
-Then verify the relevant service:
+After the first successful run the updater writes this branch back into the update configuration, so subsequent `update` commands remain on `optolink-splitter-ha`.
+
+The repository is public, so no token is required. A stored token is still supported if the repository becomes private again.
+
+## Verification after update
+
+Run:
 
 ```bash
-systemctl is-active optolink-splitter.service
+systemctl status optolink-splitter --no-pager
+systemctl status optolink-party-emulator --no-pager
+systemctl status optolink-schedule-manager --no-pager
+systemctl status optolink-maintenance-api --no-pager
+optolink-maintenance status
 ```
 
-Do not remove the Optolink files from the old `community-scripts` repository until the migrated LXC has completed a successful `update`.
+For the splitter log:
 
-## Documentation
+```bash
+journalctl -u optolink-splitter -n 100 --no-pager
+```
 
-- [Private Vitosoft source archive](docs/vitosoft-private-archive.md) - private companion repository, verified collector coverage and explicit full-payload import status; no raw proprietary files in this repository.
-- [Stock splitter permanent-VS1 smoke gate - 2026-09-24](docs/vs1-stock-splitter-smoke.md) - prepared final read-path gate before production GFA polling: stock splitter, current HA poll list, MQTT coverage check, write ingress disabled, byte-exact settings restore.
-- [Mixed VS1 Virtual/GFA integration validation - 2026-09-24](docs/vs1-mixed-gfa-integration.md) - live PASS: stable P300/F7/P300 values matched while GFA 6B reads were interleaved in one VS1 session. Next gate: stock splitter with the existing HA read poll list in temporary permanent-VS1 mode, write ingress disabled.
-- [GFA measured 150-ms pacing result - 2026-09-24](docs/gfa-paced-comparison.md) - 2 FF replies in 1130 measurement-round reads versus 4 in 804 at the earlier spacing; descriptive improvement, not a fix. Final abort was due to insufficient re-entry time; P300/services restored. Next: unchanged helper, one 60-second naturally established firing observation. Read before older GFA next-action sections.
-- [GFA quality-aware logger and FF checkpoint - 2026-09-24](docs/gfa-quality-logger.md) - original quality/re-entry implementation and prior raw-FF analysis; the newer measured result above supersedes its pending-hardware-test wording.
-- [Vitosoft all-devices cross-profile analysis - 2026-09-24](config/optolink-splitter/research/vitosoft/all-devices-2026-09-24.md) - 399-profile relation graph, exact VDens/VPend/VScot alias, orphan events, WILO/EEPROM linkage limits; derived metadata only.
-- [Current WB2A research plan and TODOs - 2026-09-24](docs/research-plan-2026-09-24.md) - authoritative current execution queue, priorities, completion criteria and evidence discipline.
-- [PCB research: 7424735 / VBC130 comparison board](config/optolink-splitter/research/regulation-board-7424735-pcb-research.md) - online comparison-board analysis, likely M16C/62P M30624FGPFP MCU, X15/X10/KM-BUS follow-up, and explicit WB2A/GG1 identity boundary; tracked in issue #25.
-- [Collector research checkpoint - 2026-09-23](docs/collector-research-checkpoint.md) - historical cross-topic checkpoint; retained for evidence, but its old next-action wording is superseded by the current research plan.
-- [Private archive analysis and evidence](config/optolink-splitter/research/vitosoft/private-archive-2026-09-23-analysis.md) - verified archive/SQL coverage, variant-specific GFA map, corrected firmware and pump assumptions; derived information only.
-- [Project roadmap](docs/project-roadmap.md)
-- [Repository cleanup plan](docs/repository-cleanup-plan.md)
-- [Optolink-Splitter](docs/optolink-splitter.md)
-- [Optolink-Web](docs/optolink-web.md)
-- [Private repository access](docs/private-access.md)
-- [WB2A research notes](config/optolink-splitter/research/README.md)
-
-## Repository layout
+The active Home Assistant profile is:
 
 ```text
-ct/                         Proxmox LXC entrypoints
-install/                    In-container installers
-tools/                      Update, profile, debug and emulator helpers
-config/optolink-splitter/   Profiles, Home Assistant config and research
-apps/optolink-web/          Optolink-Web application
-docs/                       User documentation
-json/                       Helper metadata
+/opt/optolink/homeassistant_poll_list.py
 ```
 
-The Proxmox helper scripts continue to use the shared `community-scripts/core` framework where appropriate. Compatibility variable names such as `COMMUNITY_SCRIPTS_REPO` are intentionally retained so existing installations can migrate without changing their local updater layout.
+The discovery dry-run generated by the profile helper is:
+
+```text
+/root/optolink-ha-discovery-dry-run.txt
+```
+
+## Home Assistant
+
+The production profile provides the verified WB2A/VDensHO1 entities, including the current warm-water reduced-temperature datapoint at `0x6301`.
+
+The repository dashboard is stored at:
+
+```text
+config/optolink-splitter/homeassistant-dashboard.yaml
+```
+
+The schedule manager accepts only the 21 verified WB2A day blocks and validates complete 8-byte schedules before writing. Maintenance writes are similarly constrained by the shared guarded maintenance core and explicit confirmation semantics.
+
+## Fresh installation
+
+The Proxmox LXC entrypoint remains:
+
+```bash
+csrun ct/optolink-splitter.sh
+```
+
+When invoking the repository scripts directly, use this branch as `COMMUNITY_SCRIPTS_REF`.
+
+## Rollback
+
+The profile activation helper creates timestamped backups in `/opt/optolink`. If activation fails it attempts an automatic rollback before returning an error.
+
+For repository-level rollback, `main` remains the untouched pre-cleanup snapshot.
+
+## Branch layout
+
+- `config/optolink-splitter/` — production profile, services, dashboard, maintenance core;
+- `tools/` — production updater, HA activator, schedule/maintenance/Party helpers and the two validated patchers;
+- `install/` and `ct/` — fresh-install paths;
+- `docs/` — production maintenance and schedule documentation;
+- `json/` — Community Scripts metadata.
+
+Research belongs on `optolink-research`. Web UI work belongs on `optolink-web`.
