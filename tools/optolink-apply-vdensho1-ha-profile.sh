@@ -14,7 +14,7 @@ set -euo pipefail
 
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha}"
-HELPER_REV="2026-10-06-r11-configured-serial"
+HELPER_REV="2026-10-06-r12-service-programs"
 APP_DIR="/opt/optolink"
 VALIDATED_UPSTREAM_REF="c1ee204a1421447721603c5f21c6da7337fdac97"
 
@@ -475,6 +475,19 @@ if [[ "$mqtt_enabled" == "1" && "$serial_ready" == "1" ]]; then
     else
       echo "WARNING: Schedule manager did not stay active." >&2
       journalctl -u optolink-schedule-manager.service -n 30 --no-pager >&2 || true
+    fi
+  fi
+
+  if systemctl cat optolink-service-programs.service >/dev/null 2>&1; then
+    echo "Starting guarded filling/venting service-program manager..."
+    systemctl enable optolink-service-programs.service >/dev/null 2>&1 || true
+    systemctl restart optolink-service-programs.service
+    sleep 2
+    if systemctl is-active --quiet optolink-service-programs.service; then
+      echo "Filling/venting service-program manager is active."
+    else
+      echo "WARNING: Filling/venting service-program manager did not stay active." >&2
+      journalctl -u optolink-service-programs.service -n 30 --no-pager >&2 || true
     fi
   fi
 
