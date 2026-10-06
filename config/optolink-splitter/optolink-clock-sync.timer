@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic Viessmann WB2A clock synchronization
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=15min
+AccuracySec=30s
+Unit=optolink-clock-sync.service
+
+[Install]
+WantedBy=timers.target
