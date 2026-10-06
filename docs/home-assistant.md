@@ -132,7 +132,31 @@ number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
 
 Das Dashboard bezeichnet sie als **Warmwasser Nachttemperatur**. Fachlich ist es der zweite WW-Sollwert; die WB2A verwendet ihn im Original-Zeitprogramm für die dafür vorgesehene Warmwasser-Phase.
 
-## 6. Systemzeit-Diagnose
+## 6. Befüllungs- und Entlüftungsprogramm
+
+Die WB2A-Servicefunktion **Codieradresse 2F / Optolink `0x572F`** wird über einen eigenen Guarded Manager in Home Assistant abgebildet.
+
+Entities:
+
+```text
+switch.vitodens_200_wb2a_entlueftungsprogramm
+switch.vitodens_200_wb2a_befuellungsprogramm
+sensor.vitodens_200_wb2a_serviceprogramm_status
+```
+
+Controllerzustände:
+
+- `0` = aus;
+- `1` = Entlüftungsprogramm;
+- `2` = Befüllungsprogramm.
+
+Obwohl Home Assistant zwei Schalter zeigt, existiert im Controller nur ein gemeinsames Drei-Zustands-Register. `optolink-service-programs` verhindert deshalb widersprüchliche Zustände und verifiziert jede Änderung über einen neuen Read von `0x572F`.
+
+**Hardware-Verifikation 06.10.2026:** Beide produktiven Übergänge wurden auf der realen VDensHO1 / 20C2 / SW03 / WB2A erfolgreich getestet. Sowohl `0 → 1 → 0` (Entlüften) als auch `0 → 2 → 0` (Befüllen) funktionierten und wurden durch Controller-Readback bestätigt.
+
+Das Dashboard enthält zusätzlich Sicherheits-/Ablaufinformationen aus der WB2A-Serviceanleitung. Die HA-Schalter ersetzen nicht die dort beschriebenen mechanischen und hydraulischen Arbeitsschritte.
+
+## 7. Systemzeit-Diagnose
 
 Der Controller liefert seine Zeit über `0x088E`.
 
