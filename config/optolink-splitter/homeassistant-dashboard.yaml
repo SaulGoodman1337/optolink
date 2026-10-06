@@ -1576,10 +1576,15 @@ views:
                 name: Ist
                 show_state: true
                 show_icon: false
+              - type: entity
+                entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
+                name: Aktiv
+                show_state: true
+                show_icon: false
           - type: tile
-            entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
+            entity: input_number.nachtabsenkungwwtemperaturnormal
             name: Warmwasser Tagestemperatur
-            icon: mdi:water-thermometer
+            icon: mdi:weather-sunny
             show_entity_picture: false
             vertical: false
             features:
@@ -1590,7 +1595,7 @@ views:
               columns: 12
               rows: 2
           - type: tile
-            entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
+            entity: input_number.nachtabsenkungwwtemperaturreduziert
             name: Warmwasser Nachttemperatur
             icon: mdi:weather-night
             show_entity_picture: false
@@ -3713,11 +3718,6 @@ views:
               - type: entity
                 entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
                 name: Tag
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
-                name: Nacht
                 show_state: true
                 show_icon: false
               - type: entity
