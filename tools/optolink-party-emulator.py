@@ -1,4 +1,18 @@
 #!/opt/optolink/venv/bin/python
+"""Reliable remote Party-mode facade for the local VDensHO1/WB2A.
+
+The native Party bit at 0x2303 can be read reliably, but remote activation is
+not reliable after Party was switched off at the physical controller. This
+service therefore keeps native Party observation and synthetic remote Party
+activation separate.
+
+Synthetic activation stores the values that must later be restored, applies
+the verified operating mode/setpoint combination through the running splitter,
+and persists its restore state in /var/lib/optolink-party/state.json. Direct
+serial access is intentionally avoided; all controller traffic uses the
+splitter MQTT request/response path.
+"""
+
 import json
 import os
 import queue
@@ -14,9 +28,13 @@ if APP_DIR not in sys.path:
 from c_settings_adapter import settings  # type: ignore
 from homeassistant_publish import connect_mqtt  # type: ignore
 
+# State is persisted because a process/container restart must not lose the
+# controller values needed to leave synthetic Party mode safely.
 STATE_DIR = "/var/lib/optolink-party"
 STATE_FILE = os.path.join(STATE_DIR, "state.json")
 
+# Hardware-verified controller datapoints used by this service. Keeping them
+# together makes the write surface explicit during code review.
 ADDR_MODE = 0x2323
 ADDR_NORMAL_SETPOINT = 0x2306
 ADDR_PARTY_STATE = 0x2303
@@ -37,6 +55,13 @@ def utc_iso(ts):
 
 
 class PartyEmulator:
+    """Serialize Party commands, native observation and restore operations.
+
+    MQTT callbacks only enqueue actions or collect splitter responses. The
+    state-changing controller work is performed by the main loop so two Party
+    transitions cannot interleave accidentally.
+    """
+
     def __init__(self):
         if not getattr(settings, "mqtt_broker", None):
             raise RuntimeError("MQTT is disabled in settings_ini.py")
