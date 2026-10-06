@@ -253,9 +253,23 @@ Die aktuelle DEV-Version modernisiert insbesondere:
 - Tag-/Nacht-Sollwerte als gemeinsame visuelle Gruppe aus Überschrift und zwei responsiven Mushroom-Sliderkarten;
 - die Seite Nachtabsenkung mit derselben visuellen Gruppierung.
 
-Die Slider bleiben technisch getrennte Entities. Sie werden direkt nebeneinander unter einer gemeinsamen Gruppenüberschrift dargestellt; damit vermeidet die DEV-Version verschachtelte interaktive Karten, die im Sections-Layout zu Clipping führen können. Das ist ausschließlich eine Darstellungsänderung. Die
-zugrunde liegenden Entities und Controlleradressen bleiben getrennt und
-unverändert.
+Die Slider bleiben technisch getrennte Entities. Die DEV-Hauptseite verwendet jetzt `custom:grid-layout` aus **Layout Card** mit expliziten Breakpoints und einer begrenzten maximalen Inhaltsbreite. Innerhalb der Bediengruppen werden die Slider über responsive `auto-fit/minmax`-Grids angeordnet. Dadurch stehen sie bei genügend Platz nebeneinander und brechen auf schmalen Displays automatisch um.
+
+Breakpoints der DEV-Hauptseite:
+
+- **> 1200 px:** zwei Spalten, je maximal ca. 900 px, zentriert auf sehr breiten Displays;
+- **701–1200 px:** eine Spalte;
+- **≤ 700 px:** Mobile-Abstände und eine Spalte.
+
+Das ist ausschließlich eine Darstellungsänderung. Die zugrunde liegenden
+Entities und Controlleradressen bleiben getrennt und unverändert.
+
+Zusätzliche DEV-Abhängigkeit:
+
+```text
+HACS -> Frontend -> Layout Card
+thomasloven/lovelace-layout-card
+```
 
 Für ein separates YAML-Dashboard kann die Datei beispielsweise nach
 `/config/dashboards/optolink-dev.yaml` kopiert und als eigener
