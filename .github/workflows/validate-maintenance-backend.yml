@@ -84,6 +84,9 @@ jobs:
           grep -q 'type: custom:mushroom-number-card' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'primary: Büro' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'display_mode: slider' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q -- '--mush-card-primary-font-size: 12px' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q -- '--mush-card-secondary-font-size: 10px' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q -- '--mush-control-height: 34px' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           ! grep -q 'title: Heizung DEV' config/optolink-splitter/homeassistant-dashboard.yaml
 
       - name: Verify production dependencies exist
