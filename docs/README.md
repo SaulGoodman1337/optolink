@@ -13,6 +13,8 @@ Dieser Ordner enthält die Betriebs- und Entwicklerdokumentation für den produk
 | [optolink-maintenance.md](optolink-maintenance.md) | Wartungswerte und CLI |
 | [optolink-maintenance-api.md](optolink-maintenance-api.md) | MQTT-Wartungs-API und HA-Integration |
 | [wb2a-schedule-blocks.md](wb2a-schedule-blocks.md) | Zeitprogrammformat und verifizierte WB2A-Blöcke |
+| [service-programs.md](service-programs.md) | Befüllungs-/Entlüftungsprogramm, Codieradresse 2F / 0x572F |
+| [manuals/README.md](manuals/README.md) | Servicehandbuch-Quelle und lokaler Download-Helfer |
 
 Zusätzliche technische Referenz:
 
@@ -29,6 +31,7 @@ Für unterschiedliche Fragestellungen gelten bewusst unterschiedliche Dateien al
 | Welche Zeitprogrammblöcke sind erlaubt? | `tools/optolink-schedule-manager.py` |
 | Wie wird Party technisch umgesetzt? | `tools/optolink-party-emulator.py` |
 | Wie wird die Gerätezeit synchronisiert? | `tools/optolink-clock-sync.py` |
+| Wie werden Befüllung/Entlüftung gesteuert? | `tools/optolink-service-programs.py` |
 | Wie wird ein bestehendes System aktualisiert? | `tools/optolink-splitter-update.sh` |
 | Wie wird das Profil sicher aktiviert? | `tools/optolink-apply-vdensho1-ha-profile.sh` |
 | Wie wird eine neue LXC-Installation aufgebaut? | `install/optolink-splitter-install.sh` |
@@ -39,3 +42,11 @@ Für unterschiedliche Fragestellungen gelten bewusst unterschiedliche Dateien al
 Dokumentation soll den **aktuellen produktiven Zustand** beschreiben. Hypothesen, nicht verifizierte Register und Reverse-Engineering-Zwischenstände gehören nach `optolink-research`.
 
 Wenn Codeverhalten geändert wird, sollten im selben Änderungssatz mindestens die direkt betroffene Dokumentation und — bei einer wichtigen Invariante — der CI-Guard angepasst werden.
+
+
+## Architekturdiagramme
+
+- [Systemübersicht](images/optolink-system-overview.svg)
+- [Dienstekommunikation und Sicherheitsmodell](images/service-communication-security.svg)
+
+Die Root-README rendert beide Diagramme direkt.
