@@ -37,6 +37,14 @@ Vitodens 200-W WB2A
 
 Der Splitter ist der einzige produktive Besitzer des seriellen Ports. Zusatzdienste kommunizieren über seine MQTT-Befehls-/Antwortschnittstelle.
 
+## Systemübersicht
+
+![Optolink-Splitter Systemübersicht](docs/images/optolink-system-overview.svg)
+
+![Dienstekommunikation und Sicherheitsmodell](docs/images/service-communication-security.svg)
+
+Die Diagramme liegen als SVG im Repository und bleiben damit auch bei Zoom und in GitHub-Dokumentation scharf.
+
 ## Branch purpose
 
 Use this branch on the actual Optolink machine.
@@ -49,6 +57,8 @@ Production scope:
 - guarded maintenance API and CLI;
 - guarded weekly schedule manager;
 - Party-mode emulation;
+- guarded WB2A filling/venting service programs (coding address 2F / Optolink `0x572F`);
+- system-clock synchronization and diagnostics;
 - updater and Proxmox LXC installer;
 - only the runtime patchers needed by the validated profile.
 
@@ -107,6 +117,8 @@ systemctl status optolink-splitter --no-pager
 systemctl status optolink-party-emulator --no-pager
 systemctl status optolink-schedule-manager --no-pager
 systemctl status optolink-maintenance-api --no-pager
+systemctl status optolink-clock-sync.timer --no-pager
+systemctl status optolink-service-programs --no-pager
 optolink-maintenance status
 ```
 
@@ -175,6 +187,24 @@ config/optolink-splitter/homeassistant-dashboard.yaml
 ```
 
 The schedule manager accepts only the 21 verified WB2A day blocks and validates complete 8-byte schedules before writing. Maintenance writes are similarly constrained by the shared guarded maintenance core and explicit confirmation semantics.
+
+## Befüllen und Entlüften
+
+Die WB2A-Servicefunktion **Codieradresse 2F** ist über einen eigenen Guarded Manager eingebunden:
+
+- `2F:0` / `0x572F = 0`: Serviceprogramm aus;
+- `2F:1` / `0x572F = 1`: Entlüftungsprogramm;
+- `2F:2` / `0x572F = 2`: Befüllungsprogramm.
+
+Home Assistant erhält zwei getrennte Schalter, intern bleibt es aber ein gemeinsames Drei-Zustands-Register. `optolink-service-programs` liest vor jeder Änderung, schreibt nur 0/1/2, prüft den Controller-Readback und versucht bei einer fehlgeschlagenen Verifikation den vorherigen Modus wiederherzustellen. Der Dienst pollt den Modus außerdem, damit die automatische Abschaltung der Therme nach 20 Minuten in HA sichtbar wird.
+
+Details und Sicherheitshinweise: [WB2A Befüllungs-/Entlüftungsprogramm](docs/service-programs.md).
+
+Die zugrunde liegende Viessmann-Serviceanleitung ist Drittmaterial. Das Repository enthält deshalb die Quellenreferenz unter [docs/manuals/README.md](docs/manuals/README.md) und einen Fetch-Helfer für eine lokale Arbeitskopie:
+
+```bash
+tools/fetch-wb2a-service-manual.sh
+```
 
 ## Fresh installation
 
