@@ -10,10 +10,19 @@ CS_REF="${COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha}"
 cs_repo_fetch() {
   local rel="${1:?repo-relative path}"
   local dest="${2:?destination}"
+
   if [[ -n "${COMMUNITY_SCRIPTS_ROOT:-}" && -f "${COMMUNITY_SCRIPTS_ROOT}/$rel" ]]; then
     cp "${COMMUNITY_SCRIPTS_ROOT}/$rel" "$dest"
     return 0
   fi
+
+  # Prefer the public raw endpoint. This deliberately ignores stale saved
+  # credentials when the repository is public.
+  if curl -fsSL "https://raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel" -o "$dest"; then
+    return 0
+  fi
+
+  rm -f "$dest"
   if [[ -n "${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}" ]]; then
     curl -fsSL \
       -H "Authorization: Bearer $COMMUNITY_SCRIPTS_GITHUB_TOKEN" \
@@ -21,11 +30,11 @@ cs_repo_fetch() {
       -H "X-GitHub-Api-Version: 2022-11-28" \
       "https://api.github.com/repos/$CS_REPO/contents/$rel?ref=$CS_REF" \
       -o "$dest"
-  else
-    curl -fsSL "https://raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel" -o "$dest"
+    return 0
   fi
-}
 
+  return 1
+}
 install_private_update() {
   local target="${1:?ct script path}"
   install -d -m 0755 /usr/local/lib/community-scripts
