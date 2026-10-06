@@ -149,7 +149,11 @@ jobs:
           grep -q '^User=optolink$' config/optolink-splitter/optolink-maintenance-api.service
           grep -q '^ExecStart=/usr/local/bin/optolink-maintenance-api$' config/optolink-splitter/optolink-maintenance-api.service
           grep -q '^ExecStart=/usr/local/bin/optolink-schedule-manager$' config/optolink-splitter/optolink-schedule-manager.service
-          grep -q '^ExecStart=/usr/local/bin/optolink-party-emulator config/optolink-splitter/optolink-party-emulator.service
-          grep -q '^ExecStart=/usr/local/bin/optolink-clock-sync config/optolink-splitter/optolink-clock-sync.service
-          grep -q '^User=optolink config/optolink-splitter/optolink-clock-sync.service
-          grep -q '^OnUnitActiveSec=15min config/optolink-splitter/optolink-clock-sync.timer
+          grep -q '^ExecStart=/usr/local/bin/optolink-party-emulator
+ config/optolink-splitter/optolink-party-emulator.service
+          grep -q '^ExecStart=/usr/local/bin/optolink-clock-sync
+ config/optolink-splitter/optolink-clock-sync.service
+          grep -q '^User=optolink
+ config/optolink-splitter/optolink-clock-sync.service
+          grep -q '^OnUnitActiveSec=15min
+ config/optolink-splitter/optolink-clock-sync.timer
