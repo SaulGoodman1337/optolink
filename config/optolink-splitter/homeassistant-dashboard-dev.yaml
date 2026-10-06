@@ -5,6 +5,9 @@
 # here do not affect the production dashboard until they are deliberately
 # promoted back after visual testing.
 #
+# Additional DEV-only HACS dependency:
+# - Layout Card (thomasloven/lovelace-layout-card)
+#
 # Design goals of this DEV variant:
 # - visually group controls that belong together (especially day/night pairs);
 # - reuse the compact visual language from Diagnose and Pumpen;
@@ -1377,14 +1380,50 @@ views:
   - title: Heizung DEV
     path: heizung
     icon: mdi:water-boiler
-    type: sections
-    max_columns: 4
-    sections:
-      # -------------------------------------------------------------------
-      # Anlage im Blick
-      # -------------------------------------------------------------------
-      - type: grid
-        column_span: 4
+    # DEV v3 uses layout-card's CSS grid instead of Home Assistant Sections.
+    # The explicit breakpoints make the page deterministic across ultrawide,
+    # desktop/tablet and phone sizes. Content is capped at ~1800 px on very
+    # wide screens instead of stretching cards across the full viewport.
+    type: custom:grid-layout
+    layout:
+      margin: 8px 12px 18px
+      padding: 0
+      grid-gap: 12px
+      grid-template-columns: minmax(520px, 900px) minmax(520px, 900px)
+      grid-template-areas: |
+        "header header"
+        "status status"
+        "controls rooms"
+        "controls history"
+      place-content: start center
+      mediaquery:
+        "(max-width: 700px)":
+          margin: 4px 6px 12px
+          grid-gap: 8px
+          grid-template-columns: minmax(0, 1fr)
+          grid-template-areas: |
+            "header"
+            "status"
+            "controls"
+            "rooms"
+            "history"
+        "(max-width: 1200px)":
+          margin: 6px 10px 14px
+          grid-gap: 10px
+          grid-template-columns: minmax(0, 1fr)
+          grid-template-areas: |
+            "header"
+            "status"
+            "controls"
+            "rooms"
+            "history"
+    cards:
+      # ================================================================
+      # Header / live chips
+      # ================================================================
+      - type: vertical-stack
+        view_layout:
+          grid-area: header
         cards:
           - type: heading
             heading: Vitodens 200-W WB2A
@@ -1476,11 +1515,23 @@ views:
             card_mod:
               style: |
                 ha-card {
-                  padding: 2px 4px 4px;
+                  padding: 0 2px;
                 }
-            grid_options:
-              columns: full
 
+      # ================================================================
+      # Responsive status tiles.
+      # auto-fit keeps them compact instead of stretching on ultrawide.
+      # ================================================================
+      - type: custom:layout-card
+        layout_type: custom:grid-layout
+        view_layout:
+          grid-area: status
+        layout:
+          margin: 0
+          padding: 0
+          grid-gap: 8px
+          grid-template-columns: repeat(auto-fit, minmax(170px, 1fr))
+        cards:
           - type: custom:button-card
             template: diag_group3_orange
             name: Brenner / Feuerung
@@ -1503,9 +1554,6 @@ views:
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
                   name: Gebläse
-            grid_options:
-              columns: 6
-              rows: 2
 
           - type: custom:button-card
             template: diag_group3_blue
@@ -1529,9 +1577,6 @@ views:
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
                   name: Vorlauf
-            grid_options:
-              columns: 6
-              rows: 2
 
           - type: custom:button-card
             template: diag_group3_cyan
@@ -1555,9 +1600,6 @@ views:
                   template: diag_mini
                   entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
                   name: Nacht
-            grid_options:
-              columns: 6
-              rows: 2
 
           - type: custom:button-card
             template: diag_group3_green
@@ -1581,9 +1623,6 @@ views:
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
                   name: Ventil
-            grid_options:
-              columns: 6
-              rows: 2
 
           - type: custom:button-card
             template: diag_group3_purple
@@ -1607,9 +1646,6 @@ views:
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_warmwasser_ladestatus
                   name: WW-Ladung
-            grid_options:
-              columns: 6
-              rows: 2
 
           - type: custom:button-card
             template: diag_group3_blue
@@ -1633,22 +1669,13 @@ views:
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_brenner_betriebsstunden
                   name: Stunden
-            grid_options:
-              columns: 6
-              rows: 2
 
-      # -------------------------------------------------------------------
-      # Bedienung
-      #
-      # Do not nest interactive slider cards inside button-card custom_fields.
-      # Home Assistant Sections can size the outer card independently from the
-      # nested controls, which caused the clipped/overlapping DEV-v1 layout.
-      # Instead, each logical pair gets one heading plus two native Mushroom
-      # number cards. The cards stay separate entities but are visually one
-      # obvious control group and remain responsive.
-      # -------------------------------------------------------------------
-      - type: grid
-        column_span: 2
+      # ================================================================
+      # Left desktop column: controls.
+      # ================================================================
+      - type: vertical-stack
+        view_layout:
+          grid-area: controls
         cards:
           - type: heading
             heading: Steuerung
@@ -1660,8 +1687,6 @@ views:
             name: Betriebsart
             icon: mdi:home-modern
             fill_container: true
-            grid_options:
-              columns: full
 
           - type: heading
             heading: Raumtemperatur
@@ -1679,47 +1704,48 @@ views:
                 show_state: true
                 show_icon: false
 
-          - type: custom:mushroom-number-card
-            entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
-            name: Tag
-            icon: mdi:white-balance-sunny
-            icon_color: amber
-            display_mode: slider
-            layout: horizontal
-            fill_container: true
-            primary_info: name
-            secondary_info: state
-            card_mod:
-              style: |
-                ha-card {
-                  border-radius: 16px;
-                  border: 1px solid color-mix(in srgb, #ffb300 40%, var(--divider-color));
-                  background: color-mix(in srgb, #ffb300 6%, var(--ha-card-background, var(--card-background-color)));
-                }
-            grid_options:
-              columns: 6
-              rows: 2
-
-          - type: custom:mushroom-number-card
-            entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
-            name: Nacht
-            icon: mdi:weather-night
-            icon_color: indigo
-            display_mode: slider
-            layout: horizontal
-            fill_container: true
-            primary_info: name
-            secondary_info: state
-            card_mod:
-              style: |
-                ha-card {
-                  border-radius: 16px;
-                  border: 1px solid color-mix(in srgb, #5c6bc0 40%, var(--divider-color));
-                  background: color-mix(in srgb, #5c6bc0 6%, var(--ha-card-background, var(--card-background-color)));
-                }
-            grid_options:
-              columns: 6
-              rows: 2
+          - type: custom:layout-card
+            layout_type: custom:grid-layout
+            layout:
+              margin: 0
+              padding: 0
+              grid-gap: 8px
+              grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))
+            cards:
+              - type: custom:mushroom-number-card
+                entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
+                name: Tag
+                icon: mdi:white-balance-sunny
+                icon_color: amber
+                display_mode: slider
+                layout: horizontal
+                fill_container: true
+                primary_info: name
+                secondary_info: state
+                card_mod:
+                  style: |
+                    ha-card {
+                      border-radius: 16px;
+                      border: 1px solid color-mix(in srgb, #ffb300 40%, var(--divider-color));
+                      background: color-mix(in srgb, #ffb300 6%, var(--ha-card-background, var(--card-background-color)));
+                    }
+              - type: custom:mushroom-number-card
+                entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
+                name: Nacht
+                icon: mdi:weather-night
+                icon_color: indigo
+                display_mode: slider
+                layout: horizontal
+                fill_container: true
+                primary_info: name
+                secondary_info: state
+                card_mod:
+                  style: |
+                    ha-card {
+                      border-radius: 16px;
+                      border: 1px solid color-mix(in srgb, #5c6bc0 40%, var(--divider-color));
+                      background: color-mix(in srgb, #5c6bc0 6%, var(--ha-card-background, var(--card-background-color)));
+                    }
 
           - type: heading
             heading: Warmwasser
@@ -1742,47 +1768,48 @@ views:
                 show_state: true
                 show_icon: false
 
-          - type: custom:mushroom-number-card
-            entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
-            name: Tag
-            icon: mdi:white-balance-sunny
-            icon_color: amber
-            display_mode: slider
-            layout: horizontal
-            fill_container: true
-            primary_info: name
-            secondary_info: state
-            card_mod:
-              style: |
-                ha-card {
-                  border-radius: 16px;
-                  border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
-                  background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
-                }
-            grid_options:
-              columns: 6
-              rows: 2
-
-          - type: custom:mushroom-number-card
-            entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
-            name: Nacht / 2. Sollwert
-            icon: mdi:weather-night
-            icon_color: indigo
-            display_mode: slider
-            layout: horizontal
-            fill_container: true
-            primary_info: name
-            secondary_info: state
-            card_mod:
-              style: |
-                ha-card {
-                  border-radius: 16px;
-                  border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
-                  background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
-                }
-            grid_options:
-              columns: 6
-              rows: 2
+          - type: custom:layout-card
+            layout_type: custom:grid-layout
+            layout:
+              margin: 0
+              padding: 0
+              grid-gap: 8px
+              grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))
+            cards:
+              - type: custom:mushroom-number-card
+                entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
+                name: Tag
+                icon: mdi:white-balance-sunny
+                icon_color: amber
+                display_mode: slider
+                layout: horizontal
+                fill_container: true
+                primary_info: name
+                secondary_info: state
+                card_mod:
+                  style: |
+                    ha-card {
+                      border-radius: 16px;
+                      border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
+                      background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
+                    }
+              - type: custom:mushroom-number-card
+                entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
+                name: Nacht
+                icon: mdi:weather-night
+                icon_color: indigo
+                display_mode: slider
+                layout: horizontal
+                fill_container: true
+                primary_info: name
+                secondary_info: state
+                card_mod:
+                  style: |
+                    ha-card {
+                      border-radius: 16px;
+                      border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
+                      background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
+                    }
 
           - type: heading
             heading: Komfort
@@ -1809,9 +1836,6 @@ views:
             features:
               - type: toggle
             features_position: bottom
-            grid_options:
-              columns: 6
-              rows: 2
 
           - type: custom:mushroom-number-card
             entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_party
@@ -1827,23 +1851,20 @@ views:
               - condition: state
                 entity: switch.vitodens_200_wb2a_heizkreis_m1_partybetrieb
                 state: "on"
-            grid_options:
-              columns: 6
-              rows: 2
 
           - type: custom:mushroom-select-card
             entity: select.vitodens_200_wb2a_zirkulation_intervall
             name: Zirkulation
             icon: mdi:pump
             fill_container: true
-            grid_options:
-              columns: full
 
-      # -------------------------------------------------------------------
-      # Room valves: same compact group language as Diagnose/Pumpen.
-      # -------------------------------------------------------------------
-      - type: grid
-        column_span: 2
+      # ================================================================
+      # Right desktop column: room valves.
+      # Compact Mushroom cards avoid 2/3-column text wrapping in diag_mini.
+      # ================================================================
+      - type: vertical-stack
+        view_layout:
+          grid-area: rooms
         cards:
           - type: heading
             heading: Thermostatventile
@@ -1857,169 +1878,106 @@ views:
                 show_state: true
                 show_icon: true
 
-          - type: custom:button-card
-            template: diag_group2_blue
-            name: Büro
-            custom_fields:
-              v1:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.buro_ventil_offnungsgrad
-                  name: Ventil
-              v2:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.temperaturzielburo
-                  name: Soll
-            grid_options:
-              columns: 6
-              rows: 2
+          - type: custom:layout-card
+            layout_type: custom:grid-layout
+            layout:
+              margin: 0
+              padding: 0
+              grid-gap: 8px
+              grid-template-columns: repeat(auto-fit, minmax(190px, 1fr))
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.buro_ventil_offnungsgrad
+                primary: Büro
+                secondary: >-
+                  Ventil {{ states('sensor.buro_ventil_offnungsgrad') }} % · Soll {{ states('sensor.temperaturzielburo') }}
+                icon: mdi:radiator
+                icon_color: >-
+                  {% set v = states('sensor.buro_ventil_offnungsgrad') | float(0) %}
+                  {{ 'red' if v >= 70 else 'orange' if v >= 30 else 'blue' if v > 0 else 'grey' }}
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
 
-          - type: custom:button-card
-            template: diag_group3_blue
-            name: Dario
-            custom_fields:
-              v1:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.dario_ventil_offnungsgrad
-                  name: Ventil
-              v2:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.temperatur_wohnbereich_temperature
-                  name: Ist
-              v3:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.temperaturzieldario
-                  name: Soll
-            grid_options:
-              columns: 6
-              rows: 2
+              - type: custom:mushroom-template-card
+                entity: sensor.dario_ventil_offnungsgrad
+                primary: Dario
+                secondary: >-
+                  Ventil {{ states('sensor.dario_ventil_offnungsgrad') }} % · Ist {{ states('sensor.temperatur_wohnbereich_temperature') }} °C · Soll {{ states('sensor.temperaturzieldario') }}
+                icon: mdi:radiator
+                icon_color: >-
+                  {% set v = states('sensor.dario_ventil_offnungsgrad') | float(0) %}
+                  {{ 'red' if v >= 70 else 'orange' if v >= 30 else 'blue' if v > 0 else 'grey' }}
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
 
-          - type: custom:button-card
-            template: diag_group3_blue
-            name: Schlafzimmer
-            custom_fields:
-              v1:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.schlafzimmer_ventil_offnungsgrad
-                  name: Ventil
-              v2:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.temperatur_schlafzimmer_temperature
-                  name: Ist
-              v3:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.temperaturzielschlafzimmer
-                  name: Soll
-            grid_options:
-              columns: 6
-              rows: 2
+              - type: custom:mushroom-template-card
+                entity: sensor.schlafzimmer_ventil_offnungsgrad
+                primary: Schlafzimmer
+                secondary: >-
+                  Ventil {{ states('sensor.schlafzimmer_ventil_offnungsgrad') }} % · Ist {{ states('sensor.temperatur_schlafzimmer_temperature') }} °C · Soll {{ states('sensor.temperaturzielschlafzimmer') }}
+                icon: mdi:radiator
+                icon_color: >-
+                  {% set v = states('sensor.schlafzimmer_ventil_offnungsgrad') | float(0) %}
+                  {{ 'red' if v >= 70 else 'orange' if v >= 30 else 'blue' if v > 0 else 'grey' }}
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
 
-          - type: custom:button-card
-            template: diag_group2_blue
-            name: Gäste-WC
-            custom_fields:
-              v1:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.gaste_wc_ventil_offnungsgrad
-                  name: Ventil
-              v2:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.temperaturzielgastewc
-                  name: Soll
-            grid_options:
-              columns: 6
-              rows: 2
+              - type: custom:mushroom-template-card
+                entity: sensor.gaste_wc_ventil_offnungsgrad
+                primary: Gäste-WC
+                secondary: >-
+                  Ventil {{ states('sensor.gaste_wc_ventil_offnungsgrad') }} % · Soll {{ states('sensor.temperaturzielgastewc') }}
+                icon: mdi:radiator
+                icon_color: >-
+                  {% set v = states('sensor.gaste_wc_ventil_offnungsgrad') | float(0) %}
+                  {{ 'red' if v >= 70 else 'orange' if v >= 30 else 'blue' if v > 0 else 'grey' }}
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
 
-          - type: custom:button-card
-            template: diag_group2_blue
-            name: Badezimmer
-            custom_fields:
-              v1:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.badezimmer_ventil_offnungsgrad
-                  name: Ventil
-              v2:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: climate.badezimmer
-                  name: Klima
-            grid_options:
-              columns: 6
-              rows: 2
+              - type: custom:mushroom-template-card
+                entity: sensor.badezimmer_ventil_offnungsgrad
+                primary: Badezimmer
+                secondary: >-
+                  Ventil {{ states('sensor.badezimmer_ventil_offnungsgrad') }} % · Ist {{ state_attr('climate.badezimmer', 'current_temperature') | default('—', true) }} °C · Soll {{ state_attr('climate.badezimmer', 'temperature') | default('—', true) }} °C
+                icon: mdi:radiator
+                icon_color: >-
+                  {% set v = states('sensor.badezimmer_ventil_offnungsgrad') | float(0) %}
+                  {{ 'red' if v >= 70 else 'orange' if v >= 30 else 'blue' if v > 0 else 'grey' }}
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
 
-          - type: custom:button-card
-            template: diag_group3_blue
-            name: Wohnzimmer
-            custom_fields:
-              v1:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.wohnzimmer_links_ventil_offnungsgrad
-                  name: Links
-              v2:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.wohnzimmer_rechts_ventil_offnungsgrad
-                  name: Rechts
-              v3:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.temperatursensorwohnzimmer_temperatur
-                  name: Ist
-            grid_options:
-              columns: 6
-              rows: 2
+              - type: custom:mushroom-template-card
+                entity: sensor.wohnzimmer_links_ventil_offnungsgrad
+                primary: Wohnzimmer
+                secondary: >-
+                  Links {{ states('sensor.wohnzimmer_links_ventil_offnungsgrad') }} % · Rechts {{ states('sensor.wohnzimmer_rechts_ventil_offnungsgrad') }} % · Ist {{ states('sensor.temperatursensorwohnzimmer_temperatur') }} °C
+                icon: mdi:radiator
+                icon_color: >-
+                  {% set l = states('sensor.wohnzimmer_links_ventil_offnungsgrad') | float(0) %}
+                  {% set r = states('sensor.wohnzimmer_rechts_ventil_offnungsgrad') | float(0) %}
+                  {% set v = [l, r] | max %}
+                  {{ 'red' if v >= 70 else 'orange' if v >= 30 else 'blue' if v > 0 else 'grey' }}
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
 
-          - type: custom:button-card
-            template: diag_group3_blue
-            name: Flur
-            custom_fields:
-              v1:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.flur_ventil_offnungsgrad
-                  name: Ventil
-              v2:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.flurtemperatur_flur_temperature
-                  name: Ist
-              v3:
-                card:
-                  type: custom:button-card
-                  template: diag_mini
-                  entity: sensor.temperaturzielflur
-                  name: Soll
-            grid_options:
-              columns: 6
-              rows: 2
+              - type: custom:mushroom-template-card
+                entity: sensor.flur_ventil_offnungsgrad
+                primary: Flur
+                secondary: >-
+                  Ventil {{ states('sensor.flur_ventil_offnungsgrad') }} % · Ist {{ states('sensor.flurtemperatur_flur_temperature') }} °C · Soll {{ states('sensor.temperaturzielflur') }}
+                icon: mdi:radiator
+                icon_color: >-
+                  {% set v = states('sensor.flur_ventil_offnungsgrad') | float(0) %}
+                  {{ 'red' if v >= 70 else 'orange' if v >= 30 else 'blue' if v > 0 else 'grey' }}
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
 
           - type: tile
             entity: script.climateboost
@@ -2030,15 +1988,14 @@ views:
               action: perform-action
               perform_action: script.climateboost
               target: {}
-            grid_options:
-              columns: full
-              rows: 1
 
-      # -------------------------------------------------------------------
-      # Modern history cards using the same graph component as Diagnose/Pumpen.
-      # -------------------------------------------------------------------
-      - type: grid
-        column_span: 4
+      # ================================================================
+      # History occupies the second desktop column below the room cards.
+      # On <=1200px it becomes a normal full-width stack.
+      # ================================================================
+      - type: vertical-stack
+        view_layout:
+          grid-area: history
         cards:
           - type: heading
             heading: Verlauf
@@ -2077,8 +2034,6 @@ views:
                 icon: mdi:water-thermometer
                 extra_value_entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
                 extra_value_name: Soll
-            grid_options:
-              columns: full
 
           - type: custom:background-graph-entities
             title: Brenner & Hydraulik – 24 Stunden
@@ -2116,14 +2071,6 @@ views:
                 overwrite_graph_appearance: true
                 graph_min: 0
                 graph_max: 100
-            grid_options:
-              columns: full
-
-    cards: []
-    header:
-      layout: responsive
-      badges_position: bottom
-      badges_wrap: wrap
 
   - title: Heizkurve
     path: heizkurve
