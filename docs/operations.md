@@ -172,7 +172,34 @@ Die Wartungsfunktionen verwenden explizite Bestätigungsphrasen für risikoreich
 - [optolink-maintenance.md](optolink-maintenance.md)
 - [optolink-maintenance-api.md](optolink-maintenance-api.md)
 
-## 9. Party-Emulation
+## 9. Befüllen und Entlüften
+
+Status des Guarded Managers:
+
+```bash
+systemctl status optolink-service-programs --no-pager
+journalctl -u optolink-service-programs -n 100 --no-pager
+```
+
+Controllerzustand direkt lesen:
+
+```bash
+optolink-debug request 'r;0x572F;1;1;False'
+```
+
+Zuordnung:
+
+```text
+0 = Aus
+1 = Entlüftungsprogramm
+2 = Befüllungsprogramm
+```
+
+Der vollständige Pfad wurde am **06.10.2026 auf der produktiven VDensHO1 / 20C2 / SW03 / WB2A live verifiziert**. Entlüftung und Befüllung ließen sich über die HA-/MQTT-Servicepfade aktivieren, der jeweilige Controllerzustand wurde zurückgelesen und anschließend wieder auf `0` beendet.
+
+Für den realen Servicevorgang weiterhin die Hinweise in [service-programs.md](service-programs.md) und der Viessmann-Serviceanleitung beachten.
+
+## 10. Party-Emulation
 
 Status:
 
