@@ -142,6 +142,11 @@ chmod 755 /usr/local/bin/optolink-clock-sync
 chown root:root /usr/local/bin/optolink-clock-sync
 /usr/local/bin/optolink-clock-sync --self-test
 
+cs_repo_fetch tools/optolink-service-programs.py /usr/local/bin/optolink-service-programs
+chmod 755 /usr/local/bin/optolink-service-programs
+chown root:root /usr/local/bin/optolink-service-programs
+/usr/local/bin/optolink-service-programs --self-test
+
 
 
 cs_repo_fetch config/optolink-splitter/optolink-party-emulator.service /etc/systemd/system/optolink-party-emulator.service
@@ -163,6 +168,10 @@ chown root:root /etc/systemd/system/optolink-clock-sync.service
 cs_repo_fetch config/optolink-splitter/optolink-clock-sync.timer /etc/systemd/system/optolink-clock-sync.timer
 chmod 644 /etc/systemd/system/optolink-clock-sync.timer
 chown root:root /etc/systemd/system/optolink-clock-sync.timer
+
+cs_repo_fetch config/optolink-splitter/optolink-service-programs.service /etc/systemd/system/optolink-service-programs.service
+chmod 644 /etc/systemd/system/optolink-service-programs.service
+chown root:root /etc/systemd/system/optolink-service-programs.service
 
 cs_repo_fetch config/optolink-splitter/vcontrol-mapping.md /root/optolink-vcontrol-mapping.md
 
@@ -195,6 +204,7 @@ systemctl enable optolink-splitter.service
 # unit now but leave it disabled until MQTT is configured and the updater runs.
 systemctl disable --now optolink-maintenance-api.service >/dev/null 2>&1 || true
 systemctl disable --now optolink-clock-sync.timer >/dev/null 2>&1 || true
+systemctl disable --now optolink-service-programs.service >/dev/null 2>&1 || true
 
 msg_info "Activating validated VDensHO1 permanent-VS1 profile"
 if COMMUNITY_SCRIPTS_REPO="$CS_REPO" \
