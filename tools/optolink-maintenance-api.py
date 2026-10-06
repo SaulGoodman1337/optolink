@@ -1,5 +1,15 @@
 #!/opt/optolink/venv/bin/python
-"""MQTT API for the guarded Optolink maintenance core."""
+"""MQTT facade for the guarded Optolink maintenance core.
+
+This process owns no controller-specific write logic. It validates the external
+JSON/MQTT request shape, serializes work through a bounded queue, de-duplicates
+request IDs and delegates the actual guarded operations to
+optolink_maintenance_core.py.
+
+Keeping transport/API concerns here and controller safety in the shared core
+ensures the CLI and Home Assistant path use exactly the same readback,
+confirmation and rollback rules.
+"""
 
 from __future__ import annotations
 
@@ -66,6 +76,13 @@ def require_int(payload: dict[str, Any], key: str) -> int:
 
 
 class MaintenanceApi:
+    """Bridge Home Assistant/MQTT requests to the shared maintenance core.
+
+    MQTT callbacks never execute a maintenance write inline. They validate and
+    enqueue work; the worker path performs one guarded operation at a time and
+    publishes retained state plus request-specific results.
+    """
+
     def __init__(self) -> None:
         if not getattr(settings, "mqtt_broker", None):
             raise RuntimeError("MQTT is disabled in settings_ini.py")
