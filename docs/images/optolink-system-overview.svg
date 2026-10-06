@@ -1,58 +1,175 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="980" viewBox="0 0 1440 980" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1448" height="1086" viewBox="0 0 1448 1086" role="img" aria-labelledby="title desc">
 <title id="title">Optolink-Splitter Systemübersicht</title>
-<desc id="desc">Vom Viessmann Heizgerät über Optolink, USB-Seriell, Linux LXC und MQTT bis Home Assistant.</desc>
+<desc id="desc">Vom Viessmann Heizgerät über Optolink, USB, Linux/LXC und MQTT bis Home Assistant.</desc>
 <defs>
-  <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
-  <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#16a34a"/></marker>
+  <linearGradient id="g1" x1="0" x2="1"><stop stop-color="#fff7f7"/><stop offset="1" stop-color="#fff0f0"/></linearGradient>
+  <linearGradient id="g2" x1="0" x2="1"><stop stop-color="#fffaf1"/><stop offset="1" stop-color="#fff3df"/></linearGradient>
+  <linearGradient id="g3" x1="0" x2="1"><stop stop-color="#eef8ff"/><stop offset="1" stop-color="#e7f4ff"/></linearGradient>
+  <linearGradient id="g4" x1="0" x2="1"><stop stop-color="#effdf3"/><stop offset="1" stop-color="#e8faee"/></linearGradient>
+  <linearGradient id="g5" x1="0" x2="1"><stop stop-color="#f2f9ff"/><stop offset="1" stop-color="#e8f5ff"/></linearGradient>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0f172a" flood-opacity=".12"/></filter>
+  <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity=".08"/></filter>
+  <marker id="blueArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#1685d8"/></marker>
+  <marker id="greenArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#0aa15b"/></marker>
+  <marker id="orangeArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#f97316"/></marker>
   <style>
-    .title{font:700 38px Arial,sans-serif;fill:#172554}.sub{font:22px Arial,sans-serif;fill:#475569}
-    .h{font:700 25px Arial,sans-serif;fill:#111827}.label{font:700 18px Arial,sans-serif;fill:#111827}
-    .text{font:16px Arial,sans-serif;fill:#334155}.small{font:14px Arial,sans-serif;fill:#475569}
-    .layer{stroke-width:2}.box{fill:#fff;stroke:#94a3b8;stroke-width:2}.svc{fill:#fff7ed;stroke:#fb923c;stroke-width:2}
-    .blue{stroke:#2563eb;stroke-width:4;fill:none;marker-end:url(#arrowBlue)}.green{stroke:#16a34a;stroke-width:4;fill:none;marker-end:url(#arrowGreen)}
+    .title{font:800 43px Inter,Segoe UI,Arial,sans-serif;fill:#0b1f44;letter-spacing:-1px}
+    .subtitle{font:700 27px Inter,Segoe UI,Arial,sans-serif;fill:#294b7a}
+    .section{font:800 29px Inter,Segoe UI,Arial,sans-serif;fill:#102a56}
+    .section-red{font:800 28px Inter,Segoe UI,Arial,sans-serif;fill:#a11d14}
+    .section-orange{font:800 28px Inter,Segoe UI,Arial,sans-serif;fill:#8c2218}
+    .body{font:18px Inter,Segoe UI,Arial,sans-serif;fill:#244267}
+    .label{font:800 19px Inter,Segoe UI,Arial,sans-serif;fill:#0f2855}
+    .small{font:16px Inter,Segoe UI,Arial,sans-serif;fill:#385477}
+    .tiny{font:14px Inter,Segoe UI,Arial,sans-serif;fill:#49627e}
+    .white{fill:#fff}
+    .card{fill:#fff;stroke:#8ec5ee;stroke-width:1.5;filter:url(#soft)}
+    .card-orange{fill:#fff;stroke:#f6a037;stroke-width:1.5;filter:url(#soft)}
+    .svc{stroke-width:1.4;filter:url(#soft)}
+    .step{font:800 28px Inter,Segoe UI,Arial,sans-serif;fill:#fff}
+    .arrow-blue{stroke:#1685d8;stroke-width:5;fill:none;marker-end:url(#blueArrow)}
+    .arrow-green{stroke:#0aa15b;stroke-width:5;fill:none;marker-end:url(#greenArrow)}
+    .arrow-orange{stroke:#f97316;stroke-width:5;fill:none;marker-end:url(#orangeArrow)}
+    .dash{fill:none;stroke:#67b9ef;stroke-width:1.5;stroke-dasharray:6 5}
   </style>
 </defs>
-<rect width="1440" height="980" fill="#ffffff"/>
-<text x="720" y="50" text-anchor="middle" class="title">Optolink-Splitter Systemübersicht</text>
-<text x="720" y="82" text-anchor="middle" class="sub">Vom Heizgerät bis Home Assistant</text>
 
-<rect x="30" y="105" width="1380" height="135" rx="24" fill="#fff1f2" stroke="#fecdd3" class="layer"/>
-<circle cx="70" cy="145" r="25" fill="#be123c"/><text x="70" y="153" text-anchor="middle" font-family="Arial" font-weight="700" font-size="24" fill="#fff">1</text>
-<text x="110" y="145" class="h">Heizgerät</text><text x="110" y="175" class="text">Viessmann Heizgerät mit Optolink-Service-Schnittstelle</text>
-<rect x="500" y="125" width="560" height="90" rx="16" class="box"/><text x="530" y="163" class="label">Viessmann Vitodens 200-W WB2A</text><text x="530" y="190" class="text">VDensHO1 / 20C2 / SW03 - Regler und Steuerung</text>
+<rect width="1448" height="1086" fill="#ffffff"/>
+<text x="724" y="48" text-anchor="middle" class="title">Optolink-Splitter Systemübersicht</text>
+<text x="724" y="82" text-anchor="middle" class="subtitle">Vom Heizgerät bis Home Assistant</text>
 
-<rect x="30" y="260" width="1380" height="145" rx="24" fill="#fffbeb" stroke="#fde68a" class="layer"/>
-<circle cx="70" cy="300" r="25" fill="#d97706"/><text x="70" y="308" text-anchor="middle" font-family="Arial" font-weight="700" font-size="24" fill="#fff">2</text>
-<text x="110" y="300" class="h">Optolink-Schnittstelle</text><text x="110" y="330" class="text">Optische Service-Schnittstelle am Heizgerät</text>
-<rect x="500" y="285" width="300" height="90" rx="16" class="box"/><text x="650" y="325" text-anchor="middle" class="label">Optolink Service-Port</text><text x="650" y="350" text-anchor="middle" class="small">am Heizgerät</text>
-<rect x="900" y="285" width="330" height="90" rx="16" class="box"/><text x="1065" y="325" text-anchor="middle" class="label">Optolink-Kopf / P300</text><text x="1065" y="350" text-anchor="middle" class="small">optischer Lesekopf</text>
-<path d="M800 330 H890" class="blue"/><path d="M900 350 H810" class="green"/>
+<!-- 1 Heizgerät -->
+<rect x="20" y="105" width="1408" height="125" rx="25" fill="url(#g1)" stroke="#ff9b96"/>
+<circle cx="62" cy="145" r="27" fill="#f04d3d" filter="url(#soft)"/><text x="62" y="155" text-anchor="middle" class="step">1</text>
+<text x="105" y="145" class="section-red">Heizgerät</text>
+<text x="106" y="174" class="body">Viessmann Heizgerät mit</text>
+<text x="106" y="198" class="body">Optolink-Service-Schnittstelle.</text>
 
-<rect x="30" y="425" width="1380" height="360" rx="24" fill="#eff6ff" stroke="#bfdbfe" class="layer"/>
-<circle cx="70" cy="465" r="25" fill="#1d4ed8"/><text x="70" y="473" text-anchor="middle" font-family="Arial" font-weight="700" font-size="24" fill="#fff">3</text>
-<text x="110" y="465" class="h">USB / Host</text><text x="110" y="495" class="text">Linux/LXC mit optolink-splitter und geschützten Zusatzdiensten</text>
-<rect x="355" y="450" width="310" height="75" rx="14" class="box"/><text x="510" y="482" text-anchor="middle" class="label">USB-Seriell-Adapter</text><text x="510" y="506" text-anchor="middle" class="small">z. B. CP2102</text>
-<rect x="760" y="450" width="350" height="75" rx="14" class="box"/><text x="935" y="482" text-anchor="middle" class="label">Linux / LXC: optolink-splitter</text><text x="935" y="506" text-anchor="middle" class="small">/dev/serial/by-id/...</text>
-<path d="M665 487 H750" class="blue"/>
+<rect x="450" y="114" width="530" height="104" rx="18" class="card-orange"/>
+<!-- stylized boiler -->
+<rect x="477" y="125" width="105" height="80" rx="4" fill="#e8eef4" stroke="#91a3b5"/>
+<path d="M477 125 L495 133 L495 205 L477 197 Z" fill="#d4dde7"/><rect x="495" y="130" width="87" height="70" fill="#f6f8fa"/>
+<text x="538" y="175" text-anchor="middle" font-family="Arial" font-size="12" font-weight="700" fill="#e64318">VIESSMANN</text>
+<text x="618" y="150" class="label">Viessmann Vitodens 200-W WB2A</text>
+<text x="618" y="179" class="body">VDensHO1 / 20C2 / SW03</text>
+<text x="618" y="204" class="small">Regler / Steuerung</text>
 
-<rect x="105" y="550" width="1230" height="205" rx="20" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
-<rect x="475" y="570" width="390" height="72" rx="16" fill="#fff" stroke="#2563eb" stroke-width="3"/><text x="670" y="602" text-anchor="middle" class="h">optolink-splitter</text><text x="670" y="626" text-anchor="middle" class="small">einziger Besitzer des seriellen Ports</text>
-<rect x="1010" y="570" width="245" height="72" rx="16" class="box"/><text x="1132" y="602" text-anchor="middle" class="label">MQTT-Broker</text><text x="1132" y="626" text-anchor="middle" class="small">z. B. Mosquitto</text>
-<path d="M865 595 H1000" class="blue"/><path d="M1000 620 H875" class="green"/><text x="930" y="584" class="small">MQTT</text>
+<path d="M714 230 V252" stroke="#f97316" stroke-width="5"/>
+<path d="M714 252 V230" class="arrow-orange"/>
+<text x="735" y="248" font-family="Inter,Segoe UI,Arial" font-size="17" font-weight="700" fill="#f97316">Optolink (optisch)</text>
 
-<rect x="135" y="665" width="190" height="62" rx="12" class="svc"/><text x="230" y="692" text-anchor="middle" class="label">schedule-manager</text><text x="230" y="714" text-anchor="middle" class="small">Zeitprogramme</text>
-<rect x="345" y="665" width="190" height="62" rx="12" class="svc"/><text x="440" y="692" text-anchor="middle" class="label">party-emulator</text><text x="440" y="714" text-anchor="middle" class="small">Party / Restore</text>
-<rect x="555" y="665" width="190" height="62" rx="12" class="svc"/><text x="650" y="692" text-anchor="middle" class="label">maintenance-api</text><text x="650" y="714" text-anchor="middle" class="small">Wartung</text>
-<rect x="765" y="665" width="190" height="62" rx="12" class="svc"/><text x="860" y="692" text-anchor="middle" class="label">clock-sync</text><text x="860" y="714" text-anchor="middle" class="small">Systemzeit</text>
-<rect x="975" y="665" width="230" height="62" rx="12" class="svc"/><text x="1090" y="692" text-anchor="middle" class="label">service-programs</text><text x="1090" y="714" text-anchor="middle" class="small">Befüllen / Entlüften</text>
-<path d="M230 665 V650 H550" class="green"/><path d="M440 665 V650 H585" class="green"/><path d="M650 665 V650" class="green"/><path d="M860 665 V650 H755" class="green"/><path d="M1090 665 V650 H790" class="green"/>
+<!-- 2 Optolink -->
+<rect x="20" y="258" width="1408" height="132" rx="25" fill="url(#g2)" stroke="#f4c873"/>
+<circle cx="62" cy="300" r="27" fill="#f07808" filter="url(#soft)"/><text x="62" y="310" text-anchor="middle" class="step">2</text>
+<text x="105" y="300" class="section-orange">Optolink-Schnittstelle</text>
+<text x="106" y="329" class="body">Optische Service-Schnittstelle</text>
+<text x="106" y="353" class="body">am Heizgerät (Optolink).</text>
 
-<rect x="30" y="805" width="1380" height="145" rx="24" fill="#f0fdf4" stroke="#bbf7d0" class="layer"/>
-<circle cx="70" cy="845" r="25" fill="#16a34a"/><text x="70" y="853" text-anchor="middle" font-family="Arial" font-weight="700" font-size="24" fill="#fff">4</text>
-<text x="110" y="845" class="h">Home Assistant</text><text x="110" y="875" class="text">Zustände und Befehle über MQTT, Entities per MQTT Discovery</text>
-<rect x="475" y="825" width="420" height="90" rx="16" class="box"/><text x="685" y="865" text-anchor="middle" class="h">Home Assistant</text><text x="685" y="890" text-anchor="middle" class="small">Sensoren - Schalter - Zahlen - Dashboard - Automationen</text>
-<path d="M1132 642 V805 H895" class="blue"/><path d="M875 825 H1112 V650" class="green"/>
-<text x="1115" y="790" class="small">MQTT Zustände / Befehle</text>
+<rect x="505" y="277" width="330" height="92" rx="16" class="card-orange"/>
+<rect x="532" y="291" width="74" height="60" rx="14" fill="#292b2f"/><circle cx="569" cy="320" r="10" fill="#ff3c2f" filter="url(#soft)"/>
+<text x="626" y="315" class="label">Optolink Service-Port</text><text x="626" y="342" class="small">(am Heizgerät)</text>
 
-<text x="1240" y="945" text-anchor="end" class="small">Grün: Status/Lesen   Blau: Steuerung   Orange: geschützte Spezialdienste</text>
+<rect x="980" y="277" width="365" height="92" rx="16" class="card-orange"/>
+<rect x="1008" y="302" width="92" height="43" rx="18" fill="#31353a"/><path d="M1100 325 C1120 325 1125 336 1145 336" stroke="#202428" stroke-width="6" fill="none"/>
+<text x="1160" y="315" class="label">Optolink-Kopf / P300</text><text x="1160" y="341" class="small">Optischer Lesekopf</text>
+<path d="M965 322 H850" class="arrow-orange"/><path d="M850 342 H965" class="arrow-orange"/>
+<text x="907" y="306" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-size="15" font-weight="700" fill="#f97316">Optische</text>
+<text x="907" y="324" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-size="15" font-weight="700" fill="#f97316">Kommunikation</text>
+
+<path d="M671 390 V420" class="arrow-blue"/><text x="696" y="410" font-family="Inter,Segoe UI,Arial" font-size="17" font-weight="700" fill="#1685d8">USB-Seriell</text>
+
+<!-- 3 USB / Host -->
+<rect x="20" y="420" width="1408" height="350" rx="25" fill="url(#g3)" stroke="#80c6f0"/>
+<circle cx="62" cy="462" r="27" fill="#0c75c8" filter="url(#soft)"/><text x="62" y="472" text-anchor="middle" class="step">3</text>
+<text x="105" y="462" class="section">USB / Host</text>
+<text x="106" y="492" class="body">Anbindung an einen Linux-Host</text>
+<text x="106" y="517" class="body">(z. B. LXC) mit optolink-splitter</text>
+<text x="106" y="542" class="body">und Zusatzdiensten.</text>
+
+<rect x="380" y="437" width="1000" height="122" rx="21" class="dash"/>
+<rect x="395" y="450" width="300" height="94" rx="17" class="card"/>
+<!-- usb dongle -->
+<path d="M430 495 l45 -24 34 20 -46 28 z" fill="#161a1f"/><rect x="422" y="492" width="35" height="26" fill="#c5cbd2" stroke="#69717b"/><rect x="427" y="499" width="8" height="6" fill="#454b52"/><rect x="440" y="499" width="8" height="6" fill="#454b52"/>
+<text x="526" y="480" class="label">USB-Seriell-Adapter</text><text x="526" y="508" class="small">z. B. CP2102</text>
+<path d="M700 497 H754" class="arrow-blue"/>
+
+<rect x="760" y="450" width="380" height="94" rx="17" class="card"/>
+<!-- simplified linux icon -->
+<circle cx="804" cy="478" r="15" fill="#111827"/><ellipse cx="804" cy="510" rx="22" ry="27" fill="#111827"/><ellipse cx="804" cy="508" rx="13" ry="18" fill="#facc15"/><circle cx="798" cy="476" r="3" fill="#fff"/><circle cx="810" cy="476" r="3" fill="#fff"/>
+<text x="845" y="476" class="label">Linux / LXC: optolink-splitter</text>
+<text x="845" y="501" class="small">/dev/serial/by-id/...</text>
+<text x="845" y="525" class="tiny">Einzige Komponente mit direktem Zugriff auf den seriellen Port.</text>
+
+<rect x="1160" y="461" width="198" height="72" rx="14" fill="#f3f9ff" stroke="#79bde9"/>
+<circle cx="1185" cy="487" r="13" fill="#1983d7"/><text x="1185" y="493" text-anchor="middle" font-family="Arial" font-size="17" font-weight="700" fill="#fff">i</text>
+<text x="1206" y="482" class="tiny">Der Splitter spricht</text><text x="1206" y="501" class="tiny">über MQTT mit allen</text><text x="1206" y="520" class="tiny">Zusatzdiensten.</text>
+
+<rect x="95" y="575" width="1270" height="168" rx="18" class="dash"/>
+<text x="115" y="599" class="label">Zusatzdienste <tspan font-weight="500">(im selben Host / LXC)</tspan></text>
+
+<!-- service cards -->
+<rect x="115" y="615" width="220" height="105" rx="15" fill="#fff5f5" stroke="#ff9ca1" class="svc"/>
+<circle cx="148" cy="650" r="22" fill="#ef4444"/><rect x="137" y="641" width="22" height="19" rx="3" fill="#fff"/><path d="M137 647 H159" stroke="#ef4444" stroke-width="2"/>
+<text x="180" y="645" class="label">schedule-manager</text><text x="180" y="670" class="small">Zeitprogramme</text><text x="180" y="696" class="tiny">Heizzeiten verwalten</text>
+
+<rect x="355" y="615" width="220" height="105" rx="15" fill="#faf5ff" stroke="#c59af8" class="svc"/>
+<circle cx="389" cy="650" r="22" fill="#8b5cf6"/><path d="M378 642 H400 L391 653 V664" stroke="#fff" stroke-width="4" fill="none"/>
+<text x="420" y="645" class="label">party-emulator</text><text x="420" y="670" class="small">Party / Restore</text><text x="420" y="696" class="tiny">Ursprungszustand sichern</text>
+
+<rect x="595" y="615" width="220" height="105" rx="15" fill="#fff7ed" stroke="#f7b267" class="svc"/>
+<circle cx="629" cy="650" r="22" fill="#f59e0b"/><path d="M618 662 L640 640 M633 639 L641 647" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+<text x="660" y="645" class="label">maintenance-api</text><text x="660" y="670" class="small">Wartung</text><text x="660" y="696" class="tiny">Guarded Servicefunktionen</text>
+
+<rect x="835" y="615" width="220" height="105" rx="15" fill="#f0fdf4" stroke="#86d995" class="svc"/>
+<circle cx="869" cy="650" r="22" fill="#16a34a"/><circle cx="869" cy="650" r="12" fill="none" stroke="#fff" stroke-width="3"/><path d="M869 650 V642 M869 650 L876 655" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+<text x="900" y="645" class="label">clock-sync</text><text x="900" y="670" class="small">Systemzeit</text><text x="900" y="696" class="tiny">Gerätezeit synchronisieren</text>
+
+<rect x="1075" y="615" width="265" height="105" rx="15" fill="#f8fafc" stroke="#aeb9c5" class="svc"/>
+<circle cx="1108" cy="650" r="22" fill="#94a3b8"/><circle cx="1108" cy="650" r="8" fill="#fff"/><path d="M1108 630 V638 M1108 662 V670 M1088 650 H1096 M1120 650 H1128" stroke="#fff" stroke-width="4"/>
+<text x="1140" y="645" class="label">service-programs</text><text x="1140" y="670" class="small">Befüllen / Entlüften</text><text x="1140" y="696" class="tiny">2F / 0x572F, readback-verifiziert</text>
+
+<!-- MQTT green lines -->
+<path d="M225 720 V742 H650" stroke="#0aa15b" stroke-width="4" fill="none"/><path d="M465 720 V742" stroke="#0aa15b" stroke-width="4"/><path d="M705 720 V742" stroke="#0aa15b" stroke-width="4"/><path d="M945 720 V742" stroke="#0aa15b" stroke-width="4"/><path d="M1207 720 V742 H780" stroke="#0aa15b" stroke-width="4" fill="none"/>
+<text x="252" y="738" font-family="Inter,Segoe UI,Arial" font-size="14" font-weight="700" fill="#0aa15b">MQTT</text>
+<text x="492" y="738" font-family="Inter,Segoe UI,Arial" font-size="14" font-weight="700" fill="#0aa15b">MQTT</text>
+<text x="732" y="738" font-family="Inter,Segoe UI,Arial" font-size="14" font-weight="700" fill="#0aa15b">MQTT</text>
+<text x="972" y="738" font-family="Inter,Segoe UI,Arial" font-size="14" font-weight="700" fill="#0aa15b">MQTT</text>
+
+<!-- 4 MQTT -->
+<rect x="20" y="785" width="1408" height="103" rx="24" fill="url(#g4)" stroke="#9ddeae"/>
+<circle cx="62" cy="825" r="27" fill="#1ba84f" filter="url(#soft)"/><text x="62" y="835" text-anchor="middle" class="step">4</text>
+<text x="105" y="825" class="section">MQTT</text>
+<text x="106" y="852" class="body">Gemeinsamer Befehls- und Antwortbus für alle Komponenten.</text>
+<rect x="560" y="801" width="355" height="72" rx="15" fill="#fff" stroke="#7c3aed" stroke-width="2" filter="url(#soft)"/>
+<path d="M605 846 q25 -42 50 0 M614 846 q16 -27 32 0 M625 846 q5 -10 10 0" stroke="#7c3aed" stroke-width="7" fill="none" stroke-linecap="round"/>
+<text x="680" y="834" class="label">MQTT Broker</text><text x="680" y="859" class="small">z. B. Mosquitto</text>
+<rect x="1030" y="803" width="330" height="67" rx="14" fill="#effdf5" stroke="#83d8a0"/>
+<text x="1060" y="833" class="label">↔</text><text x="1100" y="830" class="small">Alle Komponenten kommunizieren</text><text x="1100" y="853" class="small">ausschließlich über MQTT.</text>
+<path d="M737 742 V797" class="arrow-green"/>
+
+<!-- 5 HA -->
+<rect x="20" y="904" width="1408" height="112" rx="24" fill="url(#g5)" stroke="#86c9ee"/>
+<circle cx="62" cy="945" r="27" fill="#0f79ca" filter="url(#soft)"/><text x="62" y="955" text-anchor="middle" class="step">5</text>
+<text x="105" y="945" class="section">Home Assistant</text>
+<text x="106" y="974" class="body">Empfängt Zustände per MQTT und stellt Funktionen bereit.</text>
+<rect x="486" y="919" width="465" height="82" rx="16" class="card"/>
+<path d="M520 980 L550 942 L580 980 Z" fill="#16a8e0"/><circle cx="550" cy="968" r="7" fill="#fff"/><path d="M550 968 V949 M550 961 L536 953 M550 961 L564 953" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+<text x="610" y="955" class="section">Home Assistant</text><text x="610" y="983" class="small">MQTT Discovery · Dashboard · Automationen</text>
+<path d="M737 888 V914" class="arrow-green"/><text x="760" y="905" font-family="Inter,Segoe UI,Arial" font-size="15" font-weight="700" fill="#0aa15b">MQTT</text>
+
+<!-- mini dashboard -->
+<rect x="980" y="918" width="380" height="84" rx="14" fill="#26323d" filter="url(#soft)"/>
+<rect x="991" y="929" width="173" height="28" rx="6" fill="#33424f"/><circle cx="1008" cy="943" r="8" fill="#f97316"/><text x="1024" y="940" font-family="Inter,Segoe UI,Arial" font-size="12" font-weight="700" fill="#fff">Heizung</text><text x="1024" y="953" font-family="Inter,Segoe UI,Arial" font-size="11" fill="#fff">47,2 °C</text>
+<rect x="1172" y="929" width="177" height="28" rx="6" fill="#33424f"/><circle cx="1189" cy="943" r="8" fill="#3b82f6"/><text x="1186" y="947" font-family="Arial" font-size="10" font-weight="700" fill="#fff">A</text><text x="1204" y="940" font-family="Inter,Segoe UI,Arial" font-size="12" font-weight="700" fill="#fff">Betriebsart</text><text x="1204" y="953" font-family="Inter,Segoe UI,Arial" font-size="11" fill="#fff">Heizen + WW</text>
+<rect x="991" y="964" width="173" height="27" rx="6" fill="#33424f"/><circle cx="1008" cy="977" r="8" fill="#38bdf8"/><text x="1024" y="975" font-family="Inter,Segoe UI,Arial" font-size="12" font-weight="700" fill="#fff">Warmwasser</text><text x="1024" y="987" font-family="Inter,Segoe UI,Arial" font-size="11" fill="#fff">55,0 °C</text>
+<rect x="1172" y="964" width="177" height="27" rx="6" fill="#33424f"/><circle cx="1189" cy="977" r="8" fill="#22c55e"/><text x="1204" y="975" font-family="Inter,Segoe UI,Arial" font-size="12" font-weight="700" fill="#fff">Status</text><text x="1204" y="987" font-family="Inter,Segoe UI,Arial" font-size="11" fill="#fff">Normalbetrieb</text>
+
+<!-- footer principles -->
+<rect x="20" y="1032" width="1408" height="44" rx="13" fill="#f8fafc" stroke="#cbd5e1"/>
+<circle cx="55" cy="1054" r="15" fill="#1976c9"/><path d="M49 1054 l5 5 9 -12" stroke="#fff" stroke-width="3" fill="none"/>
+<text x="80" y="1051" class="tiny" font-weight="700">Nur der Splitter besitzt den seriellen Port</text>
+<circle cx="525" cy="1054" r="15" fill="#2563eb"/><path d="M517 1054 H533 M525 1046 V1062" stroke="#fff" stroke-width="3"/>
+<text x="550" y="1051" class="tiny" font-weight="700">Zusatzdienste sprechen über MQTT</text>
+<circle cx="955" cy="1054" r="15" fill="#1976c9"/><rect x="949" y="1052" width="12" height="9" rx="2" fill="#fff"/><path d="M952 1052 V1048 a3 3 0 0 1 6 0 V1052" stroke="#fff" stroke-width="2" fill="none"/>
+<text x="980" y="1051" class="tiny" font-weight="700">Readback + Guard Rails für sichere Writes</text>
 </svg>
