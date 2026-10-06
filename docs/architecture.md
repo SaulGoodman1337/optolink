@@ -31,6 +31,7 @@ Firmware-Reverse-Engineering, EEPROM/KBus-Experimente und andere Forschungswerkz
 | party          |     | <listen>             |     | einziger Besitzer    |
 | maintenance    |     | <respond>            |     | des seriellen Ports  |
 | clock sync     |     +----------------------+     +----------+-----------+
+| service 2F     |
 +----------------+                                          |
                                                             |
                                                             v
@@ -149,6 +150,20 @@ Der systemd-Timer startet diesen Check alle 15 Minuten.
 
 Der Schreibpfad ist auf der lokalen 20C2/WB2A am **2026-10-06 live verifiziert**: ein erzwungener 8-Byte-Write auf `0x088E` wurde unmittelbar mit korrekter Gerätezeit und `0 s` Drift zurückgelesen. Dabei lieferte der Transport für den Write Status `255`; der anschließende Readback war korrekt. Deshalb ist der Readback — nicht der ACK-Code — die Erfolgsinstanz.
 
+### `tools/optolink-service-programs.py`
+
+Geschützter Übersetzer für die WB2A-Servicefunktion **Codieradresse 2F / Optolink `0x572F`**.
+
+Der Controller besitzt nur einen Drei-Zustands-Wert:
+
+- 0 = aus;
+- 1 = Entlüftungsprogramm;
+- 2 = Befüllungsprogramm.
+
+Home Assistant zeigt zwei getrennte Schalter. Der Manager hält diese Darstellung konsistent mit dem echten Register, liest vor Writes, akzeptiert ausschließlich 0/1/2, verifiziert durch Readback und versucht bei einer fehlgeschlagenen Verifikation den vorherigen Zustand wiederherzustellen. Ein 5-Sekunden-Poll erkennt außerdem die automatische 20-Minuten-Rücksetzung des Reglers.
+
+Die Registerzuordnung und Programmlogik sind servicehandbuch-/OpenV-dokumentiert. Der Schreibpfad auf der konkreten lokalen 20C2/WB2A ist **noch als Live-Verifikation ausstehend**, bis die Funktion am realen Gerät bewusst getestet wurde.
+
 ## 5. Systemd-Dienste
 
 | Unit | Typ | Aufgabe |
@@ -159,6 +174,7 @@ Der Schreibpfad ist auf der lokalen 20C2/WB2A am **2026-10-06 live verifiziert**
 | `optolink-party-emulator.service` | dauerhaft | Party-Emulation und Zustandswiederherstellung |
 | `optolink-clock-sync.service` | oneshot | ein Zeitabgleich |
 | `optolink-clock-sync.timer` | Timer | startet Clock-Sync alle 15 Minuten |
+| `optolink-service-programs.service` | dauerhaft | geschützter Befüll-/Entlüftungsmanager für 2F / 0x572F |
 
 ## 6. Schreibpfade und Sicherheitsmodell
 
@@ -173,6 +189,7 @@ Jeder produktive Schreibpfad ist auf einen bekannten Zweck begrenzt:
 | Wartung | nur bekannte Wartungsregister, Confirm-Phrasen, Lock, Readback/Rollback |
 | Party | nur definierte Party-/Betriebsart-/Sollwertregister, persistenter Restore-State |
 | Systemzeit | nur `0x088E`, Drift-Schwelle und Readback |
+| Befüllen / Entlüften | nur `0x572F`, Zielwerte 0/1/2, Read-before-write, Readback/Restore |
 | GFA | produktive Integration ist read-only |
 
 Ein Transport-ACK gilt bei kritischen Multi-Byte-Schreibvorgängen **nicht** als alleiniger Erfolgsnachweis. Der gelesene Controllerzustand ist maßgeblich.
