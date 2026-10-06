@@ -1,3 +1,6 @@
+# Guarded full-block writer for the verified WB2A weekly schedules.
+# It validates, writes, reads back and restores on mismatch.
+
 [Unit]
 Description=Optolink VDensHO1 schedule manager
 After=network-online.target optolink-splitter.service
