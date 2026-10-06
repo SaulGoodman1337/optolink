@@ -3,6 +3,15 @@
 # Copyright (c) 2026
 # License: MIT
 # Source: https://github.com/philippoo66/optolink-splitter
+#
+# Runs inside a newly created LXC. This script builds the initial upstream
+# splitter installation, lays down the local production helpers/units and then
+# uses the same profile-activation helper as normal updates. Machine-specific
+# values remain in /opt/optolink/settings_ini.py and are not stored in Git.
+#
+# Fresh installs intentionally start with mqtt_broker=None. MQTT-backed helper
+# services are therefore installed but left inactive until the operator
+# configures MQTT and runs the normal production updater.
 
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha}"
