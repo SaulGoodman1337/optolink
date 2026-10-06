@@ -144,16 +144,12 @@ jobs:
 
       - name: Validate systemd service contracts
         run: |
-          grep -q '^User=optolink$' config/optolink-splitter/optolink-splitter.service
-          grep -q '^ExecStart=/opt/optolink/venv/bin/python /opt/optolink/optolinkvs2_switch.py$' config/optolink-splitter/optolink-splitter.service
-          grep -q '^User=optolink$' config/optolink-splitter/optolink-maintenance-api.service
-          grep -q '^ExecStart=/usr/local/bin/optolink-maintenance-api$' config/optolink-splitter/optolink-maintenance-api.service
-          grep -q '^ExecStart=/usr/local/bin/optolink-schedule-manager$' config/optolink-splitter/optolink-schedule-manager.service
-          grep -q '^ExecStart=/usr/local/bin/optolink-party-emulator
- config/optolink-splitter/optolink-party-emulator.service
-          grep -q '^ExecStart=/usr/local/bin/optolink-clock-sync
- config/optolink-splitter/optolink-clock-sync.service
-          grep -q '^User=optolink
- config/optolink-splitter/optolink-clock-sync.service
-          grep -q '^OnUnitActiveSec=15min
- config/optolink-splitter/optolink-clock-sync.timer
+          grep -Fxq 'User=optolink' config/optolink-splitter/optolink-splitter.service
+          grep -Fxq 'ExecStart=/opt/optolink/venv/bin/python /opt/optolink/optolinkvs2_switch.py' config/optolink-splitter/optolink-splitter.service
+          grep -Fxq 'User=optolink' config/optolink-splitter/optolink-maintenance-api.service
+          grep -Fxq 'ExecStart=/usr/local/bin/optolink-maintenance-api' config/optolink-splitter/optolink-maintenance-api.service
+          grep -Fxq 'ExecStart=/usr/local/bin/optolink-schedule-manager' config/optolink-splitter/optolink-schedule-manager.service
+          grep -Fxq 'ExecStart=/usr/local/bin/optolink-party-emulator' config/optolink-splitter/optolink-party-emulator.service
+          grep -Fxq 'ExecStart=/usr/local/bin/optolink-clock-sync' config/optolink-splitter/optolink-clock-sync.service
+          grep -Fxq 'User=optolink' config/optolink-splitter/optolink-clock-sync.service
+          grep -Fxq 'OnUnitActiveSec=15min' config/optolink-splitter/optolink-clock-sync.timer
