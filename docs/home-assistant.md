@@ -250,10 +250,10 @@ Die aktuelle DEV-Version modernisiert insbesondere:
 - die Anlagenübersicht mit Mushroom-Chips und kompakten Statusgruppen;
 - die Thermostatventile als übersichtliche Raumgruppen;
 - den Verlauf mit `background-graph-entities`;
-- Tag-/Nacht-Sollwerte als gemeinsame `control_pair`-Karten;
+- Tag-/Nacht-Sollwerte als gemeinsame visuelle Gruppe aus Überschrift und zwei responsiven Mushroom-Sliderkarten;
 - die Seite Nachtabsenkung mit derselben visuellen Gruppierung.
 
-Die gekoppelten Slider sind ausschließlich eine Darstellungsänderung. Die
+Die Slider bleiben technisch getrennte Entities. Sie werden direkt nebeneinander unter einer gemeinsamen Gruppenüberschrift dargestellt; damit vermeidet die DEV-Version verschachtelte interaktive Karten, die im Sections-Layout zu Clipping führen können. Das ist ausschließlich eine Darstellungsänderung. Die
 zugrunde liegenden Entities und Controlleradressen bleiben getrennt und
 unverändert.
 
