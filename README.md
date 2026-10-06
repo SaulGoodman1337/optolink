@@ -8,6 +8,7 @@ It deliberately contains only the components required to operate the splitter wi
 
 Für einen neuen Maintainer ist diese Reihenfolge gedacht:
 
+0. [Dokumentationsindex](docs/README.md) — Übersicht und Quellen der Wahrheit.
 1. [Architektur](docs/architecture.md) — Komponenten, Datenfluss, Sicherheitsgrenzen und Deployment-Kette.
 2. [Betrieb / Runbook](docs/operations.md) — Update, Statuschecks, Logs, Troubleshooting und Rollback.
 3. [Home Assistant](docs/home-assistant.md) — Poll-Profil, MQTT-Entities, Schreibpfade und Dashboard-Modell.
@@ -196,7 +197,7 @@ For repository-level rollback, `main` remains the untouched pre-cleanup snapshot
 - `config/optolink-splitter/` — production profile, services, dashboard, maintenance core;
 - `tools/` — production updater, HA activator, schedule/maintenance/Party helpers and the two validated patchers;
 - `install/` and `ct/` — fresh-install paths;
-- `docs/` — production maintenance and schedule documentation;
+- `docs/` — Architektur, Betrieb, Home Assistant, Entwicklung, Wartung und Zeitprogramme;
 - `json/` — Community Scripts metadata.
 
 Research belongs on `optolink-research`. Web UI work belongs on `optolink-web`.
