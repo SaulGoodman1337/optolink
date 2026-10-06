@@ -10,7 +10,7 @@
   "privileged": false,
   "config_path": "/etc/optolink-web.env",
   "interface_port": 8080,
-  "documentation": "https://github.com/SaulGoodman1337/optolink/blob/main/docs/optolink-web.md",
+  "documentation": "https://github.com/SaulGoodman1337/optolink/blob/optolink-web/README.md",
   "website": "https://github.com/SaulGoodman1337/optolink",
   "repository": "https://github.com/SaulGoodman1337/optolink",
   "architectures": [
