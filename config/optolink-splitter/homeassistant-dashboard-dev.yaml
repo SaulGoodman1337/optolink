@@ -716,63 +716,6 @@ button_card_templates:
 
 
 
-  control_pair:
-    # Visual container for two controls that form one logical setting, e.g.
-    # day/night temperatures. The child cards remain normal HA entities; this
-    # template changes presentation only.
-    section_mode: true
-    show_icon: true
-    show_name: true
-    show_label: true
-    show_state: false
-    show_ripple: false
-    tap_action:
-      action: none
-    hold_action:
-      action: none
-    size: 22px
-    styles:
-      card:
-        - border-radius: 18px
-        - border: 1px solid var(--divider-color)
-        - border-left: 4px solid var(--primary-color)
-        - box-shadow: none
-        - padding: 10px 9px 8px
-        - background: color-mix(in srgb, var(--primary-color) 5%, var(--ha-card-background, var(--card-background-color)))
-      grid:
-        - grid-template-areas: '"i n l" "v1 v1 v1" "v2 v2 v2"'
-        - grid-template-columns: 30px minmax(0, 1fr) max-content
-        - grid-template-rows: min-content auto auto
-        - column-gap: 8px
-        - row-gap: 4px
-      img_cell:
-        - width: 28px
-        - height: 28px
-        - justify-self: center
-        - align-self: center
-      icon:
-        - width: 21px
-        - color: var(--primary-color)
-      name:
-        - justify-self: start
-        - align-self: center
-        - font-size: 14px
-        - font-weight: 700
-        - color: var(--primary-text-color)
-      label:
-        - justify-self: end
-        - align-self: center
-        - font-size: 10px
-        - font-weight: 600
-        - color: var(--secondary-text-color)
-      custom_fields:
-        v1:
-          - margin-top: 5px
-        v2:
-          - margin-top: 2px
-          - padding-top: 5px
-          - border-top: 1px solid var(--divider-color)
-
   schedule_axis:
     section_mode: true
     show_icon: false
@@ -1695,7 +1638,14 @@ views:
               rows: 2
 
       # -------------------------------------------------------------------
-      # Bedienung: logical controls are grouped instead of isolated tiles.
+      # Bedienung
+      #
+      # Do not nest interactive slider cards inside button-card custom_fields.
+      # Home Assistant Sections can size the outer card independently from the
+      # nested controls, which caused the clipped/overlapping DEV-v1 layout.
+      # Instead, each logical pair gets one heading plus two native Mushroom
+      # number cards. The cards stay separate entities but are visually one
+      # obvious control group and remain responsive.
       # -------------------------------------------------------------------
       - type: grid
         column_span: 2
@@ -1709,173 +1659,183 @@ views:
             entity: select.vitodens_200_wb2a_heizkreis_m1_betriebsart
             name: Betriebsart
             icon: mdi:home-modern
+            fill_container: true
             grid_options:
               columns: full
 
-          - type: custom:button-card
-            template: control_pair
-            name: Raumtemperatur
+          - type: heading
+            heading: Raumtemperatur
+            heading_style: subtitle
             icon: mdi:home-thermometer-outline
-            label: Tag / Nacht
-            styles:
-              card:
-                - border-left: '4px solid #2196f3'
-                - background: color-mix(in srgb, #2196f3 6%, var(--ha-card-background, var(--card-background-color)))
-              icon:
-                - color: '#2196f3'
-            custom_fields:
-              v1:
-                card:
-                  type: tile
-                  entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
-                  name: Tagestemperatur
-                  icon: mdi:white-balance-sunny
-                  show_entity_picture: false
-                  vertical: false
-                  features:
-                    - type: numeric-input
-                      style: slider
-                  features_position: bottom
-                  card_mod:
-                    style: |
-                      ha-card {
-                        border: 0 !important;
-                        box-shadow: none !important;
-                        background: transparent !important;
-                      }
-              v2:
-                card:
-                  type: tile
-                  entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
-                  name: Nachttemperatur
-                  icon: mdi:weather-night
-                  show_entity_picture: false
-                  vertical: false
-                  features:
-                    - type: numeric-input
-                      style: slider
-                  features_position: bottom
-                  card_mod:
-                    style: |
-                      ha-card {
-                        border: 0 !important;
-                        box-shadow: none !important;
-                        background: transparent !important;
-                      }
-            grid_options:
-              columns: full
+            badges:
+              - type: entity
+                entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
+                name: Tag
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
+                name: Nacht
+                show_state: true
+                show_icon: false
 
-          - type: custom:button-card
-            template: control_pair
-            name: Warmwasser
+          - type: custom:mushroom-number-card
+            entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
+            name: Tag
+            icon: mdi:white-balance-sunny
+            icon_color: amber
+            display_mode: slider
+            layout: horizontal
+            fill_container: true
+            primary_info: name
+            secondary_info: state
+            card_mod:
+              style: |
+                ha-card {
+                  border-radius: 16px;
+                  border: 1px solid color-mix(in srgb, #ffb300 40%, var(--divider-color));
+                  background: color-mix(in srgb, #ffb300 6%, var(--ha-card-background, var(--card-background-color)));
+                }
+            grid_options:
+              columns: 6
+              rows: 2
+
+          - type: custom:mushroom-number-card
+            entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
+            name: Nacht
+            icon: mdi:weather-night
+            icon_color: indigo
+            display_mode: slider
+            layout: horizontal
+            fill_container: true
+            primary_info: name
+            secondary_info: state
+            card_mod:
+              style: |
+                ha-card {
+                  border-radius: 16px;
+                  border: 1px solid color-mix(in srgb, #5c6bc0 40%, var(--divider-color));
+                  background: color-mix(in srgb, #5c6bc0 6%, var(--ha-card-background, var(--card-background-color)));
+                }
+            grid_options:
+              columns: 6
+              rows: 2
+
+          - type: heading
+            heading: Warmwasser
+            heading_style: subtitle
             icon: mdi:water-thermometer
-            label: >-
-              [[[
-                const v = states['sensor.vitodens_200_wb2a_warmwasser_temperatur']?.state ?? '—';
-                return 'Ist ' + v + ' °C';
-              ]]]
-            styles:
-              card:
-                - border-left: '4px solid #00bcd4'
-                - background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)))
-              icon:
-                - color: '#00bcd4'
-            custom_fields:
-              v1:
-                card:
-                  type: tile
-                  entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
-                  name: Tagestemperatur
-                  icon: mdi:white-balance-sunny
-                  show_entity_picture: false
-                  vertical: false
-                  features:
-                    - type: numeric-input
-                      style: slider
-                  features_position: bottom
-                  card_mod:
-                    style: |
-                      ha-card {
-                        border: 0 !important;
-                        box-shadow: none !important;
-                        background: transparent !important;
-                      }
-              v2:
-                card:
-                  type: tile
-                  entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
-                  name: Nachttemperatur / 2. Sollwert
-                  icon: mdi:weather-night
-                  show_entity_picture: false
-                  vertical: false
-                  features:
-                    - type: numeric-input
-                      style: slider
-                  features_position: bottom
-                  card_mod:
-                    style: |
-                      ha-card {
-                        border: 0 !important;
-                        box-shadow: none !important;
-                        background: transparent !important;
-                      }
-            grid_options:
-              columns: full
+            badges:
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_warmwasser_temperatur
+                name: Ist
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
+                name: Tag
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
+                name: Nacht
+                show_state: true
+                show_icon: false
 
-          - type: custom:button-card
-            template: control_pair
-            name: Komfort
-            icon: mdi:party-popper
-            label: Party
-            styles:
-              card:
-                - border-left: '4px solid #9c27b0'
-                - background: color-mix(in srgb, #9c27b0 5%, var(--ha-card-background, var(--card-background-color)))
-              icon:
-                - color: '#9c27b0'
-            custom_fields:
-              v1:
-                card:
-                  type: tile
-                  entity: switch.vitodens_200_wb2a_heizkreis_m1_partybetrieb
-                  name: Partybetrieb
-                  icon: mdi:party-popper
-                  tap_action:
-                    action: toggle
-                  features:
-                    - type: toggle
-                  features_position: bottom
-                  card_mod:
-                    style: |
-                      ha-card {
-                        border: 0 !important;
-                        box-shadow: none !important;
-                        background: transparent !important;
-                      }
-              v2:
-                card:
-                  type: tile
-                  entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_party
-                  name: Partytemperatur
-                  icon: mdi:thermometer-plus
-                  features:
-                    - type: numeric-input
-                      style: slider
-                  features_position: bottom
-                  card_mod:
-                    style: |
-                      ha-card {
-                        border: 0 !important;
-                        box-shadow: none !important;
-                        background: transparent !important;
-                      }
+          - type: custom:mushroom-number-card
+            entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
+            name: Tag
+            icon: mdi:white-balance-sunny
+            icon_color: amber
+            display_mode: slider
+            layout: horizontal
+            fill_container: true
+            primary_info: name
+            secondary_info: state
+            card_mod:
+              style: |
+                ha-card {
+                  border-radius: 16px;
+                  border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
+                  background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
+                }
             grid_options:
-              columns: full
+              columns: 6
+              rows: 2
+
+          - type: custom:mushroom-number-card
+            entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
+            name: Nacht / 2. Sollwert
+            icon: mdi:weather-night
+            icon_color: indigo
+            display_mode: slider
+            layout: horizontal
+            fill_container: true
+            primary_info: name
+            secondary_info: state
+            card_mod:
+              style: |
+                ha-card {
+                  border-radius: 16px;
+                  border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
+                  background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
+                }
+            grid_options:
+              columns: 6
+              rows: 2
+
+          - type: heading
+            heading: Komfort
+            heading_style: subtitle
+            icon: mdi:party-popper
+            badges:
+              - type: entity
+                entity: switch.vitodens_200_wb2a_heizkreis_m1_partybetrieb
+                name: Party
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: select.vitodens_200_wb2a_zirkulation_intervall
+                name: Zirkulation
+                show_state: true
+                show_icon: false
+
+          - type: tile
+            entity: switch.vitodens_200_wb2a_heizkreis_m1_partybetrieb
+            name: Partybetrieb
+            icon: mdi:party-popper
+            tap_action:
+              action: toggle
+            features:
+              - type: toggle
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+
+          - type: custom:mushroom-number-card
+            entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_party
+            name: Partytemperatur
+            icon: mdi:thermometer-plus
+            icon_color: purple
+            display_mode: slider
+            layout: horizontal
+            fill_container: true
+            primary_info: name
+            secondary_info: state
+            visibility:
+              - condition: state
+                entity: switch.vitodens_200_wb2a_heizkreis_m1_partybetrieb
+                state: "on"
+            grid_options:
+              columns: 6
+              rows: 2
 
           - type: custom:mushroom-select-card
             entity: select.vitodens_200_wb2a_zirkulation_intervall
             name: Zirkulation
             icon: mdi:pump
+            fill_container: true
             grid_options:
               columns: full
 
@@ -2118,7 +2078,7 @@ views:
                 extra_value_entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
                 extra_value_name: Soll
             grid_options:
-              columns: 6
+              columns: full
 
           - type: custom:background-graph-entities
             title: Brenner & Hydraulik – 24 Stunden
@@ -2157,7 +2117,7 @@ views:
                 graph_min: 0
                 graph_max: 100
             grid_options:
-              columns: 6
+              columns: full
 
     cards: []
     header:
@@ -4014,56 +3974,46 @@ views:
             grid_options:
               columns: 6
 
-          - type: custom:button-card
-            template: control_pair
-            name: Automations-Sollwerte
+          - type: heading
+            heading: Automations-Sollwerte
+            heading_style: subtitle
             icon: mdi:home-thermometer-outline
-            label: Tag / Nacht
-            styles:
-              card:
-                - border-left: '4px solid #2196f3'
-                - background: color-mix(in srgb, #2196f3 6%, var(--ha-card-background, var(--card-background-color)))
-              icon:
-                - color: '#2196f3'
             visibility:
               - condition: state
                 entity: automation.nachtabsenkungheizung
                 state: "on"
-            custom_fields:
-              v1:
-                card:
-                  type: tile
-                  entity: input_number.nachtabsenkungtemperaturnormal
-                  name: Tag
-                  icon: mdi:white-balance-sunny
-                  features:
-                    - type: numeric-input
-                      style: slider
-                  card_mod:
-                    style: |
-                      ha-card {
-                        border: 0 !important;
-                        box-shadow: none !important;
-                        background: transparent !important;
-                      }
-              v2:
-                card:
-                  type: tile
-                  entity: input_number.nachtabsenkungtemperaturreduziert
-                  name: Nacht
-                  icon: mdi:weather-night
-                  features:
-                    - type: numeric-input
-                      style: slider
-                  card_mod:
-                    style: |
-                      ha-card {
-                        border: 0 !important;
-                        box-shadow: none !important;
-                        background: transparent !important;
-                      }
+
+          - type: custom:mushroom-number-card
+            entity: input_number.nachtabsenkungtemperaturnormal
+            name: Tag
+            icon: mdi:white-balance-sunny
+            icon_color: amber
+            display_mode: slider
+            layout: horizontal
+            fill_container: true
+            visibility:
+              - condition: state
+                entity: automation.nachtabsenkungheizung
+                state: "on"
             grid_options:
-              columns: full
+              columns: 6
+              rows: 2
+
+          - type: custom:mushroom-number-card
+            entity: input_number.nachtabsenkungtemperaturreduziert
+            name: Nacht
+            icon: mdi:weather-night
+            icon_color: indigo
+            display_mode: slider
+            layout: horizontal
+            fill_container: true
+            visibility:
+              - condition: state
+                entity: automation.nachtabsenkungheizung
+                state: "on"
+            grid_options:
+              columns: 6
+              rows: 2
 
           - type: tile
             entity: input_boolean.nachtabsenkunghventilstellungnachtautomatierung
@@ -4161,56 +4111,47 @@ views:
             grid_options:
               columns: 6
 
-          - type: custom:button-card
-            template: control_pair
-            name: Automations-Sollwerte
+          - type: heading
+            heading: Automations-Sollwerte
+            heading_style: subtitle
             icon: mdi:water-thermometer
-            label: Tag / Nacht
-            styles:
-              card:
-                - border-left: '4px solid #00bcd4'
-                - background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)))
-              icon:
-                - color: '#00bcd4'
             visibility:
               - condition: state
                 entity: automation.nachtabsenkungwarmwasser
                 state: "on"
-            custom_fields:
-              v1:
-                card:
-                  type: tile
-                  entity: input_number.nachtabsenkungwwtemperaturnormal
-                  name: Tag
-                  icon: mdi:white-balance-sunny
-                  features:
-                    - type: numeric-input
-                      style: slider
-                  card_mod:
-                    style: |
-                      ha-card {
-                        border: 0 !important;
-                        box-shadow: none !important;
-                        background: transparent !important;
-                      }
-              v2:
-                card:
-                  type: tile
-                  entity: input_number.nachtabsenkungwwtemperaturreduziert
-                  name: Nacht
-                  icon: mdi:weather-night
-                  features:
-                    - type: numeric-input
-                      style: slider
-                  card_mod:
-                    style: |
-                      ha-card {
-                        border: 0 !important;
-                        box-shadow: none !important;
-                        background: transparent !important;
-                      }
+
+          - type: custom:mushroom-number-card
+            entity: input_number.nachtabsenkungwwtemperaturnormal
+            name: Tag
+            icon: mdi:white-balance-sunny
+            icon_color: amber
+            display_mode: slider
+            layout: horizontal
+            fill_container: true
+            visibility:
+              - condition: state
+                entity: automation.nachtabsenkungwarmwasser
+                state: "on"
             grid_options:
-              columns: full
+              columns: 6
+              rows: 2
+
+          - type: custom:mushroom-number-card
+            entity: input_number.nachtabsenkungwwtemperaturreduziert
+            name: Nacht
+            icon: mdi:weather-night
+            icon_color: indigo
+            display_mode: slider
+            layout: horizontal
+            fill_container: true
+            visibility:
+              - condition: state
+                entity: automation.nachtabsenkungwarmwasser
+                state: "on"
+            grid_options:
+              columns: 6
+              rows: 2
+
     cards: []
 
   # Diagnose: native Sections are the responsive layout units.
