@@ -34,7 +34,8 @@ Write verification on this exact appliance:
   synthetic Party end-to-end: verified with distinct setpoints (0x2306=21 C,
     0x2308=22 C): ON mirrored 22 C to 0x2306 and set 0x2323=4; OFF restored
     0x2306=21 C and 0x2323=2. Native physical Party still tracks through 0x2303.
-  0x6300 DHW target: R/W, current configured range 10..60 C
+  0x6300 DHW day target: R/W, current configured range 10..60 C
+  0x6301 DHW reduced/night target: R/W, current configured range 10..60 C
   0x6773 circulation interval: R/W verified for values 0 and 7
   0x2000..0x2230 schedule blocks: complete 8-byte daily writes hardware-
     verified for 0/1/2/4 intervals, FF FF slot clearing and 24:00 end boundary.
@@ -529,6 +530,7 @@ poll_list = {
                 {
                     # 0x6756=0 configures the user range to 10..60 C.
                     # Coding-plug capability at 0x1050 is 10..63 C.
+                    # 0x6300 = day/normal DHW temperature; 0x6301 = reduced/night DHW temperature.
                     "min": 10,
                     "max": 60,
                     "poll": [
