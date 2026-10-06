@@ -37,6 +37,9 @@ Write verification on this exact appliance:
   0x6300 DHW normal/day target: R/W, configured range 10..60 C
   0x6758 coding address 58: second DHW target; 0 disables the additional
     setpoint, 10..60 C selects the second target used by the fourth DHW time phase.
+  0x572F coding address 2F: service-program selector; 0=off, 1=venting,
+    2=filling. Production control is routed through optolink-service-programs
+    for read-before-write, readback verification and automatic HA state refresh.
   0x6773 circulation interval: R/W verified for values 0 and 7
   0x2000..0x2230 schedule blocks: complete 8-byte daily writes hardware-
     verified for 0/1/2/4 intervals, FF FF slot clearing and 24:00 end boundary.
@@ -477,6 +480,79 @@ poll_list = {
             "enabled_by_default": True,
             "poll": [
                 ("NORMAL", "brenner_flamme_gfa", 0x55DD, 1, "b:0:0:0x20", "bool", False),
+            ],
+        },
+
+        # -----------------------------------------------------------------
+        # Filling / venting service programs (coding address 2F / 0x572F).
+        #
+        # Viessmann WB2A service manual, document 5681 573 (10/2006):
+        #   2F:0 = both service programs inactive
+        #   2F:1 = venting program active
+        #   2F:2 = filling program active
+        #
+        # The controller owns one three-state byte, while Home Assistant exposes
+        # two human-friendly switches. optolink-service-programs is the guarded
+        # translation layer: it reads before writes, verifies controller
+        # readback, restores the previous mode on a failed transition and polls
+        # the byte so the controller's automatic 20-minute reset is reflected
+        # immediately in HA.
+        # -----------------------------------------------------------------
+        {
+            "domain": "switch",
+            "entity_category": "config",
+            "icon": "mdi:air-filter",
+            "command_topic": "{mqtt_base}/service_programs/venting/set",
+            "state_topic": "{mqtt_base}/service_programs/venting/state",
+            "payload_on": "ON",
+            "payload_off": "OFF",
+            "state_on": "ON",
+            "state_off": "OFF",
+            "optimistic": False,
+            "availability_topic": "{mqtt_base}/service_programs/availability",
+            "payload_available": "online",
+            "payload_not_available": "offline",
+            "nopoll": [
+                {
+                    "name": "entlueftungsprogramm",
+                },
+            ],
+        },
+        {
+            "domain": "switch",
+            "entity_category": "config",
+            "icon": "mdi:water-pump",
+            "command_topic": "{mqtt_base}/service_programs/filling/set",
+            "state_topic": "{mqtt_base}/service_programs/filling/state",
+            "payload_on": "ON",
+            "payload_off": "OFF",
+            "state_on": "ON",
+            "state_off": "OFF",
+            "optimistic": False,
+            "availability_topic": "{mqtt_base}/service_programs/availability",
+            "payload_available": "online",
+            "payload_not_available": "offline",
+            "nopoll": [
+                {
+                    "name": "befuellungsprogramm",
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "icon": "mdi:tools",
+            "availability_topic": "{mqtt_base}/service_programs/availability",
+            "payload_available": "online",
+            "payload_not_available": "offline",
+            "nopoll": [
+                {
+                    "name": "serviceprogramm_status",
+                    "state_topic": "{mqtt_base}/service_programs/status",
+                    "value_template": "{{ value_json.text | default('Unbekannt') }}",
+                    "json_attributes_topic": "{mqtt_base}/service_programs/status",
+                },
             ],
         },
 
