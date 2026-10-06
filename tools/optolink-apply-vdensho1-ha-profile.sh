@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Transactional activation of the production WB2A/VDensHO1 profile.
+#
+# This script is intentionally more conservative than a normal "copy config"
+# helper. It pins the known-good upstream splitter revision, self-tests the two
+# local runtime patchers before touching installed files, snapshots every file
+# it may modify, validates the HA discovery output and rolls back if activation
+# fails. Keep new deployment steps inside that transaction model.
+#
+# Local helper services never replace the splitter as serial-port owner; they
+# communicate through the splitter's configured MQTT command/response topics.
+
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha}"
 HELPER_REV="2026-10-06-r11-configured-serial"
