@@ -1,3 +1,13 @@
+# Production Lovelace dashboard for the WB2A/VDensHO1 profile.
+#
+# This file is presentation only. Controller addresses and the authoritative
+# Home Assistant entity definitions live in
+# vdensho1-20c2-wb2a-homeassistant.py. Complex write paths (schedules,
+# maintenance, Party and clock sync) are implemented by their guarded helper
+# services, not by JavaScript in this dashboard.
+#
+# See docs/home-assistant.md for entity conventions and required HACS cards.
+
 button_card_templates:
   diag_status:
     section_mode: true
