@@ -20,7 +20,17 @@ jobs:
 
       - name: Compile production Python
         run: |
-          python3 -m py_compile             config/optolink-splitter/optolink_maintenance_core.py             config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py             tools/optolink-maintenance.py             tools/optolink-maintenance-api.py             tools/optolink-party-emulator.py             tools/optolink-schedule-manager.py             tools/wb2a-schedule-probe.py             tools/optolink-debug.py             tools/optolink-apply-vs1-gfa-readonly-patch.py             tools/optolink-apply-phased-poll-scheduler-patch.py
+          python3 -m py_compile \
+            config/optolink-splitter/optolink_maintenance_core.py \
+            config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py \
+            tools/optolink-maintenance.py \
+            tools/optolink-maintenance-api.py \
+            tools/optolink-party-emulator.py \
+            tools/optolink-schedule-manager.py \
+            tools/wb2a-schedule-probe.py \
+            tools/optolink-debug.py \
+            tools/optolink-apply-vs1-gfa-readonly-patch.py \
+            tools/optolink-apply-phased-poll-scheduler-patch.py
 
       - name: Validate dashboard YAML
         run: |
@@ -57,20 +67,17 @@ jobs:
               Path("install/optolink-splitter-install.sh"),
               Path("ct/optolink-splitter.sh"),
           ]
-          patterns = [
-              re.compile(r'(?:install_repo_file|cs_repo_fetch)\s+([^\s"\']+)'),
-          ]
+          pattern = re.compile(r'(?:install_repo_file|cs_repo_fetch)\s+([^\s"\']+)')
 
           missing = []
           for script in scripts:
               text = script.read_text(encoding="utf-8")
-              for pattern in patterns:
-                  for match in pattern.finditer(text):
-                      rel = match.group(1)
-                      if rel.startswith("$"):
-                          continue
-                      if not Path(rel).exists():
-                          missing.append(f"{script}: {rel}")
+              for match in pattern.finditer(text):
+                  rel = match.group(1)
+                  if rel.startswith("$"):
+                      continue
+                  if not Path(rel).exists():
+                      missing.append(f"{script}: {rel}")
 
           if missing:
               raise SystemExit("Missing repository dependencies:\n" + "\n".join(missing))
@@ -84,7 +91,11 @@ jobs:
           test ! -d apps/optolink-web
           test ! -e tools/optolink-pump-override.py
           test ! -e config/optolink-splitter/optolink-pump-override.service
-          ! grep -R -n -E             'wb2a-(kmbus|xram|physical|e7)-.*probe|single-session-logger|pump-override'             tools/optolink-splitter-update.sh             install/optolink-splitter-install.sh             ct/optolink-splitter.sh
+          ! grep -R -n -E \
+            'wb2a-(kmbus|xram|physical|e7)-.*probe|single-session-logger|pump-override' \
+            tools/optolink-splitter-update.sh \
+            install/optolink-splitter-install.sh \
+            ct/optolink-splitter.sh
 
       - name: Verify production branch defaults
         run: |
@@ -94,6 +105,27 @@ jobs:
           grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' tools/optolink-apply-vdensho1-ha-profile.sh
           grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' install/optolink-splitter-install.sh
           grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' ct/optolink-splitter.sh
+
+      - name: Verify public-first update path
+        run: |
+          grep -q 'raw.githubusercontent.com/$REPO/$REF/tools/private-run.sh' tools/private-update.sh
+          grep -q 'codeload.github.com/$REPO/tar.gz/$REF' tools/private-run.sh
+          grep -q 'raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel' tools/optolink-apply-vdensho1-ha-profile.sh
+          grep -q 'raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel' install/optolink-splitter-install.sh
+
+      - name: Verify DHW day and night controls
+        run: |
+          grep -q '"warmwasser_solltemperatur".*0x6300' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q '"warmwasser_solltemperatur_reduziert".*0x6301' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q 'name: Warmwasser Tagestemperatur' config/optolink-splitter/homeassistant-dashboard.yaml
+          grep -q 'name: Warmwasser Nachttemperatur' config/optolink-splitter/homeassistant-dashboard.yaml
+
+      - name: Verify configured serial-device detection
+        run: |
+          grep -q 'port_optolink' tools/optolink-apply-vdensho1-ha-profile.sh
+          grep -q 'port_optolink' install/optolink-splitter-install.sh
+          ! grep -q '\[\[ -c /dev/ttyUSB0 \]\]' tools/optolink-apply-vdensho1-ha-profile.sh
+          ! grep -q '\[\[ -c /dev/ttyUSB0 \]\]' install/optolink-splitter-install.sh
 
       - name: Validate systemd service contracts
         run: |
