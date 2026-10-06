@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# Proxmox Community Scripts entrypoint for the production Optolink LXC.
+#
+# This outer script owns container lifecycle/UI integration. The actual
+# in-container installation is delegated to install/optolink-splitter-install.sh
+# so the same application layout can be understood independently of Proxmox.
+# Its update_script() is retained for Community Scripts compatibility; the
+# installed /usr/bin/update path is pinned to optolink-splitter-ha.
 _CS_DEFAULT_URL="https://raw.githubusercontent.com/SaulGoodman1337/optolink/optolink-splitter-ha"
 _cs_boot="${COMMUNITY_SCRIPTS_CORE_DIR:-$(dirname "${BASH_SOURCE[0]}")/../../core}/core/build.func"
 source "$_cs_boot" 2>/dev/null || source <(curl -fsSL "${COMMUNITY_SCRIPTS_CORE_URL:-https://raw.githubusercontent.com/community-scripts/core/main}/core/build.func")
