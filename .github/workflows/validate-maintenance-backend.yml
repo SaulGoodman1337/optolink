@@ -1,69 +1,105 @@
-name: Validate maintenance backend
+name: Validate Optolink Splitter HA
 
 on:
   push:
-    paths:
-      - "config/optolink-splitter/optolink_maintenance_core.py"
-      - "config/optolink-splitter/optolink-maintenance-api.service"
-      - "config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py"
-      - "config/optolink-splitter/homeassistant-dashboard.yaml"
-      - "tools/optolink-maintenance.py"
-      - "tools/optolink-maintenance-api.py"
-      - "tools/optolink-splitter-update.sh"
-      - "install/optolink-splitter-install.sh"
-      - "ct/optolink-splitter.sh"
-      - ".github/workflows/validate-maintenance-backend.yml"
+    branches:
+      - optolink-splitter-ha
   pull_request:
     paths:
-      - "config/optolink-splitter/optolink_maintenance_core.py"
-      - "config/optolink-splitter/optolink-maintenance-api.service"
-      - "config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py"
-      - "config/optolink-splitter/homeassistant-dashboard.yaml"
-      - "tools/optolink-maintenance.py"
-      - "tools/optolink-maintenance-api.py"
-      - "tools/optolink-splitter-update.sh"
+      - "config/optolink-splitter/**"
+      - "tools/**"
       - "install/optolink-splitter-install.sh"
       - "ct/optolink-splitter.sh"
       - ".github/workflows/validate-maintenance-backend.yml"
 
 jobs:
-  syntax:
+  production-validation:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Compile Python
+      - name: Compile production Python
         run: |
-          python3 -m py_compile \
-            config/optolink-splitter/optolink_maintenance_core.py \
-            config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py \
-            tools/optolink-maintenance.py \
-            tools/optolink-maintenance-api.py
+          python3 -m py_compile             config/optolink-splitter/optolink_maintenance_core.py             config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py             tools/optolink-maintenance.py             tools/optolink-maintenance-api.py             tools/optolink-party-emulator.py             tools/optolink-schedule-manager.py             tools/wb2a-schedule-probe.py             tools/optolink-debug.py             tools/optolink-apply-vs1-gfa-readonly-patch.py             tools/optolink-apply-phased-poll-scheduler-patch.py
 
       - name: Validate dashboard YAML
         run: |
           python3 -m pip install --disable-pip-version-check pyyaml
           python3 - <<'PY'
-          import yaml
           from pathlib import Path
+          import yaml
           path = Path("config/optolink-splitter/homeassistant-dashboard.yaml")
           with path.open(encoding="utf-8") as handle:
               yaml.safe_load(handle)
           print("dashboard YAML OK")
           PY
 
-      - name: Validate shell syntax
+      - name: Validate production shell scripts
         run: |
           bash -n tools/optolink-splitter-update.sh
+          bash -n tools/optolink-splitter-ha-bootstrap.sh
+          bash -n tools/optolink-apply-vdensho1-ha-profile.sh
+          bash -n tools/optolink-party-test.sh
+          bash -n tools/private-run.sh
+          bash -n tools/private-update.sh
           bash -n install/optolink-splitter-install.sh
           bash -n ct/optolink-splitter.sh
 
-      - name: Validate maintenance service shape
+      - name: Verify production dependencies exist
         run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          scripts = [
+              Path("tools/optolink-splitter-update.sh"),
+              Path("tools/optolink-apply-vdensho1-ha-profile.sh"),
+              Path("install/optolink-splitter-install.sh"),
+              Path("ct/optolink-splitter.sh"),
+          ]
+          patterns = [
+              re.compile(r'(?:install_repo_file|cs_repo_fetch)\s+([^\s"\']+)'),
+          ]
+
+          missing = []
+          for script in scripts:
+              text = script.read_text(encoding="utf-8")
+              for pattern in patterns:
+                  for match in pattern.finditer(text):
+                      rel = match.group(1)
+                      if rel.startswith("$"):
+                          continue
+                      if not Path(rel).exists():
+                          missing.append(f"{script}: {rel}")
+
+          if missing:
+              raise SystemExit("Missing repository dependencies:\n" + "\n".join(missing))
+          print("repository dependencies OK")
+          PY
+
+      - name: Enforce production boundary
+        run: |
+          test ! -d config/optolink-splitter/research
+          test ! -d research
+          test ! -d apps/optolink-web
+          test ! -e tools/optolink-pump-override.py
+          test ! -e config/optolink-splitter/optolink-pump-override.service
+          ! grep -R -n -E             'wb2a-(kmbus|xram|physical|e7)-.*probe|single-session-logger|pump-override'             tools/optolink-splitter-update.sh             install/optolink-splitter-install.sh             ct/optolink-splitter.sh
+
+      - name: Verify production branch defaults
+        run: |
+          grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' tools/optolink-splitter-update.sh
+          grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' tools/private-run.sh
+          grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' tools/private-update.sh
+          grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' tools/optolink-apply-vdensho1-ha-profile.sh
+          grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' install/optolink-splitter-install.sh
+          grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' ct/optolink-splitter.sh
+
+      - name: Validate systemd service contracts
+        run: |
+          grep -q '^User=optolink$' config/optolink-splitter/optolink-splitter.service
+          grep -q '^ExecStart=/opt/optolink/venv/bin/python /opt/optolink/optolinkvs2_switch.py$' config/optolink-splitter/optolink-splitter.service
           grep -q '^User=optolink$' config/optolink-splitter/optolink-maintenance-api.service
-          grep -q '^Group=optolink$' config/optolink-splitter/optolink-maintenance-api.service
-          grep -q '^ExecStart=/usr/local/bin/optolink-maintenance-api config/optolink-splitter/optolink-maintenance-api.service
-          grep -q '^Wants=network-online.target optolink-splitter.service config/optolink-splitter/optolink-maintenance-api.service
-          grep -q '^Restart=always config/optolink-splitter/optolink-maintenance-api.service
-          ! grep -q '^PartOf=' config/optolink-splitter/optolink-maintenance-api.service
-          ! grep -q '^Requires=optolink-splitter.service config/optolink-splitter/optolink-maintenance-api.service
+          grep -q '^ExecStart=/usr/local/bin/optolink-maintenance-api$' config/optolink-splitter/optolink-maintenance-api.service
+          grep -q '^ExecStart=/usr/local/bin/optolink-schedule-manager$' config/optolink-splitter/optolink-schedule-manager.service
+          grep -q '^ExecStart=/usr/local/bin/optolink-party-emulator$' config/optolink-splitter/optolink-party-emulator.service
