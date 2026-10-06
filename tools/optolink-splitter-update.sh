@@ -50,6 +50,8 @@ install_repo_file tools/optolink-maintenance-api.py /usr/local/bin/optolink-main
 install_repo_file tools/wb2a-schedule-probe.py /usr/local/bin/wb2a-schedule-probe 0750
 install_repo_file tools/optolink-schedule-manager.py /usr/local/bin/optolink-schedule-manager 0755
 install_repo_file tools/optolink-party-emulator.py /usr/local/bin/optolink-party-emulator 0755
+install_repo_file tools/optolink-clock-sync.py /usr/local/bin/optolink-clock-sync 0755
+/usr/local/bin/optolink-clock-sync --self-test
 
 ln -sf /usr/local/bin/optolink-debug /usr/bin/optolink-debug
 ln -sf /usr/local/bin/optolink-party-test /usr/bin/optolink-party-test
@@ -62,6 +64,8 @@ install_repo_file config/optolink-splitter/optolink-splitter.service /etc/system
 install_repo_file config/optolink-splitter/optolink-party-emulator.service /etc/systemd/system/optolink-party-emulator.service 0644
 install_repo_file config/optolink-splitter/optolink-schedule-manager.service /etc/systemd/system/optolink-schedule-manager.service 0644
 install_repo_file config/optolink-splitter/optolink-maintenance-api.service /etc/systemd/system/optolink-maintenance-api.service 0644
+install_repo_file config/optolink-splitter/optolink-clock-sync.service /etc/systemd/system/optolink-clock-sync.service 0644
+install_repo_file config/optolink-splitter/optolink-clock-sync.timer /etc/systemd/system/optolink-clock-sync.timer 0644
 install_repo_file config/optolink-splitter/vcontrol-mapping.md /root/optolink-vcontrol-mapping.md 0644
 
 touch "$APP_DIR/.maintenance.lock"
@@ -98,6 +102,30 @@ else
   warn "Maintenance MQTT API disabled because mqtt_broker is not configured"
 fi
 
+info "Configuring WB2A system clock synchronization"
+if runuser -u optolink -- "$APP_DIR/venv/bin/python" - <<'PY_CLOCK'
+import sys
+sys.path.insert(0, "/opt/optolink")
+from c_settings_adapter import settings
+raise SystemExit(0 if getattr(settings, "mqtt_broker", None) else 1)
+PY_CLOCK
+then
+  systemctl enable --now optolink-clock-sync.timer >/dev/null 2>&1 || true
+  if systemctl is-active --quiet optolink-splitter.service; then
+    if systemctl start optolink-clock-sync.service; then
+      ok "WB2A system clock checked/synchronized; 15-minute timer active"
+    else
+      warn "Clock sync check failed; timer remains active for the next retry"
+      journalctl -u optolink-clock-sync.service -n 20 --no-pager >&2 || true
+    fi
+  else
+    warn "Clock sync timer enabled, but splitter is not active yet"
+  fi
+else
+  systemctl disable --now optolink-clock-sync.timer >/dev/null 2>&1 || true
+  warn "Clock sync disabled because mqtt_broker is not configured"
+fi
+
 info "Persisting production update channel"
 install_repo_file tools/private-update.sh /usr/local/lib/community-scripts/private-update.sh 0755
 cat >/etc/community-scripts-private.conf <<EOF
@@ -114,4 +142,6 @@ printf '  systemctl status optolink-splitter --no-pager\n' >&2
 printf '  systemctl status optolink-party-emulator --no-pager\n' >&2
 printf '  systemctl status optolink-schedule-manager --no-pager\n' >&2
 printf '  systemctl status optolink-maintenance-api --no-pager\n' >&2
+printf '  systemctl status optolink-clock-sync.timer --no-pager\n' >&2
+printf '  journalctl -u optolink-clock-sync.service -n 20 --no-pager\n' >&2
 printf '  optolink-maintenance status\n' >&2
