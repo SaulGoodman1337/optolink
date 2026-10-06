@@ -133,6 +133,20 @@ optolink-maintenance-api  /
 
 Der Core enthält die eigentlichen Guardrails, Readbacks und Rollbacks. CLI und API sind nur Bedienoberflächen.
 
+### `tools/optolink-service-programs.py`
+
+Geschützter Manager für die WB2A-Servicefunktion **Codieradresse 2F / Optolink `0x572F`**.
+
+Die Therme besitzt dafür nur ein Drei-Zustands-Register:
+
+- `0` = aus;
+- `1` = Entlüftungsprogramm;
+- `2` = Befüllungsprogramm.
+
+Home Assistant zeigt aus Bediengründen zwei Schalter. Der Manager übersetzt diese auf das gemeinsame Register, liest vor jeder Änderung den Istzustand, erlaubt ausschließlich 0/1/2 und verifiziert jeden Übergang per Controller-Readback.
+
+**Live verifiziert am 06.10.2026:** Entlüftung (`0x572F=1`) und Befüllung (`0x572F=2`) funktionieren auf der produktiven 20C2/WB2A und wurden jeweils wieder auf `0` zurückgeführt.
+
 ### `tools/optolink-clock-sync.py`
 
 Synchronisiert die Regler-Systemzeit `0x088E` mit der lokalen Systemzeit des Splitter-Hosts.
