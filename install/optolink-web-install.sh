@@ -4,7 +4,7 @@
 # License: MIT
 
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
-CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
+CS_REF="${COMMUNITY_SCRIPTS_REF:-optolink-web}"
 
 cs_repo_fetch() {
   local rel="${1:?repo-relative path}"
@@ -13,16 +13,16 @@ cs_repo_fetch() {
     cp "${COMMUNITY_SCRIPTS_ROOT}/$rel" "$dest"
     return 0
   fi
-  if [[ -z "${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}" ]]; then
-    echo "Missing COMMUNITY_SCRIPTS_GITHUB_TOKEN for private repository access." >&2
-    return 1
+  if [[ -n "${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}" ]]; then
+    curl -fsSL \
+      -H "Authorization: Bearer $COMMUNITY_SCRIPTS_GITHUB_TOKEN" \
+      -H "Accept: application/vnd.github.raw+json" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      "https://api.github.com/repos/$CS_REPO/contents/$rel?ref=$CS_REF" \
+      -o "$dest"
+  else
+    curl -fsSL "https://raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel" -o "$dest"
   fi
-  curl -fsSL \
-    -H "Authorization: Bearer $COMMUNITY_SCRIPTS_GITHUB_TOKEN" \
-    -H "Accept: application/vnd.github.raw+json" \
-    -H "X-GitHub-Api-Version: 2022-11-28" \
-    "https://api.github.com/repos/$CS_REPO/contents/$rel?ref=$CS_REF" \
-    -o "$dest"
 }
 
 install_private_update() {
