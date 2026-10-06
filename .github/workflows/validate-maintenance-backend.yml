@@ -26,6 +26,7 @@ jobs:
             tools/optolink-maintenance.py \
             tools/optolink-maintenance-api.py \
             tools/optolink-party-emulator.py \
+            tools/optolink-clock-sync.py \
             tools/optolink-schedule-manager.py \
             tools/wb2a-schedule-probe.py \
             tools/optolink-debug.py \
@@ -54,6 +55,10 @@ jobs:
           bash -n tools/private-update.sh
           bash -n install/optolink-splitter-install.sh
           bash -n ct/optolink-splitter.sh
+
+      - name: Validate clock codec
+        run: |
+          python3 tools/optolink-clock-sync.py --self-test
 
       - name: Verify production dependencies exist
         run: |
@@ -127,6 +132,16 @@ jobs:
           ! grep -q '\[\[ -c /dev/ttyUSB0 \]\]' tools/optolink-apply-vdensho1-ha-profile.sh
           ! grep -q '\[\[ -c /dev/ttyUSB0 \]\]' install/optolink-splitter-install.sh
 
+      - name: Verify WB2A clock synchronization surface
+        run: |
+          grep -q 'ADDR_SYSTEM_TIME = 0x088E' tools/optolink-clock-sync.py
+          grep -q 'DRIFT_THRESHOLD_SECONDS = 30' tools/optolink-clock-sync.py
+          grep -q '"systemzeit", 0x088E, 8, "vdatetime"' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q '"name": "systemzeit_sync_status"' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q '"name": "systemzeit_abweichung"' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q 'entity: sensor.vitodens_200_wb2a_systemzeit_anzeige' config/optolink-splitter/homeassistant-dashboard.yaml
+          grep -q 'entity: sensor.vitodens_200_wb2a_systemzeit_sync_status' config/optolink-splitter/homeassistant-dashboard.yaml
+
       - name: Validate systemd service contracts
         run: |
           grep -q '^User=optolink$' config/optolink-splitter/optolink-splitter.service
@@ -134,4 +149,7 @@ jobs:
           grep -q '^User=optolink$' config/optolink-splitter/optolink-maintenance-api.service
           grep -q '^ExecStart=/usr/local/bin/optolink-maintenance-api$' config/optolink-splitter/optolink-maintenance-api.service
           grep -q '^ExecStart=/usr/local/bin/optolink-schedule-manager$' config/optolink-splitter/optolink-schedule-manager.service
-          grep -q '^ExecStart=/usr/local/bin/optolink-party-emulator$' config/optolink-splitter/optolink-party-emulator.service
+          grep -q '^ExecStart=/usr/local/bin/optolink-party-emulator config/optolink-splitter/optolink-party-emulator.service
+          grep -q '^ExecStart=/usr/local/bin/optolink-clock-sync config/optolink-splitter/optolink-clock-sync.service
+          grep -q '^User=optolink config/optolink-splitter/optolink-clock-sync.service
+          grep -q '^OnUnitActiveSec=15min config/optolink-splitter/optolink-clock-sync.timer
