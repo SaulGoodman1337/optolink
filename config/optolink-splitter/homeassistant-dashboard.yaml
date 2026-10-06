@@ -4775,6 +4775,124 @@ views:
                   name: Sync
             grid_options:
               columns: full
+          - type: heading
+            heading: Serviceprogramme
+            heading_style: subtitle
+            icon: mdi:tools
+            badges:
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_serviceprogramm_status
+                name: Modus
+                show_state: true
+                show_icon: false
+
+          - type: tile
+            entity: switch.vitodens_200_wb2a_entlueftungsprogramm
+            name: Entlüftungsprogramm
+            icon: mdi:air-filter
+            color: amber
+            tap_action:
+              action: toggle
+              confirmation:
+                text: >-
+                  Entlüftungsprogramm umschalten? Laut WB2A-Serviceanleitung
+                  ist dies eine Servicefunktion für Fachkräfte. Für die
+                  Entlüftung ist der Gasabsperrhahn zu schließen.
+            features:
+              - type: toggle
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+
+          - type: tile
+            entity: switch.vitodens_200_wb2a_befuellungsprogramm
+            name: Befüllungsprogramm
+            icon: mdi:water-pump
+            color: blue
+            tap_action:
+              action: toggle
+              confirmation:
+                text: >-
+                  Befüllungsprogramm umschalten? Laut WB2A-Serviceanleitung
+                  ist dies eine Servicefunktion für Fachkräfte. Anlagendruck,
+                  Füllwasserqualität und Absperrungen vorher prüfen.
+            features:
+              - type: toggle
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+
+          - type: button
+            name: Info Befüllen / Entlüften
+            icon: mdi:information-outline
+            show_name: true
+            show_icon: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: WB2A Serviceprogramme 2F
+                  adaptive: true
+                  content:
+                    type: markdown
+                    content: |
+                      ## Befüllungs- und Entlüftungsprogramm
+
+                      **Quelle:** Viessmann Serviceanleitung Vitodens 200,
+                      Typ WB2A, Dokument **5681 573**, Ausgabe 10/2006.
+
+                      Die Therme verwendet dafür eine gemeinsame
+                      **Codieradresse 2F**, die über Optolink auf
+                      **`0x572F`** liegt:
+
+                      | Wert | Funktion |
+                      | --- | --- |
+                      | **2F:0** | Serviceprogramm aus |
+                      | **2F:1** | Entlüftungsprogramm |
+                      | **2F:2** | Befüllungsprogramm |
+
+                      ### Entlüftungsprogramm
+
+                      Das Programm läuft maximal **20 Minuten**. Dabei wird die
+                      Umwälzpumpe jeweils etwa **30 Sekunden ein- und
+                      ausgeschaltet**. Das Umschaltventil wird abwechselnd in
+                      Richtung Heizbetrieb und Trinkwassererwärmung gefahren.
+                      Der **Brenner bleibt ausgeschaltet**. Danach setzt die
+                      Regelung 2F automatisch wieder auf 0.
+
+                      Für den in der Serviceanleitung beschriebenen
+                      Entlüftungsablauf ist vor der Aktivierung der
+                      **Gasabsperrhahn zu schließen** und anschließend der
+                      Anlagendruck zu prüfen.
+
+                      ### Befüllungsprogramm
+
+                      Bei **2F:2** fährt das Umschaltventil in Mittelstellung,
+                      damit die Anlage vollständig befüllt werden kann. Bei
+                      eingeschalteter Regelung wird zusätzlich die Pumpe
+                      eingeschaltet; der Brenner geht außer Betrieb. Auch
+                      dieses Programm wird nach **20 Minuten automatisch
+                      beendet** und 2F auf 0 zurückgesetzt.
+
+                      ### Umsetzung in Optolink
+
+                      Die beiden HA-Schalter schreiben **nicht direkt** auf
+                      die Therme. `optolink-service-programs` liest zuerst
+                      den aktuellen Zustand, schreibt nur 0/1/2 auf
+                      `0x572F`, prüft den Readback und stellt bei einem
+                      fehlgeschlagenen Übergang den vorherigen Wert wieder her.
+
+                      **Wichtig:** Beide Schalter repräsentieren dasselbe
+                      3-Zustands-Register. Es kann immer nur *ein* Programm
+                      aktiv sein.
+
+                      [Serviceanleitung beim Quellenanbieter öffnen](https://www.intec-heizung.de/media/pdf/c2/0c/64/Viessmann-Vitodens-200-WB2A-Serviceanleitung.pdf)
+            grid_options:
+              columns: full
+              rows: 1
 
 
       - type: grid
