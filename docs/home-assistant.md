@@ -172,7 +172,7 @@ sensor.vitodens_200_wb2a_systemzeit_sync_status
 - **Abweichung**: beim letzten Clock-Sync gemessene Differenz zur Hostzeit;
 - **Sync Status**: Synchron, Korrigiert, Nur geprüft oder Fehler.
 
-## 7. Befüllungs- und Entlüftungsschalter
+## 8. Befüllungs- und Entlüftungsschalter
 
 Home Assistant stellt das gemeinsame Controllerregister `0x572F` als zwei
 bedienbare Schalter dar:
@@ -195,7 +195,7 @@ Die Diagnose-Ansicht enthält für beide Schalter einen Bestätigungsdialog sowi
 einen Info-Dialog mit Ablauf und Sicherheitshinweisen aus der WB2A-
 Serviceanleitung.
 
-## 8. Zeitprogramm-Editor
+## 9. Zeitprogramm-Editor
 
 Home Assistant schreibt die 8-Byte-Blöcke nicht direkt.
 
@@ -213,7 +213,7 @@ HA Editor
 
 Die `select`-/`time`-/`switch`-Entities im Editor sind daher Staging-State und keine direkten Controllerregister.
 
-## 9. Dashboard
+## 10. Dashboard
 
 Die vollständige Dashboard-Konfiguration liegt in:
 
@@ -232,7 +232,39 @@ Sie verwendet unter anderem folgende HACS-Abhängigkeiten:
 
 Das Dashboard ist eine Darstellungsschicht. Die fachliche Quelle für Entitäten und Register bleibt die Python-Profil-Datei.
 
-## 10. Entity-ID-Stabilität
+## 11. DEV-Dashboard für UI-Tests
+
+Neben dem produktiven Dashboard existiert:
+
+```text
+config/optolink-splitter/homeassistant-dashboard-dev.yaml
+```
+
+Diese Datei ist eine vollständige, getrennte Testversion. Sie kann als zweites
+Home-Assistant-Dashboard geladen werden, ohne
+`homeassistant-dashboard.yaml` zu verändern.
+
+Die aktuelle DEV-Version modernisiert insbesondere:
+
+- die Hauptseite als **Heizung DEV**;
+- die Anlagenübersicht mit Mushroom-Chips und kompakten Statusgruppen;
+- die Thermostatventile als übersichtliche Raumgruppen;
+- den Verlauf mit `background-graph-entities`;
+- Tag-/Nacht-Sollwerte als gemeinsame `control_pair`-Karten;
+- die Seite Nachtabsenkung mit derselben visuellen Gruppierung.
+
+Die gekoppelten Slider sind ausschließlich eine Darstellungsänderung. Die
+zugrunde liegenden Entities und Controlleradressen bleiben getrennt und
+unverändert.
+
+Für ein separates YAML-Dashboard kann die Datei beispielsweise nach
+`/config/dashboards/optolink-dev.yaml` kopiert und als eigener
+`lovelace.dashboards`-Eintrag registriert werden.
+
+Änderungen werden erst nach visueller Prüfung bewusst aus DEV nach
+`homeassistant-dashboard.yaml` übernommen.
+
+## 12. Entity-ID-Stabilität
 
 Bei Adresskorrekturen sollte der interne Datenpunktname nach Möglichkeit stabil bleiben, wenn die semantische Bedeutung der Entity identisch bleibt. So bleiben Home-Assistant-Registry, Dashboards und Automationen erhalten.
 
@@ -241,7 +273,7 @@ Beispiel: Die Korrektur des zweiten WW-Sollwerts von einem falschen Adresskandid
 
 Ein Name darf dagegen nicht aus Kompatibilitätsgründen erhalten bleiben, wenn er fachlich eine andere Funktion vortäuschen würde.
 
-## 11. Neue Entity hinzufügen
+## 13. Neue Entity hinzufügen
 
 Vor einem produktiven Merge:
 
