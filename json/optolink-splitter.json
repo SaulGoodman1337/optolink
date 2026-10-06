@@ -10,7 +10,7 @@
   "privileged": true,
   "config_path": "/opt/optolink/settings_ini.py",
   "interface_port": 65234,
-  "documentation": "https://github.com/SaulGoodman1337/optolink/blob/main/docs/optolink-splitter.md",
+  "documentation": "https://github.com/SaulGoodman1337/optolink/blob/optolink-splitter-ha/README.md",
   "website": "https://github.com/philippoo66/optolink-splitter",
   "repository": "https://github.com/SaulGoodman1337/optolink",
   "architectures": [
