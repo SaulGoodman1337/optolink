@@ -27,6 +27,7 @@ systemctl --no-pager --full status optolink-party-emulator
 systemctl --no-pager --full status optolink-schedule-manager
 systemctl --no-pager --full status optolink-maintenance-api
 systemctl --no-pager --full status optolink-clock-sync.timer
+systemctl --no-pager --full status optolink-service-programs
 optolink-maintenance status
 ```
 
@@ -71,6 +72,12 @@ Zeitabgleich:
 ```bash
 journalctl -u optolink-clock-sync.service -n 100 --no-pager
 systemctl list-timers optolink-clock-sync.timer
+```
+
+Befüll-/Entlüftungsprogramme:
+
+```bash
+journalctl -u optolink-service-programs -n 100 --no-pager
 ```
 
 ## 4. Systemzeit der Therme
@@ -182,7 +189,34 @@ Persistenter Restore-State:
 
 Diese Datei nicht löschen, während eine emulierte Party aktiv ist: Sie enthält die Werte, auf die beim Ausschalten zurückgestellt wird.
 
-## 10. HTTP 401 beim Update
+## 10. Befüllungs- und Entlüftungsprogramm
+
+Dienst prüfen:
+
+```bash
+systemctl status optolink-service-programs --no-pager
+journalctl -u optolink-service-programs -n 100 --no-pager
+```
+
+Register rein lesend prüfen:
+
+```bash
+optolink-debug request 'r;0x572F;1;1;False'
+```
+
+Erwartet werden ausschließlich:
+
+```text
+0 = Aus
+1 = Entlüftung
+2 = Befüllung
+```
+
+Die Schalter im Diagnose-Dashboard enthalten Bestätigungsdialoge und einen Info-Dialog mit den Servicehandbuch-Hinweisen. Vor einer realen Aktivierung die hydraulischen bzw. sicherheitsrelevanten Vorbereitungsschritte aus der Serviceanleitung durchführen.
+
+Details: [service-programs.md](service-programs.md)
+
+## 11. HTTP 401 beim Update
 
 Ältere Installationen konnten einen abgelaufenen PAT aus
 `/etc/community-scripts-github-token` bevorzugen.
@@ -196,7 +230,7 @@ update --clear-token
 update
 ```
 
-## 11. Rollback
+## 12. Rollback
 
 Der Profil-Helper erzeugt vor Änderungen Zeitstempel-Backups unter `/opt/optolink`. Bei einem Aktivierungsfehler versucht er automatisch, den vorherigen Stand zurückzustellen.
 
@@ -209,7 +243,7 @@ ls -ld /root/optolink-*-backup-* 2>/dev/null
 
 `main` bleibt zusätzlich der unveränderte Repository-Snapshot vor der Branch-Aufräumaktion.
 
-## 12. Fehlerdiagnose in sinnvoller Reihenfolge
+## 13. Fehlerdiagnose in sinnvoller Reihenfolge
 
 1. Ist der konfigurierte serielle Pfad vorhanden?
 2. Läuft `optolink-splitter.service`?
