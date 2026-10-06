@@ -1738,6 +1738,12 @@ poll_list = {
 
         # -----------------------------------------------------------------
         # System clock
+        #
+        # 0x088E is the controller's 8-byte BCD system time. The normal poll
+        # remains the controller source of truth. optolink-clock-sync checks it
+        # every 15 minutes, writes only when drift exceeds 30 seconds (or the
+        # weekday byte is inconsistent), verifies the readback and publishes
+        # diagnostic status on <mqtt_base>/clock_sync/status.
         # -----------------------------------------------------------------
         {
             "domain": "sensor",
@@ -1746,6 +1752,36 @@ poll_list = {
             "icon": "mdi:clock-outline",
             "poll": [
                 ("RARE", "systemzeit", 0x088E, 8, "vdatetime"),
+            ],
+        },
+        {
+            "domain": "sensor",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "icon": "mdi:clock-check-outline",
+            "nopoll": [
+                {
+                    "name": "systemzeit_sync_status",
+                    "state_topic": "{mqtt_base}/clock_sync/status",
+                    "json_attributes_topic": "{mqtt_base}/clock_sync/status",
+                    "value_template": "{% set s = value_json.state | default('unknown') %}{% if s == 'ok' %}Synchron{% elif s == 'synced' %}Korrigiert{% elif s == 'check' %}Nur geprüft{% elif s == 'error' %}Fehler{% else %}{{ s }}{% endif %}",
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "unit_of_measurement": "s",
+            "state_class": "measurement",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "icon": "mdi:clock-alert-outline",
+            "suggested_display_precision": 0,
+            "nopoll": [
+                {
+                    "name": "systemzeit_abweichung",
+                    "state_topic": "{mqtt_base}/clock_sync/status",
+                    "value_template": "{{ value_json.drift_seconds | default(0) | float(0) | round(0) }}",
+                },
             ],
         },
 
