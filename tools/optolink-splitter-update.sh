@@ -70,6 +70,8 @@ install_repo_file tools/optolink-schedule-manager.py /usr/local/bin/optolink-sch
 install_repo_file tools/optolink-party-emulator.py /usr/local/bin/optolink-party-emulator 0755
 install_repo_file tools/optolink-clock-sync.py /usr/local/bin/optolink-clock-sync 0755
 /usr/local/bin/optolink-clock-sync --self-test
+install_repo_file tools/optolink-service-programs.py /usr/local/bin/optolink-service-programs 0755
+/usr/local/bin/optolink-service-programs --self-test
 
 ln -sf /usr/local/bin/optolink-debug /usr/bin/optolink-debug
 ln -sf /usr/local/bin/optolink-party-test /usr/bin/optolink-party-test
@@ -84,6 +86,7 @@ install_repo_file config/optolink-splitter/optolink-schedule-manager.service /et
 install_repo_file config/optolink-splitter/optolink-maintenance-api.service /etc/systemd/system/optolink-maintenance-api.service 0644
 install_repo_file config/optolink-splitter/optolink-clock-sync.service /etc/systemd/system/optolink-clock-sync.service 0644
 install_repo_file config/optolink-splitter/optolink-clock-sync.timer /etc/systemd/system/optolink-clock-sync.timer 0644
+install_repo_file config/optolink-splitter/optolink-service-programs.service /etc/systemd/system/optolink-service-programs.service 0644
 install_repo_file config/optolink-splitter/vcontrol-mapping.md /root/optolink-vcontrol-mapping.md 0644
 
 touch "$APP_DIR/.maintenance.lock"
@@ -164,5 +167,6 @@ printf '  systemctl status optolink-party-emulator --no-pager\n' >&2
 printf '  systemctl status optolink-schedule-manager --no-pager\n' >&2
 printf '  systemctl status optolink-maintenance-api --no-pager\n' >&2
 printf '  systemctl status optolink-clock-sync.timer --no-pager\n' >&2
+printf '  systemctl status optolink-service-programs --no-pager\n' >&2
 printf '  journalctl -u optolink-clock-sync.service -n 20 --no-pager\n' >&2
 printf '  optolink-maintenance status\n' >&2
