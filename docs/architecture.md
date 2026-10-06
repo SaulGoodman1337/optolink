@@ -147,6 +147,8 @@ Ablauf:
 
 Der systemd-Timer startet diesen Check alle 15 Minuten.
 
+Der Schreibpfad ist auf der lokalen 20C2/WB2A am **2026-10-06 live verifiziert**: ein erzwungener 8-Byte-Write auf `0x088E` wurde unmittelbar mit korrekter Gerätezeit und `0 s` Drift zurückgelesen. Dabei lieferte der Transport für den Write Status `255`; der anschließende Readback war korrekt. Deshalb ist der Readback — nicht der ACK-Code — die Erfolgsinstanz.
+
 ## 5. Systemd-Dienste
 
 | Unit | Typ | Aufgabe |
