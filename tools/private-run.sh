@@ -17,7 +17,14 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
 archive="$tmp_dir/repo.tar.gz"
-if [[ -n "$TOKEN" ]]; then
+
+# Public repository downloads must not depend on a possibly stale PAT.
+# Fall back to the authenticated API only if the public codeload endpoint
+# cannot serve the requested ref.
+if curl -fsSL "https://codeload.github.com/$REPO/tar.gz/$REF" -o "$archive"; then
+  :
+elif [[ -n "$TOKEN" ]]; then
+  rm -f "$archive"
   curl -fsSL \
     -H "Authorization: Bearer $TOKEN" \
     -H "Accept: application/vnd.github+json" \
@@ -25,7 +32,8 @@ if [[ -n "$TOKEN" ]]; then
     "https://api.github.com/repos/$REPO/tarball/$REF" \
     -o "$archive"
 else
-  curl -fsSL "https://codeload.github.com/$REPO/tar.gz/$REF" -o "$archive"
+  echo "Could not download $REPO @ $REF." >&2
+  exit 3
 fi
 
 mkdir -p "$tmp_dir/repo"
