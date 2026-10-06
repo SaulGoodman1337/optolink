@@ -1,3 +1,5 @@
+# Check every 15 minutes; the service itself writes only when drift exceeds its threshold.
+
 [Unit]
 Description=Periodic Viessmann WB2A clock synchronization
 
