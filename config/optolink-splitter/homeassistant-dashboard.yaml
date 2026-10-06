@@ -3716,6 +3716,11 @@ views:
                 show_state: true
                 show_icon: false
               - type: entity
+                entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
+                name: Nacht
+                show_state: true
+                show_icon: false
+              - type: entity
                 entity: sensor.vitodens_200_wb2a_warmwasser_temperatur
                 name: Ist
                 show_state: true
