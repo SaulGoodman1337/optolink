@@ -14,16 +14,16 @@ cs_repo_fetch() {
     cp "${COMMUNITY_SCRIPTS_ROOT}/$rel" "$dest"
     return 0
   fi
-  if [[ -z "${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}" ]]; then
-    echo "Missing COMMUNITY_SCRIPTS_GITHUB_TOKEN for private repository access." >&2
-    return 1
+  if [[ -n "${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}" ]]; then
+    curl -fsSL \
+      -H "Authorization: Bearer $COMMUNITY_SCRIPTS_GITHUB_TOKEN" \
+      -H "Accept: application/vnd.github.raw+json" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      "https://api.github.com/repos/$CS_REPO/contents/$rel?ref=$CS_REF" \
+      -o "$dest"
+  else
+    curl -fsSL "https://raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel" -o "$dest"
   fi
-  curl -fsSL \
-    -H "Authorization: Bearer $COMMUNITY_SCRIPTS_GITHUB_TOKEN" \
-    -H "Accept: application/vnd.github.raw+json" \
-    -H "X-GitHub-Api-Version: 2022-11-28" \
-    "https://api.github.com/repos/$CS_REPO/contents/$rel?ref=$CS_REF" \
-    -o "$dest"
 }
 
 install_private_update() {
@@ -51,6 +51,7 @@ update_os
 msg_info "Installing dependencies"
 $STD apt-get install -y \
   ca-certificates \
+  curl \
   git \
   python3 \
   python3-venv
