@@ -500,10 +500,6 @@ try:
     node_id = ha_device["node_id"]
     obsolete_discovery = [
         ("sensor", "geblaesedrehzahl"),
-        # 0x6301 was briefly published as a reduced/night DHW target without
-        # hardware verification on VDensHO1/20C2. Day/night presets are HA
-        # helpers and the controller continues to use the verified 0x6300 target.
-        ("number", "warmwasser_solltemperatur_reduziert"),
         # Superseded after live maintenance write testing proved that 0x756C
         # and 0x7570 are custom reference registers, not direct month/hour
         # measurements.
