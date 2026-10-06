@@ -4,6 +4,38 @@ This branch is the **production branch** for the local Optolink-Splitter deploym
 
 It deliberately contains only the components required to operate the splitter with the validated VDensHO1 / 20C2 Home Assistant integration. Firmware reverse engineering, EEPROM/KBus experiments, one-off probes, data captures and Optolink-Web are intentionally excluded.
 
+## Dokumentation
+
+Für einen neuen Maintainer ist diese Reihenfolge gedacht:
+
+1. [Architektur](docs/architecture.md) — Komponenten, Datenfluss, Sicherheitsgrenzen und Deployment-Kette.
+2. [Betrieb / Runbook](docs/operations.md) — Update, Statuschecks, Logs, Troubleshooting und Rollback.
+3. [Home Assistant](docs/home-assistant.md) — Poll-Profil, MQTT-Entities, Schreibpfade und Dashboard-Modell.
+4. [Entwicklungsleitfaden](docs/development.md) — Regeln für neue Reads/Writes, CI und Hardware-Verifikation.
+5. [Wartung](docs/optolink-maintenance.md) und [Wartungs-API](docs/optolink-maintenance-api.md).
+6. [WB2A-Zeitprogrammblöcke](docs/wb2a-schedule-blocks.md).
+7. [VControl-/Adress-Mapping](config/optolink-splitter/vcontrol-mapping.md).
+
+Kurzfassung des Laufzeitpfads:
+
+```text
+Home Assistant
+      |
+      v
+ MQTT Broker <---- Zusatzdienste (Schedule / Party / Maintenance / Clock)
+      |
+      v
+optolink-splitter
+      |
+      v
+serieller Optolink-Adapter
+      |
+      v
+Vitodens 200-W WB2A
+```
+
+Der Splitter ist der einzige produktive Besitzer des seriellen Ports. Zusatzdienste kommunizieren über seine MQTT-Befehls-/Antwortschnittstelle.
+
 ## Branch purpose
 
 Use this branch on the actual Optolink machine.
