@@ -90,9 +90,6 @@ sed -i \
 cs_repo_fetch tools/optolink-apply-vdensho1-ha-profile.sh /usr/local/bin/optolink-apply-vdensho1-ha-profile
 chmod 755 /usr/local/bin/optolink-apply-vdensho1-ha-profile
 
-# Keep the previous profile helper as an explicit rollback option.
-cs_repo_fetch tools/optolink-apply-vscotho1-profile.sh /usr/local/bin/optolink-apply-vscotho1-profile
-chmod 755 /usr/local/bin/optolink-apply-vscotho1-profile
 
 # Shared maintenance core plus guarded CLI/API frontends.
 cs_repo_fetch config/optolink-splitter/optolink_maintenance_core.py /opt/optolink/optolink_maintenance_core.py
@@ -121,15 +118,7 @@ cs_repo_fetch tools/optolink-party-emulator.py /usr/local/bin/optolink-party-emu
 chmod 755 /usr/local/bin/optolink-party-emulator
 chown root:root /usr/local/bin/optolink-party-emulator
 
-cs_repo_fetch config/optolink-splitter/wb2a-single-session-logger.py /usr/local/bin/wb2a-single-session-logger
-chmod 755 /usr/local/bin/wb2a-single-session-logger
-chown root:root /usr/local/bin/wb2a-single-session-logger
-ln -sf /usr/local/bin/wb2a-single-session-logger /usr/bin/wb2a-single-session-logger
 
-cs_repo_fetch config/optolink-splitter/wb2a-e7-persistence-probe.py /usr/local/bin/wb2a-e7-persistence-probe
-chmod 755 /usr/local/bin/wb2a-e7-persistence-probe
-chown root:root /usr/local/bin/wb2a-e7-persistence-probe
-ln -sf /usr/local/bin/wb2a-e7-persistence-probe /usr/bin/wb2a-e7-persistence-probe
 
 cs_repo_fetch config/optolink-splitter/optolink-party-emulator.service /etc/systemd/system/optolink-party-emulator.service
 chmod 644 /etc/systemd/system/optolink-party-emulator.service
