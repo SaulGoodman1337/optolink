@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Diagnostic experiment helper retained for reproducing native Party behavior.
+# Production Home Assistant control must use optolink-party-emulator instead.
+# This script can perform direct controller writes through the splitter and has
+# no general rollback contract; use it only for deliberate diagnostics.
+
 APP_DIR="/opt/optolink"
 ACTION="${1:-on}"
 
