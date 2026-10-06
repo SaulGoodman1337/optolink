@@ -164,6 +164,11 @@ function update_script() {
   chown root:root /usr/local/bin/optolink-clock-sync
   /usr/local/bin/optolink-clock-sync --self-test
 
+  cs_repo_fetch tools/optolink-service-programs.py /usr/local/bin/optolink-service-programs
+  chmod 755 /usr/local/bin/optolink-service-programs
+  chown root:root /usr/local/bin/optolink-service-programs
+  /usr/local/bin/optolink-service-programs --self-test
+
   cs_repo_fetch config/optolink-splitter/optolink-party-emulator.service /etc/systemd/system/optolink-party-emulator.service
   chmod 644 /etc/systemd/system/optolink-party-emulator.service
   chown root:root /etc/systemd/system/optolink-party-emulator.service
@@ -183,6 +188,10 @@ function update_script() {
   cs_repo_fetch config/optolink-splitter/optolink-clock-sync.timer /etc/systemd/system/optolink-clock-sync.timer
   chmod 644 /etc/systemd/system/optolink-clock-sync.timer
   chown root:root /etc/systemd/system/optolink-clock-sync.timer
+
+  cs_repo_fetch config/optolink-splitter/optolink-service-programs.service /etc/systemd/system/optolink-service-programs.service
+  chmod 644 /etc/systemd/system/optolink-service-programs.service
+  chown root:root /etc/systemd/system/optolink-service-programs.service
 
   systemctl daemon-reload
   systemctl enable optolink-party-emulator.service
@@ -262,5 +271,6 @@ echo -e "${INFO}${YW}Serial devices:${CL} ${GN}optolink-ports${CL}"
 echo -e "${INFO}${YW}VDensHO1 HA profile:${CL} ${GN}optolink-apply-vdensho1-ha-profile${CL}"
 echo -e "${INFO}${YW}Maintenance API:${CL} ${GN}systemctl status optolink-maintenance-api${CL}"
 echo -e "${INFO}${YW}Clock sync:${CL} ${GN}systemctl status optolink-clock-sync.timer${CL}"
+echo -e "${INFO}${YW}Service programs:${CL} ${GN}systemctl status optolink-service-programs${CL}"
 echo -e "${INFO}${YW}Maintenance CLI:${CL} ${GN}optolink-maintenance status${CL}"
 echo -e "${INFO}${YW}Inside the container, run '${GN}update${YW}' to update Optolink-Splitter.${CL}"
