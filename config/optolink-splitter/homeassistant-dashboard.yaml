@@ -1578,7 +1578,7 @@ views:
                 show_icon: false
           - type: tile
             entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
-            name: Warmwasser Soll
+            name: Warmwasser Tagestemperatur
             icon: mdi:water-thermometer
             show_entity_picture: false
             vertical: false
@@ -1591,7 +1591,7 @@ views:
               rows: 2
           - type: tile
             entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
-            name: Warmwasser Soll Nacht
+            name: Warmwasser Nachttemperatur
             icon: mdi:weather-night
             show_entity_picture: false
             vertical: false
@@ -3712,7 +3712,7 @@ views:
             badges:
               - type: entity
                 entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
-                name: Soll
+                name: Tag
                 show_state: true
                 show_icon: false
               - type: entity
