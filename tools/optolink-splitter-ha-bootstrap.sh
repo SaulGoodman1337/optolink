@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# One-time migration helper for an already installed splitter LXC.
+#
+# It does not modify controller data directly. It downloads private-run.sh from
+# the production branch, executes the normal in-container updater, and thereby
+# persists optolink-splitter-ha as the future /usr/bin/update channel.
+
 REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 REF="${COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha}"
 TARGET="tools/optolink-splitter-update.sh"
@@ -20,9 +26,13 @@ info "Switching Optolink deployment channel to $REPO @ $REF"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-curl -fsSL   "https://raw.githubusercontent.com/$REPO/$REF/tools/private-run.sh"   -o "$tmp"
+curl -fsSL \
+  "https://raw.githubusercontent.com/$REPO/$REF/tools/private-run.sh" \
+  -o "$tmp"
 
-COMMUNITY_SCRIPTS_REPO="$REPO" COMMUNITY_SCRIPTS_REF="$REF" bash "$tmp" "$TARGET"
+COMMUNITY_SCRIPTS_REPO="$REPO" \
+COMMUNITY_SCRIPTS_REF="$REF" \
+bash "$tmp" "$TARGET"
 
 printf '\n[ OK ] Production channel active: %s @ %s\n' "$REPO" "$REF" >&2
 printf '[ OK ] Future updates: run "update"\n' >&2
