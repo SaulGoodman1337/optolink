@@ -89,6 +89,8 @@ runuser -u optolink -- /usr/local/bin/optolink-clock-sync --force
 
 Automatisch wird alle 15 Minuten geprüft. Standardmäßig wird nur bei mehr als 30 Sekunden Drift oder inkonsistentem Wochentag geschrieben.
 
+Der Write auf `0x088E` wurde am **2026-10-06 auf der realen 20C2/WB2A verifiziert**. Ein Write kann dabei Status `255` zurückgeben und trotzdem wirksam sein; maßgeblich ist der direkt folgende Readback.
+
 Erwartete Rohstruktur von `0x088E`:
 
 ```text
