@@ -142,6 +142,21 @@ jobs:
           grep -q 'entity: sensor.vitodens_200_wb2a_systemzeit_anzeige' config/optolink-splitter/homeassistant-dashboard.yaml
           grep -q 'entity: sensor.vitodens_200_wb2a_systemzeit_sync_status' config/optolink-splitter/homeassistant-dashboard.yaml
 
+      - name: Verify maintainer documentation
+        run: |
+          test -f docs/README.md
+          test -f docs/architecture.md
+          test -f docs/operations.md
+          test -f docs/home-assistant.md
+          test -f docs/development.md
+          grep -Fq '[Dokumentationsindex](docs/README.md)' README.md
+          grep -Fq '[Architektur](docs/architecture.md)' README.md
+          grep -Fq '[Betrieb / Runbook](docs/operations.md)' README.md
+          grep -Fq '[Home Assistant](docs/home-assistant.md)' README.md
+          grep -Fq '[Entwicklungsleitfaden](docs/development.md)' README.md
+          grep -Fq '0x088E' docs/architecture.md
+          grep -Fq '0x6758' docs/home-assistant.md
+
       - name: Validate systemd service contracts
         run: |
           grep -Fxq 'User=optolink' config/optolink-splitter/optolink-splitter.service
