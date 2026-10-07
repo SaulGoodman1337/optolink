@@ -2085,11 +2085,6 @@ views:
                 name: Party
                 show_state: true
                 show_icon: false
-              - type: entity
-                entity: select.vitodens_200_wb2a_zirkulation_intervall
-                name: Zirkulation
-                show_state: true
-                show_icon: false
 
           - type: tile
             entity: switch.vitodens_200_wb2a_heizkreis_m1_partybetrieb
@@ -2129,12 +2124,6 @@ views:
               - condition: state
                 entity: switch.vitodens_200_wb2a_heizkreis_m1_partybetrieb
                 state: "on"
-
-          - type: custom:mushroom-select-card
-            entity: select.vitodens_200_wb2a_zirkulation_intervall
-            name: Zirkulation
-            icon: mdi:pump
-            fill_container: true
 
       # ================================================================
       # Right desktop column: room valves.
