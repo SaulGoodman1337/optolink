@@ -196,8 +196,12 @@ The DEV file can be loaded as a second Home Assistant dashboard. It currently
 contains the modernized **Heizung DEV** main page with grouped day/night
 controls, compact status groups and modern graph cards. The DEV main page uses
 **Layout Card** (`thomasloven/lovelace-layout-card`) for explicit responsive
-breakpoints instead of relying on the automatic Sections layout. Production
-remains unchanged until a tested DEV design is deliberately promoted.
+breakpoints instead of relying on the automatic Sections layout. The DEV
+thermostat section additionally uses **Slider Button Card**
+(`aurimasniekis/hass-slider-button-card`) so each radiator thermostat can
+change its Climate target temperature while still showing valve opening,
+current temperature and target temperature. Production remains unchanged until
+a tested DEV design is deliberately promoted.
 
 The schedule manager accepts only the 21 verified WB2A day blocks and validates complete 8-byte schedules before writing. Maintenance writes are similarly constrained by the shared guarded maintenance core and explicit confirmation semantics.
 
