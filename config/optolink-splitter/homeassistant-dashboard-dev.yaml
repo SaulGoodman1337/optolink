@@ -5,8 +5,9 @@
 # here do not affect the production dashboard until they are deliberately
 # promoted back after visual testing.
 #
-# Additional DEV-only HACS dependency:
+# Additional DEV-only HACS dependencies:
 # - Layout Card (thomasloven/lovelace-layout-card)
+# - Slider Button Card (aurimasniekis/hass-slider-button-card)
 #
 # Design goals of this DEV variant:
 # - visually group controls that belong together (especially day/night pairs);
@@ -718,6 +719,226 @@ button_card_templates:
 
 
 
+
+  thermostat_room_slider:
+    # Room thermostat presentation for the DEV dashboard.
+    #
+    # The dashboard repository does not know the user's climate entity IDs for
+    # every room. Instead of guessing them, resolve the climate entity from the
+    # Home Assistant entity registry: the valve-opening sensor and its climate
+    # entity normally belong to the same device. A normalized friendly-name
+    # lookup is only used as a fallback.
+    variables:
+      room_name: Raum
+      room_search: ""
+      valve_sensor: ""
+      current_sensor: ""
+      target_sensor: ""
+      climate_fallback: ""
+      climate_entity: |
+        [[[
+          const registry = hass.entities || {};
+          const source = variables.valve_sensor;
+          const deviceId = registry[source]?.device_id;
+
+          if (deviceId) {
+            const byDevice = Object.values(registry).find((entry) =>
+              entry?.entity_id?.startsWith('climate.') &&
+              entry.device_id === deviceId
+            );
+            if (byDevice?.entity_id) return byDevice.entity_id;
+          }
+
+          if (
+            variables.climate_fallback &&
+            states[variables.climate_fallback]
+          ) {
+            return variables.climate_fallback;
+          }
+
+          const normalize = (value) =>
+            String(value || '')
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, ' ')
+              .trim();
+
+          const needle = normalize(variables.room_search || variables.room_name);
+          if (needle) {
+            const byName = Object.keys(states).find((entityId) => {
+              if (!entityId.startsWith('climate.')) return false;
+              const friendly = normalize(
+                states[entityId]?.attributes?.friendly_name || entityId
+              );
+              return friendly.includes(needle);
+            });
+            if (byName) return byName;
+          }
+
+          // Deliberately non-existent and therefore non-dangerous. The parent
+          // card hides the slider and displays a diagnostic hint instead.
+          return 'climate.__optolink_missing__';
+        ]]]
+    entity: |
+      [[[
+        return variables.valve_sensor;
+      ]]]
+    name: |
+      [[[
+        return variables.room_name;
+      ]]]
+    icon: mdi:radiator
+    show_icon: true
+    show_name: true
+    show_state: false
+    show_label: false
+    show_ripple: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    styles:
+      card:
+        - border-radius: 16px
+        - border: 1px solid var(--divider-color)
+        - box-shadow: none
+        - padding: 10px 10px 8px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: '"i n" "stats stats" "slider slider" "missing missing"'
+        - grid-template-columns: 36px minmax(0, 1fr)
+        - grid-template-rows: min-content min-content min-content min-content
+        - column-gap: 8px
+        - row-gap: 7px
+      img_cell:
+        - width: 32px
+        - height: 32px
+        - justify-self: center
+        - align-self: center
+      icon:
+        - width: 25px
+        - color: |
+            [[[
+              const value = Number(states[variables.valve_sensor]?.state);
+              if (!Number.isFinite(value)) return 'var(--disabled-text-color)';
+              if (value >= 70) return 'var(--error-color)';
+              if (value >= 30) return 'var(--warning-color)';
+              if (value > 0) return 'var(--primary-color)';
+              return 'var(--state-inactive-color)';
+            ]]]
+      name:
+        - justify-self: start
+        - align-self: center
+        - color: var(--primary-text-color)
+        - font-size: 14px
+        - font-weight: 700
+      custom_fields:
+        stats:
+          - width: 100%
+        slider:
+          - width: 100%
+          - display: |
+              [[[
+                return variables.climate_entity === 'climate.__optolink_missing__'
+                  ? 'none'
+                  : 'block';
+              ]]]
+        missing:
+          - display: |
+              [[[
+                return variables.climate_entity === 'climate.__optolink_missing__'
+                  ? 'block'
+                  : 'none';
+              ]]]
+          - color: var(--warning-color)
+          - font-size: 11px
+          - padding: 5px 3px 1px
+    custom_fields:
+      stats: |
+        [[[
+          const invalid = new Set(['', 'unknown', 'unavailable', 'none', 'null']);
+          const usable = (value) => {
+            if (value === undefined || value === null) return false;
+            return !invalid.has(String(value).trim().toLowerCase());
+          };
+          const numberText = (value, unit) => {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '—';
+            const digits = Math.abs(n % 1) > 0.001 ? 1 : 0;
+            return n.toLocaleString(undefined, {
+              minimumFractionDigits: digits,
+              maximumFractionDigits: 1,
+            }) + unit;
+          };
+
+          const valveState = states[variables.valve_sensor]?.state;
+          const climate = states[variables.climate_entity];
+
+          let current = variables.current_sensor
+            ? states[variables.current_sensor]?.state
+            : undefined;
+          if (!usable(current)) {
+            current = climate?.attributes?.current_temperature;
+          }
+
+          let target = variables.target_sensor
+            ? states[variables.target_sensor]?.state
+            : undefined;
+          if (!usable(target)) {
+            target = climate?.attributes?.temperature;
+          }
+
+          const valve = usable(valveState) ? numberText(valveState, ' %') : '—';
+          const currentText = usable(current) ? numberText(current, ' °C') : '—';
+          const targetText = usable(target) ? numberText(target, ' °C') : '—';
+
+          return html`
+            <div style="
+              display:grid;
+              grid-template-columns:repeat(3,minmax(0,1fr));
+              gap:6px;
+              width:100%;
+              padding:2px 0 1px;
+            ">
+              <div style="text-align:center">
+                <div style="font-size:9px;color:var(--secondary-text-color)">Ventil</div>
+                <div style="font-size:12px;font-weight:700;color:var(--primary-text-color)">${valve}</div>
+              </div>
+              <div style="text-align:center;border-left:1px solid var(--divider-color)">
+                <div style="font-size:9px;color:var(--secondary-text-color)">Ist</div>
+                <div style="font-size:12px;font-weight:700;color:var(--primary-text-color)">${currentText}</div>
+              </div>
+              <div style="text-align:center;border-left:1px solid var(--divider-color)">
+                <div style="font-size:9px;color:var(--secondary-text-color)">Soll</div>
+                <div style="font-size:12px;font-weight:700;color:var(--primary-text-color)">${targetText}</div>
+              </div>
+            </div>
+          `;
+        ]]]
+      slider:
+        card:
+          type: custom:slider-button-card
+          entity: |
+            [[[
+              return variables.climate_entity;
+            ]]]
+          show_name: false
+          show_state: false
+          compact: true
+          slider:
+            direction: left-right
+            background: triangle
+            show_track: true
+            use_state_color: true
+          icon:
+            show: false
+          action_button:
+            show: false
+      missing: |
+        [[[
+          return 'Keine Climate-Entity am Thermostatgerät gefunden';
+        ]]]
 
   schedule_axis:
     section_mode: true
@@ -1944,100 +2165,77 @@ views:
               margin: 0
               padding: 0
               grid-gap: 8px
-              grid-template-columns: repeat(auto-fit, minmax(190px, 1fr))
+              grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))
             cards:
-              - type: custom:mushroom-template-card
-                entity: sensor.buro_ventil_offnungsgrad
-                primary: Büro
-                secondary: >-
-                  Ventil {{ states('sensor.buro_ventil_offnungsgrad') }} % · Soll {{ states('sensor.temperaturzielburo') }}
-                icon: mdi:radiator
-                icon_color: >-
-                  {% set v = states('sensor.buro_ventil_offnungsgrad') | float(0) %}
-                  {{ 'red' if v >= 70 else 'orange' if v >= 30 else 'blue' if v > 0 else 'grey' }}
-                multiline_secondary: true
-                tap_action:
-                  action: more-info
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Büro
+                  room_search: buro
+                  valve_sensor: sensor.buro_ventil_offnungsgrad
+                  target_sensor: sensor.temperaturzielburo
 
-              - type: custom:mushroom-template-card
-                entity: sensor.dario_ventil_offnungsgrad
-                primary: Dario
-                secondary: >-
-                  Ventil {{ states('sensor.dario_ventil_offnungsgrad') }} % · Ist {{ states('sensor.temperatur_wohnbereich_temperature') }} °C · Soll {{ states('sensor.temperaturzieldario') }}
-                icon: mdi:radiator
-                icon_color: >-
-                  {% set v = states('sensor.dario_ventil_offnungsgrad') | float(0) %}
-                  {{ 'red' if v >= 70 else 'orange' if v >= 30 else 'blue' if v > 0 else 'grey' }}
-                multiline_secondary: true
-                tap_action:
-                  action: more-info
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Dario
+                  room_search: dario
+                  valve_sensor: sensor.dario_ventil_offnungsgrad
+                  current_sensor: sensor.temperatur_wohnbereich_temperature
+                  target_sensor: sensor.temperaturzieldario
 
-              - type: custom:mushroom-template-card
-                entity: sensor.schlafzimmer_ventil_offnungsgrad
-                primary: Schlafzimmer
-                secondary: >-
-                  Ventil {{ states('sensor.schlafzimmer_ventil_offnungsgrad') }} % · Ist {{ states('sensor.temperatur_schlafzimmer_temperature') }} °C · Soll {{ states('sensor.temperaturzielschlafzimmer') }}
-                icon: mdi:radiator
-                icon_color: >-
-                  {% set v = states('sensor.schlafzimmer_ventil_offnungsgrad') | float(0) %}
-                  {{ 'red' if v >= 70 else 'orange' if v >= 30 else 'blue' if v > 0 else 'grey' }}
-                multiline_secondary: true
-                tap_action:
-                  action: more-info
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Schlafzimmer
+                  room_search: schlafzimmer
+                  valve_sensor: sensor.schlafzimmer_ventil_offnungsgrad
+                  current_sensor: sensor.temperatur_schlafzimmer_temperature
+                  target_sensor: sensor.temperaturzielschlafzimmer
 
-              - type: custom:mushroom-template-card
-                entity: sensor.gaste_wc_ventil_offnungsgrad
-                primary: Gäste-WC
-                secondary: >-
-                  Ventil {{ states('sensor.gaste_wc_ventil_offnungsgrad') }} % · Soll {{ states('sensor.temperaturzielgastewc') }}
-                icon: mdi:radiator
-                icon_color: >-
-                  {% set v = states('sensor.gaste_wc_ventil_offnungsgrad') | float(0) %}
-                  {{ 'red' if v >= 70 else 'orange' if v >= 30 else 'blue' if v > 0 else 'grey' }}
-                multiline_secondary: true
-                tap_action:
-                  action: more-info
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Gäste-WC
+                  room_search: gaste wc
+                  valve_sensor: sensor.gaste_wc_ventil_offnungsgrad
+                  target_sensor: sensor.temperaturzielgastewc
 
-              - type: custom:mushroom-template-card
-                entity: sensor.badezimmer_ventil_offnungsgrad
-                primary: Badezimmer
-                secondary: >-
-                  Ventil {{ states('sensor.badezimmer_ventil_offnungsgrad') }} % · Ist {{ state_attr('climate.badezimmer', 'current_temperature') | default('—', true) }} °C · Soll {{ state_attr('climate.badezimmer', 'temperature') | default('—', true) }} °C
-                icon: mdi:radiator
-                icon_color: >-
-                  {% set v = states('sensor.badezimmer_ventil_offnungsgrad') | float(0) %}
-                  {{ 'red' if v >= 70 else 'orange' if v >= 30 else 'blue' if v > 0 else 'grey' }}
-                multiline_secondary: true
-                tap_action:
-                  action: more-info
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Badezimmer
+                  room_search: badezimmer
+                  valve_sensor: sensor.badezimmer_ventil_offnungsgrad
+                  climate_fallback: climate.badezimmer
 
-              - type: custom:mushroom-template-card
-                entity: sensor.wohnzimmer_links_ventil_offnungsgrad
-                primary: Wohnzimmer
-                secondary: >-
-                  Links {{ states('sensor.wohnzimmer_links_ventil_offnungsgrad') }} % · Rechts {{ states('sensor.wohnzimmer_rechts_ventil_offnungsgrad') }} % · Ist {{ states('sensor.temperatursensorwohnzimmer_temperatur') }} °C
-                icon: mdi:radiator
-                icon_color: >-
-                  {% set l = states('sensor.wohnzimmer_links_ventil_offnungsgrad') | float(0) %}
-                  {% set r = states('sensor.wohnzimmer_rechts_ventil_offnungsgrad') | float(0) %}
-                  {% set v = [l, r] | max %}
-                  {{ 'red' if v >= 70 else 'orange' if v >= 30 else 'blue' if v > 0 else 'grey' }}
-                multiline_secondary: true
-                tap_action:
-                  action: more-info
+              # Wohnzimmer has two physical radiator devices. Keep the shared
+              # room temperature, but expose each target independently so a
+              # slider never silently changes only one of two valves.
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Wohnzimmer links
+                  room_search: wohnzimmer links
+                  valve_sensor: sensor.wohnzimmer_links_ventil_offnungsgrad
+                  current_sensor: sensor.temperatursensorwohnzimmer_temperatur
 
-              - type: custom:mushroom-template-card
-                entity: sensor.flur_ventil_offnungsgrad
-                primary: Flur
-                secondary: >-
-                  Ventil {{ states('sensor.flur_ventil_offnungsgrad') }} % · Ist {{ states('sensor.flurtemperatur_flur_temperature') }} °C · Soll {{ states('sensor.temperaturzielflur') }}
-                icon: mdi:radiator
-                icon_color: >-
-                  {% set v = states('sensor.flur_ventil_offnungsgrad') | float(0) %}
-                  {{ 'red' if v >= 70 else 'orange' if v >= 30 else 'blue' if v > 0 else 'grey' }}
-                multiline_secondary: true
-                tap_action:
-                  action: more-info
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Wohnzimmer rechts
+                  room_search: wohnzimmer rechts
+                  valve_sensor: sensor.wohnzimmer_rechts_ventil_offnungsgrad
+                  current_sensor: sensor.temperatursensorwohnzimmer_temperatur
+
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Flur
+                  room_search: flur
+                  valve_sensor: sensor.flur_ventil_offnungsgrad
+                  current_sensor: sensor.flurtemperatur_flur_temperature
+                  target_sensor: sensor.temperaturzielflur
 
           - type: tile
             entity: script.climateboost
