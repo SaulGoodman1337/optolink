@@ -270,6 +270,34 @@ HACS -> Frontend -> Layout Card
 thomasloven/lovelace-layout-card
 ```
 
+### Aktive Störungsbox auf der DEV-Hauptseite
+
+`Heizung DEV` zeigt oberhalb des normalen Seitenkopfs eine rote
+Störungsbox, **nur wenn ein aktuelles Live-Fehlersignal aktiv ist**. Als Trigger
+dienen der aktuelle System-Alarmcode, GFA-Status/Verriegelung, CFDM-Fehler bzw.
+harte Sperre und die beiden KM-Pumpenfehler.
+
+Die gespeicherte System- und GFA-Fehlerhistorie ist ausdrücklich **kein**
+Trigger. Eine bereits behobene historische Störung darf die Hauptseite daher
+nicht dauerhaft alarmieren.
+
+Wenn ein regulärer WB2A-Systemcode vorhanden ist, übersetzt die Box ihn in
+Klartext, zum Beispiel `F9` in einen Gebläsefehler beim Brennerstart. Beim
+Antippen öffnet Browser Mod eine Störungsbehebung mit:
+
+- aktuellem Code und Klartext;
+- den relevanten Live-Diagnosesignalen;
+- einer codespezifischen, sicher formulierten Handlungsempfehlung;
+- Hinweis, welche Prüfungen dem Fachbetrieb vorbehalten sind;
+- Sicherheitsblock für Gas-/Abgasgeruch;
+- Quellennachweis auf die WB2A-Serviceanleitung 5681 573;
+- den zugrunde liegenden Optolink-Datenpunkten
+  (`0xA132`, `0x5738`, `0x55D3`, `0x0A33`, `0x0A35`,
+  `0xA395`).
+
+Nicht dokumentierte interne GFA/CFDM/KM-Zustände werden bewusst generisch
+bezeichnet; das Dashboard erfindet dafür keine Fehlerursache.
+
 ### Sichtbarkeit der DEV-Views
 
 Die erste Ansicht **Heizung DEV** besitzt absichtlich keinen `visible:`-Block
