@@ -259,7 +259,7 @@ Breakpoints der DEV-Hauptseite:
 
 - **> 1200 px:** zwei Spalten, je maximal ca. 900 px, zentriert auf sehr breiten Displays;
 - **701–1200 px:** eine Spalte;
-- **≤ 700 px:** Mobile-Abstände und eine Spalte.
+- **≤ 700 px:** Mobile-Abstände und eine Spalte. Die Raum- und Warmwasser-Sollwertkarten wechseln zusätzlich auf Mushrooms `layout: vertical`: Name und Temperatur stehen oberhalb des Sliders, der Slider nutzt darunter die volle Kartenbreite.
 
 Das ist ausschließlich eine Darstellungsänderung. Die zugrunde liegenden
 Entities und Controlleradressen bleiben getrennt und unverändert.
