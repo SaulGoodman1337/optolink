@@ -249,7 +249,6 @@ Die aktuelle DEV-Version modernisiert insbesondere:
 - die Hauptseite als **Heizung DEV**;
 - die Anlagenübersicht mit kompakten Statusgruppen;
 - die Thermostatventile als übersichtliche Raumgruppen;
-- den Verlauf mit `background-graph-entities`;
 - Tag-/Nacht-Sollwerte als gemeinsame visuelle Gruppe aus Überschrift und zwei responsiven Mushroom-Sliderkarten;
 - die Seite Nachtabsenkung mit derselben visuellen Gruppierung.
 
@@ -299,6 +298,8 @@ Slider; die gemeinsame Raum-Isttemperatur bleibt bei beiden sichtbar.
 
 Der bestehende Boost-Button `script.climateboost` / **Alle Ventile öffnen**
 bleibt unverändert erhalten.
+
+Die zuvor auf der Hauptseite duplizierte Sektion **Verlauf** wurde aus `Heizung DEV` entfernt. Zeitreihen und historische Diagnosewerte bleiben im separaten Diagnose-Tab gebündelt.
 
 Für ein separates YAML-Dashboard kann die Datei beispielsweise nach
 `/config/dashboards/optolink-dev.yaml` kopiert und als eigener
