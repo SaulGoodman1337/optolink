@@ -3076,7 +3076,7 @@ views:
             icon: mdi:tune
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_heizkennlinie_neigung_d3_einstellung
-            name: Neigung D3
+            name: Heizkennlinie – Neigung (D3)
             icon: mdi:chart-bell-curve
             show_entity_picture: false
             vertical: false
@@ -3096,7 +3096,7 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Neigung D3
+                  title: Heizkennlinie – Neigung (D3)
                   adaptive: true
                   content:
                     type: markdown
@@ -3111,7 +3111,11 @@ views:
                       
                       Ein zu hoher Wert führt vor allem bei kaltem Wetter zu unnötig hohen Vorlauftemperaturen. Ein zu niedriger Wert kann dazu führen, dass das Gebäude bei niedrigen Außentemperaturen nicht ausreichend warm wird.
                       
-                      Datenpunkt: `0x27D3`
+                      **Codieradresse:** `D3`
+
+                      **Datenpunkt:** `0x27D3`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
             hold_action:
               action: none
             grid_options:
@@ -3119,7 +3123,7 @@ views:
               rows: 2
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_heizkennlinie_niveau_d4_einstellung
-            name: Niveau D4
+            name: Heizkennlinie – Niveau (D4)
             icon: mdi:chart-areaspline-variant
             show_entity_picture: false
             vertical: false
@@ -3139,7 +3143,7 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Niveau D4
+                  title: Heizkennlinie – Niveau (D4)
                   adaptive: true
                   content:
                     type: markdown
@@ -3154,7 +3158,11 @@ views:
                       
                       D3 verändert primär die Steilheit; D4 verschiebt primär das Temperaturniveau.
                       
-                      Datenpunkt: `0x27D4`
+                      **Codieradresse:** `D4`
+
+                      **Datenpunkt:** `0x27D4`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
             hold_action:
               action: none
             grid_options:
@@ -3162,7 +3170,7 @@ views:
               rows: 2
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_vorlauf_min_c5_einstellung
-            name: Vorlauf Minimum C5
+            name: Vorlauf – Mindesttemperatur (C5)
             icon: mdi:thermometer-chevron-down
             show_entity_picture: false
             vertical: false
@@ -3182,7 +3190,7 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Vorlauf Minimum C5
+                  title: Vorlauf – Mindesttemperatur (C5)
                   adaptive: true
                   content:
                     type: markdown
@@ -3199,7 +3207,11 @@ views:
                       
                       Die tatsächlich wirksame Grenze kann zusätzlich durch den Kesselcodierstecker begrenzt sein.
                       
-                      Datenpunkt: `0x27C5`
+                      **Codieradresse:** `C5`
+
+                      **Datenpunkt:** `0x27C5`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
             hold_action:
               action: none
             grid_options:
@@ -3207,7 +3219,7 @@ views:
               rows: 2
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_vorlauf_max_c6_einstellung
-            name: Vorlauf Maximum C6
+            name: Vorlauf – Maximaltemperatur (C6)
             icon: mdi:thermometer-chevron-up
             show_entity_picture: false
             vertical: false
@@ -3227,7 +3239,7 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Vorlauf Maximum C6
+                  title: Vorlauf – Maximaltemperatur (C6)
                   adaptive: true
                   content:
                     type: markdown
@@ -3244,7 +3256,11 @@ views:
                       
                       Die tatsächlich wirksame Grenze kann zusätzlich durch den Kesselcodierstecker begrenzt sein.
                       
-                      Datenpunkt: `0x27C6`
+                      **Codieradresse:** `C6`
+
+                      **Datenpunkt:** `0x27C6`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
             hold_action:
               action: none
             grid_options:
@@ -3252,7 +3268,7 @@ views:
               rows: 2
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_frostgrenze_a3_einstellung
-            name: Frostgrenze A3
+            name: Frostschutz – Pumpenschaltgrenze (A3)
             icon: mdi:snowflake-alert
             show_entity_picture: false
             vertical: false
@@ -3272,7 +3288,7 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Frostgrenze A3
+                  title: Frostschutz – Pumpenschaltgrenze (A3)
                   adaptive: true
                   content:
                     type: markdown
@@ -3289,7 +3305,11 @@ views:
                       
                       **Hinweis:** A3 ist eine Schutzfunktion. Sehr niedrige Einstellungen nur verwenden, wenn die Leitungsführung und Frostsicherheit der Anlage bekannt sind.
                       
-                      Datenpunkt: `0x27A3`
+                      **Codieradresse:** `A3`
+
+                      **Datenpunkt:** `0x27A3`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
             hold_action:
               action: none
             grid_options:
@@ -3297,7 +3317,7 @@ views:
               rows: 2
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_sommerspar_schaltschwelle_a5_einstellung
-            name: Heizkreispumpenlogik A5
+            name: Heizkreispumpe – Abschaltgrenze (A5)
             icon: mdi:radiator-disabled
             show_entity_picture: false
             vertical: false
@@ -3317,12 +3337,12 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Heizkreispumpenlogik A5
+                  title: Heizkreispumpe – Abschaltgrenze (A5)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      ## Was macht A5?
+                      **Funktion:** Heizkreispumpenlogik / Sparschaltung in Abhängigkeit von Außentemperatur und wirksamem Raum-Sollwert.
                       
                       **Merksatz:** A5 ist kein Temperatur-Sollwert, sondern ein **Offset-Index für die Pumpen-Abschaltgrenze**. Der Wert 6 ist der rechnerische Nullpunkt; kleinere/größere A5-Werte verschieben die Grenze nach oben/unten.
                       
@@ -3375,7 +3395,11 @@ views:
                       
                       Frostschutz über A3 kann die Sparabschaltung übersteuern.
                       
-                      Datenpunkt: `0x27A5`
+                      **Codieradresse:** `A5`
+
+                      **Datenpunkt:** `0x27A5`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
             hold_action:
               action: none
             grid_options:
@@ -3383,7 +3407,7 @@ views:
               rows: 2
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_sommersparabschaltung_a6_einstellung
-            name: Sommersparabschaltung A6
+            name: Erweiterte Sparschaltung (A6)
             icon: mdi:weather-sunny-off
             show_entity_picture: false
             vertical: false
@@ -3403,12 +3427,12 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Sommersparabschaltung A6
+                  title: Erweiterte Sparschaltung (A6)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      ## Was macht A6?
+                      **Funktion:** Erweiterte Sparschaltung mit fester Heizgrenze auf Basis der gedämpften Außentemperatur.
                       
                       **Merksatz:** A6 ist die feste Heizgrenze für den gesamten Heizbetrieb; A5 entscheidet dagegen nur über die Heizkreispumpe anhand einer vom Raum-Soll abhängigen Grenze.
                       
@@ -3436,7 +3460,11 @@ views:
                       
                       Frostschutz über A3 kann die Sparabschaltung übersteuern.
                       
-                      Datenpunkt: `0x27A6`
+                      **Codieradresse:** `A6`
+
+                      **Datenpunkt:** `0x27A6`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
             hold_action:
               action: none
             grid_options:
@@ -3476,27 +3504,27 @@ views:
             badges:
               - type: entity
                 entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_ausgang
-                name: HK Ausgang
+                name: Heizkreispumpe
                 show_state: true
                 show_icon: true
               - type: entity
                 entity: sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl
-                name: HK
+                name: HK-Drehzahl
                 show_state: true
                 show_icon: false
               - type: entity
                 entity: binary_sensor.vitodens_200_wb2a_interne_pumpe_status
-                name: Intern
+                name: Interne Pumpe
                 show_state: true
                 show_icon: true
               - type: entity
                 entity: sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
-                name: Intern
+                name: Int. Drehzahl
                 show_state: true
                 show_icon: false
               - type: entity
                 entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
-                name: Ventil
+                name: Umschaltventil
                 show_state: true
                 show_icon: false
 
@@ -3597,7 +3625,7 @@ views:
           - type: custom:button-card
             template: diag_active
             entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_logisch
-            name: Anforderung
+            name: Heizanforderung
             icon: mdi:source-branch
             grid_options:
               columns: 4
@@ -3605,7 +3633,7 @@ views:
           - type: custom:button-card
             template: diag_active
             entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_ausgang
-            name: A1 Ausgang
+            name: Heizkreispumpe Ausgang
             icon: mdi:electric-switch
             grid_options:
               columns: 4
@@ -5673,7 +5701,7 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: WB2A Serviceprogramme 2F
+                  title: Serviceprogramme Befüllen / Entlüften (2F)
                   adaptive: true
                   content:
                     type: markdown
@@ -5727,6 +5755,12 @@ views:
                       **Wichtig:** Beide Schalter repräsentieren dasselbe
                       3-Zustands-Register. Es kann immer nur *ein* Programm
                       aktiv sein.
+
+                      **Codieradresse:** `2F`
+
+                      **Datenpunkt:** `0x572F`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Ausgabe 10/2006.
 
                       [Serviceanleitung beim Quellenanbieter öffnen](https://www.intec-heizung.de/media/pdf/c2/0c/64/Viessmann-Vitodens-200-WB2A-Serviceanleitung.pdf)
             grid_options:
