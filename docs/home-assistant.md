@@ -299,6 +299,17 @@ Slider; die gemeinsame Raum-Isttemperatur bleibt bei beiden sichtbar.
 Der bestehende Boost-Button `script.climateboost` / **Alle Ventile öffnen**
 bleibt unverändert erhalten.
 
+Für Homematic/HmIP-Thermostate berücksichtigt die DEV-Karte außerdem den
+Sonderwert **30,5 °C = ON**. Dieser Wert wird nicht als normale Raumtemperatur
+dargestellt, sondern als eigener Button **ON · Voll auf** unter dem
+Solltemperatur-Slider. Die Statuszeile zeigt bei einem Zielwert >= 30,5 °C
+entsprechend **ON** statt `30,5 °C`.
+
+Der ON-Button ruft gezielt `climate.set_temperature` mit `30.5` für genau
+die zur Raumkarte aufgelöste Climate-Entity auf. Der HVAC-Modus wird dabei
+nicht verändert. Ein späterer normaler Sliderwert setzt wieder einen regulären
+Temperatur-Sollwert.
+
 Die zuvor auf der Hauptseite duplizierte Sektion **Verlauf** wurde aus `Heizung DEV` entfernt. Zeitreihen und historische Diagnosewerte bleiben im separaten Diagnose-Tab gebündelt.
 
 Für ein separates YAML-Dashboard kann die Datei beispielsweise nach
