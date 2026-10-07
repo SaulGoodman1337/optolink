@@ -723,6 +723,10 @@ button_card_templates:
   thermostat_room_slider:
     # Room thermostat presentation for the DEV dashboard.
     #
+    # Homematic/HmIP uses 30.5 C as the special ON setpoint (full-open
+    # behavior). Keep that separate from the normal temperature slider and
+    # expose it as an explicit action so the semantics are visible to users.
+    #
     # The dashboard repository does not know the user's climate entity IDs for
     # every room. Instead of guessing them, resolve the climate entity from the
     # Home Assistant entity registry: the valve-opening sensor and its climate
@@ -806,9 +810,9 @@ button_card_templates:
         - padding: 10px 10px 8px
         - background: var(--ha-card-background, var(--card-background-color))
       grid:
-        - grid-template-areas: '"i n" "stats stats" "slider slider" "missing missing"'
+        - grid-template-areas: '"i n" "stats stats" "slider slider" "fullopen fullopen" "missing missing"'
         - grid-template-columns: 36px minmax(0, 1fr)
-        - grid-template-rows: min-content min-content min-content min-content
+        - grid-template-rows: min-content min-content min-content min-content min-content
         - column-gap: 8px
         - row-gap: 7px
       img_cell:
@@ -837,6 +841,14 @@ button_card_templates:
         stats:
           - width: 100%
         slider:
+          - width: 100%
+          - display: |
+              [[[
+                return variables.climate_entity === 'climate.__optolink_missing__'
+                  ? 'none'
+                  : 'block';
+              ]]]
+        fullopen:
           - width: 100%
           - display: |
               [[[
@@ -891,7 +903,14 @@ button_card_templates:
 
           const valve = usable(valveState) ? numberText(valveState, ' %') : '—';
           const currentText = usable(current) ? numberText(current, ' °C') : '—';
-          const targetText = usable(target) ? numberText(target, ' °C') : '—';
+          const targetNorm = String(target ?? '').trim().toLowerCase();
+          const targetNum = Number(target);
+          const targetText =
+            targetNorm === 'on' || (Number.isFinite(targetNum) && targetNum >= 30.5)
+              ? 'ON'
+              : usable(target)
+                ? numberText(target, ' °C')
+                : '—';
 
           return html`
             <div style="
@@ -935,6 +954,74 @@ button_card_templates:
             show: false
           action_button:
             show: false
+      fullopen:
+        card:
+          type: custom:button-card
+          entity: |
+            [[[
+              return variables.climate_entity;
+            ]]]
+          icon: mdi:valve-open
+          name: |
+            [[[
+              const climate = states[variables.climate_entity];
+              const target = Number(climate?.attributes?.temperature);
+              return Number.isFinite(target) && target >= 30.5
+                ? 'ON · Voll geöffnet'
+                : 'ON · Voll auf (30,5 °C)';
+            ]]]
+          show_state: false
+          show_label: false
+          tap_action:
+            action: call-service
+            service: climate.set_temperature
+            service_data:
+              entity_id: |
+                [[[
+                  return variables.climate_entity;
+                ]]]
+              temperature: 30.5
+          hold_action:
+            action: more-info
+          styles:
+            card:
+              - border-radius: 12px
+              - border: 1px solid var(--divider-color)
+              - box-shadow: none
+              - min-height: 34px
+              - padding: 6px 10px
+              - background: |
+                  [[[
+                    const target = Number(
+                      states[variables.climate_entity]?.attributes?.temperature
+                    );
+                    return Number.isFinite(target) && target >= 30.5
+                      ? 'color-mix(in srgb, var(--success-color) 16%, var(--ha-card-background, var(--card-background-color)))'
+                      : 'color-mix(in srgb, var(--primary-color) 5%, var(--ha-card-background, var(--card-background-color)))';
+                  ]]]
+            grid:
+              - grid-template-areas: '"i n"'
+              - grid-template-columns: 24px minmax(0, 1fr)
+              - column-gap: 8px
+            img_cell:
+              - width: 24px
+              - height: 24px
+            icon:
+              - width: 20px
+              - color: |
+                  [[[
+                    const target = Number(
+                      states[variables.climate_entity]?.attributes?.temperature
+                    );
+                    return Number.isFinite(target) && target >= 30.5
+                      ? 'var(--success-color)'
+                      : 'var(--primary-color)';
+                  ]]]
+            name:
+              - justify-self: start
+              - font-size: 12px
+              - font-weight: 700
+              - color: var(--primary-text-color)
       missing: |
         [[[
           return 'Keine Climate-Entity am Thermostatgerät gefunden';
