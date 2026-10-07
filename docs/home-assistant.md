@@ -263,14 +263,11 @@ Breakpoints der DEV-Hauptseite:
 Das ist ausschließlich eine Darstellungsänderung. Die zugrunde liegenden
 Entities und Controlleradressen bleiben getrennt und unverändert.
 
-Zusätzliche DEV-Abhängigkeiten:
+Zusätzliche DEV-Abhängigkeit:
 
 ```text
 HACS -> Frontend -> Layout Card
 thomasloven/lovelace-layout-card
-
-HACS -> Frontend -> Slider Button Card
-aurimasniekis/hass-slider-button-card
 ```
 
 ### Thermostatventile im DEV-Dashboard
@@ -281,8 +278,10 @@ Jede Thermostatkarte behält die drei Betriebswerte sichtbar:
 Ventilöffnung | Isttemperatur | Solltemperatur
 ```
 
-Darunter liegt ein echter Solltemperatur-Slider. Für eine `climate.*`-Entity
-verwendet **Slider Button Card** den Slider direkt als Zieltemperaturregelung.
+Darunter liegt ein echter Solltemperatur-Slider über Home Assistants native
+Tile-Card-Funktion `target-temperature`. Diese verwendet den nativen
+`ha-control-slider` und vermeidet damit den Mobilkonflikt, bei dem eine
+horizontale Sliderbewegung gleichzeitig zum nächsten Dashboard-Tab wischt.
 
 Die installationsspezifischen Climate-Entity-IDs werden nicht im Repository
 geraten. Die Karte löst sie zur Laufzeit über die gemeinsame
