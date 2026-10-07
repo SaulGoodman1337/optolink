@@ -82,8 +82,15 @@ jobs:
           grep -q 'grid-template-columns: minmax(520px, 900px) minmax(520px, 900px)' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'type: custom:layout-card' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'type: custom:mushroom-number-card' config/optolink-splitter/homeassistant-dashboard-dev.yaml
-          grep -q 'primary: Büro' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'display_mode: slider' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q '^  thermostat_room_slider:' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'type: custom:slider-button-card' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'hass.entities || {}' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'entry.device_id === deviceId' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'room_name: Büro' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'room_name: Wohnzimmer links' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'room_name: Wohnzimmer rechts' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'entity: script.climateboost' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q '"(min-width: 701px)"' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           test "$(grep -c 'layout: vertical' config/optolink-splitter/homeassistant-dashboard-dev.yaml)" -ge 4
           grep -q 'Mobile: name/state above the slider' config/optolink-splitter/homeassistant-dashboard-dev.yaml
