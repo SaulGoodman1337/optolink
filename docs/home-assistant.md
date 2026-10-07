@@ -247,7 +247,7 @@ Home-Assistant-Dashboard geladen werden, ohne
 Die aktuelle DEV-Version modernisiert insbesondere:
 
 - die Hauptseite als **Heizung DEV**;
-- die Anlagenübersicht mit Mushroom-Chips und kompakten Statusgruppen;
+- die Anlagenübersicht mit kompakten Statusgruppen;
 - die Thermostatventile als übersichtliche Raumgruppen;
 - den Verlauf mit `background-graph-entities`;
 - Tag-/Nacht-Sollwerte als gemeinsame visuelle Gruppe aus Überschrift und zwei responsiven Mushroom-Sliderkarten;
@@ -264,12 +264,41 @@ Breakpoints der DEV-Hauptseite:
 Das ist ausschließlich eine Darstellungsänderung. Die zugrunde liegenden
 Entities und Controlleradressen bleiben getrennt und unverändert.
 
-Zusätzliche DEV-Abhängigkeit:
+Zusätzliche DEV-Abhängigkeiten:
 
 ```text
 HACS -> Frontend -> Layout Card
 thomasloven/lovelace-layout-card
+
+HACS -> Frontend -> Slider Button Card
+aurimasniekis/hass-slider-button-card
 ```
+
+### Thermostatventile im DEV-Dashboard
+
+Jede Thermostatkarte behält die drei Betriebswerte sichtbar:
+
+```text
+Ventilöffnung | Isttemperatur | Solltemperatur
+```
+
+Darunter liegt ein echter Solltemperatur-Slider. Für eine `climate.*`-Entity
+verwendet **Slider Button Card** den Slider direkt als Zieltemperaturregelung.
+
+Die installationsspezifischen Climate-Entity-IDs werden nicht im Repository
+geraten. Die Karte löst sie zur Laufzeit über die gemeinsame
+`device_id` des Ventilöffnungs-Sensors und der Climate-Entity auf. Falls
+diese Zuordnung nicht möglich ist, wird zusätzlich anhand des normalisierten
+Raumnamens gesucht. Wenn weiterhin keine Climate-Entity gefunden wird, bleibt
+die Statuskarte sichtbar, der Slider wird jedoch ausgeblendet und ein
+Diagnosehinweis angezeigt.
+
+Beim Wohnzimmer existieren zwei Ventilgeräte. Deshalb zeigt die DEV-Version
+**Wohnzimmer links** und **Wohnzimmer rechts** jeweils mit eigenem Sollwert-
+Slider; die gemeinsame Raum-Isttemperatur bleibt bei beiden sichtbar.
+
+Der bestehende Boost-Button `script.climateboost` / **Alle Ventile öffnen**
+bleibt unverändert erhalten.
 
 Für ein separates YAML-Dashboard kann die Datei beispielsweise nach
 `/config/dashboards/optolink-dev.yaml` kopiert und als eigener
