@@ -2339,6 +2339,8 @@ views:
   - title: Heizkurve
     path: heizkurve
     icon: mdi:chart-bell-curve
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
     type: sections
     max_columns: 4
     sections:
@@ -3491,6 +3493,8 @@ views:
   - title: Pumpen
     path: pumpen
     icon: mdi:pump
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
     type: sections
     max_columns: 4
     sections:
@@ -4354,6 +4358,8 @@ views:
   - title: Nachtabsenkung
     path: nachtabsenkung
     icon: mdi:weather-night
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
     type: sections
     max_columns: 4
     sections:
@@ -4668,6 +4674,8 @@ views:
   - title: Diagnose
     path: diagnose
     icon: mdi:stethoscope
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
     type: sections
     max_columns: 2
     sections:
@@ -6357,6 +6365,8 @@ views:
   - title: Wartung
     path: wartung
     icon: mdi:wrench-clock
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
     type: sections
     max_columns: 2
     sections:
@@ -6608,6 +6618,8 @@ views:
   - title: Zeitprogramme
     path: zeitprogramme
     icon: mdi:calendar-clock
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
     type: sections
     max_columns: 2
     sections:
@@ -7193,6 +7205,8 @@ views:
   - title: Graphen
     path: graphen
     icon: mdi:chart-line
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
     type: sections
     max_columns: 4
     sections:
