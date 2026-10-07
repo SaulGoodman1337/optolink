@@ -829,16 +829,30 @@ poll_list = {
                     ],
                 },
                 {
+                    # WB2A coding address A9 is a dimensionless pump-idle
+                    # parameter (0 = disabled, 1..15 = increasing idle-time
+                    # effect). The service manual does not define A9:n as
+                    # n minutes. Keep the HA number unitless so the dashboard
+                    # does not present a false time unit.
                     "min": 0,
                     "max": 15,
                     "step": 1,
-                    "unit_of_measurement": "min",
                     "nopoll": [
                         {
                             "name": "heizkreis_m1_pumpe_reduziert_a9_einstellung",
                             "state_topic": "{mqtt_base}/heizkreis_m1_pumpe_reduziert_a9",
                             "command_topic": "{mqtt_base}/heizkreis_m1_pumpe_reduziert_a9/set",
                         },
+                    ],
+                },
+                {
+                    # Coding address 62 is explicitly minutes in the WB2A
+                    # service manual: 0 = no after-run, 1..15 = minutes.
+                    "min": 0,
+                    "max": 15,
+                    "step": 1,
+                    "unit_of_measurement": "min",
+                    "nopoll": [
                         {
                             "name": "warmwasser_pumpennachlauf_62_einstellung",
                             "state_topic": "{mqtt_base}/warmwasser_pumpennachlauf_62",
