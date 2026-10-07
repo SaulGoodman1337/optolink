@@ -103,6 +103,50 @@ jobs:
           grep -q 'Mobile: put the complete label/state block above a full-width' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           ! grep -q 'title: Heizung DEV' config/optolink-splitter/homeassistant-dashboard.yaml
 
+      - name: Verify DEV view visibility
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          path = Path("config/optolink-splitter/homeassistant-dashboard-dev.yaml")
+          with path.open(encoding="utf-8") as handle:
+              dashboard = yaml.safe_load(handle)
+
+          views = dashboard.get("views", [])
+          if not views:
+              raise SystemExit("DEV dashboard has no views")
+
+          public = views[0]
+          if public.get("title") != "Heizung DEV":
+              raise SystemExit(
+                  f"first DEV view must be Heizung DEV, got {public.get('title')!r}"
+              )
+          if "visible" in public:
+              raise SystemExit("Heizung DEV must remain visible to all users")
+
+          allowed_user = "59b20b82894748e3af2445e75255dc07"
+          expected_visibility = [{"user": allowed_user}]
+
+          errors = []
+          for index, view in enumerate(views[1:], start=2):
+              if view.get("visible") != expected_visibility:
+                  errors.append(
+                      f"view #{index} {view.get('title')!r}: "
+                      f"expected visible={expected_visibility!r}, "
+                      f"got {view.get('visible')!r}"
+                  )
+
+          if errors:
+              raise SystemExit(
+                  "DEV secondary-view visibility mismatch:\n" + "\n".join(errors)
+              )
+
+          print(
+              f"DEV view visibility OK: 1 public + {len(views) - 1} Daniel-only views"
+          )
+          PY
+
       - name: Verify dashboard info documentation
         run: |
           python3 - <<'PY'
