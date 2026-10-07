@@ -103,6 +103,88 @@ jobs:
           grep -q 'Mobile: put the complete label/state block above a full-width' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           ! grep -q 'title: Heizung DEV' config/optolink-splitter/homeassistant-dashboard.yaml
 
+      - name: Verify dashboard info documentation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("config/optolink-splitter/homeassistant-dashboard-dev.yaml")
+          lines = path.read_text(encoding="utf-8").splitlines()
+
+          boxes = []
+          for index, line in enumerate(lines):
+              if line.strip() != "type: markdown":
+                  continue
+
+              content_index = None
+              for cursor in range(index + 1, min(len(lines), index + 8)):
+                  if lines[cursor].strip() == "content: |":
+                      content_index = cursor
+                      break
+              if content_index is None:
+                  continue
+
+              content_indent = len(lines[content_index]) - len(lines[content_index].lstrip())
+              body = []
+              for cursor in range(content_index + 1, len(lines)):
+                  raw = lines[cursor]
+                  if not raw.strip():
+                      body.append(raw)
+                      continue
+                  indent = len(raw) - len(raw.lstrip())
+                  if indent <= content_indent:
+                      break
+                  body.append(raw)
+
+              text = "\n".join(body)
+              boxes.append((index + 1, text))
+
+          expected = 18
+          if len(boxes) != expected:
+              raise SystemExit(f"expected {expected} technical markdown info boxes, found {len(boxes)}")
+
+          required = ("**Funktion:**", "**Codieradresse", "**Datenpunkt", "**Quelle:")
+          errors = []
+          for line_no, body in boxes:
+              missing = [token for token in required if token not in body]
+              if missing:
+                  errors.append(f"line {line_no}: missing {', '.join(missing)}")
+
+          if errors:
+              raise SystemExit("Incomplete dashboard info boxes:\n" + "\n".join(errors))
+
+          print(f"dashboard info boxes OK: {len(boxes)}")
+          PY
+
+          grep -q 'name: Info E6' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Info E7' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Info E8' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Info E9' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Info A9' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Info 31' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Info 60' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Info 62' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+
+      - name: Verify A9 and 62 unit semantics
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          text = Path("config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py").read_text(encoding="utf-8")
+
+          a9_pos = text.index('"name": "heizkreis_m1_pumpe_reduziert_a9_einstellung"')
+          a9_window = text[max(0, a9_pos - 450):a9_pos + 300]
+          if '"unit_of_measurement": "min"' in a9_window:
+              raise SystemExit("A9 must remain unitless; it is a coding value, not direct minutes")
+
+          ww_pos = text.index('"name": "warmwasser_pumpennachlauf_62_einstellung"')
+          ww_window = text[max(0, ww_pos - 450):ww_pos + 300]
+          if '"unit_of_measurement": "min"' not in ww_window:
+              raise SystemExit("coding address 62 must retain minute unit")
+
+          print("A9/62 unit semantics OK")
+          PY
+
       - name: Verify production dependencies exist
         run: |
           python3 - <<'PY'
