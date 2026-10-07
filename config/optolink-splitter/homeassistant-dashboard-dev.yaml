@@ -1704,72 +1704,104 @@ views:
                 show_state: true
                 show_icon: false
 
-          - type: custom:layout-card
-            layout_type: custom:grid-layout
-            layout:
-              margin: 0
-              padding: 0
-              grid-gap: 8px
-              grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))
-            cards:
-              - type: custom:mushroom-number-card
-                entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
-                name: Tag
-                icon: mdi:white-balance-sunny
-                icon_color: amber
-                display_mode: slider
-                layout: horizontal
-                fill_container: true
-                primary_info: name
-                secondary_info: state
-                card_mod:
-                  style: |
-                    ha-card {
-                      border-radius: 16px;
-                      border: 1px solid color-mix(in srgb, #ffb300 40%, var(--divider-color));
-                      background: color-mix(in srgb, #ffb300 6%, var(--ha-card-background, var(--card-background-color)));
-                    }
-                    @media (max-width: 700px) {
+          # Desktop/tablet: compact side-by-side controls.
+          - type: conditional
+            conditions:
+              - condition: screen
+                media_query: "(min-width: 701px)"
+            card:
+              type: custom:layout-card
+              layout_type: custom:grid-layout
+              layout:
+                margin: 0
+                padding: 0
+                grid-gap: 8px
+                grid-template-columns: repeat(2, minmax(0, 1fr))
+              cards:
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
+                  name: Tag
+                  icon: mdi:white-balance-sunny
+                  icon_color: amber
+                  display_mode: slider
+                  layout: horizontal
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
                       ha-card {
-                        --mush-card-primary-font-size: 12px;
-                        --mush-card-secondary-font-size: 10px;
-                        --mush-card-primary-line-height: 15px;
-                        --mush-card-secondary-line-height: 13px;
-                        --mush-icon-size: 30px;
-                        --mush-control-height: 34px;
-                        --mush-control-spacing: 6px;
-                        --mush-spacing: 8px;
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #ffb300 40%, var(--divider-color));
+                        background: color-mix(in srgb, #ffb300 6%, var(--ha-card-background, var(--card-background-color)));
                       }
-                    }
-              - type: custom:mushroom-number-card
-                entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
-                name: Nacht
-                icon: mdi:weather-night
-                icon_color: indigo
-                display_mode: slider
-                layout: horizontal
-                fill_container: true
-                primary_info: name
-                secondary_info: state
-                card_mod:
-                  style: |
-                    ha-card {
-                      border-radius: 16px;
-                      border: 1px solid color-mix(in srgb, #5c6bc0 40%, var(--divider-color));
-                      background: color-mix(in srgb, #5c6bc0 6%, var(--ha-card-background, var(--card-background-color)));
-                    }
-                    @media (max-width: 700px) {
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
+                  name: Nacht
+                  icon: mdi:weather-night
+                  icon_color: indigo
+                  display_mode: slider
+                  layout: horizontal
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
                       ha-card {
-                        --mush-card-primary-font-size: 12px;
-                        --mush-card-secondary-font-size: 10px;
-                        --mush-card-primary-line-height: 15px;
-                        --mush-card-secondary-line-height: 13px;
-                        --mush-icon-size: 30px;
-                        --mush-control-height: 34px;
-                        --mush-control-spacing: 6px;
-                        --mush-spacing: 8px;
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #5c6bc0 40%, var(--divider-color));
+                        background: color-mix(in srgb, #5c6bc0 6%, var(--ha-card-background, var(--card-background-color)));
                       }
-                    }
+
+          # Mobile: name/state above the slider. This avoids truncating
+          # "Nacht" and the temperature in Mushroom's horizontal layout.
+          - type: conditional
+            conditions:
+              - condition: screen
+                media_query: "(max-width: 700px)"
+            card:
+              type: custom:layout-card
+              layout_type: custom:grid-layout
+              layout:
+                margin: 0
+                padding: 0
+                grid-gap: 8px
+                grid-template-columns: minmax(0, 1fr)
+              cards:
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
+                  name: Tag
+                  icon: mdi:white-balance-sunny
+                  icon_color: amber
+                  display_mode: slider
+                  layout: vertical
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
+                      ha-card {
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #ffb300 40%, var(--divider-color));
+                        background: color-mix(in srgb, #ffb300 6%, var(--ha-card-background, var(--card-background-color)));
+                      }
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
+                  name: Nacht
+                  icon: mdi:weather-night
+                  icon_color: indigo
+                  display_mode: slider
+                  layout: vertical
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
+                      ha-card {
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #5c6bc0 40%, var(--divider-color));
+                        background: color-mix(in srgb, #5c6bc0 6%, var(--ha-card-background, var(--card-background-color)));
+                      }
 
           - type: heading
             heading: Warmwasser
@@ -1792,72 +1824,104 @@ views:
                 show_state: true
                 show_icon: false
 
-          - type: custom:layout-card
-            layout_type: custom:grid-layout
-            layout:
-              margin: 0
-              padding: 0
-              grid-gap: 8px
-              grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))
-            cards:
-              - type: custom:mushroom-number-card
-                entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
-                name: Tag
-                icon: mdi:white-balance-sunny
-                icon_color: amber
-                display_mode: slider
-                layout: horizontal
-                fill_container: true
-                primary_info: name
-                secondary_info: state
-                card_mod:
-                  style: |
-                    ha-card {
-                      border-radius: 16px;
-                      border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
-                      background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
-                    }
-                    @media (max-width: 700px) {
+          # Desktop/tablet: compact side-by-side controls.
+          - type: conditional
+            conditions:
+              - condition: screen
+                media_query: "(min-width: 701px)"
+            card:
+              type: custom:layout-card
+              layout_type: custom:grid-layout
+              layout:
+                margin: 0
+                padding: 0
+                grid-gap: 8px
+                grid-template-columns: repeat(2, minmax(0, 1fr))
+              cards:
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
+                  name: Tag
+                  icon: mdi:white-balance-sunny
+                  icon_color: amber
+                  display_mode: slider
+                  layout: horizontal
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
                       ha-card {
-                        --mush-card-primary-font-size: 12px;
-                        --mush-card-secondary-font-size: 10px;
-                        --mush-card-primary-line-height: 15px;
-                        --mush-card-secondary-line-height: 13px;
-                        --mush-icon-size: 30px;
-                        --mush-control-height: 34px;
-                        --mush-control-spacing: 6px;
-                        --mush-spacing: 8px;
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
+                        background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
                       }
-                    }
-              - type: custom:mushroom-number-card
-                entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
-                name: Nacht
-                icon: mdi:weather-night
-                icon_color: indigo
-                display_mode: slider
-                layout: horizontal
-                fill_container: true
-                primary_info: name
-                secondary_info: state
-                card_mod:
-                  style: |
-                    ha-card {
-                      border-radius: 16px;
-                      border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
-                      background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
-                    }
-                    @media (max-width: 700px) {
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
+                  name: Nacht
+                  icon: mdi:weather-night
+                  icon_color: indigo
+                  display_mode: slider
+                  layout: horizontal
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
                       ha-card {
-                        --mush-card-primary-font-size: 12px;
-                        --mush-card-secondary-font-size: 10px;
-                        --mush-card-primary-line-height: 15px;
-                        --mush-card-secondary-line-height: 13px;
-                        --mush-icon-size: 30px;
-                        --mush-control-height: 34px;
-                        --mush-control-spacing: 6px;
-                        --mush-spacing: 8px;
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
+                        background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
                       }
-                    }
+
+          # Mobile: put the complete label/state block above a full-width
+          # slider. The controller entities remain exactly the same.
+          - type: conditional
+            conditions:
+              - condition: screen
+                media_query: "(max-width: 700px)"
+            card:
+              type: custom:layout-card
+              layout_type: custom:grid-layout
+              layout:
+                margin: 0
+                padding: 0
+                grid-gap: 8px
+                grid-template-columns: minmax(0, 1fr)
+              cards:
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
+                  name: Tag
+                  icon: mdi:white-balance-sunny
+                  icon_color: amber
+                  display_mode: slider
+                  layout: vertical
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
+                      ha-card {
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
+                        background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
+                      }
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
+                  name: Nacht
+                  icon: mdi:weather-night
+                  icon_color: indigo
+                  display_mode: slider
+                  layout: vertical
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
+                      ha-card {
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
+                        background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
+                      }
 
           - type: heading
             heading: Komfort
