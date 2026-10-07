@@ -6106,52 +6106,594 @@ views:
 
 
       - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Anlagenschema & Anlagenkonfiguration
+            heading_style: title
+            icon: mdi:home-sitemap
+            badges:
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_anlagenschema_anzeige
+                name: Schema
+                show_state: true
+                show_icon: false
+
+          - type: custom:mushroom-template-card
+            primary: Anlagenkonfiguration – Schreibwerte mit Vorsicht ändern
+            secondary: >-
+              Schema 00, Weichensensor 52, Relais 53, Solar 54 und
+              Speicheranbindung 5B beeinflussen die Anlagenlogik. Änderungen
+              nur passend zur tatsächlich installierten Hydraulik vornehmen.
+            icon: mdi:alert-outline
+            icon_color: amber
+            multiline_secondary: true
+            fill_container: true
+            card_mod:
+              style: |
+                ha-card {
+                  border: 1px solid color-mix(in srgb, var(--warning-color) 55%, var(--divider-color));
+                  background: color-mix(in srgb, var(--warning-color) 7%, var(--ha-card-background, var(--card-background-color)));
+                }
+
+      - type: grid
         column_span: 1
         cards:
           - type: heading
-            heading: Anlage & Speicher
+            heading: Grundschema
             heading_style: subtitle
-            icon: mdi:home-cog-outline
+            icon: mdi:family-tree
+
           - type: custom:button-card
             template: diag_group3_green
-            name: Anlage
+            name: Aktuelle Anlagenstruktur
             custom_fields:
               v1:
                 card:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_anlagenschema_anzeige
-                  name: Schema
+                  name: Schema 00
               v2:
                 card:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_anlagentyp_anzeige
-                  name: Typ
+                  name: Interner Typ
               v3:
                 card:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_bauart_warmwasser_anzeige
-                  name: Warmwasser
+                  name: WW-Bauart
             grid_options:
               columns: full
+
+          - type: button
+            name: Info / Anlagenschema ändern
+            icon: mdi:home-edit-outline
+            show_name: true
+            show_icon: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Anlagenschema (Codierung 00)
+                  adaptive: true
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: markdown
+                        content: |
+                          **Funktion:** Codieradresse **00** beschreibt die grundlegende hydraulische Anlagenstruktur: vorhandene Heizkreise A1/M2 und ob Trinkwassererwärmung zur Anlage gehört.
+
+                          | Wert | Anlagenkonfiguration |
+                          | --- | --- |
+                          | **00:1** | 1 Heizkreis ohne Mischer **A1**, ohne Warmwasser |
+                          | **00:2** | 1 Heizkreis ohne Mischer **A1**, mit Warmwasser |
+                          | **00:3** | 1 Heizkreis mit Mischer **M2**, ohne Warmwasser |
+                          | **00:4** | 1 Heizkreis mit Mischer **M2**, mit Warmwasser |
+                          | **00:5** | A1 + M2, ohne Warmwasser |
+                          | **00:6** | A1 + M2, mit Warmwasser |
+
+                          **Aktuell:** {{ states('sensor.vitodens_200_wb2a_anlagenschema_anzeige') }}
+
+                          **Wirkung:** Ein geändertes Schema beeinflusst, welche Heizkreise und Warmwasserfunktionen die Regelung erwartet und welche abhängigen Codierungen relevant sind. Das Schema muss deshalb der **real installierten Hydraulik** entsprechen.
+
+                          **Wichtig:** Die Werte 1–6 sind laut WB2A-Serviceanleitung zulässige Codierungen. Der Optolink-Datenpunkt ist als Leseadresse verifiziert; Remote-Schreiben über den Splitter ist quellenbasiert implementiert, aber auf dieser konkreten Anlage noch nicht für jeden Schemawechsel live getestet. Nach einer Änderung den Wert an der Vitodens und die Diagnosewerte kontrollieren.
+
+                          **Codieradresse:** `00`
+
+                          **Datenpunkt:** `0x7700`
+
+                          **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 1/2 – Anlagenschema.
+
+                      - type: button
+                        name: 00:1 · A1 ohne Warmwasser
+                        icon: mdi:radiator
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_anlagenschema_00_einstellung
+                          data:
+                            option: 00:1 · A1 ohne Warmwasser
+                          confirmation:
+                            text: >-
+                              Anlagenschema wirklich auf 00:1 ändern? Das muss
+                              der realen Hydraulik entsprechen.
+                      - type: button
+                        name: 00:2 · A1 mit Warmwasser
+                        icon: mdi:water-boiler
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_anlagenschema_00_einstellung
+                          data:
+                            option: 00:2 · A1 mit Warmwasser
+                          confirmation:
+                            text: >-
+                              Anlagenschema wirklich auf 00:2 ändern? Das muss
+                              der realen Hydraulik entsprechen.
+                      - type: button
+                        name: 00:3 · M2 ohne Warmwasser
+                        icon: mdi:valve
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_anlagenschema_00_einstellung
+                          data:
+                            option: 00:3 · M2 ohne Warmwasser
+                          confirmation:
+                            text: >-
+                              Anlagenschema wirklich auf 00:3 ändern? Ein
+                              Mischerkreis M2 muss tatsächlich vorhanden sein.
+                      - type: button
+                        name: 00:4 · M2 mit Warmwasser
+                        icon: mdi:valve-open
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_anlagenschema_00_einstellung
+                          data:
+                            option: 00:4 · M2 mit Warmwasser
+                          confirmation:
+                            text: >-
+                              Anlagenschema wirklich auf 00:4 ändern? M2 und
+                              Warmwasser müssen tatsächlich vorhanden sein.
+                      - type: button
+                        name: 00:5 · A1 + M2 ohne Warmwasser
+                        icon: mdi:source-branch
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_anlagenschema_00_einstellung
+                          data:
+                            option: 00:5 · A1 + M2 ohne Warmwasser
+                          confirmation:
+                            text: >-
+                              Anlagenschema wirklich auf 00:5 ändern? A1 und
+                              M2 müssen real vorhanden sein.
+                      - type: button
+                        name: 00:6 · A1 + M2 mit Warmwasser
+                        icon: mdi:home-plus-outline
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_anlagenschema_00_einstellung
+                          data:
+                            option: 00:6 · A1 + M2 mit Warmwasser
+                          confirmation:
+                            text: >-
+                              Anlagenschema wirklich auf 00:6 ändern? A1, M2
+                              und Warmwasser müssen real vorhanden sein.
+            grid_options:
+              columns: full
+
+          - type: heading
+            heading: Hydraulik / Warmwasser
+            heading_style: subtitle
+            icon: mdi:pipe-valve
+
           - type: custom:button-card
             template: diag_group2_green
-            name: EEPROM
+            name: Hydraulische Weiche
             custom_fields:
               v1:
                 card:
                   type: custom:button-card
                   template: diag_mini
-                  entity: sensor.vitodens_200_wb2a_eeprom_status
-                  name: Status
+                  entity: sensor.vitodens_200_wb2a_hydraulische_weiche_52_anzeige
+                  name: Sensor 52
               v2:
                 card:
                   type: custom:button-card
                   template: diag_mini
-                  entity: sensor.vitodens_200_wb2a_i2c_eeprom_gwg_flag
-                  name: I²C GWG
+                  entity: sensor.vitodens_200_wb2a_warmwasser_speicher_anbindung_5b_anzeige
+                  name: Speicher 5B
+            grid_options:
+              columns: full
+
+          - type: button
+            name: Info / Weichensensor ändern
+            icon: mdi:information-outline
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Hydraulische Weiche – Vorlaufsensor (52)
+                  adaptive: true
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: markdown
+                        content: |
+                          **Funktion:** Codieradresse **52** gibt an, ob ein gemeinsamer Vorlauftemperatursensor an einer hydraulischen Weiche vorhanden ist.
+
+                          - **52:0** – ohne Vorlauftemperatursensor für hydraulische Weiche
+                          - **52:1** – mit Vorlauftemperatursensor für hydraulische Weiche
+
+                          **Aktuell:** {{ states('sensor.vitodens_200_wb2a_hydraulische_weiche_52_anzeige') }}
+
+                          **Wirkung:** Bei `52:1` erwartet die Regelung den Sensor. Ist er physisch nicht angeschlossen, kann ein Sensorfehler entstehen. Laut Serviceanleitung wird `52:1` beim Anschluss normalerweise **automatisch erkannt**.
+
+                          **Hinweis:** Nur manuell ändern, wenn die reale Verdrahtung an X3 und die Hydraulik bekannt sind.
+
+                          **Codieradresse:** `52`
+
+                          **Datenpunkt:** `0x7752`
+
+                          **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+                      - type: button
+                        name: 52:0 · Ohne Weichensensor
+                        icon: mdi:thermometer-off
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_hydraulische_weiche_sensor_52_einstellung
+                          data:
+                            option: 52:0 · Ohne Weichensensor
+                          confirmation:
+                            text: >-
+                              52 auf 0 setzen? Nur wenn kein Vorlaufsensor an
+                              einer hydraulischen Weiche angeschlossen ist.
+                      - type: button
+                        name: 52:1 · Mit Weichensensor
+                        icon: mdi:thermometer-check
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_hydraulische_weiche_sensor_52_einstellung
+                          data:
+                            option: 52:1 · Mit Weichensensor
+                          confirmation:
+                            text: >-
+                              52 auf 1 setzen? Der Vorlaufsensor der
+                              hydraulischen Weiche muss real angeschlossen sein.
+            grid_options:
+              columns: full
+
+          - type: button
+            name: Info / Speicheranbindung ändern
+            icon: mdi:information-outline
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Speicher-Wassererwärmer – Anbindung (5B)
+                  adaptive: true
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: markdown
+                        content: |
+                          **Funktion:** Codieradresse **5B** beschreibt, wo der Speicher-Wassererwärmer hydraulisch eingebunden ist.
+
+                          - **5B:0** – Speicher direkt am Heizkessel
+                          - **5B:1** – Speicher hinter der hydraulischen Weiche
+
+                          **Aktuell:** {{ states('sensor.vitodens_200_wb2a_warmwasser_speicher_anbindung_5b_anzeige') }}
+
+                          **Wirkung:** Die Einstellung beeinflusst die Regelstrategie der Warmwasser-Speicherladung in Anlagen mit hydraulischer Weiche. Sie ist nur relevant, wenn das gewählte Anlagenschema Warmwasser enthält.
+
+                          **Codieradresse:** `5B`
+
+                          **Datenpunkt:** `0x675B`
+
+                          **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2 – Warmwasser.
+                      - type: button
+                        name: 5B:0 · Speicher direkt am Kessel
+                        icon: mdi:water-boiler
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_warmwasser_speicher_anbindung_5b_einstellung
+                          data:
+                            option: 5B:0 · Speicher direkt am Kessel
+                          confirmation:
+                            text: >-
+                              Speicheranbindung auf 5B:0 ändern? Der Speicher
+                              muss hydraulisch direkt am Kessel angebunden sein.
+                      - type: button
+                        name: 5B:1 · Speicher hinter hydraulischer Weiche
+                        icon: mdi:pipe-valve
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_warmwasser_speicher_anbindung_5b_einstellung
+                          data:
+                            option: 5B:1 · Speicher hinter hydraulischer Weiche
+                          confirmation:
+                            text: >-
+                              Speicheranbindung auf 5B:1 ändern? Der Speicher
+                              muss real hinter der hydraulischen Weiche liegen.
+            grid_options:
+              columns: full
+
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Erweiterungen / automatische Erkennung
+            heading_style: subtitle
+            icon: mdi:expansion-card
+
+          - type: custom:button-card
+            template: diag_group2_blue
+            name: Erweiterungen
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_relais_funktion_53_anzeige
+                  name: Relais 53
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_solarregelung_54_anzeige
+                  name: Solar 54
+            grid_options:
+              columns: full
+
+          - type: button
+            name: Info / Relaisfunktion ändern
+            icon: mdi:information-outline
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Interne Erweiterung – Relaisfunktion (53)
+                  adaptive: true
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: markdown
+                        content: |
+                          **Funktion:** Codieradresse **53** ordnet dem Relaisausgang der internen Erweiterung eine Funktion zu.
+
+                          - **53:0** – Sammelstörmeldung
+                          - **53:1** – Zirkulationspumpe
+                          - **53:2** – externe Heizkreispumpe für A1
+                          - **53:3** – externe Umwälz-/Speicherladepumpe
+
+                          **Aktuell:** {{ states('sensor.vitodens_200_wb2a_relais_funktion_53_anzeige') }}
+
+                          **Wirkung:** Diese Einstellung muss zur tatsächlich angeschlossenen Last am Relaisausgang passen. Eine falsche Zuordnung kann dazu führen, dass die angeschlossene Pumpe bzw. Störmeldung zum falschen Zeitpunkt geschaltet wird.
+
+                          **Codieradresse:** `53`
+
+                          **Datenpunkt:** `0x7753`
+
+                          **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2 und Funktionsbeschreibung interne Erweiterung H1/H2.
+                      - type: button
+                        name: 53:0 · Sammelstörung
+                        icon: mdi:alarm-light-outline
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_relais_funktion_53_einstellung
+                          data:
+                            option: 53:0 · Sammelstörung
+                          confirmation:
+                            text: Relaisfunktion wirklich auf Sammelstörung ändern?
+                      - type: button
+                        name: 53:1 · Zirkulationspumpe
+                        icon: mdi:pump
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_relais_funktion_53_einstellung
+                          data:
+                            option: 53:1 · Zirkulationspumpe
+                          confirmation:
+                            text: Relaisfunktion wirklich auf Zirkulationspumpe ändern?
+                      - type: button
+                        name: 53:2 · Heizkreispumpe A1
+                        icon: mdi:radiator
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_relais_funktion_53_einstellung
+                          data:
+                            option: 53:2 · Heizkreispumpe A1
+                          confirmation:
+                            text: Relaisfunktion wirklich auf Heizkreispumpe A1 ändern?
+                      - type: button
+                        name: 53:3 · Speicherladepumpe extern
+                        icon: mdi:water-pump
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_relais_funktion_53_einstellung
+                          data:
+                            option: 53:3 · Speicherladepumpe extern
+                          confirmation:
+                            text: Relaisfunktion wirklich auf externe Speicherladepumpe ändern?
+            grid_options:
+              columns: full
+
+          - type: button
+            name: Info / Solarregelung ändern
+            icon: mdi:information-outline
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Solarregelung (54)
+                  adaptive: true
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: markdown
+                        content: |
+                          **Funktion:** Codieradresse **54** beschreibt, ob und welche unterstützte Solarregelung an der Vitodens angebunden ist.
+
+                          - **54:0** – ohne Solarregelung
+                          - **54:1** – Vitosolic 100
+                          - **54:2** – Vitosolic 200
+
+                          **Aktuell:** {{ states('sensor.vitodens_200_wb2a_solarregelung_54_anzeige') }}
+
+                          **Wirkung:** Bei angeschlossener Vitosolic wird die Codierung laut Serviceanleitung normalerweise **automatisch erkannt**. Manuelles Verstellen ist nur sinnvoll, wenn die reale Anlagenkonfiguration bekannt ist.
+
+                          **Codieradresse:** `54`
+
+                          **Datenpunkt:** `0x7754`
+
+                          **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+                      - type: button
+                        name: 54:0 · Ohne Solarregelung
+                        icon: mdi:solar-power-variant-outline
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_solarregelung_54_einstellung
+                          data:
+                            option: 54:0 · Ohne Solarregelung
+                          confirmation:
+                            text: >-
+                              Solarregelung auf 54:0 setzen? Nur wenn keine
+                              Vitosolic angebunden ist.
+                      - type: button
+                        name: 54:1 · Vitosolic 100
+                        icon: mdi:solar-power
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_solarregelung_54_einstellung
+                          data:
+                            option: 54:1 · Vitosolic 100
+                          confirmation:
+                            text: >-
+                              Solarregelung auf Vitosolic 100 setzen? Das Gerät
+                              muss real angeschlossen sein.
+                      - type: button
+                        name: 54:2 · Vitosolic 200
+                        icon: mdi:solar-panel-large
+                        tap_action:
+                          action: perform-action
+                          perform_action: select.select_option
+                          target:
+                            entity_id: select.vitodens_200_wb2a_solarregelung_54_einstellung
+                          data:
+                            option: 54:2 · Vitosolic 200
+                          confirmation:
+                            text: >-
+                              Solarregelung auf Vitosolic 200 setzen? Das Gerät
+                              muss real angeschlossen sein.
+            grid_options:
+              columns: full
+
+          - type: heading
+            heading: Nur Anzeige
+            heading_style: subtitle
+            icon: mdi:eye-outline
+
+          - type: custom:button-card
+            template: diag_group3_purple
+            name: Abgeleitete Anlagenmerkmale
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_anlagentyp_anzeige
+                  name: Anlagentyp
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_bauart_warmwasser_anzeige
+                  name: WW-Bauart
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_umschaltventil_bauart_65_anzeige
+                  name: Ventilbauart
+            grid_options:
+              columns: full
+
+          - type: button
+            name: Info zu den read-only Anlagenwerten
+            icon: mdi:information-outline
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Abgeleitete Anlagenwerte / Ventilbauart
+                  adaptive: true
+                  content:
+                    type: markdown
+                    content: |
+                      **Funktion:** Diese Werte dienen der Diagnose der erkannten bzw. gerätespezifischen Anlagenkonfiguration. Sie werden hier bewusst **nicht als Schreibwerte** angeboten.
+
+                      **Anlagentyp – `0x7701`:** interner Topologiewert der Regelung. Für die auf dieser Anlage ausgelesenen Werte liegt im Projekt noch keine belastbar verifizierte vollständige Wertetabelle vor. Deshalb keine Interpretation und kein Schreibzugriff.
+
+                      **Bauart Warmwasser – `0x8851`:** interner Diagnosewert zur Warmwasserausführung. Auch hier wird ohne gesicherte WB2A-Wertetabelle nicht geraten.
+
+                      **Ventilbauart – Codierung 65 / `0x6765`:**
+                      - `65:0` kein Umschaltventil
+                      - `65:1` Viessmann
+                      - `65:2` Wilo
+                      - `65:3` Grundfos
+
+                      Die Serviceanleitung kennzeichnet Codierung **65 ausdrücklich als Anlageninformation „nicht verstellen“**. Deshalb bleibt sie read-only.
+
+                      **Aktuell Anlagentyp:** {{ states('sensor.vitodens_200_wb2a_anlagentyp_anzeige') }}
+
+                      **Aktuell WW-Bauart:** {{ states('sensor.vitodens_200_wb2a_bauart_warmwasser_anzeige') }}
+
+                      **Aktuell Ventilbauart:** {{ states('sensor.vitodens_200_wb2a_umschaltventil_bauart_65_anzeige') }}
+
+                      **Codieradresse:** `65` für die Ventilbauart; die internen Diagnosewerte `0x7701` und `0x8851` werden nicht als frei änderbare Codieradressen behandelt.
+
+                      **Datenpunkte:** `0x7701`, `0x8851`, `0x6765`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573 sowie das hardwarebezogene Produktionsprofil. Für 0x7701/0x8851 ist die Semantik absichtlich als unvollständig verifiziert markiert.
             grid_options:
               columns: full
 
