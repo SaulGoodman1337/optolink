@@ -91,6 +91,10 @@ jobs:
           grep -q 'room_name: Wohnzimmer links' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'room_name: Wohnzimmer rechts' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'entity: script.climateboost' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'fullopen fullopen' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q "temperature: 30.5" config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q "ON · Voll auf (30,5 °C)" config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q "targetNum >= 30.5" config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q '"(min-width: 701px)"' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           test "$(grep -c 'layout: vertical' config/optolink-splitter/homeassistant-dashboard-dev.yaml)" -ge 4
           grep -q 'Mobile: name/state above the slider' config/optolink-splitter/homeassistant-dashboard-dev.yaml
