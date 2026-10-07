@@ -232,6 +232,18 @@ Sie verwendet unter anderem folgende HACS-Abhängigkeiten:
 
 Das Dashboard ist eine Darstellungsschicht. Die fachliche Quelle für Entitäten und Register bleibt die Python-Profil-Datei.
 
+## 10a. Produktions-Dashboard nach DEV-Promotion
+
+Der bis 07.10.2026 getestete DEV-Dashboardstand wurde in
+`config/optolink-splitter/homeassistant-dashboard.yaml` übernommen.
+Damit sind das responsive Layout, die Hauptseiten-Thermostatsteuerung,
+die Live-Störungsbox und die View-Sichtbarkeitsregeln nun Teil des
+produktiven Dashboard-Baselines.
+
+`homeassistant-dashboard-dev.yaml` bleibt die Staging-Datei für weitere
+Änderungen. Neue DEV-Funktionen werden nicht automatisch in Produktion
+gespiegelt.
+
 ## 11. DEV-Dashboard für UI-Tests
 
 Neben dem produktiven Dashboard existiert:
@@ -310,6 +322,39 @@ exakt den konfigurierten Benutzer in `visible:` enthalten.
 
 Die View-Sichtbarkeit ist eine UI-/Navigationsbeschränkung und ersetzt keine
 Home-Assistant-Berechtigungen auf Entities oder Services.
+
+### Anlagenschema / Anlagenkonfiguration im DEV-Dashboard
+
+Der Diagnose-Tab besitzt nun eine eigene Rubrik **Anlagenschema &
+Anlagenkonfiguration**. Sie trennt zwischen dokumentierten Schreibwerten und
+reinen Diagnosewerten.
+
+Schreibbar, jeweils ausschließlich über enumerierte Select-Entities:
+
+- Codieradresse `00` / `0x7700`: Anlagenschema 1–6;
+- `52` / `0x7752`: Vorlaufsensor hydraulische Weiche 0/1;
+- `53` / `0x7753`: Funktion des internen Erweiterungsrelais 0–3;
+- `54` / `0x7754`: keine Solarregelung / Vitosolic 100 / Vitosolic 200;
+- `5B` / `0x675B`: Speicher direkt am Kessel bzw. hinter hydraulischer
+  Weiche.
+
+Read-only bleiben:
+
+- Codieradresse `65` / `0x6765`: Bauart Umschaltventil, weil die
+  Serviceanleitung ausdrücklich „nicht verstellen“ vorgibt;
+- `0x7701`: interner Anlagentyp;
+- `0x8851`: interne Bauart Warmwasser.
+
+Die beiden letzten Werte besitzen im Projekt noch keine vollständig
+verifizierte WB2A-Wertetabelle. Das Dashboard zeigt sie deshalb ohne
+erfundene Semantik an.
+
+Alle DEV-Schreibaktionen liegen hinter **Info / ändern** und einer zusätzlichen
+Bestätigung des konkreten Zielwerts. Ein Schemawechsel ändert keine abhängigen
+Codierungen automatisch.
+
+Die vollständige Parametertabelle, Abhängigkeiten und Sicherheitsgrenzen stehen
+in [anlagenschema.md](anlagenschema.md).
 
 ### Technische Infoboxen im DEV-Dashboard
 
