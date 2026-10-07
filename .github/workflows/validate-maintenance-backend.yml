@@ -262,7 +262,7 @@ jobs:
               text = "\n".join(body)
               boxes.append((index + 1, text))
 
-          expected = 19
+          expected = 25
           if len(boxes) != expected:
               raise SystemExit(f"expected {expected} technical markdown info boxes, found {len(boxes)}")
 
@@ -287,6 +287,113 @@ jobs:
           grep -q 'name: Info 31' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'name: Info 60' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'name: Info 62' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+
+      - name: Verify WB2A topology controls
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          profile_path = Path("config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py")
+          profile = profile_path.read_text(encoding="utf-8")
+          dev_path = Path("config/optolink-splitter/homeassistant-dashboard-dev.yaml")
+          dev_text = dev_path.read_text(encoding="utf-8")
+          prod_path = Path("config/optolink-splitter/homeassistant-dashboard.yaml")
+          prod_text = prod_path.read_text(encoding="utf-8")
+
+          required_profile = {
+              "anlagenschema_00_einstellung": ("0x7700", "/anlagenschema/set"),
+              "hydraulische_weiche_sensor_52_einstellung": ("0x7752", "/hydraulische_weiche_vorhanden/set"),
+              "relais_funktion_53_einstellung": ("0x7753", "/relais_k12_funktion_53/set"),
+              "solarregelung_54_einstellung": ("0x7754", "/solar_typ/set"),
+              "warmwasser_speicher_anbindung_5b_einstellung": ("0x675B", "/warmwasser_speicher_anbindung_5b/set"),
+          }
+
+          errors = []
+          for entity, (address, command_suffix) in required_profile.items():
+              if f'"name": "{entity}"' not in profile:
+                  errors.append(f"missing profile select {entity}")
+              if address not in profile:
+                  errors.append(f"missing datapoint {address}")
+              if command_suffix not in profile:
+                  errors.append(f"missing command topic suffix {command_suffix}")
+
+          schema_options = [
+              "00:1 · A1 ohne Warmwasser",
+              "00:2 · A1 mit Warmwasser",
+              "00:3 · M2 ohne Warmwasser",
+              "00:4 · M2 mit Warmwasser",
+              "00:5 · A1 + M2 ohne Warmwasser",
+              "00:6 · A1 + M2 mit Warmwasser",
+          ]
+          for option in schema_options:
+              if option not in profile or option not in dev_text:
+                  errors.append(f"missing schema option {option!r}")
+
+          for token in (
+              "52:0 · Ohne Weichensensor",
+              "52:1 · Mit Weichensensor",
+              "53:0 · Sammelstörung",
+              "53:3 · Speicherladepumpe extern",
+              "54:0 · Ohne Solarregelung",
+              "54:1 · Vitosolic 100",
+              "54:2 · Vitosolic 200",
+              "5B:0 · Speicher direkt am Kessel",
+              "5B:1 · Speicher hinter hydraulischer Weiche",
+          ):
+              if token not in profile:
+                  errors.append(f"missing documented topology value {token!r}")
+
+          if "umschaltventil_bauart_65_einstellung" in profile:
+              errors.append("coding address 65 must remain read-only")
+          if "/umschaltventil_bauart_65/set" in profile:
+              errors.append("coding address 65 must not expose a command topic")
+
+          required_dev = [
+              "heading: Anlagenschema & Anlagenkonfiguration",
+              "Info / Anlagenschema ändern",
+              "Info / Weichensensor ändern",
+              "Info / Speicheranbindung ändern",
+              "Info / Relaisfunktion ändern",
+              "Info / Solarregelung ändern",
+              "Info zu den read-only Anlagenwerten",
+              "select.vitodens_200_wb2a_anlagenschema_00_einstellung",
+              "select.vitodens_200_wb2a_hydraulische_weiche_sensor_52_einstellung",
+              "select.vitodens_200_wb2a_relais_funktion_53_einstellung",
+              "select.vitodens_200_wb2a_solarregelung_54_einstellung",
+              "select.vitodens_200_wb2a_warmwasser_speicher_anbindung_5b_einstellung",
+              "confirmation:",
+              "Datenpunkt:** `0x7700`",
+              "Datenpunkt:** `0x7752`",
+              "Datenpunkt:** `0x7753`",
+              "Datenpunkt:** `0x7754`",
+              "Datenpunkt:** `0x675B`",
+              "nicht verstellen",
+          ]
+          for token in required_dev:
+              if token not in dev_text:
+                  errors.append(f"DEV topology documentation missing {token!r}")
+
+          if "heading: Anlagenschema & Anlagenkonfiguration" in prod_text:
+              errors.append("new topology editor must remain DEV-only until promoted")
+
+          if not prod_text.startswith("# Production Lovelace dashboard"):
+              errors.append("production dashboard header is not the promoted baseline")
+          if "  - title: Heizung\n" not in prod_text:
+              errors.append("production dashboard must expose the promoted Heizung view")
+          if "  - title: Heizung DEV\n" in prod_text:
+              errors.append("production dashboard must not contain Heizung DEV")
+
+          with dev_path.open(encoding="utf-8") as handle:
+              yaml.safe_load(handle)
+          with prod_path.open(encoding="utf-8") as handle:
+              yaml.safe_load(handle)
+
+          if errors:
+              raise SystemExit("WB2A topology validation failed:\n" + "\n".join(errors))
+
+          print("WB2A topology controls OK")
+          PY
 
       - name: Verify A9 and 62 unit semantics
         run: |
