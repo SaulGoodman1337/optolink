@@ -261,7 +261,11 @@ jobs:
                   body.append(raw)
 
               text = "\n".join(body)
-              boxes.append((index + 1, text))
+              # History tables and the maintenance introduction are regular
+              # Markdown cards, not technical parameter info boxes. A
+              # technical box is identified by its register/datapoint footer.
+              if "**Codieradresse" in text or "**Datenpunkt" in text:
+                  boxes.append((index + 1, text))
 
           expected = 25
           if len(boxes) != expected:
