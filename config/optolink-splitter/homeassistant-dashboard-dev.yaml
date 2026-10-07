@@ -2021,6 +2021,8 @@ views:
                           'FF':'Gerät einmal neu starten lassen; bleibt die Störung bestehen, Regelung durch einen Fachbetrieb prüfen lassen.'
                         } %}
 
+                        **Funktion:** Zeigt ausschließlich aktuell aktive WB2A-Störungs- und Diagnosezustände an und ordnet einen vorhandenen Systemcode der dokumentierten Störungsursache zu.
+
                         ## Aktive Meldung
 
                         {% if code %}
@@ -2055,9 +2057,11 @@ views:
 
                         Bei **Gasgeruch oder Abgasgeruch** keine Reset-Versuche durchführen. Gasabsperrhahn schließen, lüften, Zündquellen vermeiden und den zuständigen Fach-/Notdienst verständigen. Arbeiten an Gas-, Abgas- oder elektrischen Komponenten gehören in die Hände einer Fachkraft.
 
-                        **Quelle:** Viessmann Vitodens 200 Typ WB2A, Serviceanleitung 5681 573 (10/2006), Abschnitt *Störungsbehebung / Störungscodes*, Seiten 67–78.
+                        **Codieradresse / Diagnoseobjekt:** keine einzelne Codieradresse; die Box kombiniert mehrere aktuelle Diagnoseobjekte.
 
-                        **Live-Datenpunkte:** Alarmobjekt `0xA132`, GFA-Status `0x5738`, GFA-Verriegelung aus `0x55D3`, KM-Pumpenfehler `0x0A33` / `0x0A35`, CFDM-Status `0xA395`.
+                        **Datenpunkte:** Alarmobjekt `0xA132`, GFA-Status `0x5738`, GFA-Verriegelung aus `0x55D3`, KM-Pumpenfehler `0x0A33` / `0x0A35`, CFDM-Status `0xA395`.
+
+                        **Quelle:** Viessmann Vitodens 200 Typ WB2A, Serviceanleitung 5681 573 (10/2006), Abschnitt *Störungsbehebung / Störungscodes*, Seiten 67–78.
               card_mod:
                 style: |
                   ha-card {
