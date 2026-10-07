@@ -103,6 +103,85 @@ jobs:
           grep -q 'Mobile: put the complete label/state block above a full-width' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           ! grep -q 'title: Heizung DEV' config/optolink-splitter/homeassistant-dashboard.yaml
 
+      - name: Verify DEV live fault banner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          path = Path("config/optolink-splitter/homeassistant-dashboard-dev.yaml")
+          text = path.read_text(encoding="utf-8")
+          dashboard = yaml.safe_load(text)
+
+          views = dashboard.get("views", [])
+          main = next((view for view in views if view.get("title") == "Heizung DEV"), None)
+          if main is None:
+              raise SystemExit("Heizung DEV view missing")
+
+          cards = main.get("cards", [])
+          header = next(
+              (
+                  card for card in cards
+                  if card.get("type") == "vertical-stack"
+                  and card.get("view_layout", {}).get("grid-area") == "header"
+              ),
+              None,
+          )
+          if header is None:
+              raise SystemExit("Heizung DEV header stack missing")
+
+          header_cards = header.get("cards", [])
+          if not header_cards or header_cards[0].get("type") != "conditional":
+              raise SystemExit("live fault banner must be first card in the main header")
+
+          fault = header_cards[0]
+          conditions = fault.get("conditions", [])
+          if len(conditions) != 1 or conditions[0].get("condition") != "or":
+              raise SystemExit("fault banner must use one OR condition group")
+
+          live_entities = {
+              cond.get("entity")
+              for cond in conditions[0].get("conditions", [])
+              if isinstance(cond, dict)
+          }
+          required = {
+              "sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode",
+              "sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus",
+              "binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt",
+              "binary_sensor.vitodens_200_wb2a_cfdm_fehler",
+              "binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre",
+              "sensor.vitodens_200_wb2a_km_fehler_pumpe_a1",
+              "sensor.vitodens_200_wb2a_km_fehler_interne_pumpe",
+          }
+          missing = sorted(required - live_entities)
+          if missing:
+              raise SystemExit("fault banner missing live entities: " + ", ".join(missing))
+
+          fault_dump = yaml.safe_dump(fault, allow_unicode=True)
+          if "fehlerhistorie_" in fault_dump or "gfa_fehlerhistorie_" in fault_dump:
+              raise SystemExit("fault banner must not be driven by historical fault entries")
+
+          required_text = [
+              "Aktive Störung erkannt",
+              "Störungsbehebung",
+              "Unbekannter WB2A-Fehlercode",
+              "'B7':'Kesselcodierstecker fehlt, falsch oder defekt'",
+              "'F4':'Kein Flammensignal nach Brennerstart'",
+              "'F9':'Gebläsedrehzahl beim Brennerstart zu niedrig'",
+              "Serviceanleitung 5681 573",
+              "0xA132",
+              "0x5738",
+              "0x0A33",
+              "0x0A35",
+              "0xA395",
+          ]
+          absent = [needle for needle in required_text if needle not in text]
+          if absent:
+              raise SystemExit("fault banner documentation incomplete: " + ", ".join(absent))
+
+          print("DEV live fault banner OK")
+          PY
+
       - name: Verify DEV view visibility
         run: |
           python3 - <<'PY'
