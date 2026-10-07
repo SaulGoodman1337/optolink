@@ -197,10 +197,11 @@ contains the modernized **Heizung DEV** main page with grouped day/night
 controls and compact status groups. Historical graphs remain in the dedicated Diagnose view. The DEV main page uses
 **Layout Card** (`thomasloven/lovelace-layout-card`) for explicit responsive
 breakpoints instead of relying on the automatic Sections layout. The DEV
-thermostat section additionally uses **Slider Button Card**
-(`aurimasniekis/hass-slider-button-card`) so each radiator thermostat can
-change its Climate target temperature while still showing valve opening,
-current temperature and target temperature. Production remains unchanged until
+thermostat section uses Home Assistant's native `target-temperature` tile
+feature so each radiator thermostat can change its Climate target temperature
+while still showing valve opening, current temperature and target temperature.
+Using the native control also prevents horizontal slider drags on mobile from
+being interpreted as dashboard-view swipes. Production remains unchanged until
 a tested DEV design is deliberately promoted.
 
 The schedule manager accepts only the 21 verified WB2A day blocks and validates complete 8-byte schedules before writing. Maintenance writes are similarly constrained by the shared guarded maintenance core and explicit confirmation semantics.
