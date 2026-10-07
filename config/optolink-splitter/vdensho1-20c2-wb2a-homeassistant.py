@@ -893,6 +893,112 @@ poll_list = {
             ],
         },
         # -----------------------------------------------------------------
+        # Installation topology / coding controls.
+        #
+        # Source: Viessmann Vitodens 200 WB2A service manual 5681 573,
+        # coding level 2. These addresses describe the installed hydraulic
+        # topology and attached modules. They are intentionally represented as
+        # enumerated selects so only documented values can be written.
+        #
+        # NOTE: the read addresses below are established production datapoints.
+        # Remote writes are source-documented but have not all been live-tested
+        # on this exact appliance. The DEV dashboard therefore adds explicit
+        # warnings/confirmations for topology changes.
+        # -----------------------------------------------------------------
+        {
+            "domain": "select",
+            "entity_category": "config",
+            "options": [
+                "00:1 · A1 ohne Warmwasser",
+                "00:2 · A1 mit Warmwasser",
+                "00:3 · M2 ohne Warmwasser",
+                "00:4 · M2 mit Warmwasser",
+                "00:5 · A1 + M2 ohne Warmwasser",
+                "00:6 · A1 + M2 mit Warmwasser",
+            ],
+            "command_template": "{% set m = {'00:1 · A1 ohne Warmwasser':1,'00:2 · A1 mit Warmwasser':2,'00:3 · M2 ohne Warmwasser':3,'00:4 · M2 mit Warmwasser':4,'00:5 · A1 + M2 ohne Warmwasser':5,'00:6 · A1 + M2 mit Warmwasser':6} %}{{ m.get(value, '') }}",
+            "value_template": "{% set v = value | int(-1) %}{% set m = {1:'00:1 · A1 ohne Warmwasser',2:'00:2 · A1 mit Warmwasser',3:'00:3 · M2 ohne Warmwasser',4:'00:4 · M2 mit Warmwasser',5:'00:5 · A1 + M2 ohne Warmwasser',6:'00:6 · A1 + M2 mit Warmwasser'} %}{{ m.get(v, 'Unbekannt (' ~ v ~ ')') }}",
+            "nopoll": [
+                {
+                    "name": "anlagenschema_00_einstellung",
+                    "state_topic": "{mqtt_base}/anlagenschema",
+                    "command_topic": "{mqtt_base}/anlagenschema/set",
+                },
+            ],
+        },
+        {
+            "domain": "select",
+            "entity_category": "config",
+            "options": [
+                "52:0 · Ohne Weichensensor",
+                "52:1 · Mit Weichensensor",
+            ],
+            "command_template": "{% if value.startswith('52:0') %}0{% elif value.startswith('52:1') %}1{% endif %}",
+            "value_template": "{% set v = value | int(-1) %}{% if v == 0 %}52:0 · Ohne Weichensensor{% elif v == 1 %}52:1 · Mit Weichensensor{% else %}Unbekannt ({{ v }}){% endif %}",
+            "nopoll": [
+                {
+                    "name": "hydraulische_weiche_sensor_52_einstellung",
+                    "state_topic": "{mqtt_base}/hydraulische_weiche_vorhanden",
+                    "command_topic": "{mqtt_base}/hydraulische_weiche_vorhanden/set",
+                },
+            ],
+        },
+        {
+            "domain": "select",
+            "entity_category": "config",
+            "options": [
+                "53:0 · Sammelstörung",
+                "53:1 · Zirkulationspumpe",
+                "53:2 · Heizkreispumpe A1",
+                "53:3 · Speicherladepumpe extern",
+            ],
+            "command_template": "{% set m = {'53:0 · Sammelstörung':0,'53:1 · Zirkulationspumpe':1,'53:2 · Heizkreispumpe A1':2,'53:3 · Speicherladepumpe extern':3} %}{{ m.get(value, '') }}",
+            "value_template": "{% set v = value | int(-1) %}{% set m = {0:'53:0 · Sammelstörung',1:'53:1 · Zirkulationspumpe',2:'53:2 · Heizkreispumpe A1',3:'53:3 · Speicherladepumpe extern'} %}{{ m.get(v, 'Unbekannt (' ~ v ~ ')') }}",
+            "nopoll": [
+                {
+                    "name": "relais_funktion_53_einstellung",
+                    "state_topic": "{mqtt_base}/relais_k12_funktion_53",
+                    "command_topic": "{mqtt_base}/relais_k12_funktion_53/set",
+                },
+            ],
+        },
+        {
+            "domain": "select",
+            "entity_category": "config",
+            "options": [
+                "54:0 · Ohne Solarregelung",
+                "54:1 · Vitosolic 100",
+                "54:2 · Vitosolic 200",
+            ],
+            "command_template": "{% set m = {'54:0 · Ohne Solarregelung':0,'54:1 · Vitosolic 100':1,'54:2 · Vitosolic 200':2} %}{{ m.get(value, '') }}",
+            "value_template": "{% set v = value | int(-1) %}{% set m = {0:'54:0 · Ohne Solarregelung',1:'54:1 · Vitosolic 100',2:'54:2 · Vitosolic 200'} %}{{ m.get(v, 'Unbekannt (' ~ v ~ ')') }}",
+            "nopoll": [
+                {
+                    "name": "solarregelung_54_einstellung",
+                    "state_topic": "{mqtt_base}/solar_typ",
+                    "command_topic": "{mqtt_base}/solar_typ/set",
+                },
+            ],
+        },
+        {
+            "domain": "select",
+            "entity_category": "config",
+            "options": [
+                "5B:0 · Speicher direkt am Kessel",
+                "5B:1 · Speicher hinter hydraulischer Weiche",
+            ],
+            "command_template": "{% if value.startswith('5B:0') %}0{% elif value.startswith('5B:1') %}1{% endif %}",
+            "value_template": "{% set v = value | int(-1) %}{% if v == 0 %}5B:0 · Speicher direkt am Kessel{% elif v == 1 %}5B:1 · Speicher hinter hydraulischer Weiche{% else %}Unbekannt ({{ v }}){% endif %}",
+            "nopoll": [
+                {
+                    "name": "warmwasser_speicher_anbindung_5b_einstellung",
+                    "state_topic": "{mqtt_base}/warmwasser_speicher_anbindung_5b",
+                    "command_topic": "{mqtt_base}/warmwasser_speicher_anbindung_5b/set",
+                },
+            ],
+        },
+
+        # -----------------------------------------------------------------
         # Dashboard aliases for service values.
         # These use new unique_ids so existing HA registry entries that were
         # previously disabled do not suppress the dashboard values.
@@ -919,7 +1025,7 @@ poll_list = {
                 {
                     "name": "umschaltventil_bauart_65_anzeige",
                     "state_topic": "{mqtt_base}/umschaltventil_bauart_65",
-                    "value_template": "{% set v = value | int(-1) %}{% if v == 3 %}Grundfos Ventil{% else %}Wert {{ v }}{% endif %}",
+                    "value_template": "{% set v = value | int(-1) %}{% set m = {0:'65:0 · kein Umschaltventil',1:'65:1 · Viessmann',2:'65:2 · Wilo',3:'65:3 · Grundfos'} %}{{ m.get(v, 'Wert ' ~ v) }}",
                 },
                 {
                     "name": "zirkulation_bei_ww_soll1_71_anzeige",
@@ -1667,6 +1773,7 @@ poll_list = {
                 {
                     "name": "anlagenschema_anzeige",
                     "state_topic": "{mqtt_base}/anlagenschema",
+                    "value_template": "{% set v = value | int(-1) %}{% set m = {1:'00:1 · A1 ohne WW',2:'00:2 · A1 + WW',3:'00:3 · M2 ohne WW',4:'00:4 · M2 + WW',5:'00:5 · A1 + M2 ohne WW',6:'00:6 · A1 + M2 + WW'} %}{{ m.get(v, 'Wert ' ~ v) }}",
                 },
                 {
                     "name": "anlagentyp_anzeige",
@@ -1675,6 +1782,26 @@ poll_list = {
                 {
                     "name": "bauart_warmwasser_anzeige",
                     "state_topic": "{mqtt_base}/bauart_warmwasser",
+                },
+                {
+                    "name": "hydraulische_weiche_52_anzeige",
+                    "state_topic": "{mqtt_base}/hydraulische_weiche_vorhanden",
+                    "value_template": "{% set v = value | int(-1) %}{% if v == 0 %}52:0 · ohne Vorlaufsensor{% elif v == 1 %}52:1 · mit Vorlaufsensor{% else %}Wert {{ v }}{% endif %}",
+                },
+                {
+                    "name": "solarregelung_54_anzeige",
+                    "state_topic": "{mqtt_base}/solar_typ",
+                    "value_template": "{% set v = value | int(-1) %}{% if v == 0 %}54:0 · keine Solarregelung{% elif v == 1 %}54:1 · Vitosolic 100{% elif v == 2 %}54:2 · Vitosolic 200{% else %}Wert {{ v }}{% endif %}",
+                },
+                {
+                    "name": "warmwasser_speicher_anbindung_5b_anzeige",
+                    "state_topic": "{mqtt_base}/warmwasser_speicher_anbindung_5b",
+                    "value_template": "{% set v = value | int(-1) %}{% if v == 0 %}5B:0 · direkt am Kessel{% elif v == 1 %}5B:1 · hinter hydraulischer Weiche{% else %}Wert {{ v }}{% endif %}",
+                },
+                {
+                    "name": "relais_funktion_53_anzeige",
+                    "state_topic": "{mqtt_base}/relais_k12_funktion_53",
+                    "value_template": "{% set v = value | int(-1) %}{% set m = {0:'53:0 · Sammelstörung',1:'53:1 · Zirkulationspumpe',2:'53:2 · Heizkreispumpe A1',3:'53:3 · Speicherladepumpe extern'} %}{{ m.get(v, 'Wert ' ~ v) }}",
                 },
                 {
                     "name": "systemzeit_anzeige",
