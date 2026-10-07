@@ -236,7 +236,8 @@ jobs:
 
           boxes = []
           for index, line in enumerate(lines):
-              if line.strip() != "type: markdown":
+              normalized = line.strip()
+              if normalized not in ("type: markdown", "- type: markdown"):
                   continue
 
               content_index = None
