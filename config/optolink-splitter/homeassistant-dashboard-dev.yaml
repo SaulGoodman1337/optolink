@@ -1745,6 +1745,329 @@ views:
         view_layout:
           grid-area: header
         cards:
+          # Active WB2A fault banner.
+          # Deliberately triggered only by current/live diagnostics; the fault
+          # history must never keep this banner visible after a fault is gone.
+          - type: conditional
+            conditions:
+              - condition: or
+                conditions:
+                  - condition: state
+                    entity: sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode
+                    state_not:
+                      - "Kein Fehler"
+                      - "unbekannt"
+                      - "unknown"
+                      - "unavailable"
+                  - condition: state
+                    entity: sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus
+                    state_not:
+                      - "OK"
+                      - "unknown"
+                      - "unavailable"
+                  - condition: state
+                    entity: binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt
+                    state: "on"
+                  - condition: state
+                    entity: binary_sensor.vitodens_200_wb2a_cfdm_fehler
+                    state: "on"
+                  - condition: state
+                    entity: binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre
+                    state: "on"
+                  - condition: state
+                    entity: sensor.vitodens_200_wb2a_km_fehler_pumpe_a1
+                    state_not:
+                      - "OK"
+                      - "unknown"
+                      - "unavailable"
+                  - condition: state
+                    entity: sensor.vitodens_200_wb2a_km_fehler_interne_pumpe
+                    state_not:
+                      - "OK"
+                      - "unknown"
+                      - "unavailable"
+            card:
+              type: custom:mushroom-template-card
+              primary: >-
+                {% set raw = states('sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode') %}
+                {% set code = raw | replace('0x', '') | upper if raw.startswith('0x') else '' %}
+                {% if not code %}
+                  {% set gfa = states('sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus') %}
+                  {% if gfa.startswith('Code ') %}
+                    {% set gv = gfa.split(' ')[1] | int(-1) %}
+                    {% if gv >= 0 %}{% set code = '%02X' | format(gv) %}{% endif %}
+                  {% endif %}
+                {% endif %}
+                {% set m = {
+                  '0F':'Wartung fällig',
+                  '10':'Außentemperatursensor: Kurzschluss',
+                  '18':'Außentemperatursensor: Unterbrechung',
+                  '20':'Vorlauftemperatursensor hydraulische Weiche: Kurzschluss',
+                  '28':'Vorlauftemperatursensor hydraulische Weiche: Unterbrechung',
+                  '30':'Kesseltemperatursensor: Kurzschluss',
+                  '38':'Kesseltemperatursensor: Unterbrechung',
+                  '40':'Vorlauftemperatursensor Heizkreis M2: Kurzschluss',
+                  '48':'Vorlauftemperatursensor Heizkreis M2: Unterbrechung',
+                  '50':'Speicher-/Komfortsensor: Kurzschluss',
+                  '51':'Warmwasser-Auslauftemperatursensor: Kurzschluss',
+                  '58':'Speicher-/Komfortsensor: Unterbrechung',
+                  '59':'Warmwasser-Auslauftemperatursensor: Unterbrechung',
+                  '92':'Solarkollektorsensor S1: Kurzschluss',
+                  '93':'Solar-Speichersensor S2: Kurzschluss',
+                  '94':'Solarsensor S3: Kurzschluss',
+                  '9A':'Solarkollektorsensor S1: Unterbrechung',
+                  '9B':'Solar-Speichersensor S2: Unterbrechung',
+                  '9C':'Solarsensor S3: Unterbrechung',
+                  '9F':'Fehler der Solarregelung',
+                  'A7':'Bedienteil defekt',
+                  'B0':'Abgastemperatursensor: Kurzschluss',
+                  'B1':'Kommunikationsfehler internes Bedienteil',
+                  'B4':'Interner Regelungsfehler',
+                  'B5':'Interner Regelungsfehler',
+                  'B7':'Kesselcodierstecker fehlt, falsch oder defekt',
+                  'B8':'Abgastemperatursensor: Unterbrechung',
+                  'BA':'Kommunikationsfehler Erweiterung Heizkreis M2',
+                  'BC':'Kommunikationsfehler Vitotrol Heizkreis A1',
+                  'BD':'Kommunikationsfehler Vitotrol Heizkreis M2',
+                  'BE':'Fehlerhafte Vitotrol-Codierung',
+                  'BF':'Falsches LON-Kommunikationsmodul',
+                  'C2':'KM-BUS-Unterbrechung zur Solarregelung',
+                  'C6':'Kommunikationsfehler externe Heizkreispumpe M2',
+                  'C7':'Kommunikationsfehler externe Heizkreispumpe A1',
+                  'CD':'Kommunikationsfehler Vitocom 100',
+                  'CE':'Kommunikationsfehler externe Erweiterung',
+                  'CF':'Kommunikationsfehler LON-Modul',
+                  'DA':'Raumtemperatursensor A1: Kurzschluss',
+                  'DB':'Raumtemperatursensor M2: Kurzschluss',
+                  'DD':'Raumtemperatursensor A1: Unterbrechung',
+                  'DE':'Raumtemperatursensor M2: Unterbrechung',
+                  'E4':'Fehler der Versorgungsspannung',
+                  'E5':'Fehler des Flammenverstärkers',
+                  'E6':'Abgas-/Zuluftsystem blockiert',
+                  'F0':'Interner Regelungsfehler',
+                  'F1':'Abgastemperaturbegrenzer ausgelöst',
+                  'F2':'Temperaturbegrenzer ausgelöst',
+                  'F3':'Flammensignal bereits beim Brennerstart vorhanden',
+                  'F4':'Kein Flammensignal nach Brennerstart',
+                  'F5':'Luftdruckwächter öffnet beim Brennerstart nicht',
+                  'F7':'Luftdruckwächter fehlerhaft',
+                  'F8':'Brennstoffventil schließt verzögert',
+                  'F9':'Gebläsedrehzahl beim Brennerstart zu niedrig',
+                  'FA':'Gebläsestillstand wird nicht erreicht',
+                  'FD':'Fehler Gasfeuerungsautomat',
+                  'FE':'EMV-Störung oder Fehler der Grundplatine',
+                  'FF':'EMV-Störung oder interner Regelungsfehler'
+                } %}
+                {% if code %}
+                  {% if code == '0F' %}Wartung {{ code }} · {{ m.get(code, 'Hinweis') }}
+                  {% else %}Störung {{ code }} · {{ m.get(code, 'Unbekannter WB2A-Fehlercode') }}{% endif %}
+                {% elif is_state('binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt', 'on') %}
+                  Störung · Feuerungsautomat verriegelt
+                {% elif is_state('binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre', 'on') %}
+                  Störung · Regelung hart gesperrt
+                {% elif is_state('binary_sensor.vitodens_200_wb2a_cfdm_fehler', 'on') %}
+                  Störung · Interner Regelungsfehler
+                {% elif states('sensor.vitodens_200_wb2a_km_fehler_pumpe_a1') not in ['OK','unknown','unavailable'] %}
+                  Störung · Kommunikation Heizkreispumpe
+                {% elif states('sensor.vitodens_200_wb2a_km_fehler_interne_pumpe') not in ['OK','unknown','unavailable'] %}
+                  Störung · Kommunikation interne Pumpe
+                {% else %}
+                  Störung an der Vitodens
+                {% endif %}
+              secondary: >-
+                Aktive Störung erkannt · Tippen für Ursache und Handlungsempfehlung
+              icon: mdi:alert-octagon
+              icon_color: >-
+                {{ 'amber' if states('sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode') == '0x0F' else 'red' }}
+              multiline_secondary: true
+              fill_container: true
+              tap_action:
+                action: fire-dom-event
+                browser_mod:
+                  service: browser_mod.popup
+                  data:
+                    title: Vitodens 200-W WB2A · Störungsbehebung
+                    adaptive: true
+                    content:
+                      type: markdown
+                      content: |
+                        {% set raw = states('sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode') %}
+                        {% set code = raw | replace('0x', '') | upper if raw.startswith('0x') else '' %}
+                        {% if not code %}
+                          {% set gfa = states('sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus') %}
+                          {% if gfa.startswith('Code ') %}
+                            {% set gv = gfa.split(' ')[1] | int(-1) %}
+                            {% if gv >= 0 %}{% set code = '%02X' | format(gv) %}{% endif %}
+                          {% endif %}
+                        {% endif %}
+                        {% set title = {
+                          '0F':'Wartung fällig',
+                          '10':'Kurzschluss Außentemperatursensor',
+                          '18':'Unterbrechung Außentemperatursensor',
+                          '20':'Kurzschluss Vorlauftemperatursensor hydraulische Weiche',
+                          '28':'Unterbrechung Vorlauftemperatursensor hydraulische Weiche',
+                          '30':'Kurzschluss Kesseltemperatursensor',
+                          '38':'Unterbrechung Kesseltemperatursensor',
+                          '40':'Kurzschluss Vorlauftemperatursensor Heizkreis M2',
+                          '48':'Unterbrechung Vorlauftemperatursensor Heizkreis M2',
+                          '50':'Kurzschluss Speicher-/Komfortsensor',
+                          '51':'Kurzschluss Warmwasser-Auslauftemperatursensor',
+                          '58':'Unterbrechung Speicher-/Komfortsensor',
+                          '59':'Unterbrechung Warmwasser-Auslauftemperatursensor',
+                          '92':'Kurzschluss Solarkollektorsensor S1',
+                          '93':'Kurzschluss Solar-Speichersensor S2',
+                          '94':'Kurzschluss Solarsensor S3',
+                          '9A':'Unterbrechung Solarkollektorsensor S1',
+                          '9B':'Unterbrechung Solar-Speichersensor S2',
+                          '9C':'Unterbrechung Solarsensor S3',
+                          '9F':'Fehler Solarregelung',
+                          'A7':'Bedienteil defekt',
+                          'B0':'Kurzschluss Abgastemperatursensor',
+                          'B1':'Kommunikationsfehler internes Bedienteil',
+                          'B4':'Interner Regelungsfehler',
+                          'B5':'Interner Regelungsfehler',
+                          'B7':'Kesselcodierstecker fehlt, falsch oder defekt',
+                          'B8':'Unterbrechung Abgastemperatursensor',
+                          'BA':'Kommunikationsfehler Erweiterung Heizkreis M2',
+                          'BC':'Kommunikationsfehler Vitotrol Heizkreis A1',
+                          'BD':'Kommunikationsfehler Vitotrol Heizkreis M2',
+                          'BE':'Fehlerhafte Vitotrol-Codierung',
+                          'BF':'Falsches LON-Kommunikationsmodul',
+                          'C2':'KM-BUS-Unterbrechung zur Solarregelung',
+                          'C6':'Kommunikationsfehler externe Heizkreispumpe M2',
+                          'C7':'Kommunikationsfehler externe Heizkreispumpe A1',
+                          'CD':'Kommunikationsfehler Vitocom 100',
+                          'CE':'Kommunikationsfehler externe Erweiterung',
+                          'CF':'Kommunikationsfehler LON-Modul',
+                          'DA':'Kurzschluss Raumtemperatursensor A1',
+                          'DB':'Kurzschluss Raumtemperatursensor M2',
+                          'DD':'Unterbrechung Raumtemperatursensor A1',
+                          'DE':'Unterbrechung Raumtemperatursensor M2',
+                          'E4':'Fehler Versorgungsspannung',
+                          'E5':'Fehler Flammenverstärker',
+                          'E6':'Abgas-/Zuluftsystem blockiert',
+                          'F0':'Interner Regelungsfehler',
+                          'F1':'Abgastemperaturbegrenzer ausgelöst',
+                          'F2':'Temperaturbegrenzer ausgelöst',
+                          'F3':'Flammensignal bereits beim Brennerstart vorhanden',
+                          'F4':'Kein Flammensignal nach Brennerstart',
+                          'F5':'Luftdruckwächter öffnet beim Brennerstart nicht',
+                          'F7':'Luftdruckwächter fehlerhaft',
+                          'F8':'Brennstoffventil schließt verzögert',
+                          'F9':'Gebläsedrehzahl beim Brennerstart zu niedrig',
+                          'FA':'Gebläsestillstand wird nicht erreicht',
+                          'FD':'Fehler Gasfeuerungsautomat',
+                          'FE':'EMV-Störung oder Fehler der Grundplatine',
+                          'FF':'EMV-Störung oder interner Regelungsfehler'
+                        } %}
+                        {% set action = {
+                          '0F':'Wartung durch einen Fachbetrieb durchführen lassen. Nach abgeschlossener Wartung wird die Wartungsanzeige an der Regelung zurückgesetzt.',
+                          '10':'Außentemperatursensor und dessen Anschlussleitung durch einen Fachbetrieb prüfen lassen.',
+                          '18':'Außentemperatursensor und dessen Anschlussleitung durch einen Fachbetrieb auf Unterbrechung prüfen lassen.',
+                          '20':'Sensor an der hydraulischen Weiche und Verkabelung prüfen lassen.',
+                          '28':'Sensor an der hydraulischen Weiche und Verkabelung auf Unterbrechung prüfen lassen.',
+                          '30':'Kesseltemperatursensor und Verkabelung prüfen lassen. Der Brenner bleibt bei diesem Fehler blockiert.',
+                          '38':'Kesseltemperatursensor und Verkabelung auf Unterbrechung prüfen lassen. Der Brenner bleibt blockiert.',
+                          '40':'Vorlauftemperatursensor von Heizkreis M2 prüfen lassen.',
+                          '48':'Vorlauftemperatursensor von Heizkreis M2 und Verkabelung auf Unterbrechung prüfen lassen.',
+                          '50':'Speichertemperatur- bzw. Komfortsensor prüfen lassen. Warmwasserbereitung kann ausfallen.',
+                          '51':'Warmwasser-Auslauftemperatursensor prüfen lassen.',
+                          '58':'Speichertemperatur- bzw. Komfortsensor und Anschlussleitung auf Unterbrechung prüfen lassen.',
+                          '59':'Warmwasser-Auslauftemperatursensor und Anschlussleitung auf Unterbrechung prüfen lassen.',
+                          '92':'Kollektortemperatursensor S1 an der Solarregelung prüfen lassen.',
+                          '93':'Speichertemperatursensor S2 an der Solarregelung prüfen lassen.',
+                          '94':'Temperatursensor S3 an der Solarregelung prüfen lassen.',
+                          '9A':'Kollektortemperatursensor S1 und Leitung auf Unterbrechung prüfen lassen.',
+                          '9B':'Speichertemperatursensor S2 und Leitung auf Unterbrechung prüfen lassen.',
+                          '9C':'Temperatursensor S3 und Leitung auf Unterbrechung prüfen lassen.',
+                          '9F':'Solarregelung anhand ihrer eigenen Serviceunterlagen prüfen lassen.',
+                          'A7':'Bedienteil ist laut Serviceanleitung defekt und muss durch einen Fachbetrieb geprüft bzw. ersetzt werden.',
+                          'B0':'Abgastemperatursensor und Anschlussleitung prüfen lassen.',
+                          'B1':'Interne Bedieneinheit und Anschlüsse prüfen lassen; bei fortbestehendem Fehler Bedieneinheit prüfen/ersetzen lassen.',
+                          'B4':'Interner Regelungsfehler. Regelung durch einen Fachbetrieb prüfen lassen.',
+                          'B5':'Interner Regelungsfehler. Regelung durch einen Fachbetrieb prüfen lassen.',
+                          'B7':'Sitz und Typ des Kesselcodiersteckers durch einen Fachbetrieb prüfen lassen; bei Defekt ersetzen.',
+                          'B8':'Abgastemperatursensor und Anschlussleitung auf Unterbrechung prüfen lassen.',
+                          'BA':'Erweiterungssatz Heizkreis M2, dessen Anschlüsse und Codierung prüfen lassen.',
+                          'BC':'Vitotrol A1: Anschlüsse, Leitung, Codierung A0 und Codierschalter prüfen lassen.',
+                          'BD':'Vitotrol M2: Anschlüsse, Leitung, Codierung A0 und Codierschalter prüfen lassen.',
+                          'BE':'Codierschalter der Vitotrol-Fernbedienung prüfen lassen.',
+                          'BF':'LON-Kommunikationsmodul prüfen und gegebenenfalls austauschen lassen.',
+                          'C2':'KM-BUS-Verbindung zur Solarregelung sowie Codierung 54 prüfen lassen.',
+                          'C6':'Externe drehzahlgeregelte Pumpe M2, Codierung E5 und Pumpencodierschalter prüfen lassen.',
+                          'C7':'Externe drehzahlgeregelte Pumpe A1, Codierung E5 und Pumpencodierschalter prüfen lassen.',
+                          'CD':'Vitocom-100-Anschluss, Gerät und Codierung 95 prüfen lassen.',
+                          'CE':'Externe Erweiterung, Anschlüsse und Codierung 2E prüfen lassen.',
+                          'CF':'LON-Kommunikationsmodul prüfen bzw. austauschen lassen.',
+                          'DA':'Raumtemperatursensor Heizkreis A1 prüfen lassen.',
+                          'DB':'Raumtemperatursensor Heizkreis M2 prüfen lassen.',
+                          'DD':'Raumtemperatursensor A1 sowie Codierschalterstellung der Fernbedienung prüfen lassen.',
+                          'DE':'Raumtemperatursensor M2 sowie Codierschalterstellung der Fernbedienung prüfen lassen.',
+                          'E4':'Versorgung/Regelung durch einen Fachbetrieb prüfen lassen.',
+                          'E5':'Flammenverstärker bzw. Regelung durch einen Fachbetrieb prüfen lassen.',
+                          'E6':'Abgas-/Zuluftweg und Luftdruckwächter prüfen lassen. Nicht weiter betreiben, wenn Abgasgeruch wahrnehmbar ist.',
+                          'F0':'Interner Fehler der Regelung. Fachbetrieb erforderlich.',
+                          'F1':'Anlagendruck am Manometer prüfen. Nach Abkühlen Abgasanlage/Begrenzer durch einen Fachbetrieb prüfen lassen.',
+                          'F2':'Anlagendruck prüfen. Umwälzpumpe, Entlüftung und Temperaturbegrenzer durch einen Fachbetrieb prüfen lassen.',
+                          'F3':'Ionisationselektrode und deren Leitung durch einen Fachbetrieb prüfen lassen.',
+                          'F4':'Fachbetrieb: Ionisation, Gasdruck, Gaskombiregler, Zündung/Zündelektroden und Kondensatablauf prüfen.',
+                          'F5':'Fachbetrieb: Luftdruckwächter, Gebläse, Verkabelung, Versorgung und Gebläseansteuerung prüfen.',
+                          'F7':'Luftdruckwächter und Verbindungsleitung durch einen Fachbetrieb prüfen lassen.',
+                          'F8':'Gaskombiregler und dessen Ansteuerwege durch einen Fachbetrieb prüfen lassen.',
+                          'F9':'Fachbetrieb: Gebläse, Verbindungsleitungen, Spannungsversorgung und Gebläseansteuerung prüfen.',
+                          'FA':'Fachbetrieb: Gebläse, Leitungen und Gebläseansteuerung prüfen.',
+                          'FD':'Fachbetrieb: Zündelektroden/Leitungen und mögliche starke EMV-Störquellen prüfen; bei fortbestehendem Fehler Regelung prüfen.',
+                          'FE':'Gerät einmal neu starten lassen; bleibt die Störung bestehen, Regelung/Grundplatine durch einen Fachbetrieb prüfen lassen.',
+                          'FF':'Gerät einmal neu starten lassen; bleibt die Störung bestehen, Regelung durch einen Fachbetrieb prüfen lassen.'
+                        } %}
+
+                        ## Aktive Meldung
+
+                        {% if code %}
+                        **Code:** `{{ code }}`  
+                        **Klartext:** {{ title.get(code, 'Unbekannter WB2A-Fehlercode') }}
+                        {% else %}
+                        **Kein eindeutiger System-Störungscode verfügbar.** Mindestens ein interner Live-Fehlerstatus ist aktiv.
+                        {% endif %}
+
+                        **GFA verriegelt:** {{ 'Ja' if is_state('binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt', 'on') else 'Nein' }}  
+                        **GFA-Status:** {{ states('sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus') }}  
+                        **CFDM Fehler:** {{ 'Ja' if is_state('binary_sensor.vitodens_200_wb2a_cfdm_fehler', 'on') else 'Nein' }}  
+                        **CFDM harte Sperre:** {{ 'Ja' if is_state('binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre', 'on') else 'Nein' }}  
+                        **KM Heizkreispumpe:** {{ states('sensor.vitodens_200_wb2a_km_fehler_pumpe_a1') }}  
+                        **KM interne Pumpe:** {{ states('sensor.vitodens_200_wb2a_km_fehler_interne_pumpe') }}
+
+                        ## Was ist zu tun?
+
+                        {% if code %}
+                        {{ action.get(code, 'Der Code ist in der hier hinterlegten WB2A-Tabelle nicht eindeutig beschrieben. Diagnosewerte sichern und einen Fachbetrieb mit dem angezeigten Code beauftragen.') }}
+                        {% elif is_state('binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt', 'on') %}
+                        Der Feuerungsautomat ist verriegelt. Nicht wiederholt entriegeln. Aktive Diagnosewerte und Fehlercode notieren; bei Gas- oder Abgasgeruch Anlage nicht weiter bedienen und den Fachbetrieb verständigen.
+                        {% elif is_state('binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre', 'on') %}
+                        Die interne Regelung meldet eine harte Sperre. Diagnosewerte sichern und die Anlage durch einen Fachbetrieb prüfen lassen.
+                        {% elif is_state('binary_sensor.vitodens_200_wb2a_cfdm_fehler', 'on') %}
+                        Die interne Regelung meldet einen Fehler ohne eindeutigen Systemcode. Diagnosewerte sichern und Fachbetrieb hinzuziehen.
+                        {% else %}
+                        Mindestens ein Pumpen-/Kommunikationsstatus meldet einen Fehler. Betroffene Verbindung bzw. Baugruppe anhand des oben genannten Live-Status durch einen Fachbetrieb prüfen lassen.
+                        {% endif %}
+
+                        ## Sicherheit
+
+                        Bei **Gasgeruch oder Abgasgeruch** keine Reset-Versuche durchführen. Gasabsperrhahn schließen, lüften, Zündquellen vermeiden und den zuständigen Fach-/Notdienst verständigen. Arbeiten an Gas-, Abgas- oder elektrischen Komponenten gehören in die Hände einer Fachkraft.
+
+                        **Quelle:** Viessmann Vitodens 200 Typ WB2A, Serviceanleitung 5681 573 (10/2006), Abschnitt *Störungsbehebung / Störungscodes*, Seiten 67–78.
+
+                        **Live-Datenpunkte:** Alarmobjekt `0xA132`, GFA-Status `0x5738`, GFA-Verriegelung aus `0x55D3`, KM-Pumpenfehler `0x0A33` / `0x0A35`, CFDM-Status `0xA395`.
+              card_mod:
+                style: |
+                  ha-card {
+                    border-radius: 16px;
+                    border: 1px solid color-mix(in srgb, var(--error-color) 65%, var(--divider-color));
+                    border-left: 6px solid var(--error-color);
+                    background: color-mix(in srgb, var(--error-color) 10%, var(--ha-card-background, var(--card-background-color)));
+                    box-shadow: 0 0 0 1px color-mix(in srgb, var(--error-color) 10%, transparent);
+                  }
+
           - type: heading
             heading: Vitodens 200-W WB2A
             heading_style: title
