@@ -5,9 +5,8 @@
 # here do not affect the production dashboard until they are deliberately
 # promoted back after visual testing.
 #
-# Additional DEV-only HACS dependencies:
+# Additional DEV-only HACS dependency:
 # - Layout Card (thomasloven/lovelace-layout-card)
-# - Slider Button Card (aurimasniekis/hass-slider-button-card)
 #
 # Design goals of this DEV variant:
 # - visually group controls that belong together (especially day/night pairs);
@@ -727,6 +726,11 @@ button_card_templates:
     # behavior). Keep that separate from the normal temperature slider and
     # expose it as an explicit action so the semantics are visible to users.
     #
+    # The temperature control itself deliberately uses Home Assistant's native
+    # target-temperature tile feature. Besides reducing custom dependencies,
+    # its touch handling prevents a horizontal slider drag from becoming a
+    # swipe to the neighbouring dashboard view on mobile.
+    #
     # The dashboard repository does not know the user's climate entity IDs for
     # every room. Instead of guessing them, resolve the climate entity from the
     # Home Assistant entity registry: the valve-opening sensor and its climate
@@ -937,23 +941,34 @@ button_card_templates:
         ]]]
       slider:
         card:
-          type: custom:slider-button-card
+          # Use Home Assistant's native target-temperature feature rather than
+          # a third-party horizontal slider. The native ha-control-slider owns
+          # the touch gesture (pan-y for a horizontal control), so dragging the
+          # thermostat should not propagate into dashboard view navigation.
+          type: tile
           entity: |
             [[[
               return variables.climate_entity;
             ]]]
-          show_name: false
-          show_state: false
-          compact: true
-          slider:
-            direction: left-right
-            background: triangle
-            show_track: true
-            use_state_color: true
-          icon:
-            show: false
-          action_button:
-            show: false
+          name: Solltemperatur
+          icon: mdi:thermometer
+          hide_state: true
+          vertical: false
+          features_position: bottom
+          tap_action:
+            action: more-info
+          features:
+            - type: target-temperature
+          card_mod:
+            style: |
+              ha-card {
+                border: 0 !important;
+                box-shadow: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+                touch-action: pan-y;
+                overscroll-behavior-x: contain;
+              }
       fullopen:
         card:
           type: custom:button-card
