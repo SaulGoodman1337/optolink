@@ -270,6 +270,35 @@ HACS -> Frontend -> Layout Card
 thomasloven/lovelace-layout-card
 ```
 
+### Technische Infoboxen im DEV-Dashboard
+
+Technische Einstellwerte mit eigener Infobox folgen einem einheitlichen Schema:
+
+1. **Funktion** – was der Parameter grundsätzlich steuert;
+2. **Wirkung/Ablauf** – wann und wie er in die Regelung eingreift;
+3. **Bereich/Optionen** und **aktueller Wert**;
+4. Abhängigkeiten und wichtige Einschränkungen;
+5. **Codieradresse** der Viessmann-Regelung;
+6. **Datenpunkt** des aktuellen Optolink-Profils;
+7. **Quelle** bzw. Kennzeichnung, wenn die genaue Wirkung aus der
+   Serviceanleitung nicht belastbar ableitbar ist.
+
+Im Tab **Pumpen** sind die Dokumentationen nicht mehr nur über Long-Press
+erreichbar. E6, E7, E8, E9, A9, 31, 60 und 62 besitzen sichtbare
+Info-Schaltflächen. Zusätzlich sind die Gruppen 56/59/65 und 71/72 dokumentiert.
+
+Für die WB2A sind dabei insbesondere zwei ähnlich klingende Zeitfunktionen zu
+trennen:
+
+- **A9 / `0x27A9`**: dimensionsloser Codierwert 0–15 für die
+  Pumpenstillstandzeit nach einer Sollwertänderung. Der Wert ist **keine direkte
+  Minutenangabe**.
+- **62 / `0x6762`**: Nachlauf der Speicherladepumpe nach
+  Warmwasser-Speicherbeheizung; `0` = kein Nachlauf, `1…15` = Minuten.
+
+Das HA-Profil führt diese Werte deshalb in getrennten Number-Konfigurationen:
+A9 ohne Einheit, 62 mit `min`.
+
 ### Thermostatventile im DEV-Dashboard
 
 Jede Thermostatkarte behält die drei Betriebswerte sichtbar:
