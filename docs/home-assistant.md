@@ -270,6 +270,19 @@ HACS -> Frontend -> Layout Card
 thomasloven/lovelace-layout-card
 ```
 
+### Sichtbarkeit der DEV-Views
+
+Die erste Ansicht **Heizung DEV** besitzt absichtlich keinen `visible:`-Block
+und ist damit für alle Home-Assistant-Benutzer sichtbar.
+
+Alle weiteren DEV-Views sind auf den vorgesehenen Administrator-Benutzer
+beschränkt. Diese Navigationseinschränkung wird in CI strukturell aus dem YAML
+geprüft: Der erste View muss öffentlich bleiben und jeder nachfolgende View muss
+exakt den konfigurierten Benutzer in `visible:` enthalten.
+
+Die View-Sichtbarkeit ist eine UI-/Navigationsbeschränkung und ersetzt keine
+Home-Assistant-Berechtigungen auf Entities oder Services.
+
 ### Technische Infoboxen im DEV-Dashboard
 
 Technische Einstellwerte mit eigener Infobox folgen einem einheitlichen Schema:
