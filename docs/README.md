@@ -9,6 +9,7 @@ Dieser Ordner enthält die Betriebs- und Entwicklerdokumentation für den produk
 | [architecture.md](architecture.md) | Als Erstes: Komponenten, Datenfluss, Dienste und Sicherheitsgrenzen |
 | [operations.md](operations.md) | Beim Betrieb: Update, Status, Logs, Clock-Sync, Fehlerdiagnose |
 | [home-assistant.md](home-assistant.md) | Bei HA-/MQTT-/Dashboard-Änderungen |
+| [anlagenschema.md](anlagenschema.md) | WB2A-Anlagenschema, Hydrauliktopologie und dokumentierte Schreibwerte 00/52/53/54/5B |
 | [development.md](development.md) | Vor Änderungen an Reads, Writes, Services oder Deployment |
 | [optolink-maintenance.md](optolink-maintenance.md) | Wartungswerte und CLI |
 | [optolink-maintenance-api.md](optolink-maintenance-api.md) | MQTT-Wartungs-API und HA-Integration |
@@ -27,6 +28,7 @@ Für unterschiedliche Fragestellungen gelten bewusst unterschiedliche Dateien al
 | Frage | Quelle |
 | --- | --- |
 | Welche Entities/Datenpunkte pollt Produktion? | `config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py` |
+| Wie sind Anlagenschema/Topologie und deren zulässige Schreibwerte dokumentiert? | `docs/anlagenschema.md` |
 | Welche Werte darf Wartung schreiben? | `config/optolink-splitter/optolink_maintenance_core.py` |
 | Welche Zeitprogrammblöcke sind erlaubt? | `tools/optolink-schedule-manager.py` |
 | Wie wird Party technisch umgesetzt? | `tools/optolink-party-emulator.py` |
