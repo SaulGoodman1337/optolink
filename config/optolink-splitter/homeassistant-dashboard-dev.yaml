@@ -1615,7 +1615,6 @@ views:
         "header header"
         "status status"
         "controls rooms"
-        "controls history"
       place-content: start center
       mediaquery:
         "(max-width: 700px)":
@@ -1627,7 +1626,6 @@ views:
             "status"
             "controls"
             "rooms"
-            "history"
         "(max-width: 1200px)":
           margin: 6px 10px 14px
           grid-gap: 10px
@@ -1637,10 +1635,9 @@ views:
             "status"
             "controls"
             "rooms"
-            "history"
     cards:
       # ================================================================
-      # Header / live chips
+      # Header
       # ================================================================
       - type: vertical-stack
         view_layout:
@@ -2247,88 +2244,6 @@ views:
               perform_action: script.climateboost
               target: {}
 
-      # ================================================================
-      # History occupies the second desktop column below the room cards.
-      # On <=1200px it becomes a normal full-width stack.
-      # ================================================================
-      - type: vertical-stack
-        view_layout:
-          grid-area: history
-        cards:
-          - type: heading
-            heading: Verlauf
-            heading_style: title
-            icon: mdi:chart-line
-
-          - type: custom:background-graph-entities
-            title: Temperaturen – 24 Stunden
-            tile_style: true
-            hours_to_show: 24
-            points_per_hour: 6
-            update_interval: 60
-            line_width: 2
-            line_opacity: 0.22
-            line_length: short
-            curve: spline
-            show_gaps: true
-            entities:
-              - entity: sensor.vitodens_200_wb2a_kesseltemperatur
-                name: Kessel
-                icon: mdi:water-boiler
-                extra_value_entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur_normal
-                extra_value_name: Soll
-              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
-                name: Vorlauf
-                icon: mdi:thermometer-chevron-up
-                extra_value_entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlaufsolltemperatur
-                extra_value_name: Soll
-              - entity: sensor.vitodens_200_wb2a_aussentemperatur
-                name: Außen
-                icon: mdi:home-thermometer-outline
-                extra_value_entity: sensor.vitodens_200_wb2a_aussentemperatur_gedaempft
-                extra_value_name: Gedämpft
-              - entity: sensor.vitodens_200_wb2a_warmwasser_temperatur
-                name: Warmwasser
-                icon: mdi:water-thermometer
-                extra_value_entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
-                extra_value_name: Soll
-
-          - type: custom:background-graph-entities
-            title: Brenner & Hydraulik – 24 Stunden
-            tile_style: true
-            hours_to_show: 24
-            points_per_hour: 6
-            update_interval: 60
-            line_width: 2
-            line_opacity: 0.24
-            line_length: short
-            curve: spline
-            show_gaps: true
-            entities:
-              - entity: binary_sensor.vitodens_200_wb2a_brenner_flamme
-                name: Brenner
-                icon: mdi:fire
-                graph_entity: sensor.vitodens_200_wb2a_brenner_modulationsgrad
-                show_graph_entity_state: true
-                overwrite_graph_appearance: true
-                graph_min: 0
-                graph_max: 100
-              - entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_ausgang
-                name: Heizkreispumpe
-                icon: mdi:pump
-                graph_entity: sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl
-                show_graph_entity_state: true
-                overwrite_graph_appearance: true
-                graph_min: 0
-                graph_max: 100
-              - entity: binary_sensor.vitodens_200_wb2a_interne_pumpe_status
-                name: Interne Pumpe
-                icon: mdi:pump
-                graph_entity: sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
-                show_graph_entity_state: true
-                overwrite_graph_appearance: true
-                graph_min: 0
-                graph_max: 100
 
   - title: Heizkurve
     path: heizkurve
