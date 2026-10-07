@@ -15,7 +15,8 @@ Für einen neuen Maintainer ist diese Reihenfolge gedacht:
 4. [Entwicklungsleitfaden](docs/development.md) — Regeln für neue Reads/Writes, CI und Hardware-Verifikation.
 5. [Wartung](docs/optolink-maintenance.md) und [Wartungs-API](docs/optolink-maintenance-api.md).
 6. [WB2A-Zeitprogrammblöcke](docs/wb2a-schedule-blocks.md).
-7. [VControl-/Adress-Mapping](config/optolink-splitter/vcontrol-mapping.md).
+7. [WB2A-Anlagenschema und Anlagenkonfiguration](docs/anlagenschema.md).
+8. [VControl-/Adress-Mapping](config/optolink-splitter/vcontrol-mapping.md).
 
 Kurzfassung des Laufzeitpfads:
 
@@ -192,17 +193,18 @@ A separate visual-development dashboard is available at:
 config/optolink-splitter/homeassistant-dashboard-dev.yaml
 ```
 
-The DEV file can be loaded as a second Home Assistant dashboard. It currently
-contains the modernized **Heizung DEV** main page with grouped day/night
-controls and compact status groups. Historical graphs remain in the dedicated Diagnose view. The DEV main page uses
-**Layout Card** (`thomasloven/lovelace-layout-card`) for explicit responsive
-breakpoints instead of relying on the automatic Sections layout. The DEV
-thermostat section uses Home Assistant's native `target-temperature` tile
-feature so each radiator thermostat can change its Climate target temperature
-while still showing valve opening, current temperature and target temperature.
-Using the native control also prevents horizontal slider drags on mobile from
-being interpreted as dashboard-view swipes. Production remains unchanged until
-a tested DEV design is deliberately promoted.
+The previously tested DEV dashboard was promoted to
+`homeassistant-dashboard.yaml` on 2026-10-07. Production therefore now uses
+the responsive **Layout Card** main view, grouped day/night controls, native
+thermostat target-temperature controls, the live WB2A fault banner and the
+validated view-visibility policy.
+
+The separate DEV file remains the staging surface. It has diverged again with
+the new **Anlagenschema & Anlagenkonfiguration** diagnostics section. That
+section exposes documented WB2A topology controls for coding addresses
+`00`, `52`, `53`, `54` and `5B` with explicit confirmations; coding
+address `65` and the internal values `0x7701` / `0x8851` remain read-only.
+See [docs/anlagenschema.md](docs/anlagenschema.md).
 
 The schedule manager accepts only the 21 verified WB2A day blocks and validates complete 8-byte schedules before writing. Maintenance writes are similarly constrained by the shared guarded maintenance core and explicit confirmation semantics.
 
