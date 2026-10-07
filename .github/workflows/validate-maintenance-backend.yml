@@ -262,7 +262,7 @@ jobs:
               text = "\n".join(body)
               boxes.append((index + 1, text))
 
-          expected = 18
+          expected = 19
           if len(boxes) != expected:
               raise SystemExit(f"expected {expected} technical markdown info boxes, found {len(boxes)}")
 
