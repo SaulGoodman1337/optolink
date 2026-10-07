@@ -84,7 +84,9 @@ jobs:
           grep -q 'type: custom:mushroom-number-card' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'display_mode: slider' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q '^  thermostat_room_slider:' config/optolink-splitter/homeassistant-dashboard-dev.yaml
-          grep -q 'type: custom:slider-button-card' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          ! grep -q 'type: custom:slider-button-card' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'type: target-temperature' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'touch-action: pan-y' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'hass.entities || {}' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'entry.device_id === deviceId' config/optolink-splitter/homeassistant-dashboard-dev.yaml
           grep -q 'room_name: Büro' config/optolink-splitter/homeassistant-dashboard-dev.yaml
