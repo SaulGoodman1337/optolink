@@ -194,7 +194,7 @@ config/optolink-splitter/homeassistant-dashboard-dev.yaml
 
 The DEV file can be loaded as a second Home Assistant dashboard. It currently
 contains the modernized **Heizung DEV** main page with grouped day/night
-controls, compact status groups and modern graph cards. The DEV main page uses
+controls and compact status groups. Historical graphs remain in the dedicated Diagnose view. The DEV main page uses
 **Layout Card** (`thomasloven/lovelace-layout-card`) for explicit responsive
 breakpoints instead of relying on the automatic Sections layout. The DEV
 thermostat section additionally uses **Slider Button Card**
