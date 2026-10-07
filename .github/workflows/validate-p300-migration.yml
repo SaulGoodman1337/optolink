@@ -41,12 +41,15 @@ jobs:
           retention-days: 7
       - name: Install offline-test dependencies
         run: python3 -m pip install --disable-pip-version-check pyserial paho-mqtt pyyaml
-      - name: Run P300 regression tests when present
+      - name: Run required P300 regression tests
         env:
           P300_UPSTREAM_ROOT: ${{ github.workspace }}/.p300-upstream
-        run: |
-          if test -f tools/test-p300-migration.py; then
-            python3 tools/test-p300-migration.py
-          else
-            echo 'Source-fixture bootstrap only; migration implementation follows in this branch.'
-          fi
+        run: python3 tools/test-p300-migration.py --report /tmp/p300-test-report.json
+      - name: Upload offline validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p300-test-report
+          path: /tmp/p300-test-report.json
+          if-no-files-found: error
+          retention-days: 14
