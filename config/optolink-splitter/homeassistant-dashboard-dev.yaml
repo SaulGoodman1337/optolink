@@ -3697,13 +3697,13 @@ views:
                 show_icon: false
 
           - type: heading
-            heading: Drehzahlgrenzen
+            heading: Drehzahlregelung Heizkreispumpe
             heading_style: subtitle
             icon: mdi:speedometer
 
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_pumpe_min_drehzahl_e7_einstellung
-            name: Minimum E7
+            name: Mindestdrehzahl Heizkreispumpe (E7)
             icon: mdi:speedometer-slow
             show_entity_picture: false
             vertical: false
@@ -3713,34 +3713,50 @@ views:
             features_position: bottom
             tap_action:
               action: more-info
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info E7
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Minimale Drehzahl E7
+                  title: Mindestdrehzahl Heizkreispumpe (E7)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Untere Drehzahlgrenze der geregelten Heizkreispumpe im normalen Heizbetrieb.
+                      **Funktion:** Untere Drehzahlgrenze der drehzahlgeregelten externen Heizkreispumpe im Normalbetrieb.
+
+                      **Wirkung:** Die Regelung darf die Pumpe oberhalb dieses Wertes betreiben, im normalen Heizbetrieb aber nicht darunter. E7 erzwingt daher keine konstante Drehzahl.
 
                       **Bereich:** 0–100 %
 
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_min_drehzahl_e7_einstellung') }} %
 
-                      Die Regelung darf oberhalb von E7 selbst eine höhere Drehzahl vorgeben.
+                      **Zusammenhang:** Bei `E8:0` gilt E7 auch als Mindestdrehzahl im reduzierten Betrieb. Bei `E8:1` wird dafür E9 verwendet.
 
-                      **Lokal gemessen:** E7 30 % → reale Drehzahl etwa 32–35 %, E7 60 % → etwa 62 %, E7 100 % → 100 %.
+                      **Lokal verifiziert:** E7 30 % → reale Drehzahl etwa 32–35 %, E7 60 % → etwa 62 %, E7 100 % → 100 %. Die angezeigte Ist-Drehzahl kann deshalb geringfügig vom Codierwert abweichen.
 
-                      Datenpunkt: `0x27E7`
+                      **Codieradresse:** `E7`
+
+                      **Datenpunkt:** `0x27E7`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_pumpe_max_drehzahl_e6_einstellung
-            name: Maximum E6
+            name: Maximaldrehzahl Heizkreispumpe (E6)
             icon: mdi:speedometer
             show_entity_picture: false
             vertical: false
@@ -3750,58 +3766,91 @@ views:
             features_position: bottom
             tap_action:
               action: more-info
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info E6
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Maximale Drehzahl E6
+                  title: Maximaldrehzahl Heizkreispumpe (E6)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Obere Drehzahlgrenze der geregelten Heizkreispumpe.
+                      **Funktion:** Obere Drehzahlgrenze der drehzahlgeregelten externen Heizkreispumpe im Normalbetrieb.
+
+                      **Wirkung:** Die Regelung kann die Pumpendrehzahl innerhalb ihrer Regelstrategie bis zu diesem Wert anheben. `E6 = 100 %` erlaubt 100 %, erzwingt aber keine dauerhaft maximale Drehzahl.
 
                       **Bereich:** 0–100 %
 
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_max_drehzahl_e6_einstellung') }} %
 
-                      E6 = 100 % erlaubt maximal 100 %. Es bedeutet **nicht**, dass die Pumpe beim Brennerstart automatisch auf 100 % geht.
+                      **Zusammenhang:** E7 definiert die untere und E6 die obere Grenze der geregelten Heizkreispumpe im Normalbetrieb.
 
-                      Datenpunkt: `0x27E6`
+                      **Codieradresse:** `E6`
+
+                      **Datenpunkt:** `0x27E6`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
           - type: custom:mushroom-select-card
             entity: select.vitodens_200_wb2a_heizkreis_m1_pumpe_nebenbetrieb_e8_einstellung
-            name: Reduzierter Betrieb E8
+            name: Drehzahlwahl reduzierter Betrieb (E8)
             icon: mdi:call-split
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info E8
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Pumpendrehzahl reduziert E8
+                  title: Drehzahlwahl reduzierter Betrieb (E8)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Wählt die Pumpendrehzahl im reduzierten Heizbetrieb.
+                      **Funktion:** Legt fest, welcher Codierwert die Mindestdrehzahl der Heizkreispumpe im Betrieb mit reduzierter Raumtemperatur bestimmt.
 
-                      - **Minimum nach E7:** Mindestdrehzahl aus E7.
-                      - **Reduziert nach E9:** separate Drehzahl E9.
+                      **Optionen:**
+                      - **Minimum nach E7:** `E8:0` → reduzierte Betriebsart verwendet die Mindestdrehzahl aus E7.
+                      - **Reduziert nach E9:** `E8:1` → reduzierte Betriebsart verwendet die separate Drehzahl aus E9.
 
-                      E8 ist kein Brennerstart- oder Pumpenboost-Parameter.
+                      **Aktuell:** {{ states('select.vitodens_200_wb2a_heizkreis_m1_pumpe_nebenbetrieb_e8_einstellung') }}
 
-                      Datenpunkt: `0x27E8`
+                      **Wichtig:** E8 ist ein Umschalter zwischen E7 und E9. Er ist kein Brennerstart-, Pumpenboost- oder Nachlaufparameter.
+
+                      **Codieradresse:** `E8`
+
+                      **Datenpunkt:** `0x27E8`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_e9_einstellung
-            name: Reduziert E9
+            name: Drehzahl reduzierter Betrieb (E9)
             icon: mdi:weather-night
             show_entity_picture: false
             vertical: false
@@ -3811,37 +3860,51 @@ views:
             features_position: bottom
             tap_action:
               action: more-info
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info E9
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Reduzierte Drehzahl E9
+                  title: Drehzahl reduzierter Betrieb (E9)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Separate Pumpendrehzahl für den reduzierten Heizbetrieb.
+                      **Funktion:** Separate Pumpendrehzahl der drehzahlgeregelten externen Heizkreispumpe für den Betrieb mit reduzierter Raumtemperatur.
+
+                      **Wirkung:** E9 wird nur wirksam, wenn E8 auf **„Reduziert nach E9“** bzw. `E8:1` steht.
 
                       **Bereich:** 0–100 %
 
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_e9_einstellung') }} %
 
-                      E9 wird verwendet, wenn E8 auf **„Reduziert nach E9“** steht.
+                      **Codieradresse:** `E9`
 
-                      Datenpunkt: `0x27E9`
+                      **Datenpunkt:** `0x27E9`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
           - type: heading
-            heading: Zeit / interne Pumpe
+            heading: Zeitverhalten / interne Pumpe
             heading_style: subtitle
             icon: mdi:timer-cog-outline
 
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_a9_einstellung
-            name: Stillstandzeit A9
+            name: Pumpenstillstand nach Sollwertwechsel (A9)
             icon: mdi:timer-pause-outline
             show_entity_picture: false
             vertical: false
@@ -3851,32 +3914,48 @@ views:
             features_position: bottom
             tap_action:
               action: more-info
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info A9
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Pumpenstillstandzeit A9
+                  title: Pumpenstillstand nach Sollwertwechsel (A9)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Pumpenstillstandzeit nach einer Sollwertänderung des Heizkreises durch Betriebsartwechsel oder Änderung der Raum-Solltemperatur.
+                      **Funktion:** Stillstandzeit der Heizkreispumpe nach einer Sollwertänderung durch Wechsel der Betriebsart oder Änderung des Raumtemperatur-Sollwerts.
 
-                      **Bereich:** 0–15 min
+                      **Wirkung:** Nach einem solchen Sollwertwechsel kann die Regelung die Heizkreispumpe für die eingestellte Zeit abschalten. Das ist **kein Pumpennachlauf**, sondern bewusst eine Stillstandsphase.
 
-                      **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_a9_einstellung') }} min
+                      **Bereich:** 0–15
 
-                      A9 = 0 deaktiviert die Stillstandzeit.
+                      **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_a9_einstellung') }}
 
-                      Datenpunkt: `0x27A9`
+                      **Besonderheit:** `A9:0` deaktiviert die Pumpenstillstandzeit. Die Serviceanleitung beschreibt A9 als Codierwert 0–15; sie weist diesen Werten an dieser Stelle keine Einheit in Minuten zu. Das Dashboard behandelt den Registerwert deshalb nicht mehr als gesicherte Minutenangabe.
+
+                      **Codieradresse:** `A9`
+
+                      **Datenpunkt:** `0x27A9`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
           - type: tile
             entity: number.vitodens_200_wb2a_interne_pumpe_solldrehzahl_31_einstellung
-            name: Interne Pumpe 31
+            name: Interne Pumpe – Codierwert Drehzahl (31)
             icon: mdi:pump
             show_entity_picture: false
             vertical: false
@@ -3886,27 +3965,43 @@ views:
             features_position: bottom
             tap_action:
               action: more-info
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info 31
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Interne Pumpe Solldrehzahl 31
+                  title: Interne Pumpe – Codierwert Drehzahl (31)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Konfigurationswert für die Drehzahl der internen Pumpe.
+                      **Funktion:** Anlagenabhängiger Konfigurationswert für die interne Pumpe.
 
-                      **Bereich:** 0–100 %
+                      **Bereich im aktuellen Profil:** 0–100 %
 
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_interne_pumpe_solldrehzahl_31_einstellung') }} %
 
-                      **Wichtig:** 31 = 100 % ist bei dieser Anlage nicht gleichbedeutend mit 100 % realer Pumpendrehzahl im Heizbetrieb. Der Wert ist daher nicht als direkter Laufzeit-Sollwert beschriftet.
+                      **Wichtig:** Auf dieser WB2A ist `31 = 100 %` lokal **nicht** gleichbedeutend mit 100 % realer Pumpendrehzahl im Heizbetrieb. Der Wert wird daher bewusst als **Codierwert** und nicht als unmittelbare Laufzeit-Solldrehzahl bezeichnet.
 
-                      Datenpunkt: `0x5731`
+                      **Quellenlage:** Die aktuelle Optolink-Zuordnung zum Register ist verifiziert. Die genaue Regelwirkung von Codieradresse 31 ist jedoch aus der vorliegenden WB2A-Serviceanleitung nicht eindeutig genug ableitbar, um weitergehende Wirkung zu behaupten.
+
+                      **Codieradresse:** `31`
+
+                      **Datenpunkt:** `0x5731`
+
+                      **Quelle:** Produktionsprofil `vdensho1-20c2-wb2a-homeassistant.py` und lokale Anlagenbeobachtung.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
       - type: grid
@@ -3934,7 +4029,7 @@ views:
           - type: custom:button-card
             template: diag_active
             entity: binary_sensor.vitodens_200_wb2a_zirkulationspumpe_status
-            name: Zirkulation
+            name: Zirkulationspumpe
             icon: mdi:pump
             grid_options:
               columns: 4
@@ -3942,7 +4037,7 @@ views:
           - type: custom:button-card
             template: diag_research
             entity: sensor.vitodens_200_wb2a_warmwasser_ladestatus
-            name: Ladestatus
+            name: Speicherladung
             icon: mdi:water-thermometer
             grid_options:
               columns: 4
@@ -3950,44 +4045,83 @@ views:
 
           - type: custom:mushroom-select-card
             entity: select.vitodens_200_wb2a_zirkulation_intervall
-            name: Zirkulationsmodus
+            name: Zirkulations-Schaltprogramm
             icon: mdi:clock-outline
             grid_options:
               columns: full
 
           - type: custom:button-card
             template: diag_group3_green
-            name: Warmwasser-Regelung
+            name: Warmwasser-Grundparameter
             custom_fields:
               v1:
                 card:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_warmwasser_sollbereich_56_anzeige
-                  name: Sollbereich
+                  name: Sollbereich (56)
               v2:
                 card:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_warmwasser_einschalt_offset_59_anzeige
-                  name: Einschaltpunkt
+                  name: Einschaltpunkt (59)
               v3:
                 card:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_umschaltventil_bauart_65_anzeige
-                  name: Ventil
+                  name: Ventiltyp (65)
             grid_options:
-              columns: full
+              columns: 10
+          - type: button
+            name: Info WW-Grundparameter
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Warmwasser-Grundparameter (56 / 59 / 65)
+                  adaptive: true
+                  content:
+                    type: markdown
+                    content: |
+                      **Funktion:** Diese drei Codierungen beschreiben grundlegende Eigenschaften der Warmwasserbereitung.
+
+                      **56 – Warmwasser-Sollbereich:** `56:0` erlaubt laut Serviceanleitung 10–60 °C. `56:1` erlaubt Werte über 60 °C; die tatsächliche Obergrenze hängt vom Codierstecker ab.
+
+                      **59 – Einschaltpunkt Speicherladung:** `59:0` verwendet den Standard-Einschaltpunkt 2,5 K unter Warmwasser-Soll. `59:1…10` legt den Einschaltpunkt 1…10 K unter Soll fest.
+
+                      **65 – Bauart Umschaltventil:** Reine Anlageninformation. `65:3` steht für Grundfos. Laut Serviceanleitung **nicht verstellen**.
+
+                      **Aktuell 56:** {{ states('sensor.vitodens_200_wb2a_warmwasser_sollbereich_56_anzeige') }}
+
+                      **Aktuell 59:** {{ states('sensor.vitodens_200_wb2a_warmwasser_einschalt_offset_59_anzeige') }}
+
+                      **Aktuell 65:** {{ states('sensor.vitodens_200_wb2a_umschaltventil_bauart_65_anzeige') }}
+
+                      **Codieradressen:** `56`, `59`, `65`
+
+                      **Datenpunkte:** `0x6756`, `0x6759`, `0x6765`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+            hold_action:
+              action: none
+            grid_options:
+              columns: 2
+              rows: 2
 
           - type: heading
-            heading: Speicherladung
+            heading: Warmwasser-Speicherladung
             heading_style: subtitle
             icon: mdi:water-boiler
 
           - type: tile
             entity: number.vitodens_200_wb2a_warmwasser_kessel_offset_60_einstellung
-            name: Kessel-Offset 60
+            name: Kessel-Sollwertüberhöhung bei WW-Ladung (60)
             icon: mdi:thermometer-plus
             show_entity_picture: false
             vertical: false
@@ -3997,30 +4131,48 @@ views:
             features_position: bottom
             tap_action:
               action: more-info
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info 60
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Kessel-Offset 60
+                  title: Kessel-Sollwertüberhöhung bei WW-Ladung (60)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Überhöhung der Kessel-/Vorlauf-Solltemperatur gegenüber Warmwasser-Soll während der Speicherladung.
+                      **Funktion:** Legt während der Trinkwassererwärmung fest, um wie viele Kelvin die Kesselwassertemperatur maximal über dem Trinkwasser-Sollwert liegen darf.
+
+                      **Wirkung:** Beispiel: Warmwasser-Soll 50 °C und `60:20` → die Regelung darf für die Speicherladung eine Kesselwassertemperatur bis etwa 70 °C anfordern. Andere Kessel- und Sicherheitsbegrenzungen gelten weiterhin.
+
+                      Ein höherer Wert stellt der Speicherladung eine größere Temperaturdifferenz zur Verfügung. Ein niedrigerer Wert begrenzt die Kesseltemperatur näher am Warmwasser-Soll. Die Codierung wirkt **nur im Zusammenhang mit der Trinkwassererwärmung** und ist kein allgemeiner Heizkreis-Offset.
 
                       **Bereich:** 5–25 K
 
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_warmwasser_kessel_offset_60_einstellung') }} K
 
-                      Datenpunkt: `0x6760`
+                      **Codieradresse:** `60`
+
+                      **Datenpunkt:** `0x6760`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2 und Funktionsbeschreibung Trinkwassererwärmung.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
           - type: tile
             entity: number.vitodens_200_wb2a_warmwasser_pumpennachlauf_62_einstellung
-            name: Pumpennachlauf 62
+            name: Speicherladepumpe – Nachlaufzeit (62)
             icon: mdi:timer-outline
             show_entity_picture: false
             vertical: false
@@ -4030,45 +4182,103 @@ views:
             features_position: bottom
             tap_action:
               action: more-info
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info 62
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Pumpennachlauf 62
+                  title: Speicherladepumpe – Nachlaufzeit (62)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Nachlaufzeit der Speicherladepumpe nach Ende der Warmwasser-Speicherladung.
+                      **Funktion:** Nachlaufzeit der Umwälz-/Speicherladepumpe nach dem Ende der Warmwasser-Speicherbeheizung.
+
+                      **Ablauf:** Während der Speicherladung laufen Brenner, Ladepumpe und Umschaltventil entsprechend der Regelung. Überschreitet die Speichertemperatur den Sollwert um die Abschalthysterese, wird der Brenner ausgeschaltet; anschließend wird der Pumpennachlauf aktiv.
+
+                      **Wirkung:** `62:0` bedeutet **kein Nachlauf**. `62:1…15` lässt die Speicherladepumpe nach der Beheizung entsprechend weiterlaufen. Damit wird nach Brenner-Aus noch Wärme aus dem Kesselkreis in Richtung Speicher transportiert; diese praktische Wirkung ergibt sich aus dem beschriebenen Ablauf, während die Serviceanleitung selbst primär die Nachlaufzeit definiert.
 
                       **Bereich:** 0–15 min
 
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_warmwasser_pumpennachlauf_62_einstellung') }} min
 
-                      Datenpunkt: `0x6762`
+                      **Codieradresse:** `62`
+
+                      **Datenpunkt:** `0x6762`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2 und Funktionsbeschreibung Trinkwassererwärmung.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
           - type: custom:button-card
             template: diag_group2_blue
-            name: Zirkulation bei WW-Soll
+            name: Zirkulationspumpe bei WW-Ladung
             custom_fields:
               v1:
                 card:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_zirkulation_bei_ww_soll1_71_anzeige
-                  name: Soll 1
+                  name: 1. WW-Soll (71)
               v2:
                 card:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_zirkulation_bei_ww_soll2_72_anzeige
-                  name: Soll 2
+                  name: 2. WW-Soll (72)
             grid_options:
-              columns: full
+              columns: 10
+          - type: button
+            name: Info 71/72
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Zirkulationspumpe während WW-Ladung (71 / 72)
+                  adaptive: true
+                  content:
+                    type: markdown
+                    content: |
+                      **Funktion:** Legt fest, wie sich die Trinkwasser-Zirkulationspumpe während einer Warmwasserbereitung verhält.
+
+                      **Codierung 71:** Verhalten während der Warmwasserbereitung auf den **1. Trinkwasser-Sollwert**.
+
+                      **Codierung 72:** Verhalten während der Warmwasserbereitung auf den **2. Trinkwasser-Sollwert**.
+
+                      **Werte laut Serviceanleitung:**
+                      - `0`: Zirkulationspumpe nach Zeitprogramm.
+                      - `1`: Zirkulationspumpe während der jeweiligen Warmwasserbereitung **Aus**.
+                      - `2`: Zirkulationspumpe während der jeweiligen Warmwasserbereitung **Ein**.
+
+                      **Aktuell 71:** {{ states('sensor.vitodens_200_wb2a_zirkulation_bei_ww_soll1_71_anzeige') }}
+
+                      **Aktuell 72:** {{ states('sensor.vitodens_200_wb2a_zirkulation_bei_ww_soll2_72_anzeige') }}
+
+                      **Codieradressen:** `71`, `72`
+
+                      **Datenpunkte:** `0x6771`, `0x6772`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+            hold_action:
+              action: none
+            grid_options:
+              columns: 2
+              rows: 2
 
       - type: grid
         column_span: 4
