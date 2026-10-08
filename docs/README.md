@@ -1,8 +1,25 @@
 # Dokumentationsindex
 
-Dieser Ordner enthält die Betriebs- und Entwicklerdokumentation für den produktiven Branch `optolink-splitter-ha`.
+Dieser Ordner enthält die vom produktiven Branch `optolink-splitter-ha` übernommene Betriebs- und Entwicklerdokumentation sowie die unten getrennt aufgeführte Arbeit des Entwicklungsbranches `optolink-p300-migration`.
 
-## Einstieg
+## P300-Entwicklung: aktueller Stand vom 8. Oktober 2026
+
+**Keine Produktionsfreigabe.** Der konkret gesendete C9/P80-Aufruf wurde von der lokalen WB2A zurückgewiesen. VS1 funktioniert nach dem Rollback erneut mit P80=20 und P06=00. Das widerlegt nicht jeden denkbaren GFA-Zugriff unter P300.
+
+Die sechs Sekunden des bisherigen Wechselhelfers sind ein Messwert dieses Ablaufs, keine bewiesene Untergrenze. Der Rückweg wartet auf zwei ENQs; Dienststopps und Portöffnung liegen außerhalb des Messfensters. Die erneute Quellenprüfung unterscheidet außerdem abstraktes GFA_READ=C9 von dessen belegter VSKO-Übersetzung nach VS1/6B.
+
+| Dokument | Bedeutung |
+| --- | --- |
+| [Fork, schnellere Wechsel und GFA-Alternativen](p300-fork-switching-gfa-options-2026-10-08.md) | Aktuelle Bewertung beider Entwicklungswege, RAM-Spiegel, Prioritäten und Testgrenzen |
+| [Quellenaudit und genaue Fundstellen](p300-switching-source-audit-2026-10-08.md) | Zeitmessung, ENQ-Folge, Upstream-Wartezeiten, C9/Sequenzbits und archivierte Vitosoft-Analyse |
+| [C9-Hardwarebefund](p300-gfa-c9-hardware-rejection-2026-10-08.md) | Negativer Gerätebefund; der ergänzende GFA-Rollbacknachweis steht im aktuellen Optionsbericht |
+| [P300-Migrationsplan](p300-migration.md) | Bestehender Kandidat und weiterhin geschlossene Freigabestufen |
+| [Historischer CANARY und Rollback](p300-trial-install-rollback.md) | Reproduktion des bisherigen Tests und Wiederherstellung; **kein Auftrag zu einem erneuten unveränderten C9-Versuch** |
+| [Hydraulik-/Hardwarematrix](wb2a-topology-hardware-matrix.md) | Anlagenschema und realer Umbau, getrennt von der Protokollmigration |
+
+Die aktuelle Ergänzung ist Dokumentation und Entwurf. Kein neuer Fork, Runtime-Umbau oder Live-Test wurde damit ausgeführt. Die vorhandenen Aktivierungsanleitungen sind ohne neue, begründete Testvariante nicht erneut anzuwenden.
+
+## Einstieg in die übernommene Produktionsdokumentation
 
 | Dokument | Wann lesen? |
 | --- | --- |
@@ -41,10 +58,9 @@ Für unterschiedliche Fragestellungen gelten bewusst unterschiedliche Dateien al
 
 ## Dokumentationsregel
 
-Dokumentation soll den **aktuellen produktiven Zustand** beschreiben. Hypothesen, nicht verifizierte Register und Reverse-Engineering-Zwischenstände gehören nach `optolink-research`.
+Die übernommene Betriebsdokumentation beschreibt den **produktiven Zustand**. Allgemeines Reverse Engineering bleibt im Research-Archiv. Auf ausdrücklichen Nutzerwunsch wird die aktuelle P300-Migrationsforschung in diesem Entwicklungsbranch dokumentiert, getrennt von produktiven Freigaben und mit erkennbaren Hypothesen-/Beleggrenzen.
 
 Wenn Codeverhalten geändert wird, sollten im selben Änderungssatz mindestens die direkt betroffene Dokumentation und — bei einer wichtigen Invariante — der CI-Guard angepasst werden.
-
 
 ## Architekturdiagramme
 
