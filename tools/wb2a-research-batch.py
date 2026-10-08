@@ -226,8 +226,21 @@ def archive(session,source,report,tests,check):
     output_dir()
     filename='uart1-'+session.name+'-bundle.tar.gz'
     target=OUTPUT/filename
-    if target.exists() or target.is_symlink():
-        raise BatchError('Bundle already exists, refusing silent overwrite: '+str(target))
+    if target.is_symlink():
+        raise BatchError('Output archive symlink refused: '+str(target))
+    if target.exists():
+        # Collection is repeatable without redundant archives or changing evidence.
+        if not target.is_file():
+            raise BatchError('Existing archive is not a regular file')
+        with tarfile.open(target, 'r:gz') as previous:
+            item=previous.extractfile('uart1/batch-analysis.json')
+            if item is None:
+                raise BatchError('Existing archive has no evidence manifest')
+            old=json.load(item)
+            if old.get('source_sha256') != report.get('source_sha256'):
+                raise BatchError('Existing archive does not match current source bytes')
+        print('BUNDLE_ALREADY_VALID_REUSED='+str(target))
+        return target
     import io
     contents=dict(source)
     contents['batch-analysis.json']=(json.dumps(report,indent=2,sort_keys=True)+'\n').encode()
