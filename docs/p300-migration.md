@@ -1,6 +1,16 @@
 # P300-Migration: isolierter Kandidat, noch keine Produktionsfreigabe
 
-Stand: 2026-10-07. Entwicklungsbranch: `optolink-p300-migration`.
+Stand: 2026-10-08. Entwicklungsbranch: `optolink-p300-migration`.
+
+**Live-Sperrgrund (bewiesen 2026-10-08):** P300-Virtual_READ fuer 20C2/0103
+gelangt bis zum dritten Initialisierungsschritt. P300 `GFA_READ` FC `0xC9` an
+`0x4050` (P80) wird vom realen VDensHO1 mit Message-Type 3, Fehlerpayload
+`05` abgewiesen. Nach dem Versuch ist die Rueckkehr zu VS1 mit laufender
+Hauptschleife belegt; eine fruehere Rueckkehr pruefte GFA-P80=20 tatsaechlich.
+Damit ist ein unveraenderter C9-CANARY **nicht weiter sinnvoll** und ein
+permanenter P300-Wechsel unter Erhalt aller vier GFA-Entities **blockiert**.
+Die Rohbedeutung von `05` ist nicht herstellergesichert zugeordnet.
+[Hardwarebeleg / Entscheidungsmatrix](p300-gfa-c9-hardware-rejection-2026-10-08.md).
 
 ## Ausgangspunkt und Ausfuehrungsgrenze
 
@@ -12,11 +22,12 @@ uebernommen. Fuer Testinstallation und Rollback siehe
 Upstream bleibt `philippoo66/optolink-splitter` bei
 `c1ee204a1421447721603c5f21c6da7337fdac97`.
 
-Bei dieser Entwicklung wurden weder Therme noch serieller Adapter, installierte
-Produktionsdienste oder MQTT-Broker angesprochen. Der Ausgangsbranch bleibt
-unveraendert. Tests verwenden einen fragmentierend antwortenden Fake-Peer,
-kein validiertes Modell der WB2A-Firmware. Die Hardwareparitaet ist weiterhin
-eine ausdrueckliche Voraussetzung fuer die spaetere Freigabe.
+Bei der **reinen Entwicklung und CI** wurden weder Therme noch serieller Adapter,
+installierte Produktionsdienste oder MQTT-Broker angesprochen. Der Ausgangsbranch
+bleibt unveraendert. Der Nutzer hat danach zwei separate, begrenzte CANARY-
+Versuche an seiner WB2A durchgefuehrt: beide hatten einen P300-Init-Reject,
+der zweite eindeutig bei C9/P80. Die Simulations-Tests behaupten weiterhin
+keine Funktionsparitaet der echten Firmware.
 
 ## Warum ein Umschalten der Einstellung nicht reicht
 
@@ -148,7 +159,16 @@ und physischen Raum sind nicht austauschbar. Ein erfolgreicher Read beweist
 keinen sicheren Write. Der niedrige RAM-Bereich erschliesst nicht automatisch
 den hoch adressierten Programm-ROM des Controllers.
 
-## Vorgeschlagene Freigabestufen - nicht ausgefuehrt
+## Freigabestufen - Schritt 2 negativ, weitere Stufen gesperrt
+
+Das folgende war die **urspruengliche** Freigabereihenfolge vor dem ersten
+Geraeteversuch. Ihr C9-Gate ist auf der realen WB2A am 8.10.2026
+fehlgeschlagen. Stufen 3-6 sind **nicht ausgefuehrt** und duerfen nicht
+durch das Entfernen der GFA-Pruefung vorgetaeuscht werden.
+Zuerst wird eine andere, belegte GFA-Lesequelle benoetigt; ansonsten VS1
+produktiv beibehalten.
+
+### Urspruenglicher Plan (nur Referenz)
 
 1. VS1-Ausgangszustand sichern: Settings/Runtime, Dienstzustaende, Fehlerhistorie,
    Rohreferenzen, Entitybestand und gemessene Frische/Befehlslatenz.
