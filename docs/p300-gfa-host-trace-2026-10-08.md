@@ -51,7 +51,7 @@ Direkt sichtbare Enumstellen im IL:
 | --- | ---: | --- |
 | `MobileClient_vsmInterfaceCommon.dll.il` | 6454 | VS1 `GFA_Read = uint8(0x6B)` |
 | dieselbe Datei | 6547 | abstrakt `GFA_READ = int32(0x000000C9)` |
-| `Webbin_vsmInterfaceCommon.dll.il` | 6484 / 6577 | entsprechende Enumduplikate |
+| `Web_bin_vsmInterfaceCommon.dll.il` | 6484 / 6577 | entsprechende Enumduplikate |
 
 **Wichtig:** Die grep-Suche liefert hier ueberwiegend Enums. Manche Treffer fuer `0x6b` sind nur Kommentarwerte zur Codegroesse, keine Drahtbefehle. Dieses Artefakt allein ist deshalb KEIN vollstaendiger Dispatch-Nachweis. Fuer die obigen Schlussfolgerungen wurden zusaetzlich die vorhandene C#-Klasse und SDK-Kontexte direkt gelesen.
 
