@@ -431,6 +431,77 @@ def supervisor_command(session: Path, seconds: int) -> list[str]:
             h.PYTHON, '-u', str(script), '--worker', str(session)]
 
 
+
+def post_restore_health() -> dict:
+    """Read-only P80/P06 checks after restored production service only."""
+    result = {'production_main_verified':False,'gfa_reads':{},
+              'ha_entity_freshness_verified':False}
+    try:
+        live=h.unit_state(h.MAIN)
+        result['production_main_verified']=(
+            live.get('ActiveState')=='active' and
+            live.get('SubState')=='running' and
+            live.get('WorkingDirectory')=='/opt/optolink')
+        if not result['production_main_verified']:
+            return result
+        for name,request in (('P80','gfaread;0x4050;1;raw;False'),
+                             ('P06','gfaread;0x4006;1;raw;False')):
+            proc=subprocess.run(['optolink-debug','request',request,'--timeout','8'],
+                    capture_output=True,text=True,timeout=14,check=False)
+            result['gfa_reads'][name]={'returncode':proc.returncode,
+                    'stdout':proc.stdout[-600:], 'stderr':proc.stderr[-300:]}
+    except (OSError,subprocess.TimeoutExpired) as exc:
+        result['health_error']=str(exc)
+    return result
+
+
+def upload_bundle(session: Path, health: dict) -> Path:
+    """Package ONE private artifact even for an incomplete hardware run.
+
+    Only files from this one validated fresh experiment are included.
+    Never touches production settings and refuses symlinks/overwrites.
+    """
+    if ROOT.is_symlink() or session.parent!=ROOT or session.is_symlink():
+        raise Error('INVALID_BUNDLE_SESSION')
+    if BUNDLES.is_symlink():
+        raise Error('BUNDLE_ROOT_SYMLINK')
+    BUNDLES.mkdir(parents=True,exist_ok=True,mode=0o700)
+    os.chmod(BUNDLES,0o700)
+    archive=BUNDLES/('uart1-dma0-'+session.name+'-bundle.tar.gz')
+    if archive.exists() or archive.is_symlink():
+        raise Error('REFUSE_OVERWRITE_EXISTING_BUNDLE')
+    paths=('state.json','samples.jsonl','measurement.json','recovery.json')
+    included={}
+    for name in paths:
+        path=session/name
+        if path.is_symlink():
+            raise Error('SESSION_FILE_SYMLINK')
+        if path.is_file():
+            raw=path.read_bytes()
+            if len(raw)>20_000_000:
+                raise Error('SESSION_FILE_TOO_BIG')
+            included[name]=raw
+    manifest={'schema_version':1,'session':session.name,
+              'source_sha256':{name:hashlib.sha256(raw).hexdigest()
+                               for name,raw in included.items()},
+              'operational_health':health,
+              'source_capture':'P300 DMA0-SFR + 64 RAM + native status; no UART1 U1RB',
+              'uart1_rx_or_gfa_identity_verified':False,
+              'p06_rpm_alias_verified':False,
+              'production_approved':False,
+              'ram_write_approved':False}
+    included['bundle-manifest.json']=(json.dumps(manifest,indent=2,sort_keys=True)+'\n').encode()
+    with tarfile.open(archive,'x:gz') as tar:
+        for name,raw in included.items():
+            member=tarfile.TarInfo('uart1-dma0/'+name)
+            member.mode=0o600
+            member.mtime=0
+            member.size=len(raw)
+            tar.addfile(member,io.BytesIO(raw))
+    os.chmod(archive,0o600)
+    return archive
+
+
 def launch(seconds: int) -> int:
     seconds_ok(seconds)
     with locks():
@@ -445,6 +516,12 @@ def launch(seconds: int) -> int:
             raise Error('RESULT_ROOT_IS_SYMLINK')
         ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(ROOT, 0o700)
+        # One complete capture is enough: refuse repeated hardware outage.
+        for previous in ROOT.glob('run-*/measurement.json'):
+            if previous.is_file() and not previous.is_symlink():
+                old_report=json.loads(previous.read_text())
+                if old_report.get('observation_complete') and old_report.get('vs1_link_restored'):
+                    raise Error('DMA0_CYCLE_PROFILE_ALREADY_COMPLETED')
         # Refuse to hide a failed/unfinished previous recovery with a new trial.
         for old in ROOT.glob('run-*/state.json'):
             prior = json.loads(old.read_text())
@@ -477,8 +554,14 @@ def launch(seconds: int) -> int:
     print('GFA_AFTER=' + json.dumps(m.get('recovery_gfa'), sort_keys=True), flush=True)
     for error in m.get('errors', []) + r.get('errors', []):
         print('ERROR=' + error, flush=True)
-    print('Verify fresh VS1 MQTT P80/P06. UART1/GFA identity and P06 RPM alias still NOT proven.', flush=True)
-    return 0 if ok else 1
+    health=post_restore_health()
+    print('POST_RESTORE_PRODUCTION=' + ('PASS' if health['production_main_verified'] else 'NOT_VERIFIED'), flush=True)
+    for name,item in health['gfa_reads'].items():
+        print('POST_RESTORE_'+name+'='+json.dumps(item,sort_keys=True),flush=True)
+    artifact=upload_bundle(session,health)
+    print('UPLOAD_ONE_FILE='+str(artifact),flush=True)
+    print('UART1_GFA_RX_AND_P06_RPM=NOT_VERIFIED',flush=True)
+    return 0 if ok and health['production_main_verified'] else 1
 
 
 def main() -> int:
