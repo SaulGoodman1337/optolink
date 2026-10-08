@@ -21,7 +21,7 @@ import tempfile
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
-BASE_REF = "7bc69c32788dd19c7a35e787d0b2aa26c9548ce6"
+BASE_REF = "555528c5075315db0fd50fd17ee5dd3a806f67e0"
 UPSTREAM_REF = "c1ee204a1421447721603c5f21c6da7337fdac97"
 PROFILE = ROOT / "config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py"
 
