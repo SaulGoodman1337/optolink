@@ -1,0 +1,30 @@
+name: P300 full-byte audit and reference pairing
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - .github/workflows/p300-full-byte-audit.yml
+      - tools/audit-p87-full-recordings.py
+      - tools/wb2a-gfa-native-pair-check.py
+      - tools/wb2a-p87-mirror-check.py
+      - tests/test_p87_full_recordings.py
+      - tests/test_gfa_native_pair_check.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate offline archive audit and new MQTT reference collector
+        run: |
+          python3 -m py_compile tools/audit-p87-full-recordings.py tools/wb2a-gfa-native-pair-check.py
+          python3 -m unittest discover -s tests -p test_p87_full_recordings.py -v
+          python3 -m unittest discover -s tests -p test_gfa_native_pair_check.py -v
+          python3 -m unittest discover -s tests -p test_p87_mirror_check.py -v
+          python3 tools/wb2a-gfa-native-pair-check.py
+          python3 -m json.tool docs/evidence/p300-full-status-byte-audit-2026-10-08.json > /dev/null
