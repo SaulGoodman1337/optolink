@@ -190,6 +190,26 @@ class TransportTests(unittest.TestCase):
         self.serial.write = missing_c9
         self.assertFalse(self.client.initialize())
 
+    def test_10a_init_error_reports_exact_stage(self):
+        original = self.serial.write
+        for fc, address, stage in (
+                (1, 0x00F8, "virtual_device_id"),
+                (1, 0x778C, "virtual_software"),
+                (0xC9, 0x4050, "gfa_p80")):
+            with self.subTest(stage=stage):
+                self.logs.clear()
+                def reject_at_step(data):
+                    if (data[:1] == b'\x41' and len(data) >= 7
+                            and data[3] == fc and int.from_bytes(data[4:6], "big") == address):
+                        self.serial.fault = "error"
+                    return original(data)
+                self.serial.write = reject_at_step
+                self.assertFalse(self.client.initialize())
+                self.assertTrue(any(
+                    "P300_INIT_STAGE_FAILED stage=" + stage in line
+                    and "code=03 payload=05" in line for line in self.logs), self.logs)
+        self.serial.write = original
+
     def test_11_gfa_retry_and_quarantine(self):
         with patch.object(p.time, 'sleep', lambda n: None):
             self.serial.gfa_values.extend([b'\xff', b'\x64'])
