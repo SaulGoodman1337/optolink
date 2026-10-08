@@ -4,19 +4,29 @@ Dieser Ordner trennt produktive Betriebsdokumentation von der Forschung im Branc
 
 ## P300: aktueller Stand vom 8. Oktober 2026
 
-**Neuer opt-in Forschungsschritt:** Der UART1-DMA0-Fund `SAR0=0x161B`
-liefert einen engeren P300-RAM-Lesebereich als die frueheren 20-KiB-Dumps.
-Der alte Offline-Auditor bestand auf der LXC 17/17 Tests, fand aber unter
-`/tmp` keine alten `physical-ram-*-report.json` Dateien. Ein neuer,
-**nicht automatisch ausgefuehrter** 60-Sekunden-Test ist nun vorbereitet:
-nur `FC01 55D3/11` und `FC03 1600/32 + 1620/32`, nach VS1/P80-Gate,
-mit supervisiertem Dienst-Rollback. Vor dem Live-Test bitte auch andere
-lokale Speicherorte nach den alten RAM-Dateien absuchen.
-[Live-Test-Runbook](p300-uart1-p300-focus-runbook.md) /
-[vorheriger Offline-Hintergrund](p300-uart1-gfa-dataflow-offline-2026-10-08.md).
-**UART1-Anschluss an GFA und RPM-P06-Alias sind weiterhin UNBEWIESEN.**
-Kein Heizungsparameter-, RAM-Schreib- oder Produktivzweig-Eingriff.
+**AKTUELL: UART1-Fokuslauf erfolgreich abgeschlossen.** Der Betreiber
+hat den 60-s-P300-FC03-Lauf mit 25 Status-/RAM-Runden
+bereits erfolgreich ausgefuehrt. 15 RAM-Bytes wechselten
+in fuenf Ereignissen zwischen sechs erfassten Speicherzustaenden;
+die historische UART1-DMA0-Ankeradresse `0x161B`
+selbst wechselte nicht. Status `55D3[7]`, P06
+und P09 blieben in diesem Fenster `00`.
+VS1 und alle aktiven Dienste wurden laut Mess-/
+Restore-Protokoll erfolgreich wiederhergestellt.
+**Keine UART1/GFA-Anbindung und kein P06-RPM-Alias nachgewiesen.**
+[Hardwareauswertung und vereinheitlichter Batchablauf](p300-uart1-live-result-and-batch-2026-10-08.md)
+sowie [abgeleitete Evidenz](evidence/p300-uart1-focus-result-2026-10-08.json).
 
+**Weniger Copy/Paste:** Fuer den naechsten Datenbatch
+gibt es jetzt `tools/wb2a-research-batch.sh`, das den
+ausschliesslich experimentellen Branch ohne lokale Aenderungen
+per Fast-Forward aktualisiert, die Offline-Tests laeuft,
+die vorhandene UART1-Messung validiert,
+den laufenden Original-VS1-Dienst kontrolliert und
+**ein einziges privates tar.gz-Ergebnisarchiv** erzeugt.
+Der bereits erfolgreiche identische UART1-Hardwaretest
+wird **nicht** automatisch wiederholt. Kein RAM-Write,
+kein Produktivmerge.
 
 **NEU - P06-Istdrehzahl unter P300 (Source-First-Abschluss):**
 Ein weiterer modellgebundener Vergleich oeffentlicher VDensHO1-Kataloge
@@ -48,7 +58,9 @@ und Offline-Testwerkzeug. Kein neuer Thermenzugriff, kein Aendern der Produktion
 
 | Dokument | Bedeutung |
 | --- | --- |
-| [UART1-DMA0/P300-RAM-Fokus (einmaliger read-only Test)](p300-uart1-p300-focus-runbook.md) | **Naechster optionaler Geraeteversuch:** maximal 64 physische RAM-Bytes pro Runde, fester Handshake und VS1-Dienst-Rollback |
+| [UART1: Hardwareergebnis und Ein-Befehl-Batch](p300-uart1-live-result-and-batch-2026-10-08.md) | **Aktuell:** 25 verifizierte Runden, 15 geaenderte RAM-Bytes, keine RPM-Freigabe, einheitlicher Datenexport |
+| [UART1: abgeleitete physische Lesemessung](evidence/p300-uart1-focus-result-2026-10-08.json) | Beobachtungsdauer, Trace-Allowlist, Werte-/Adressdelta und Restore-Befund; kein privater Volldump |
+| [Abgeschlossener UART1-P300-RAM-Fokus](p300-uart1-p300-focus-runbook.md) | Historischer einmaliger 60-s-Geraeteversuch vom 8. Oktober; nicht unveraendert wiederholen |
 | [UART1/Optolink Datenfluss aus alten Forschungsergebnissen](p300-uart1-gfa-dataflow-offline-2026-10-08.md) | DMA0-Quellpointer ist kein P06-Istwert; Offline-Auditor fuer vorhandene Dumps |
 | [P06-Istdrehzahl: modellgebundener Quellenaudit](p300-fan-actual-source-screen-2026-10-08.md) | **Aktueller Stand:** 11 Statusbytes, auszusondernde fremde Leseadressen, naechstes RAM-Evidenz-Gate |
 | [Fan-Quellenaudit-Evidenz](evidence/p300-fan-actual-source-screen-2026-10-08.json) | SHA256-gepinnte private Quelle, Modellgrenzen, Bytekennzahlen, keine RPM-Freigabe |
