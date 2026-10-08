@@ -6,18 +6,24 @@ Dieser Ordner enthält die vom produktiven Branch `optolink-splitter-ha` überno
 
 **Keine Produktionsfreigabe.** Der konkret gesendete C9/P80-Aufruf wurde von der lokalen WB2A zurückgewiesen. VS1 funktioniert nach dem Rollback erneut mit P80=20 und P06=00. Das widerlegt nicht jeden denkbaren GFA-Zugriff unter P300.
 
-Die sechs Sekunden des bisherigen Wechselhelfers sind ein Messwert dieses Ablaufs, keine bewiesene Untergrenze. Der Rückweg wartet auf zwei ENQs; Dienststopps und Portöffnung liegen außerhalb des Messfensters. Die erneute Quellenprüfung unterscheidet außerdem abstraktes GFA_READ=C9 von dessen belegter VSKO-Übersetzung nach VS1/6B.
+Die direkte Prüfung erhaltener Vitosoft-Quelltexte bestätigt jetzt die Übersetzung des abstrakten GFA-Auftrags nach VS1 und den expliziten Interfacewechsel bei VSKOStart. Ein neuer nativer P300-GFA-Pfad ist nicht nachgewiesen.
+
+**Nächster vorbereiteter Gerätetest:** `tools/wb2a-handover-probe.py` misst drei warme VS1/P300/VS1-Runden mit separaten ENQ-/ACK-Zeiten. Er verwendet ausschließlich feste Identitäts- und bekannte VS1-GFA-Reads; kein C9, kein RAM, keine Parameterwrites. Produktion wird dafür einmal kontrolliert pausiert. Ein temporärer Systemd-Worker mit ExecStopPost-Wiederherstellung ersetzt für diesen Versuch den alten CANARY. Ohne `--execute` bleibt das Werkzeug inert. Die 32 neuen Regressionstests sind Offline-Tests, kein Hardwarebeleg.
+
+Die erste Variante bleibt bewusst bei zwei ENQs. Die sechs Sekunden des alten Helfers sind keine bewiesene Untergrenze; Dienststopps und Portöffnung lagen außerhalb seiner Messung. Eine Ein-ENQ-Variante und ein dauerhafter Hybrid-Fork folgen erst auf aussagekräftige Messwerte.
 
 | Dokument | Bedeutung |
 | --- | --- |
-| [Fork, schnellere Wechsel und GFA-Alternativen](p300-fork-switching-gfa-options-2026-10-08.md) | Aktuelle Bewertung beider Entwicklungswege, RAM-Spiegel, Prioritäten und Testgrenzen |
+| [Handover-Basistest: Aufruf und Wiederherstellung](p300-handover-baseline-runbook.md) | **Aktueller nächster Versuch**; feste Reads, Supervision, Ergebnisdateien und Abbruchkriterien |
+| [GFA-/VSKO-Auftrag: direkte Quellenprüfung](p300-gfa-host-trace-2026-10-08.md) | Direkt gelesene C#-Klasse, SDK-Kontexte und IL-Enumstellen; Quellen- und Aussagegrenzen |
+| [Fork, schnellere Wechsel und GFA-Alternativen](p300-fork-switching-gfa-options-2026-10-08.md) | Bewertung beider Entwicklungswege, RAM-Spiegel, Prioritäten und Testgrenzen |
 | [Quellenaudit und genaue Fundstellen](p300-switching-source-audit-2026-10-08.md) | Zeitmessung, ENQ-Folge, Upstream-Wartezeiten, C9/Sequenzbits und archivierte Vitosoft-Analyse |
-| [C9-Hardwarebefund](p300-gfa-c9-hardware-rejection-2026-10-08.md) | Negativer Gerätebefund; der ergänzende GFA-Rollbacknachweis steht im aktuellen Optionsbericht |
+| [C9-Hardwarebefund](p300-gfa-c9-hardware-rejection-2026-10-08.md) | Negativer Gerätebefund; ergänzender GFA-Rollbacknachweis im neuen Quellenbericht |
 | [P300-Migrationsplan](p300-migration.md) | Bestehender Kandidat und weiterhin geschlossene Freigabestufen |
-| [Historischer CANARY und Rollback](p300-trial-install-rollback.md) | Reproduktion des bisherigen Tests und Wiederherstellung; **kein Auftrag zu einem erneuten unveränderten C9-Versuch** |
+| [Historischer CANARY und Rollback](p300-trial-install-rollback.md) | Reproduktion des bisherigen Tests und Wiederherstellung; **kein erneuter unveränderter C9-Versuch** |
 | [Hydraulik-/Hardwarematrix](wb2a-topology-hardware-matrix.md) | Anlagenschema und realer Umbau, getrennt von der Protokollmigration |
 
-Die aktuelle Ergänzung ist Dokumentation und Entwurf. Kein neuer Fork, Runtime-Umbau oder Live-Test wurde damit ausgeführt. Die vorhandenen Aktivierungsanleitungen sind ohne neue, begründete Testvariante nicht erneut anzuwenden.
+Implementierung und Offline-Test des neuen Messhelfers sind abgeschlossen; sein erster Hardwarelauf steht noch aus. Keine Änderung installierter Dienste oder Produktionsdateien, kein Upstream-Fork und kein Merge in den produktiven HA-Branch wurden dadurch ausgeführt. Für den neuen Test weder den Stager wiederholen noch den alten P300-Kandidaten aktivieren.
 
 ## Einstieg in die übernommene Produktionsdokumentation
 
