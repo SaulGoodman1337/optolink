@@ -1,0 +1,62 @@
+{
+  "evidence_class": "user_console_transcript",
+  "original_measurement_json_imported": false,
+  "original_recovery_json_imported": false,
+  "source": {
+    "filename": "Eingefügter Text(3).txt",
+    "sha256": "d474b2581cd27a8a0494ffaa914d34cd39ad3a954695bbd275d795d2b22e25e1",
+    "line_count": 155,
+    "measurement_lines": [134, 135, 136],
+    "execution_lines": [121, 133],
+    "post_recovery_lines": [144, 154]
+  },
+  "tested_commit": "099e3c1528de4f1d9f8aa101384586fbea473bbb",
+  "prober_version": "1.2.0",
+  "session": "run-20261008T100802Z-124372",
+  "session_start_utc": "2026-10-08T10:08:02Z",
+  "variant": "idle-enq-comparison",
+  "reported_result": "PASS_READ_ONLY_IDLE_ENQ",
+  "systemd_result": "success",
+  "systemd_exit_status": 0,
+  "systemd_service_runtime_seconds": 30.459,
+  "offline_tests_reported": {"tests": 60, "result": "OK"},
+  "post_recovery": {
+    "WorkingDirectory": "/opt/optolink",
+    "ActiveState": "active",
+    "SubState": "running",
+    "mqtt_p80": "1;0x4050;20",
+    "mqtt_p06": "1;0x4006;00"
+  },
+  "samples": [
+    {"gfa":{"P06":"00","P09":"00","P80":"20","P87":"00"},"gfa_block_ms":446.628061006777,"index":1,"p300":{"device_id_ms":62.88875301834196,"enq_ms":2971.6201489791274,"entry_mode":"natural-enq-no-eot","eot_sent":false,"last_vs1_rx_to_enq_ms":2982.241475954652,"software_ms":87.96593698207289,"start_ack_ms":12.798564974218607,"total_ms":3135.273403953761},"roundtrip_to_vs1_id_ms":5164.739464060403,"roundtrip_with_gfa_ms":5611.36752506718,"vs1":{"additional_enq_ms":0.0,"enq_count":1,"first_enq_ms":1997.2709430148825,"identity_ms":32.14392997324467,"total_ms":2029.4148729881272}},
+    {"gfa":{"P06":"00","P09":"00","P80":"20","P87":"00"},"gfa_block_ms":468.9635799732059,"index":2,"p300":{"device_id_ms":63.8543110108003,"enq_ms":2971.2783690774813,"entry_mode":"natural-enq-no-eot","eot_sent":false,"last_vs1_rx_to_enq_ms":2982.1311860578135,"software_ms":88.46211899071932,"start_ack_ms":13.634798931889236,"total_ms":3137.22959801089},"roundtrip_to_vs1_id_ms":5168.272247072309,"roundtrip_with_gfa_ms":5637.235827045515,"vs1":{"additional_enq_ms":0.0,"enq_count":1,"first_enq_ms":1998.0223249876872,"identity_ms":32.96775708440691,"total_ms":2030.990082072094}},
+    {"gfa":{"P06":"00","P09":"00","P80":"20","P87":"00"},"gfa_block_ms":472.1611849963665,"index":3,"p300":{"device_id_ms":62.91863205842674,"enq_ms":2971.1681810440496,"entry_mode":"natural-enq-no-eot","eot_sent":false,"last_vs1_rx_to_enq_ms":2981.7942450754344,"software_ms":87.07729890011251,"start_ack_ms":13.90149595681578,"total_ms":3135.0656079594046},"roundtrip_to_vs1_id_ms":5163.94182597287,"roundtrip_with_gfa_ms":5636.1030109692365,"vs1":{"additional_enq_ms":0.0,"enq_count":1,"first_enq_ms":1997.0000990433618,"identity_ms":31.82691498659551,"total_ms":2028.8270140299574}}
+  ],
+  "comparison_source": {
+    "filename": "Eingefügter Text(2).txt",
+    "sha256": "c6cd3d485f5c58e8c0d00a0dc4afef11c79f425e7cc0ad7d397b5657ed8fab42",
+    "measurement_lines": [116, 117, 118],
+    "tested_commit": "ff5504d7418b56dfcf9860ff20b2267582f73a9c",
+    "session": "run-20261008T094009Z-124230",
+    "sample_count": 3,
+    "retained_samples_document": "../p300-goals-and-single-enq-result-2026-10-08.md"
+  },
+  "derived_comparison": {
+    "method": "Arithmetic means of the three console samples in each run; not a statistical confidence bound.",
+    "single_enq_eot_mean_total_ms": 4610.090613365173,
+    "idle_enq_mean_total_ms": 5628.235454360644,
+    "idle_minus_eot_total_ms": 1018.144840995471,
+    "total_increase_percent": 22.085137286537364,
+    "single_enq_eot_mean_entry_enq_ms": 1997.5690429564565,
+    "idle_mean_entry_enq_ms": 2971.3555663668863,
+    "idle_minus_eot_entry_enq_ms": 973.7865234104297,
+    "idle_mean_last_vs1_rx_to_enq_ms": 2982.0556356959664
+  },
+  "decision": "CLOSED_NO_SPEEDUP_FOR_IDLE_ENQ_VARIANT",
+  "limits": [
+    "Only this no-EOT entry sequence is closed as a speed optimization, not all P300 or hybrid approaches.",
+    "Console data do not quantify tolerated FF retries or prove an independent burner state.",
+    "Host timestamps include USB, kernel and scheduling effects; no universal firmware minimum inferred.",
+    "No new appliance access, runtime change, RAM write or production deployment in this documentation change."
+  ]
+}

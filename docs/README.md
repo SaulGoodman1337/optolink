@@ -8,21 +8,30 @@ Dieser Ordner enthält die vom produktiven Branch `optolink-splitter-ha` überno
 
 **Keine Produktionsfreigabe.** Der direkt gesendete C9/P80-Aufruf wurde von der lokalen WB2A zurückgewiesen. Die Quellenprüfung bestätigt den originalen VSKO-Weg über VS1/6B. Ein neuer nativer P300-GFA-Pfad ist nicht nachgewiesen.
 
-**Beide Handover-Vergleiche jetzt an echter Hardware bestanden:**
+**Alle drei vorbereiteten Handover-Vergleiche sind jetzt an echter Hardware ausgeführt:**
 
-- Zwei-ENQ-Basis: Session `run-20261008T092711Z-124106`, Prober 1.0.0, drei gültige Runden, `PASS_READ_ONLY_BASELINE`, anschließend MQTT P80=20/P06=00. Gesamter Weg inklusive GFA im Mittel 6,863 s.
-- Ein-ENQ-Vergleich: Session `run-20261008T094009Z-124230`, Prober 1.1.0 / Commit `ff5504d`, drei gültige Runden, `PASS_READ_ONLY_SINGLE_ENQ`, anschließend Originaldienst active/running und MQTT P80=20/P06=00. Gesamter Weg inklusive GFA im Mittel **4,610 s**, Bereich 4,569–4,637 s. Aufbau und Recovery blieben beim Zwei-ENQ-Pfad.
+| Ablauf | Gemittelter Gesamtweg inklusive GFA | Nutzerbefund |
+| --- | ---: | --- |
+| EOT / Zwei-ENQ-Rückweg | 6,863 s | Drei gültige Runden, `PASS_READ_ONLY_BASELINE`, Session `run-20261008T092711Z-124106` |
+| EOT / Ein-ENQ-Rückweg | **4,610 s** | Drei gültige Runden, `PASS_READ_ONLY_SINGLE_ENQ`, Session `run-20261008T094009Z-124230` |
+| Natürliche VS1-ENQ ohne EOT / Ein-ENQ-Rückweg | **5,628 s** | Drei gültige Runden, `PASS_READ_ONLY_IDLE_ENQ`, Session `run-20261008T100802Z-124372`; **keine Beschleunigung** |
 
-Die zusätzliche zweite ENQ konnte in diesen drei gemessenen Rückwegen entfallen. Die beiden EOT-basierten ersten ENQ-Wartezeiten bleiben jeweils etwa 1,998 s. Die knapp 33 Prozent kürzere Gesamtdauer ist ein Fortschritt des Messablaufs, **keine Pumpen-RAM- oder Dauerbetriebsfreigabe**. Die E7-Arbeitskopie wird in der bisherigen Forschung etwa alle 2,1 s asynchron nachgeladen; ein lückenarmer Override ist mit dem aktuellen Wechselablauf nicht nachgewiesen.
+Nach allen drei gemeldeten Läufen wurden wieder erfolgreiche normale MQTT-GFA-Abfragen mit P80=20/P06=00 übermittelt. Die Zusatzwartezeit auf eine zweite ENQ war vermeidbar; das Auslassen von EOT beim nächsten Vergleich dagegen nicht schneller. Die natürliche ENQ kam nach etwa 2,971 s statt 1,998 s mit EOT. Der gemessene Gesamtweg war damit 1,018 s beziehungsweise 22,1 Prozent langsamer als der bisher schnellste geprüfte Ablauf.
 
-**Neuer gezielter Vergleich vorbereitet:** Prober 1.2.0 bietet `--idle-enq`. Der gemessene VS1->P300-Einstieg wartet nach frischem Identitaetsread auf eine natuerliche ENQ, ohne vorher EOT zu senden. Der bestaetigte Ein-ENQ-Rueckweg sowie konservativer Aufbau/Recovery bleiben erhalten. Keine neue Adresse, kein C9 und kein RAM-/Parameterwrite. **Noch nicht an der Therme ausgefuehrt.** Kein identischer Wiederholungstest und kein dauerhaft aktivierter Hybridbetrieb; Details und Abnahmekriterien im neuen Runbook.
+**Entscheidung: `CLOSED_NO_SPEEDUP_FOR_IDLE_ENQ_VARIANT`.** Kein erneuter unveränderter Idle-ENQ-Test. Der Prober 1.2.0 bleibt als Forschungscode erhalten; diese Aktualisierung verändert nur Dokumentation und Evidenz. Die Messreihen sind keine allgemeine Firmware-Mindestzeit und keine Dauerbetriebsfreigabe.
+
+**Nächste Arbeitspriorität:** Eine unter dauerhaftem P300 lesbare, ausreichend frische GFA-Datenquelle suchen. Zuerst konkrete Profil-/Quellenzuordnung und Aktualisierung prüfen, dann einen begrenzten Lesetest ableiten. Noch keine neue Ersatzadresse, kein neuer Live-Test und kein autonomer RAM-Spiegel nachgewiesen. Keine bisherigen GFA-Entities entfernen oder Modulationssollwerte als gemessene Drehzahl ausgeben.
+
+Auch der EOT-/Ein-ENQ-Ablauf ist keine Pumpen-RAM-Freigabe. Die untersuchte E7-Arbeitskopie wird etwa alle 2,1 s asynchron nachgeladen; ein lückenarmer Override unter Erhalt der GFA-Werte ist mit den bisherigen Abläufen nicht nachgewiesen. Produktives VS1 bleibt unverändert.
 
 | Dokument | Bedeutung |
 | --- | --- |
-| [Natuerliche VS1-ENQ statt EOT](p300-idle-enq-comparison.md) | **Naechster vorbereiteter Test:** passive ENQ abwarten, dann unveraenderter P300-Handshake; 60 Offline-Tests, noch kein Geraeteergebnis |
-| [Ziel und erfolgreiches Ein-ENQ-Ergebnis](p300-goals-and-single-enq-result-2026-10-08.md) | **Aktueller Einstieg:** Anwendungsziele, neue Messwerte, Abnahmekriterien und Grenzen |
+| [Idle-ENQ-Ergebnis und Entscheidung](p300-idle-enq-result-2026-10-08.md) | **Aktueller Testbefund:** Funktion bestanden, 22,1 Prozent langsamer; Beschleunigungszweig abgeschlossen, nächste Quellenarbeit |
+| [Erhaltene Idle-ENQ-Konsolenmesswerte](evidence/p300-idle-enq-result-2026-10-08.json) | Drei reale Datensätze, Quellenhashes, Wiederherstellungsnachweis und getrennte Berechnungen |
+| [Historischer Idle-ENQ-Vergleich](p300-idle-enq-comparison.md) | Ergebnisverweis und unverändert erhaltene damalige Anleitung; kein erneuter Testauftrag |
+| [Ziel und erfolgreiches Ein-ENQ-Ergebnis](p300-goals-and-single-enq-result-2026-10-08.md) | Anwendungsziele, Messwerte, Abnahmekriterien und Grenzen |
 | [Basisergebnis und damaliger Ein-ENQ-Testplan](p300-handover-baseline-result-and-single-enq.md) | Historische Auswertung und Vorbereitung des inzwischen ausgeführten Vergleichs; kein neuer Testauftrag |
-| [Erhaltene Zwei-ENQ-Konsolenmesswerte](evidence/p300-handover-baseline-2026-10-08.json) | Drei echte Basisdatensätze; Ein-ENQ-Datensätze stehen im aktuellen Ergebnisbericht |
+| [Erhaltene Zwei-ENQ-Konsolenmesswerte](evidence/p300-handover-baseline-2026-10-08.json) | Drei echte Basisdatensätze; Ein-ENQ-Datensätze stehen im zugehörigen Ergebnisbericht |
 | [Historischer Handover-Basistest](p300-handover-baseline-runbook.md) | Verweis auf die erfolgreich ausgeführte Zwei-ENQ-Version und ihr unverändertes Original |
 | [GFA-/VSKO-Auftrag: direkte Quellenprüfung](p300-gfa-host-trace-2026-10-08.md) | Direkt gelesene C#-Klasse, SDK-Kontexte und IL-Enumstellen; Quellen- und Aussagegrenzen |
 | [Fork, schnellere Wechsel und GFA-Alternativen](p300-fork-switching-gfa-options-2026-10-08.md) | Früher Forschungsentwurf; RAM-Spiegel und Alternativen bleiben offen |
@@ -32,7 +41,7 @@ Die zusätzliche zweite ENQ konnte in diesen drei gemessenen Rückwegen entfalle
 | [Historischer CANARY und Rollback](p300-trial-install-rollback.md) | **Kein erneuter unveränderter C9-Versuch** |
 | [Hydraulik-/Hardwarematrix](wb2a-topology-hardware-matrix.md) | Anlagenschema und realer Umbau, getrennt von der Protokollmigration |
 
-Die bisherigen Live-Berichte beruhen auf Nutzer-Konsolentranskripten, nicht auf zusaetzlich importierten Originaldateien. Die neue Idle-ENQ-Variante aendert nur den isolierten Prober, seine Tests und Dokumentation. Produktionsruntime, Installer, HA-Profil und Updatekanal bleiben unveraendert.
+Die Live-Berichte beruhen auf Nutzer-Konsolentranskripten, nicht auf zusätzlich importierten Originaldateien measurement.json/recovery.json. Diese Auswertung erfordert keine erneute Anforderung der bereits hinreichenden Erfolgsdaten. Produktionsruntime, Installer, HA-Profil und Updatekanal bleiben unverändert.
 
 ## Einstieg in die übernommene Produktionsdokumentation
 
