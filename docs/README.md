@@ -10,17 +10,20 @@ Dieser Ordner enthält die vom produktiven Branch `optolink-splitter-ha` überno
 
 **Quellenarbeit:** Alle 581 exakten Profil-Events mit 362 Adressen wurden gegen vollständige Metadaten geprüft. Keine benannte virtuelle P06-Istdrehzahl gefunden. Normale `0x7650/1` ist als GFA-Kennung belegt, aber kein automatischer Ersatz für frische P80-Kommunikation.
 
-**Neuer Livebefund – P87-Vergleich durchgeführt:** Session `run-20261008T121446Z-124582`, Beobachter 1.0.0 / Commit `fbbebc26`. Im laufenden VS1 wurden 60 Klammermessungen ausgeführt: **59 stabile Matches** von P87 mit dem achten Byte (Index 7) aus `0x55D3/11`, ein uneindeutiger Übergang, keine stabile Abweichung. Matching-Zustände `00`, `20`, `60`, `62`; davon 54 der 59 Matches im Zustand `62`. Die Klammern dauerten 0,328–0,544 s. Das stützt den Kandidaten in den beobachteten stabilen Zuständen, nicht alle denkbaren Übergänge.
+**Livebefund – P87-Vergleich durchgeführt:** Session `run-20261008T121446Z-124582`, Beobachter 1.0.0 / Commit `fbbebc26`. Im laufenden VS1 wurden 60 Klammermessungen ausgeführt: **59 stabile Matches** von P87 mit dem achten Byte (Index 7) aus `0x55D3/11`, ein uneindeutiger Übergang, keine stabile Abweichung. Matching-Zustände `00`, `20`, `60`, `62`; davon 54 der 59 Matches im Zustand `62`. Die Klammern dauerten 0,328–0,544 s. Das stützt den Kandidaten in den beobachteten stabilen Zuständen, nicht alle denkbaren Übergänge.
 
 **Übergang nicht überspielen:** In Runde 4 kam P87=`30`, der native Block noch mit `20`, danach P87=`50`. Unterschiedliche Aktualisierungszeiten oder ein verzögerter Spiegel bleiben möglich; die genaue Latenz ist nicht bestimmt. `CANDIDATE_SUPPORTED_ON_SAMPLED_STATES` ist **keine Aliasfreigabe**.
 
-**Nachkontrolle:** Normale MQTT-Reads P80=`20` und P06=`53` erfolgreich. P06 entspricht mit der dokumentierten Skalierung 2.490 U/min, ohne unabhängige Drehzahl-/Flammenmessung. Kein Dienst-/Protokoll-/Parameterwechsel durch den Beobachter und kein Rollback erforderlich. Allgemeine HA-Frische wurde im Transkript nicht vollständig geprüft.
+**Nachkontrolle:** Normale MQTT-Reads P80=`20` und P06=`53` erfolgreich. P06 entspricht mit der dokumentierten Skalierung 2.490 U/min, ohne unabhängige Drehzahl-/Flammenmessung. Kein Dienst-/Protokoll-/Parameterwechsel durch den damaligen MQTT-Beobachter und kein Rollback erforderlich. Allgemeine HA-Frische wurde im Transkript nicht vollständig geprüft.
 
-**Noch offen:** Aktualisierung des Kandidaten während einer ausschließlich P300-lesenden Phase ohne externe GFA-Abfragen; P06- und P09-Ersatz. Die laufende VS1-Produktion pollte beim Vergleich weiterhin GFA, deshalb ist autonome P300-Frische ausdrücklich nicht belegt. Der Ergebniscommit dokumentiert die nächste Fragestellung, enthält aber **keine neue Testvariante**. Alten CANARY nicht reaktivieren, erfolgreiche Vergleiche nicht unverändert wiederholen.
+**Nächster Schritt jetzt implementiert:** `tools/wb2a-p87-p300-check.py` beobachtet ausschließlich den normalen Statusblock unter P300, während die bekannten externen GFA-Lesequellen pausieren. Eigener begrenzter Systemd-Worker, feste Phasen-Allowlist, keine RAM-/Parameterwrites, GFA nur vor und nach der Beobachtung. Abgesicherte Rückkehr zu originalem VS1 über ExecStopPost. 37 neue Offline-Tests; **noch kein Hardwarelauf dieser Variante**. Anders als beim vorherigen MQTT-Vergleich ist die normale Telemetrie für das Beobachtungsfenster unterbrochen. Details, Abbruchweg und Aussagegrenzen im neuen Runbook.
+
+**Weiterhin offen:** Ob sich 55D3[7] ohne externe GFA-Reads während P300 ändert, wie aktuell es ist und ob alle Übergänge P87 entsprechen; außerdem P06- und P09-Ersatz. Statische oder nur am Einstieg geänderte Werte reichen nicht. Der neue Prober ist kein produktiver P300-Splitter und ersetzt nicht den alten C9-CANARY, dessen GFA-Schutzprüfung unverändert bleibt.
 
 | Dokument | Bedeutung |
 | --- | --- |
-| [P87: Ergebnis des dynamischen VS1-Vergleichs](p300-p87-vs1-result-2026-10-08.md) | **Aktueller Einstieg:** 59 Matches, Übergangsanalyse, P06-Nachkontrolle, P300-Frische weiterhin offen |
+| [P300-only: Statusänderungen ohne externe GFA-Reads](p300-p87-p300-only-runbook.md) | **Nächster ausführbarer Test:** 37 neue Tests, Standard 300 s, selektive Dienstpause/Wiederherstellung; noch kein Hardwareergebnis |
+| [P87: Ergebnis des dynamischen VS1-Vergleichs](p300-p87-vs1-result-2026-10-08.md) | 59 Matches, Übergangsanalyse, P06-Nachkontrolle, P300-Frische weiterhin offen |
 | [P87-Konsolendaten und Statistik](evidence/p300-p87-vs1-result-2026-10-08.json) | Alle 60 Messzeilen, Originalhash, abgeleitete Statistik getrennt; keine originalen pairs.jsonl/summary.json importiert |
 | [GFA-Quellenabgleich und Kandidaten](p300-gfa-source-candidates-2026-10-08.md) | Quellenanalyse vor dem jetzt ausgeführten Test: Profilzuordnung, ursprüngliche P87-Hypothese, P06-/RAM-Grenzen |
 | [Getesteter P87-MQTT-Vergleich](https://github.com/SaulGoodman1337/optolink/blob/fbbebc267dbc5b09cb4c86eb28661c815102915e/docs/p300-p87-mirror-runbook.md) | Erhaltene Anleitung und vorab festgelegte Kriterien; Vergleich inzwischen durchgeführt, kein neuer Testauftrag |
@@ -40,7 +43,7 @@ Dieser Ordner enthält die vom produktiven Branch `optolink-splitter-ha` überno
 | [Historischer CANARY](p300-trial-install-rollback.md) | **Nicht erneut unverändert ausführen** |
 | [Hydraulikmatrix](wb2a-topology-hardware-matrix.md) | Reale Anlagenhardware, getrennt von Kommunikation |
 
-Privates Rohmaterial bleibt im privaten Quellenrepo. Neue veröffentlichbare Ableitungen und eigene Werkzeuge liegen hier. Der neue Livebefund stammt vom Nutzer; seine Auswertung änderte nur Dokumentation und Evidenz. Bestehende Produktion, Beobachtercode, Installer, HA-Profil und Updatekanal bleiben unverändert. P06 und P09 sind nicht durch einen P87-Statuskandidaten ersetzt; der Pumpen-Override bleibt unfertig.
+Privates Rohmaterial bleibt im privaten Quellenrepo. Neue veröffentlichbare Ableitungen und eigene Werkzeuge liegen hier. Der letzte Livebefund stammt vom Nutzer; der neue P300-only-Prober ist ausschließlich offline geprüft. Bestehende Produktion, MQTT-Beobachter, Handover-Helfer, Installer, HA-Profil und Updatekanal bleiben unverändert. P06 und P09 sind nicht durch einen P87-Statuskandidaten ersetzt; der Pumpen-Override bleibt unfertig.
 
 ## Einstieg in die übernommene Produktionsdokumentation
 
