@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Fixed, read-only WB2A handover measurement; default is an inert plan.
 
-No C9, RAM, parameter writes, unreviewed opcodes or protocol shortcuts.
+No C9, RAM, parameter writes or unreviewed opcodes.
+--single-enq changes only the measured VS1 return; setup/recovery stay two-ENQ.
 --execute launches a short supervised systemd worker; ExecStopPost restores
 only services recorded BEFORE stopping them. Production files are never edited.
 """
@@ -24,7 +25,8 @@ import sys
 import termios
 import time
 
-VERSION = '1.0.0'
+VERSION = '1.1.0'
+VARIANTS = {2: 'two-enq-baseline', 1: 'single-enq-comparison'}
 ROOT = Path('/root/p300-trial-work/handover-results')
 SETTINGS = Path('/opt/optolink/settings_ini.py')
 PYTHON = '/opt/optolink/venv/bin/python'
@@ -168,17 +170,23 @@ class Wire:
             raise ProbeError(f'VS1 identity mismatch: {data.hex()}')
         return data
 
-    def enter_vs1(self) -> dict:
+    def enter_vs1(self, enq_count: int = 2) -> dict:
+        # Only the measured return may opt into one ENQ; no implicit fallback.
+        if type(enq_count) is not int or enq_count not in VARIANTS:
+            raise ProbeError('ENQ count must be exactly 1 or 2')
         self.discard_before_sync()
         t0 = self.clock()
         self.send(b'\x04')
         self.control(5)
         t1 = self.clock()
-        self.control(5)  # Deliberately retain the proven conservative baseline.
-        t2 = self.clock()
+        t2 = t1
+        if enq_count == 2:
+            self.control(5)
+            t2 = self.clock()
         self.vs1(b'\x01' + VS1_ID, 2, IDENT)
         t3 = self.clock()
-        return {'first_enq_ms': (t1-t0)*1000, 'additional_enq_ms': (t2-t1)*1000,
+        return {'enq_count': enq_count, 'first_enq_ms': (t1-t0)*1000,
+                'additional_enq_ms': (t2-t1)*1000,
                 'identity_ms': (t3-t2)*1000, 'total_ms': (t3-t0)*1000}
 
     def p300_read(self, request: bytes, address: int, expected: bytes) -> bytes:
@@ -242,8 +250,10 @@ class Wire:
             result[name] = data.hex()
         return result
 
-    def experiment(self) -> list[dict]:
-        self.enter_vs1()
+    def experiment(self, vs1_enq_count: int = 2) -> list[dict]:
+        if type(vs1_enq_count) is not int or vs1_enq_count not in VARIANTS:
+            raise ProbeError('unsupported handover variant')
+        self.enter_vs1(2)  # Setup stays on the hardware-verified baseline.
         self.vs1(VS1_SOFTWARE, 2, SOFTWARE)
         self.gfa_block()
         samples = self.samples
@@ -252,7 +262,7 @@ class Wire:
             self.vs1(VS1_ID, 2, IDENT)
             start = self.clock()
             p300 = self.enter_p300()
-            vs1 = self.enter_vs1()
+            vs1 = self.enter_vs1(vs1_enq_count)
             ident_end = self.clock()
             gfa = self.gfa_block()
             end = self.clock()
@@ -352,7 +362,11 @@ def pause_services(session: Path, state: dict, action=command, inspect=unit_stat
 
 def worker(session: Path) -> int:
     state = validate_session(session)
-    report = {'version': VERSION, 'variant': 'two-enq-baseline', 'samples': [],
+    count = state.get('vs1_enq_count', 2)
+    if type(count) is not int or count not in VARIANTS:
+        raise ProbeError('invalid recorded ENQ count')
+    report = {'version': VERSION, 'variant': VARIANTS[count], 'samples': [],
+              'vs1_enq_count': count, 'setup_enq_count': 2, 'recovery_enq_count': 2,
               'experiment_pass': False, 'vs1_link_restored': False, 'errors': []}
     wire = None
     s = None
@@ -374,7 +388,7 @@ def worker(session: Path) -> int:
             pause_services(session, state)
             s = open_serial(state['port'])
             wire = Wire(s)
-            report['samples'] = wire.experiment()
+            report['samples'] = wire.experiment(count)
             report['experiment_pass'] = True
         except BaseException as exc:
             report['errors'].append(str(exc) or type(exc).__name__)
@@ -384,7 +398,7 @@ def worker(session: Path) -> int:
                 signal.signal(sig, signal.SIG_IGN)
             if wire is not None:
                 try:
-                    wire.enter_vs1()
+                    wire.enter_vs1(2)  # Never use experimental recovery.
                     wire.vs1(VS1_SOFTWARE, 2, SOFTWARE)
                     wire.vs1(GFA['P80'], 1, b'\x20')
                     report['vs1_link_restored'] = True
@@ -484,7 +498,9 @@ def supervisor_command(session: Path) -> list[str]:
             PYTHON, '-u', str(script), '--worker', str(session)]
 
 
-def launch() -> int:
+def launch(vs1_enq_count: int = 2) -> int:
+    if type(vs1_enq_count) is not int or vs1_enq_count not in VARIANTS:
+        raise ProbeError('unsupported handover variant')
     values, states = preflight()
     with locks():
         ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -497,17 +513,21 @@ def launch() -> int:
         script.chmod(0o600)
         atomic_json(session / 'state.json', {'version': VERSION, 'services': states,
                     'restore': [], 'port': values['port_optolink'],
+                    'vs1_enq_count': vs1_enq_count,
                     'script_sha256': hashlib.sha256(script.read_bytes()).hexdigest()})
     # Neither the launcher nor its SSH session owns the serial descriptor.
     # ExecStopPost is registered BEFORE any production unit is stopped.
     args = supervisor_command(session)
     print('SESSION=' + str(session), flush=True)
+    print('VARIANT=' + VARIANTS[vs1_enq_count], flush=True)
     result = subprocess.run(args, check=False)
     print('SESSION=' + str(session), flush=True)
     m = json.loads((session / 'measurement.json').read_text()) if (session / 'measurement.json').exists() else {}
     r = json.loads((session / 'recovery.json').read_text()) if (session / 'recovery.json').exists() else {}
     ok = result.returncode == 0 and m.get('experiment_pass') and m.get('vs1_link_restored') and r.get('services_restored')
-    print('RESULT=' + ('PASS_READ_ONLY_BASELINE' if ok else 'FAIL_OR_NOT_VERIFIED'))
+    ok = ok and m.get('variant') == VARIANTS[vs1_enq_count]
+    label = 'PASS_READ_ONLY_SINGLE_ENQ' if vs1_enq_count == 1 else 'PASS_READ_ONLY_BASELINE'
+    print('RESULT=' + (label if ok else 'FAIL_OR_NOT_VERIFIED'))
     for sample in m.get('samples', []):
         print(json.dumps(sample, sort_keys=True))
     for error in m.get('errors', []) + r.get('errors', []):
@@ -522,15 +542,21 @@ def main() -> int:
     modes.add_argument('--execute', action='store_true')
     modes.add_argument('--worker', type=Path, help=argparse.SUPPRESS)
     modes.add_argument('--recover', type=Path, help=argparse.SUPPRESS)
+    p.add_argument('--single-enq', action='store_true',
+                   help='compare one-ENQ measured return; setup and recovery stay two-ENQ')
     args = p.parse_args()
+    if args.single_enq and (args.worker or args.recover):
+        p.error('internal modes obtain the variant only from the recorded session')
     os.umask(0o077)
     if args.worker or args.recover:
         if os.geteuid() != 0 or os.getenv('INVOCATION_ID') is None:
             raise ProbeError('internal modes require a supervised systemd invocation')
         return worker(args.worker) if args.worker else recover(args.recover)
     if args.execute:
-        return launch()
-    print('PLAN ONLY: 3 warm VS1 -> P300 -> two-ENQ VS1 rounds; fixed identity/GFA reads.')
+        return launch(1 if args.single_enq else 2)
+    mode = 'single-ENQ' if args.single_enq else 'two-ENQ'
+    print(f'PLAN ONLY: 3 warm VS1 -> P300 -> {mode} VS1 rounds; fixed identity/GFA reads.')
+    print('Setup and recovery always use two ENQs; no implicit fallback inside a measurement.')
     print('No C9, RAM, writes, service operations or serial access without --execute.')
     print('Temporary telemetry pause; supervised recovery, no persistent unit/settings changes.')
     return 0
