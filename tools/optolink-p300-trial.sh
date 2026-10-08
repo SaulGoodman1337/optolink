@@ -122,13 +122,39 @@ ExecStart=/opt/optolink/venv/bin/python /opt/optolink-p300-candidate/optolinkvs2
 UNIT
   systemctl daemon-reload
   systemctl restart "$MAIN"
-  sleep 3
-  if ! systemctl is-active --quiet "$MAIN"; then
-    say "P300 service did not stay active"
+  # A running systemd process is NOT proof of P300 initialization:
+  # upstream retries init in-process after a 10-second sleep.
+  # Demand "enter main loop" from the NEW process and fail closed on its log.
+  local main_pid boot_log i initialized=0
+  main_pid=$(systemctl show "$MAIN" -p MainPID --value)
+  if [[ ! "$main_pid" =~ ^[0-9]+$ ]] || (( main_pid <= 0 )); then
+    say "No fresh P300 process ID"
+    on_error
+  fi
+  for ((i=0; i<18; i++)); do
+    boot_log=$(journalctl -q _PID="$main_pid" -n 160 -o cat --no-pager) || on_error
+    if [[ "$boot_log" == *"P300_INIT_FAILED"* ||
+          "$boot_log" == *"P300_INIT_STAGE_FAILED"* ||
+          "$boot_log" == *"init_protocol VS2/300 failed"* ]]; then
+      say "P300 rejected an initialization request; immediate VS1 rollback"
+      on_error
+    fi
+    if [[ "$boot_log" == *"enter main loop"* ]]; then
+      initialized=1
+      break
+    fi
+    if ! systemctl is-active --quiet "$MAIN"; then
+      say "P300 service stopped before protocol initialization"
+      on_error
+    fi
+    sleep 1
+  done
+  if (( initialized != 1 )); then
+    say "No successful P300 initialization after 18 seconds"
     on_error
   fi
   trap - ERR INT TERM
-  say "Read-only P300 canary started, auto-rollback in ${seconds}s."
+  say "Read-only P300 canary initialized; auto-rollback in ${seconds}s."
   say "Do not run update during the trial."
   say "Use journalctl -u $MAIN -n 80 --no-pager and optolink-debug."
   say "For early rollback: $SELF rollback"
