@@ -16,6 +16,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import signal
@@ -448,8 +449,13 @@ def post_restore_health() -> dict:
                              ('P06','gfaread;0x4006;1;raw;False')):
             proc=subprocess.run(['optolink-debug','request',request,'--timeout','8'],
                     capture_output=True,text=True,timeout=14,check=False)
+            expected=(r'1;0x4050;20\b' if name=='P80'
+                      else r'1;0x4006;[0-9a-fA-F]{2}\b')
+            verified=(proc.returncode==0 and
+                      bool(re.search(expected,proc.stdout,re.IGNORECASE)))
             result['gfa_reads'][name]={'returncode':proc.returncode,
-                    'stdout':proc.stdout[-600:], 'stderr':proc.stderr[-300:]}
+                    'stdout':proc.stdout[-600:], 'stderr':proc.stderr[-300:],
+                    'format_and_identity_verified':verified}
     except (OSError,subprocess.TimeoutExpired) as exc:
         result['health_error']=str(exc)
     return result
@@ -561,7 +567,10 @@ def launch(seconds: int) -> int:
     artifact=upload_bundle(session,health)
     print('UPLOAD_ONE_FILE='+str(artifact),flush=True)
     print('UART1_GFA_RX_AND_P06_RPM=NOT_VERIFIED',flush=True)
-    return 0 if ok and health['production_main_verified'] else 1
+    health_ok=(health['production_main_verified'] and
+               all(health['gfa_reads'].get(k,{}).get('format_and_identity_verified')
+                   for k in ('P80','P06')))
+    return 0 if ok and health_ok else 1
 
 
 def main() -> int:
