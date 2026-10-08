@@ -81,6 +81,79 @@ def latest():
     return sessions[-1]
 
 
+
+def verify_p300_response_trace(trace, samples):
+    """Independent byte-level check against stored FC01/FC03 samples.
+
+    Stored TX/RX trace is the original acquisition and samples.jsonl is
+    derived from the acquisition. Their agreement plus the wire checksum
+    is an integrity check, NOT independent proof of register semantics.
+    """
+    specs = {
+        '4105000100f80200': (1, 0x00F8, 2, None, '20c2'),
+        '41050001778c020b': (1, 0x778C, 2, None, '0103'),
+        '4105000155d30b39': (1, 0x55D3, 11, 'native_block', None),
+        '410500031600203e': (3, 0x1600, 32, 'ram_1600', None),
+        '410500031620205e': (3, 0x1620, 32, 'ram_1620', None)
+    }
+    counts = collections.Counter()
+    seen_timestamps = []
+    for idx, entry in enumerate(trace):
+        if entry.get('direction') not in ('RX', 'TX'):
+            raise BatchError('Unknown trace direction')
+        if 't_monotonic' in entry:
+            seen_timestamps.append(entry['t_monotonic'])
+        if entry['direction'] != 'TX':
+            continue
+        command = entry['hex'].lower()
+        if command not in specs:
+            continue
+        function, address, count, field, fixed = specs[command]
+        reply_chunks = []
+        next_tx = None
+        for subsequent in trace[idx+1:]:
+            if subsequent['direction'] == 'TX':
+                next_tx = subsequent
+                break
+            reply_chunks.append(bytes.fromhex(subsequent['hex']))
+        if next_tx is None or next_tx['hex'].lower() != '06':
+            raise BatchError('P300 response not explicitly ACKed')
+        reply = b''.join(reply_chunks)
+        if len(reply) < 4 or reply[:2] != b'\x06\x41':
+            raise BatchError('P300 reply missing ACK/STX')
+        size = reply[2]
+        if size != 5 + count or len(reply) != size + 4:
+            raise BatchError('P300 reply byte length wrong')
+        body = reply[3:-1]
+        if (size + sum(body)) & 255 != reply[-1]:
+            raise BatchError('P300 reply checksum invalid')
+        if (body[0] != 1 or body[1] != function
+                or int.from_bytes(body[2:4], 'big') != address
+                or body[4] != count or len(body[5:]) != count):
+            raise BatchError('P300 reply identity/function/length mismatch')
+        data = body[5:]
+        count_so_far = counts[command]
+        if field is not None:
+            if count_so_far >= len(samples) or data.hex() != samples[count_so_far][field].lower():
+                raise BatchError('P300 response differs from saved sample')
+        elif data.hex() != fixed:
+            raise BatchError('P300 controller/device identity mismatched')
+        counts[command] += 1
+    if seen_timestamps and (len(seen_timestamps) != len(trace)
+            or any(b < a for a,b in zip(seen_timestamps, seen_timestamps[1:]))):
+        raise BatchError('Non-monotonic or incomplete trace timestamps')
+    expected = {key: (len(samples) if field is not None else 1)
+                for key,(_,_,_,field,_) in specs.items()}
+    if dict(counts) != expected:
+        raise BatchError('P300 read cycle count incomplete/duplicated')
+    return {
+        'responses_verified':sum(counts.values()),
+        'response_checksum_address_and_payload_verified':True,
+        'frames_by_request':dict(counts),
+        'source_trace_has_timestamps':bool(seen_timestamps)
+    }
+
+
 def validate(session):
     source={name:read_file(session/name) for name in FILES}
     measurement=json.loads(source['measurement.json'])
@@ -147,6 +220,7 @@ def validate(session):
             raise BatchError('Trace frame count differs from samples: '+frame)
     if tx['160000']!=1 or tx['4105000100f80200']!=1:
         raise BatchError('Unexpected P300 session boundaries')
+    wire_verification=verify_p300_response_trace(measurement['trace'],samples)
     report={
         'schema_version':1,
         'session':session.name,
@@ -165,6 +239,7 @@ def validate(session):
         'service_restore_reported':True,
         'transmit_counts':{P300_OBSERVE[k]:tx[k] for k in P300_OBSERVE},
         'trace_frames_allowlisted':True,
+        'p300_wire_responses_verified':wire_verification,
         'sensor_alias_verified':False,
         'uart1_connected_to_gfa_proven':False,
         'hardware_write_performed':False,
