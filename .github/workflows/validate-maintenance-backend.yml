@@ -10,6 +10,8 @@ on:
       - "tools/optolink-maintenance.py"
       - "tools/optolink-maintenance-api.py"
       - "tools/optolink-splitter-update.sh"
+      - "tools/optolink-apply-vdensho1-ha-profile.sh"
+      - "tests/test_mqtt_retain_profile.py"
       - "install/optolink-splitter-install.sh"
       - "ct/optolink-splitter.sh"
       - ".github/workflows/validate-maintenance-backend.yml"
@@ -22,6 +24,8 @@ on:
       - "tools/optolink-maintenance.py"
       - "tools/optolink-maintenance-api.py"
       - "tools/optolink-splitter-update.sh"
+      - "tools/optolink-apply-vdensho1-ha-profile.sh"
+      - "tests/test_mqtt_retain_profile.py"
       - "install/optolink-splitter-install.sh"
       - "ct/optolink-splitter.sh"
       - ".github/workflows/validate-maintenance-backend.yml"
@@ -54,9 +58,13 @@ jobs:
 
       - name: Validate shell syntax
         run: |
+          bash -n tools/optolink-apply-vdensho1-ha-profile.sh
           bash -n tools/optolink-splitter-update.sh
           bash -n install/optolink-splitter-install.sh
           bash -n ct/optolink-splitter.sh
+
+      - name: Test Home Assistant retained state configuration
+        run: python3 -m unittest discover -s tests -p "test_mqtt_retain_profile.py" -v
 
       - name: Validate maintenance service shape
         run: |
