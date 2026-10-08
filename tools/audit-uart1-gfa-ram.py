@@ -26,6 +26,7 @@ SOURCE_CONTEXT_END = 0x163F
 OPTO_EXCLUSION = [
     (0x192C, 0x1952, 'P300 parser request / payload scratch'),
     (0x196C, 0x19AB, 'P300 received request workspace'),
+    (0x19AC, 0x19AD, 'Unclassified RX/TX gap; exclude to avoid spurious alias'),
     (0x19AE, 0x19ED, 'P300 outgoing response workspace'),
     (0x19EE, 0x1A6D, 'P300 Optolink communication ring'),
 ]
