@@ -45,7 +45,7 @@ class UART1ArchiveTests(unittest.TestCase):
         for addr in range(0x196C,0x19EC):
             b[addr-mod.BASE]=0xF1
         out=mod.analyze_passes(a,bytes(b))
-        self.assertEqual(out['changed_within_own_optolink_exclusion'],126)  # 0x19AC/AD are outside mapped workspaces
+        self.assertEqual(out['changed_within_own_optolink_exclusion'],128)  # include unknown RX/TX gap conservatively
         self.assertEqual(out['ranked_other_windows_top12'],[])
         self.assertEqual(out['uart1_source_focus']['changed_bytes'],0)
 
