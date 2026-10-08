@@ -1,0 +1,40 @@
+name: Validate UART1 P300 RAM Focus
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - 'tools/wb2a-uart1-p300-focus.py'
+      - 'tests/test_uart1_p300_focus.py'
+      - '.github/workflows/validate-uart1-p300-focus.yml'
+      - 'tools/wb2a-handover-probe.py'
+  pull_request:
+    paths:
+      - 'tools/wb2a-uart1-p300-focus.py'
+      - 'tests/test_uart1_p300_focus.py'
+      - '.github/workflows/validate-uart1-p300-focus.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulated-read-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check Python syntax
+        run: python -m py_compile tools/wb2a-uart1-p300-focus.py tests/test_uart1_p300_focus.py
+      - name: Confirm inert plan with only two physical reads
+        run: |
+          python tools/wb2a-uart1-p300-focus.py | grep 'PLAN ONLY: 60s'
+          python tools/wb2a-uart1-p300-focus.py | grep 'No C9, RAM writes'
+      - name: Simulated FC03, FC01 and recovery negative tests
+        run: python -m unittest discover -s tests -p test_uart1_p300_focus.py -v
+      - name: Recheck existing verified P87 restoration implementation
+        run: python -m unittest discover -s tests -p test_p87_p300_check.py -v
+      - name: Recheck pinned handover protocol
+        run: python -m unittest discover -s tests -p 'test_handover*.py' -v
