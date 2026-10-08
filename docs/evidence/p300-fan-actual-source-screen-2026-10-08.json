@@ -1,0 +1,225 @@
+{
+  "schema": 1,
+  "scope": "Offline only - WB2A / VDensHO1 20C2 firmware 01.03, one VS1 MQTT session, 180 sequential samples",
+  "inputs_sha256": {
+    "pairs.jsonl": "5323deef1cc01c67918e31d9d3bc22e2c3df3f4429f52ff80f3dda6724cf1411",
+    "summary.json": "41a4c1dcaef875ff805e18b9912b28b80e7adca3d86eb56ea2e7e8858a4ec987"
+  },
+  "samples": 180,
+  "flame_samples": 24,
+  "stable_p06": 171,
+  "changed_p06": 9,
+  "stable_p09": 180,
+  "stable_p06_nonzero_raw_counts": {
+    "53": 14,
+    "81": 1,
+    "93": 2
+  },
+  "stable_p06_zero_samples": 154,
+  "fields": [
+    {
+      "byte": 0,
+      "distinct": 10,
+      "min": 0,
+      "max": 71,
+      "nonzero_with_p06_zero": 0,
+      "classification": "control_drive",
+      "p06_measured_rpm_alias_proven": false
+    },
+    {
+      "byte": 1,
+      "distinct": 20,
+      "min": 88,
+      "max": 116,
+      "nonzero_with_p06_zero": 154,
+      "classification": "unlabelled_dynamic",
+      "p06_measured_rpm_alias_proven": false
+    },
+    {
+      "byte": 2,
+      "distinct": 7,
+      "min": 151,
+      "max": 157,
+      "nonzero_with_p06_zero": 154,
+      "classification": "unlabelled_dynamic",
+      "p06_measured_rpm_alias_proven": false
+    },
+    {
+      "byte": 3,
+      "distinct": 1,
+      "min": 0,
+      "max": 0,
+      "nonzero_with_p06_zero": 0,
+      "classification": "constant",
+      "p06_measured_rpm_alias_proven": false
+    },
+    {
+      "byte": 4,
+      "distinct": 1,
+      "min": 0,
+      "max": 0,
+      "nonzero_with_p06_zero": 0,
+      "classification": "constant",
+      "p06_measured_rpm_alias_proven": false
+    },
+    {
+      "byte": 5,
+      "distinct": 3,
+      "min": 1,
+      "max": 41,
+      "nonzero_with_p06_zero": 154,
+      "classification": "status_flags",
+      "p06_measured_rpm_alias_proven": false
+    },
+    {
+      "byte": 6,
+      "distinct": 3,
+      "min": 0,
+      "max": 11,
+      "nonzero_with_p06_zero": 1,
+      "classification": "status_aux",
+      "p06_measured_rpm_alias_proven": false
+    },
+    {
+      "byte": 7,
+      "distinct": 4,
+      "min": 0,
+      "max": 98,
+      "nonzero_with_p06_zero": 1,
+      "classification": "gfa_p87_status_candidate",
+      "p06_measured_rpm_alias_proven": false
+    },
+    {
+      "byte": 8,
+      "distinct": 1,
+      "min": 0,
+      "max": 0,
+      "nonzero_with_p06_zero": 0,
+      "classification": "constant",
+      "p06_measured_rpm_alias_proven": false
+    },
+    {
+      "byte": 9,
+      "distinct": 10,
+      "min": 0,
+      "max": 68,
+      "nonzero_with_p06_zero": 0,
+      "classification": "modulation_control",
+      "p06_measured_rpm_alias_proven": false
+    },
+    {
+      "byte": 10,
+      "distinct": 3,
+      "min": 1,
+      "max": 41,
+      "nonzero_with_p06_zero": 154,
+      "classification": "status_flags_duplicate",
+      "p06_measured_rpm_alias_proven": false
+    }
+  ],
+  "key_rounds": [
+    {
+      "round": 110,
+      "p06_before": "00",
+      "p06_after": "00",
+      "p09": "93",
+      "native_b0": 0,
+      "native_b9": 0,
+      "flame": false
+    },
+    {
+      "round": 111,
+      "p06_before": "97",
+      "p06_after": "99",
+      "p09": "93",
+      "native_b0": 71,
+      "native_b9": 68,
+      "flame": false
+    },
+    {
+      "round": 114,
+      "p06_before": "93",
+      "p06_after": "93",
+      "p09": "91",
+      "native_b0": 69,
+      "native_b9": 66,
+      "flame": true
+    },
+    {
+      "round": 116,
+      "p06_before": "81",
+      "p06_after": "81",
+      "p09": "7d",
+      "native_b0": 61,
+      "native_b9": 56,
+      "flame": true
+    },
+    {
+      "round": 122,
+      "p06_before": "53",
+      "p06_after": "53",
+      "p09": "53",
+      "native_b0": 38,
+      "native_b9": 33,
+      "flame": true
+    },
+    {
+      "round": 136,
+      "p06_before": "52",
+      "p06_after": "1d",
+      "p09": "00",
+      "native_b0": 38,
+      "native_b9": 33,
+      "flame": false
+    },
+    {
+      "round": 137,
+      "p06_before": "00",
+      "p06_after": "00",
+      "p09": "00",
+      "native_b0": 0,
+      "native_b9": 0,
+      "flame": false
+    }
+  ],
+  "external_sources": [
+    {
+      "repo": "SoulSolistice/esphome_vitohome",
+      "path": "example/catalogs/vdensho1.yaml",
+      "blob_sha": "0171ea32f90d317fb801ae0938fa59a39bb0c869",
+      "finding": "generated Vitosoft virtual catalogue; 117 inaccessible GFA_READ/RPC/KBUS/etc. entries intentionally omitted; not independent hardware validation"
+    },
+    {
+      "repo": "MorrisonHB/Optolink_02",
+      "path": "Optolink_02/Documentation/DP_Listen/DP_VDensHO1.txt",
+      "blob_sha": "d0d2a6941c7d68fa5cc7b5ea431c20e0b827746f",
+      "finding": "target-family data-point list; 0x55D3 GWG_Flamme, 0x7650 GFA_Kennung, no independent labeled P06 virtual read"
+    },
+    {
+      "repo": "smarthomeNG/plugins",
+      "path": "viessmann/commands.py",
+      "blob_sha": "retrieved GitHub commit 0176a8684934aab9a52f905cdea80f8410200c2f",
+      "finding": "0x1A53 Status_Fanspeed occurs under V200WO1C, not VDensHO1"
+    }
+  ],
+  "previous_profile_audit": "docs/p300-gfa-source-candidates-2026-10-08.md",
+  "excluded_cross_family_addresses": [
+    {
+      "address": "0x0B1E",
+      "family": "VBC550S/P SC100 fan actual, not VDensHO1"
+    },
+    {
+      "address": "0x1A53",
+      "family": "V200WO1C fan speed, not VDensHO1"
+    },
+    {
+      "address": "0x7660/0x7663",
+      "family": "heating-circuit pump speed, not combustion fan"
+    }
+  ],
+  "conclusion": "No independently measured blower tachometer alias is source-backed in the inspected virtual catalogues or eleven status bytes. This does not prove no such RAM mirror exists.",
+  "approved_p06_alias": false,
+  "approved_p300_production": false,
+  "approved_ram_write": false,
+  "live_access_performed": false
+}
