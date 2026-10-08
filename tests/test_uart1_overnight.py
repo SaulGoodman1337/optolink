@@ -11,6 +11,7 @@ import sys
 import tempfile
 import tarfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import TestCase,main
 from unittest.mock import patch
 
@@ -32,7 +33,7 @@ class OvernightTests(TestCase):
     def test_inert_plan(self):
         p=subprocess.run([sys.executable,str(FILE)],text=True,capture_output=True)
         self.assertEqual(p.returncode,0,p.stderr)
-        self.assertIn('NO TIME',p.stdout.upper() if 'NO TIME' in p.stdout.upper() else 'NO TIME') if False else self.assertIn('no duration cap',p.stdout)
+        self.assertIn('no duration cap',p.stdout)
         self.assertNotIn('SESSION=',p.stdout)
 
     def test_supervisor_has_no_runtime_expiry_and_runs_detached(self):
@@ -128,7 +129,7 @@ class OvernightTests(TestCase):
         with tempfile.TemporaryDirectory() as d:
             f=Path(d)/'out.txt'
             with f.open('w') as stream:
-                with patch.object(m.shutil,'disk_usage',return_value=(1000,970,30)):
+                with patch.object(m.shutil,'disk_usage',return_value=SimpleNamespace(free=30)):
                     with self.assertRaisesRegex(m.Error,'LOW_DISK_SPACE'):
                         m.resource_guard(Path(d),stream,stream)
 
@@ -136,7 +137,7 @@ class OvernightTests(TestCase):
         with tempfile.TemporaryDirectory() as d:
             f=Path(d)/'out.txt'
             with f.open('w') as stream:
-                with patch.object(m.shutil,'disk_usage',return_value=(10**12,0,10**12)), \
+                with patch.object(m.shutil,'disk_usage',return_value=SimpleNamespace(free=10**12)), \
                      patch.object(m,'MAX_LOG_BYTES',3):
                     stream.write('1234')
                     with self.assertRaisesRegex(m.Error,'LOG_SIZE'):
