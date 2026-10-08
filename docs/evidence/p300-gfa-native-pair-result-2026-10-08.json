@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "input_sha256": {
+    "pairs.jsonl": "5323deef1cc01c67918e31d9d3bc22e2c3df3f4429f52ff80f3dda6724cf1411",
+    "summary.json": "41a4c1dcaef875ff805e18b9912b28b80e7adca3d86eb56ea2e7e8858a4ec987"
+  },
+  "rounds_verified": 180,
+  "summary_matches_jsonl": true,
+  "time_utc": [
+    "2026-10-08T14:49:15.583800+00:00",
+    "2026-10-08T15:04:14.871181+00:00"
+  ],
+  "protocol_switched": false,
+  "device_writes": false,
+  "services_stopped": false,
+  "observation_outcome": "PAIRS_RECORDED_NEEDS_ANALYSIS",
+  "flame_samples": 24,
+  "flame_windows": [
+    {
+      "first_flame_round": 112,
+      "last_flame_round": 135,
+      "first_nonflame_after_round": 136
+    }
+  ],
+  "p06_verdicts": {
+    "STABLE_REFERENCE": 171,
+    "REFERENCE_CHANGED": 9
+  },
+  "p09_verdicts": {
+    "STABLE_REFERENCE": 180
+  },
+  "p06_stable_nonzero_states": [
+    "53",
+    "81",
+    "93"
+  ],
+  "p09_stable_nonzero_states": [
+    "53",
+    "55",
+    "5f",
+    "69",
+    "73",
+    "7d",
+    "87",
+    "91",
+    "93"
+  ],
+  "stable_p06_p09_differences_at_rounds": [
+    110,
+    114,
+    116
+  ],
+  "snapshots": [
+    {
+      "round": 110,
+      "elapsed_s": 547.755,
+      "flame_bit": false,
+      "p06_before": "00",
+      "p06_after": "00",
+      "p09": "93",
+      "native_b0": 0,
+      "native_b9": 0,
+      "native_b7": "20"
+    },
+    {
+      "round": 111,
+      "elapsed_s": 552.726,
+      "flame_bit": false,
+      "p06_before": "97",
+      "p06_after": "99",
+      "p09": "93",
+      "native_b0": 71,
+      "native_b9": 68,
+      "native_b7": "20"
+    },
+    {
+      "round": 112,
+      "elapsed_s": 557.864,
+      "flame_bit": true,
+      "p06_before": "93",
+      "p06_after": "93",
+      "p09": "93",
+      "native_b0": 69,
+      "native_b9": 66,
+      "native_b7": "60"
+    },
+    {
+      "round": 114,
+      "elapsed_s": 567.833,
+      "flame_bit": true,
+      "p06_before": "93",
+      "p06_after": "93",
+      "p09": "91",
+      "native_b0": 69,
+      "native_b9": 66,
+      "native_b7": "62"
+    },
+    {
+      "round": 116,
+      "elapsed_s": 577.846,
+      "flame_bit": true,
+      "p06_before": "81",
+      "p06_after": "81",
+      "p09": "7d",
+      "native_b0": 61,
+      "native_b9": 56,
+      "native_b7": "62"
+    },
+    {
+      "round": 120,
+      "elapsed_s": 598.065,
+      "flame_bit": true,
+      "p06_before": "59",
+      "p06_after": "57",
+      "p09": "55",
+      "native_b0": 41,
+      "native_b9": 35,
+      "native_b7": "62"
+    },
+    {
+      "round": 122,
+      "elapsed_s": 608.016,
+      "flame_bit": true,
+      "p06_before": "53",
+      "p06_after": "53",
+      "p09": "53",
+      "native_b0": 38,
+      "native_b9": 33,
+      "native_b7": "62"
+    },
+    {
+      "round": 135,
+      "elapsed_s": 673.332,
+      "flame_bit": true,
+      "p06_before": "53",
+      "p06_after": "53",
+      "p09": "53",
+      "native_b0": 38,
+      "native_b9": 33,
+      "native_b7": "62"
+    },
+    {
+      "round": 136,
+      "elapsed_s": 678.27,
+      "flame_bit": false,
+      "p06_before": "52",
+      "p06_after": "1d",
+      "p09": "00",
+      "native_b0": 38,
+      "native_b9": 33,
+      "native_b7": "00"
+    },
+    {
+      "round": 137,
+      "elapsed_s": 683.523,
+      "flame_bit": false,
+      "p06_before": "00",
+      "p06_after": "00",
+      "p09": "00",
+      "native_b0": 0,
+      "native_b9": 0,
+      "native_b7": "00"
+    }
+  ],
+  "p06_alias_verified": false,
+  "p09_alias_verified": false,
+  "notes": [
+    "Host-sequential reads are not simultaneous; no exact sensor latency inferred.",
+    "GFA P06 raw uses the locally documented x30 rpm; P09 uses its own documented scaling.",
+    "Native byte 9 is previously identified modulation, not independently verified P06 rpm.",
+    "No conversion fitted from this single natural burner phase."
+  ]
+}
