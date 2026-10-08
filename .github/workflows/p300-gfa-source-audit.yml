@@ -7,6 +7,8 @@ on:
       - .github/workflows/p300-gfa-source-audit.yml
       - tools/audit-p300-gfa-sources.py
       - tests/test_p300_gfa_source_audit.py
+      - tools/wb2a-p87-mirror-check.py
+      - tests/test_p87_mirror_check.py
   workflow_dispatch:
 
 permissions:
@@ -38,11 +40,16 @@ jobs:
           name: p300-gfa-public-source-fixture
           path: /tmp/gfa-source-fixture/
           retention-days: 7
-      - name: Run offline audit when implementation is present
+      - name: Test source audit and inert MQTT observer offline
         run: |
-          if test -f tools/audit-p300-gfa-sources.py; then
-            python3 -m unittest discover -s tests -p test_p300_gfa_source_audit.py -v
-            python3 tools/audit-p300-gfa-sources.py --research-root .research-corpus --output /tmp/p300-gfa-source-audit.json
-          else
-            echo 'Pinned public corpus preparation only; no runtime or appliance access.'
-          fi
+          python3 -m py_compile tools/audit-p300-gfa-sources.py tools/wb2a-p87-mirror-check.py
+          python3 -m unittest discover -s tests -p test_p300_gfa_source_audit.py -v
+          python3 -m unittest discover -s tests -p test_p87_mirror_check.py -v
+          python3 tools/wb2a-p87-mirror-check.py
+          python3 tools/audit-p300-gfa-sources.py --research-root .research-corpus --output /tmp/p300-gfa-source-audit.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p300-gfa-public-audit-report
+          path: /tmp/p300-gfa-source-audit.json
+          if-no-files-found: error
+          retention-days: 14
