@@ -11,9 +11,9 @@
   "changed_p06": 9,
   "stable_p09": 180,
   "stable_p06_nonzero_raw_counts": {
-    "53": 14,
+    "53": 13,
     "81": 1,
-    "93": 2
+    "93": 3
   },
   "stable_p06_zero_samples": 154,
   "fields": [
@@ -198,8 +198,8 @@
     {
       "repo": "smarthomeNG/plugins",
       "path": "viessmann/commands.py",
-      "blob_sha": "retrieved GitHub commit 0176a8684934aab9a52f905cdea80f8410200c2f",
-      "finding": "0x1A53 Status_Fanspeed occurs under V200WO1C, not VDensHO1"
+      "finding": "0x1A53 Status_Fanspeed occurs under V200WO1C, not VDensHO1",
+      "commit": "0176a8684934aab9a52f905cdea80f8410200c2f"
     }
   ],
   "previous_profile_audit": "docs/p300-gfa-source-candidates-2026-10-08.md",
