@@ -128,32 +128,6 @@ Two conflicts in the supplied legacy source are intentionally exposed as `legacy
 
 ## MQTT
 
-### Retained Home Assistant states (VDensHO1/20C2 profile)
-
-The validated `optolink-apply-vdensho1-ha-profile` helper enforces
-`mqtt_retain = True` in `/opt/optolink/settings_ini.py` on both fresh installs
-and updates. Previously, MQTT state publishes used the upstream default
-`mqtt_retain = False`, so Home Assistant could restore retained discovery
-entities after a restart but show `unknown` for settings read only once
-(`ONCE` polling), such as heating-curve slope/offset and flow-temperature limits.
-
-Retained state messages let the broker restore these values when Home Assistant
-reconnects. `ONCE` datapoints keep their start-only poll cadence; this change
-does not add extra Optolink traffic. Existing MQTT broker settings and
-credentials are preserved by the profile helper.
-
-Inside the LXC, check the setting after installation or `update`:
-
-```bash
-grep '^mqtt_retain' /opt/optolink/settings_ini.py
-# Expected: mqtt_retain = True
-```
-
-The splitter must successfully publish at least one value after retention is
-enabled before the broker can replay that topic. The profile helper restarts
-the splitter when `/dev/ttyUSB0` is present. The existing MQTT availability
-topic remains responsible for indicating whether the splitter is online.
-
 Edit `/opt/optolink/settings_ini.py`, for example:
 
 ```python
