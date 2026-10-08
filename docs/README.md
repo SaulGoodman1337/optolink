@@ -4,6 +4,18 @@ Dieser Ordner trennt produktive Betriebsdokumentation von der Forschung im Branc
 
 ## P300: aktueller Stand vom 8. Oktober 2026
 
+**NEU - P06-Istdrehzahl unter P300 (Source-First-Abschluss):**
+Ein weiterer modellgebundener Vergleich oeffentlicher VDensHO1-Kataloge
+und alle elf Bytes der bereits hochgeladenen 180 P06/P09-VS1-Paarmessungen
+liefern **keinen validierten, unabhaengigen P06-Istwert**. `0x0B1E`
+gehoert zu VBC550S/SC100, `0x1A53` zum V200WO1C-Modell, `0x7660`
+zur Umwaelzpumpe. Im Statusblock sind Byte0/Byte9 Ansteuer-/Modulationswerte;
+Byte1/Byte2 bleiben sogar in allen 154 stabilen P06=00-Runden ungleich null.
+**Keine neue Leseadresse und kein RPM-Alias freigegeben.**
+[Quellenvergleich und naechstes RAM-Evidenz-Gate](p300-fan-actual-source-screen-2026-10-08.md)
+mit [abgeleiteten Kennzahlen](evidence/p300-fan-actual-source-screen-2026-10-08.json)
+und Offline-Testwerkzeug. Kein neuer Thermenzugriff, kein Aendern der Produktion.
+
 **Ziel:** Kontrollierter RAM-Zugriff ohne Verlust bestehender HA-/Optolink-Funktionen, als Grundlage fuer Pumpen- und Vitotrol-Forschung. **Keine Produktionsfreigabe.**
 
 **Aktueller Hardwarebefund:** Die erste direkte Same-Session-Messung von GFA-P06/P09 gegen den nativen 55D3-Block ist abgeschlossen: **180 von 180 Runden** stimmen in `pairs.jsonl` und `summary.json` ueberein. P06 war in 171 Runden stabil, aenderte sich aber in neun Klammern; P09 war in allen 180 Klammern stabil. Die Aufnahme enthaelt 24 Flammenbit-Samples und eine natuerliche Brennerphase mit Anlauf, Abwaertsrampe, Modulationsboden und Abschalten. **Der entscheidende Gegenbeleg fuer einen einfachen P06-RPM-Alias:** Nach dem Flammenbit-Ende ist P09=00 und P06 sinkt innerhalb einer Klammer von 0x52 auf 0x1D, waehrend Byte9 im Statusblock noch 33 zeigt.
@@ -22,6 +34,8 @@ Dieser Ordner trennt produktive Betriebsdokumentation von der Forschung im Branc
 
 | Dokument | Bedeutung |
 | --- | --- |
+| [P06-Istdrehzahl: modellgebundener Quellenaudit](p300-fan-actual-source-screen-2026-10-08.md) | **Aktueller Stand:** 11 Statusbytes, auszusondernde fremde Leseadressen, naechstes RAM-Evidenz-Gate |
+| [Fan-Quellenaudit-Evidenz](evidence/p300-fan-actual-source-screen-2026-10-08.json) | SHA256-gepinnte private Quelle, Modellgrenzen, Bytekennzahlen, keine RPM-Freigabe |
 | [P06/P09 gegen 55D3: 180-Runden-Ergebnis](p300-gfa-native-pair-result-2026-10-08.md) | **Aktueller Einstieg:** kein nativer P06-Istalias, voneinander getrennte Soll-/Istwerte, beobachtete Brennerphase |
 | [Abgeleitete P06/P09-Evidenz](evidence/p300-gfa-native-pair-result-2026-10-08.json) | Datei-Hashes, Paarzaehlung, Statusfenster, zehn ausgesuchte Gegenproben |
 | [Vollmessungen und Byteaudit](p300-full-status-byte-audit-2026-10-08.md) | Historisch: 807 P300-Statusantworten, drei kurze Flammenbitfenster und Quelle der Anschlussmessung |
