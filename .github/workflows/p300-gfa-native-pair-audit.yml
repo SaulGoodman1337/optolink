@@ -1,0 +1,45 @@
+name: Audit GFA P06 P09 Native Pair Results
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - 'tools/audit-gfa-native-pairs.py'
+      - 'tests/test_gfa_native_pair_audit.py'
+      - '.github/workflows/p300-gfa-native-pair-audit.yml'
+  pull_request:
+    paths:
+      - 'tools/audit-gfa-native-pairs.py'
+      - 'tests/test_gfa_native_pair_audit.py'
+      - '.github/workflows/p300-gfa-native-pair-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-pair-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate source syntax
+        run: python -m py_compile tools/audit-gfa-native-pairs.py tests/test_gfa_native_pair_audit.py
+      - name: Run mock-file audit including negative cases
+        run: python -m unittest discover -s tests -p test_gfa_native_pair_audit.py -v
+      - name: Assert archival derived evidence is not mistaken for approval
+        run: |
+          python - <<'PY'
+          import json
+          with open('docs/evidence/p300-gfa-native-pair-result-2026-10-08.json') as f:
+              report = json.load(f)
+          assert report['rounds_verified'] == 180
+          assert report['p06_alias_verified'] is False
+          assert report['p09_alias_verified'] is False
+          assert report['protocol_switched'] is False
+          assert report['device_writes'] is False
+          assert report['flame_samples'] == 24
+          print('EVIDENCE_POLICY_PASS')
+          PY
