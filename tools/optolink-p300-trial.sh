@@ -109,6 +109,10 @@ activate() {
   trap on_error ERR INT TERM
   for unit in "${writers[@]}"; do
     systemctl stop "$unit" >/dev/null 2>&1 || true
+    if systemctl is-active --quiet "$unit"; then
+      say "Writer service still active after stop: $unit"
+      on_error
+    fi
   done
   cat > "$DROP" <<'UNIT'
 [Service]
@@ -119,7 +123,10 @@ UNIT
   systemctl daemon-reload
   systemctl restart "$MAIN"
   sleep 3
-  systemctl is-active --quiet "$MAIN" || die "P300 service did not stay active"
+  if ! systemctl is-active --quiet "$MAIN"; then
+    say "P300 service did not stay active"
+    on_error
+  fi
   trap - ERR INT TERM
   say "Read-only P300 canary started, auto-rollback in ${seconds}s."
   say "Do not run update during the trial."
