@@ -131,6 +131,28 @@ class P300:
             raise TransportError(DENIED, "GFA P80 identity mismatch")
         return result
 
+    def _init_expect(self, stage: str, function: int, address: int, expected: bytes) -> None:
+        """Identify the exact P300 initialization command rejected by the MCU.
+
+        Error payload is limited to eight bytes; no credentials, configuration
+        writes, RAM reads or extra probes are introduced by this diagnostic.
+        """
+        try:
+            if function == 0xC9:
+                actual = self._gfa(address)
+            else:
+                actual = self._exchange(function, address, len(expected))
+            if actual != expected:
+                raise TransportError(DENIED, "unexpected identity response", actual)
+        except TransportError as exc:
+            detail = exc.data[:8].hex() if exc.data else "-"
+            self.audit(
+                f"P300_INIT_STAGE_FAILED stage={stage} "
+                f"fc={function:02X} addr={address:04X} "
+                f"code={exc.code:02X} payload={detail}"
+            )
+            raise
+
     def _initialize(self) -> None:
         self.ready = False
         self.serial.reset_input_buffer()
@@ -142,12 +164,10 @@ class P300:
         self._send(b"\x16\x00\x00")
         deadline = time.monotonic() + self.timeout
         if self._exact(1, deadline) != b"\x06":
-            raise TransportError(DENIED, "P300 initialization failed")
-        if self._exchange(1, 0x00F8, 2) != b"\x20\xc2":
-            raise TransportError(DENIED, "not the reviewed 20C2 controller")
-        if self._exchange(1, 0x778C, 2) != b"\x01\x03":
-            raise TransportError(DENIED, "regulation software does not match 01.03")
-        self._gfa(0x4050)  # Mandatory: do not silently lose the existing GFA entities.
+            raise TransportError(DENIED, "P300 initialization handshake failed")
+        self._init_expect("virtual_device_id", 1, 0x00F8, b"\x20\xc2")
+        self._init_expect("virtual_software", 1, 0x778C, b"\x01\x03")
+        self._init_expect("gfa_p80", 0xC9, 0x4050, b"\x20")
         self.ready = True
 
     def initialize(self) -> bool:
