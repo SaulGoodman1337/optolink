@@ -363,7 +363,10 @@ def summarize_file(path: Path) -> dict:
     n=0
     prev=None
     first_utc=last_utc=None
-    for text_line in path.open(encoding='utf-8'):
+    def lines():
+        with path.open(encoding='utf-8') as source:
+            yield from source
+    for text_line in lines():
         if not text_line.strip():
             continue
         row=json.loads(text_line)
@@ -629,7 +632,7 @@ def upload_bundle(session: Path,health: dict) -> Path:
         if not path.exists():
             continue
         info=path.lstat()
-        if not stat.S_ISREG(info.st_mode) or info.st_uid!=0 or info.st_mode&0o077:
+        if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.geteuid() or info.st_mode&0o077:
             raise Error('UNSAFE_SESSION_FILE_'+name)
         digest=hashlib.sha256()
         with path.open('rb') as fd:
