@@ -28,8 +28,9 @@ PROJECT = Path(__file__).resolve().parents[1]
 PYTHON = Path('/opt/optolink/venv/bin/python')
 PROBE = PROJECT/'tools/wb2a-uart1-p300-focus.py'
 FILES = ('measurement.json', 'samples.jsonl', 'recovery.json', 'state.json')
-TESTS = ('test_uart1_p300_focus.py', 'test_uart1_gfa_ram_audit.py',
-         'test_p87_p300_check.py', 'test_handover*.py')
+TESTS = ('test_uart1_p300_focus.py', 'test_uart1_dma0_cycle.py',
+         'test_uart1_gfa_ram_audit.py', 'test_p87_p300_check.py',
+         'test_handover*.py')
 RAM_ADDR = 0x1600
 MAX_BYTES = 8_000_000
 TX_FRAMES = frozenset((
@@ -377,22 +378,43 @@ def execute_uart1(tests):
     return collect(tests)
 
 
+
+def execute_dma0_cycle(tests):
+    """Single approved hardware session, followed by automatic private archive.
+
+    The dedicated probe owns all serial/service controls, recovery and
+    post-restoration VS1 readbacks. Never call production tools directly here.
+    """
+    script=PROJECT/'tools/wb2a-uart1-dma0-cycle.py'
+    if not script.is_file() or script.is_symlink():
+        raise BatchError('MISSING_REVIEWED_DMA0_CYCLE_PROBE')
+    print('PHASE=GATED_DMA0_CYCLE_ONE_SESSION',flush=True)
+    result=subprocess.run([sys.executable,'-u',str(script),'--execute',
+                           '--seconds','600'],cwd=PROJECT,check=False)
+    if result.returncode:
+        raise BatchError('DMA0 CYCLE FAILED OR RESTORE UNVERIFIED. Do not repeat; collect the output bundle and inspect errors.')
+    print('DONE=ONE_COMBINED_GATED_P300_SESSION; NO_REPEAT',flush=True)
+    return 0
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('action',nargs='?',choices=('collect','execute-uart1','plan'),default='plan')
+    p.add_argument('action',nargs='?',choices=('collect','execute-uart1','execute-dma0-cycle','plan'),default='plan')
     args=p.parse_args()
     os.umask(0o077)
     if args.action=='plan':
         print('PLAN ONLY: collect = run offline tests, verify last UART1 session,')
         print('check live VS1 service and GFA readbacks, create ONE private upload bundle.')
-        print('execute-uart1 requires opt-in and refuses a repeated successful trial.')
-        print('No serial, firmware, RAM writes or service stops without execute-uart1.')
+        print('execute-uart1 refuses a completed trial; execute-dma0-cycle is a separate explicit 600s opt-in.')
+        print('No serial, RAM writes or service stops in plan/collect; no auto retry of live trials.')
         return 0
     if os.geteuid()!=0 or PROJECT!=Path('/root/p300-trial-work/project'):
         raise BatchError('Requires root in the reviewed developer checkout')
     tests=test_suite()
     if args.action=='collect':
         return collect(tests)
+    if args.action=='execute-dma0-cycle':
+        return execute_dma0_cycle(tests)
     return execute_uart1(tests)
 
 
