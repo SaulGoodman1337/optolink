@@ -41,6 +41,15 @@ jobs:
           retention-days: 7
       - name: Install offline-test dependencies
         run: python3 -m pip install --disable-pip-version-check pyserial paho-mqtt pyyaml
+      - name: Validate reversible read-only systemd canary
+        run: |
+          bash -n tools/optolink-p300-trial.sh
+          grep -Fq 'systemd-run --quiet' tools/optolink-p300-trial.sh
+          grep -Fq 'p300_virtual_write=False' tools/optolink-p300-trial.sh
+          grep -Fq 'p300_ram_read=False' tools/optolink-p300-trial.sh
+          grep -Fq '/run/systemd/system' tools/optolink-p300-trial.sh
+          grep -Fq 'P300_CANDIDATE_PREFLIGHT=PASS' tools/optolink-p300-trial.sh
+          test -f docs/p300-trial-install-rollback.md
       - name: Run required P300 regression tests
         env:
           P300_UPSTREAM_ROOT: ${{ github.workspace }}/.p300-upstream
