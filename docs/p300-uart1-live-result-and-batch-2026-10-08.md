@@ -40,6 +40,56 @@ weder UART1-noch-GFA noch seine Inaktivitaet in anderen
 Betriebsphasen. Ein neuer gleicher Messlauf ist derzeit
 nicht begruendet.
 
+
+### Vollstaendiges privates Originalarchiv verifiziert
+
+Das nachgereichte Archiv
+`uart1-run-20261008T194615Z-126382-bundle.tar.gz` wurde
+unabhaengig vom bisherigen Konsolentranskript geprueft:
+**SHA256**
+`a0e2809c5eeb1477ac7ff3bd012cbd30c247ddebe4c8d5b63ed5e2c283e5f3c2`.
+Die SHA256-Werte seiner Originaldateien stehen in der
+[abgeleiteten Evidenz](evidence/p300-uart1-focus-result-2026-10-08.json).
+Das Archiv mit privaten Rohdaten wird **nicht** auf GitHub hochgeladen.
+
+- **77/77 erneut rekonstruierte P300-Antworten**:
+  1x Geraetekennung, 1x Firmware, 25x `FC01 55D3/11`,
+  25x `FC03 0x1600/32`, 25x `FC03 0x1620/32`.
+  Alle ueberprueften ACK/STX, Funktionscodes, Adressen,
+  Laengen, Daten und Checksummen stimmen mit den
+  gespeicherten Samples ueberein. Keine Fehler.
+- Volltrace: **2763** Eintraege, **170 TX und 2593 RX**,
+  monotone Zeitstempel, nur freigegebene Sendeauftraege.
+  **143 Offline-Regressionstests** im Originalarchiv:
+  29 UART1-Fokus, 17 UART1-RAM, 37 P87, 60 Handover.
+- Der Batch-Gesundheitscheck nach der Wiederherstellung
+  meldet originalen VS1-Splitter `active/running` im
+  Verzeichnis `/opt/optolink` und erfolgreiche
+  MQTT-Leseantworten P80=`20` und P06=`00`.
+  **Die Frische aller HA-Entitaeten wurde nicht separat geprueft.**
+- Die 15 aktiven RAM-Byteadressen bilden wiederholte
+  Aenderungsgruppen `0x160F/10` (je 5 Aenderungen),
+  `0x1615/16` (je 4), `0x161C/1D` (je 3),
+  `0x1620..1623` (2-3). `0x160B/C` wechselten
+  je einmal und blieben danach stabil.
+  Die historisch beobachtete UART1-DMA-TX-Quelladresse
+  `0x161B` enthaelt hier durchgaengig `00` und
+  wurde nicht veraendert.
+- Im **kompletten** Statusblock `55D3/11` wechselte
+  nur Byteindex 2 von `B1` auf `B2`,
+  erstmals bei Probe 17 (`39,986 s`).
+  Das P87-Statusbyte, Index 7, blieb `00`.
+  Daraus folgt **keine** kausale Verbindung
+  zur GFA-Istdrehzahl oder zum UART1-RX.
+
+**Interpretation:** Der 60-s-Leselauf samt Restore
+ist bestaetigt, aber er enthaelt nur eine Brenner-Aus-
+Phase. Deshalb keine P06-RPM-Adresse freigeben,
+den gleichen Test nicht nochmals wiederholen;
+zuerst die UART1-/GFA-Empfangsseite
+aus statischen Firmware-/Kommunikationsquellen eingrenzen.
+
+
 ## 2. Das neue Ein-Befehl-Werkzeug
 
 Der Betreiber benoetigt weniger gestueckelte Copy/Paste-Bloecke.
@@ -56,9 +106,10 @@ Daher wurde ein Research-Orchestrator in den P300-Branch aufgenommen:
   `collect` prueft vor Ort vorhandene Testdaten, fuehrt
   offline 4 relevante Regressionstestgruppen aus,
   validiert die zuletzt gespeicherte UART1-Session gegen
-  `samples.jsonl`, alle 64 RAM-Bytes, GFA-P80 und
-  das erlaubte P300-TX-Profil, und prueft die
-  aktuell gestartete VS1-`systemd`-Instanz.
+  `samples.jsonl`, alle 64 RAM-Bytes, GFA-P80,
+  die gesendete P300-Frame-Allowlist und jetzt auch die
+  **Rohantworten inklusive Checksumme und Payload je Sample**
+  und prueft die laufende VS1-`systemd`-Instanz.
 - Anschliessend werden ueber `optolink-debug request`
   ausschliesslich die bekannten **lesenden** VS1-GFA-P80
   und P06 abgefragt und die Auftragsantworten mit Status
