@@ -1,7 +1,10 @@
 # P06/P09 gegen native Steuerwerte: naechster begrenzter VS1-MQTT-Vergleich
 
 Stand 2026-10-08, Werkzeug `wb2a-gfa-native-pair-check.py` 1.0.0.
-**Implementiert und offline getestet. Hardware-Ergebnis noch ausstehend.**
+**Hardwarelauf am 2026-10-08 erfolgreich abgeschlossen: 180 Runden, eine natuerliche Brennerphase, kein neuer P06-/P09-Produktionsalias.**
+Die folgende Anleitung ist als ausgefuehrte Testmethode archiviert; **keinen identischen Langzeitlauf ohne neue konkrete Fragestellung wiederholen**.
+[Auswertung](p300-gfa-native-pair-result-2026-10-08.md) und
+[Evidenz](evidence/p300-gfa-native-pair-result-2026-10-08.json).
 
 ## Fragestellung
 
@@ -34,7 +37,7 @@ Erwartet: 23 erfolgreiche Tests und
 Ohne execute keine MQTT-Verbindung, Diensteabfrage oder Ergebnisdatei.
 Helperhash: `2d50024f9418f4ba72170c28e3aa08a23e7a4929654e8e9b7196296cef6ea914`.
 
-## Ein Beobachtungsfenster
+## Ein Beobachtungsfenster (historisch: bereits durchgefuehrt)
 
 Am aussagekraeftigsten sind natuerliche Anlauf-, Regel- und Auslaufphasen.
 **Keine Sollwert-/Betriebsartaenderung zum Erzwingen eines Starts.**
