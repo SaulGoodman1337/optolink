@@ -50,6 +50,11 @@ jobs:
           grep -Fq '/run/systemd/system' tools/optolink-p300-trial.sh
           grep -Fq 'P300_CANDIDATE_PREFLIGHT=PASS' tools/optolink-p300-trial.sh
           test -f docs/p300-trial-install-rollback.md
+      - name: Run fixed handover and recovery regression tests
+        run: |
+          python3 -m py_compile tools/wb2a-handover-probe.py tests/test_handover_probe.py
+          python3 -m unittest discover -s tests -p test_handover_probe.py -v
+          python3 tools/wb2a-handover-probe.py
       - name: Run required P300 regression tests
         env:
           P300_UPSTREAM_ROOT: ${{ github.workspace }}/.p300-upstream
