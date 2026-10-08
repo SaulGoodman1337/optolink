@@ -29,15 +29,40 @@ def fixture(root):
             native_b7='00',native_block='00'*11,
             ram_1600=buf[:32].hex(),ram_1620=buf[32:].hex(),
             p06_rpm_alias_verified=False,uart1_gfa_link_verified=False))
-    sends=['160000','4105000100f80200']
+    sends=['160000','4105000100f80200','41050001778c020b']
     for _ in range(2):
         sends+=list(m.P300_OBSERVE)
+    specs={
+        '4105000100f80200':(1,0x00f8,bytes.fromhex('20c2')),
+        '41050001778c020b':(1,0x778c,bytes.fromhex('0103')),
+        '4105000155d30b39':(1,0x55d3,None),
+        '410500031600203e':(3,0x1600,None),
+        '410500031620205e':(3,0x1620,None)
+    }
+    trace=[]
+    counts={}
+    for frame in sends:
+        trace.append({'direction':'TX','hex':frame})
+        if frame in specs:
+            fc,addr,payload=specs[frame]
+            if payload is None:
+                idx=counts.get(frame,0)
+                field={'4105000155d30b39':'native_block',
+                       '410500031600203e':'ram_1600',
+                       '410500031620205e':'ram_1620'}[frame]
+                payload=bytes.fromhex(samples[idx][field])
+            size=5+len(payload)
+            body=bytes([1,fc,addr>>8,addr&255,len(payload)])+payload
+            response=bytes([6,0x41,size])+body+bytes([(size+sum(body))&255])
+            trace.append({'direction':'RX','hex':response.hex()})
+            trace.append({'direction':'TX','hex':'06'})
+            counts[frame]=counts.get(frame,0)+1
     measurement={
         'samples':samples,'errors':[],'observation_complete':True,
         'vs1_link_restored':True,
         'reference_gfa':{'P80':'20','P06':'00','P09':'00','P87':'00'},
         'recovery_gfa':{'P80':'20','P06':'00','P09':'00','P87':'00'},
-        'trace':[{'direction':'TX','hex':x} for x in sends],
+        'trace':trace,
         'p300_phase_start_monotonic':100.0,
         'p300_phase_end_monotonic':104.0,
         'comparison':{
@@ -69,6 +94,8 @@ class SyntheticCollectionTests(unittest.TestCase):
             self.assertEqual(report['native_b7_states'],['00'])
             self.assertFalse(report['sensor_alias_verified'])
             self.assertTrue(report['trace_frames_allowlisted'])
+            self.assertEqual(report['p300_wire_responses_verified']['responses_verified'],8)
+            self.assertTrue(report['p300_wire_responses_verified']['response_checksum_address_and_payload_verified'])
             self.assertEqual(len(source),4)
 
     def modify(self,fn):
@@ -120,6 +147,60 @@ class SyntheticCollectionTests(unittest.TestCase):
     def test_checksum_frame_count_mismatch(self):
         self.modify(lambda p:self.edit(p,'measurement.json',
             lambda x:x['trace'].pop()))
+
+    def test_corrupted_wire_checksum_denied(self):
+        def patch_wire(session):
+            def edit_trace(obj):
+                for item in obj['trace']:
+                    if item['direction']=='RX':
+                        frame=bytearray.fromhex(item['hex'])
+                        frame[-1] ^= 0x10
+                        item['hex']=frame.hex()
+                        break
+            self.edit(session,'measurement.json',edit_trace)
+        self.modify(patch_wire)
+
+    def test_corrupted_wire_payload_denied(self):
+        def patch_wire(session):
+            def edit_trace(obj):
+                items=[x for x in obj['trace'] if x['direction']=='RX']
+                frame=bytearray.fromhex(items[-1]['hex'])
+                frame[-2]^=0x1
+                frame[-1]=(sum(frame[2:-1]) & 255)
+                items[-1]['hex']=frame.hex()
+            self.edit(session,'measurement.json',edit_trace)
+        self.modify(patch_wire)
+
+    def test_incorrect_wire_address_denied(self):
+        def patch_wire(session):
+            def edit_trace(obj):
+                items=[x for x in obj['trace'] if x['direction']=='RX']
+                frame=bytearray.fromhex(items[-1]['hex'])
+                frame[5]^=0x1
+                frame[-1]=(sum(frame[2:-1]) & 255)
+                items[-1]['hex']=frame.hex()
+            self.edit(session,'measurement.json',edit_trace)
+        self.modify(patch_wire)
+
+    def test_truncated_wire_response_denied(self):
+        def patch_wire(session):
+            def edit_trace(obj):
+                items=[x for x in obj['trace'] if x['direction']=='RX']
+                frame=bytearray.fromhex(items[-1]['hex'])
+                items[-1]['hex']=frame[:-1].hex()
+            self.edit(session,'measurement.json',edit_trace)
+        self.modify(patch_wire)
+
+    def test_incorrect_controller_identity_denied(self):
+        def patch_wire(session):
+            def edit_trace(obj):
+                items=[x for x in obj['trace'] if x['direction']=='RX']
+                frame=bytearray.fromhex(items[0]['hex'])
+                frame[-2]^=0x01
+                frame[-1]=(sum(frame[2:-1]) & 255)
+                items[0]['hex']=frame.hex()
+            self.edit(session,'measurement.json',edit_trace)
+        self.modify(patch_wire)
 
     def test_unexpected_rx(self):
         self.modify(lambda p:self.edit(p,'measurement.json',
