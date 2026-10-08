@@ -80,6 +80,29 @@ Die Entity bekommt ihren Zustand von einem anderen MQTT-Produzenten. Beispiele:
 
 Damit kann Home Assistant einen einheitlichen Geräteknoten darstellen, obwohl ein Teil der Zustände nicht direkt vom Poll-Loop stammt.
 
+### MQTT-Zustände nach einem Home-Assistant-Neustart
+
+Der produktive Profil-Helper setzt bei Neuinstallation und `update`
+`mqtt_retain = True` in `/opt/optolink/settings_ini.py`.
+Damit speichert der MQTT-Broker zuletzt veröffentlichte Messwerte, auch
+für `ONCE`-Parameter wie D3, D4, C5 und C6. Home Assistant erhält diese
+Werte nach einem Neustart erneut, ohne zusätzliche Optolink-Lesevorgänge.
+Die Discovery- und Availability-Mechanismen bleiben unverändert.
+
+Der Helper erstellt vorher ein Backup der Einstellungen, übernimmt vorhandene
+MQTT-Verbindungsdaten und validiert die Änderung. Ein fehlgeschlagener
+Konfigurationsschritt aktiviert den bestehenden Profil-Rollback.
+
+Prüfung im LXC nach dem Update:
+
+```bash
+grep '^mqtt_retain' /opt/optolink/settings_ini.py
+# Erwartet: mqtt_retain = True
+```
+
+Der Splitter muss nach der Aktivierung mindestens einmal erfolgreich
+einen State veröffentlichen, damit ein retained Wert im Broker liegt.
+
 ## 3. Poll-Gruppen
 
 | Gruppe | Zweck |
