@@ -6,33 +6,36 @@ Dieser Ordner enthält die vom produktiven Branch `optolink-splitter-ha` überno
 
 **Ziel:** Kontrollierter RAM-Zugriff ohne Verlust bestehender Optolink-/HA-Funktionen, als Grundlage für Pumpen- und Vitotrol-Forschung. P300, ein Fork und Protokollwechsel sind Mittel zum Zweck. **Keine Produktionsfreigabe.**
 
-**Abgeschlossene Kommunikationstests:** Zwei-ENQ-Basis 6,863 s, Ein-ENQ-Vergleich 4,610 s, Idle-ENQ 5,628 s im Mittel einschließlich GFA. Alle drei Abläufe funktionierten in den gemeldeten Runden; anschließend wurde VS1/GFA jeweils geprüft. Die Idle-Variante ist als Beschleunigungsansatz geschlossen. Kein erneuter identischer Test. Direkter C9/P80 wurde abgewiesen; die Quellen bestätigen den VSKO-Weg über VS1/6B.
+**Neuer Hardwarebefund: beide P300-only-Läufe positiv.** Mit Prober 1.0.0 / Commit `e667c408` wurden 300 und 600 Sekunden ausschließlich FC01-Statusreads auf `0x55D3/11` beobachtet, während die bekannten externen GFA-Lesequellen pausierten. Beide Ausgaben melden `CHANGES_OBSERVED_WITHOUT_EXTERNAL_GFA`: 269 und 538 Samples, 7 und 10 späte Wechsel, davon 4 und 6 über mehrere Samples bestätigt. Im zweiten Lauf beginnt nach **353,333 Sekunden** eine weitere Statusfolge. Damit ist Aktualisierung während P300 ohne weitere externe GFA-Reads für diese Beobachtungen belegt, nicht nur Lesbarkeit eines alten Einstiegswerts.
 
-**Quellenarbeit:** Alle 581 exakten Profil-Events mit 362 Adressen wurden gegen vollständige Metadaten geprüft. Keine benannte virtuelle P06-Istdrehzahl gefunden. Normale `0x7650/1` ist als GFA-Kennung belegt, aber kein automatischer Ersatz für frische P80-Kommunikation.
+**Beide Wiederherstellungen geprüft:** `LINK_AND_SERVICE_RESTORE=PASS`, anschließend Originaldienst `/opt/optolink`, active/running, echte MQTT-Antworten P80=20 und P06=00. Der Nutzer berichtet eine Brennerphase und vermutet eine Taktsperre; letztere ist aus den Statusbytes allein nicht diagnostiziert und entwertet den Frischenachweis nicht. Die Rohwerte 72/90 werden hier keinem gesicherten Abschaltgrund zugeordnet.
 
-**Livebefund – P87-Vergleich durchgeführt:** Session `run-20261008T121446Z-124582`, Beobachter 1.0.0 / Commit `fbbebc26`. Im laufenden VS1 wurden 60 Klammermessungen ausgeführt: **59 stabile Matches** von P87 mit dem achten Byte (Index 7) aus `0x55D3/11`, ein uneindeutiger Übergang, keine stabile Abweichung. Matching-Zustände `00`, `20`, `60`, `62`; davon 54 der 59 Matches im Zustand `62`. Die Klammern dauerten 0,328–0,544 s. Das stützt den Kandidaten in den beobachteten stabilen Zuständen, nicht alle denkbaren Übergänge.
+**Nächster Schritt ohne weiteren Heizungsversuch:** Die bereits lokal gespeicherten Vollmessungen beider Sessions sichern und offline auswerten. Die Konsole enthält nur Zusammenfassungen von Byte 7, nicht die 807 vollständigen 11-Byte-Blöcke oder TX/RX-Spuren. Der [aktuelle Bericht](p300-p87-p300-only-result-2026-10-08.md) enthält den unmittelbaren Archivierungsbefehl. Kein Update und kein erneutes gleichartiges P300-only-Fenster nötig.
 
-**Übergang nicht überspielen:** In Runde 4 kam P87=`30`, der native Block noch mit `20`, danach P87=`50`. Unterschiedliche Aktualisierungszeiten oder ein verzögerter Spiegel bleiben möglich; die genaue Latenz ist nicht bestimmt. `CANDIDATE_SUPPORTED_ON_SAMPLED_STATES` ist **keine Aliasfreigabe**.
+**Weiterhin offen:** Vollständige P87-Aliasgleichheit und Latenz bei Übergängen sowie Ersatz für P06-Istdrehzahl und P09-Sollwert. Ein Statusspiegel ersetzt keine Drehzahl. Die normale FC01-Aktualisierung macht den zuvor abgewiesenen direkten C9/P80-Aufruf nicht funktionsfähig. Kein produktiver P300-Wechsel oder Pumpen-RAM-Override wird daraus freigegeben.
 
-**Nachkontrolle:** Normale MQTT-Reads P80=`20` und P06=`53` erfolgreich. P06 entspricht mit der dokumentierten Skalierung 2.490 U/min, ohne unabhängige Drehzahl-/Flammenmessung. Kein Dienst-/Protokoll-/Parameterwechsel durch den damaligen MQTT-Beobachter und kein Rollback erforderlich. Allgemeine HA-Frische wurde im Transkript nicht vollständig geprüft.
+### Bereits abgeschlossene Bausteine
 
-**Nächster Schritt jetzt implementiert:** `tools/wb2a-p87-p300-check.py` beobachtet ausschließlich den normalen Statusblock unter P300, während die bekannten externen GFA-Lesequellen pausieren. Eigener begrenzter Systemd-Worker, feste Phasen-Allowlist, keine RAM-/Parameterwrites, GFA nur vor und nach der Beobachtung. Abgesicherte Rückkehr zu originalem VS1 über ExecStopPost. 37 neue Offline-Tests; **noch kein Hardwarelauf dieser Variante**. Anders als beim vorherigen MQTT-Vergleich ist die normale Telemetrie für das Beobachtungsfenster unterbrochen. Details, Abbruchweg und Aussagegrenzen im neuen Runbook.
-
-**Weiterhin offen:** Ob sich 55D3[7] ohne externe GFA-Reads während P300 ändert, wie aktuell es ist und ob alle Übergänge P87 entsprechen; außerdem P06- und P09-Ersatz. Statische oder nur am Einstieg geänderte Werte reichen nicht. Der neue Prober ist kein produktiver P300-Splitter und ersetzt nicht den alten C9-CANARY, dessen GFA-Schutzprüfung unverändert bleibt.
+- Zwei-ENQ-Handover 6,863 s, Ein-ENQ 4,610 s, Idle-ENQ 5,628 s im Mittel einschließlich GFA. Alle drei Abläufe funktionierten in den gemeldeten Runden; Idle-ENQ ist als Beschleunigungsansatz geschlossen. Kein erneuter identischer Test. Die Quellen bestätigen den originalen VSKO-Weg über VS1/6B.
+- Vollständige Quellenzuordnung: 581 exakte Profil-Events mit 362 Adressen. Keine benannte virtuelle P06-Istdrehzahl gefunden. `0x7650/1` ist als GFA-Kennung belegt, aber kein automatischer Ersatz für einen aktuellen GFA-Kommunikationsnachweis.
+- Dynamischer VS1-Vergleich: 60 Klammern, 59 stabile Matches von P87 mit dem achten Byte von 55D3/11, Zustände 00/20/60/62, davon 54 Matches bei 62. Ein Übergang P87=30, Block=20, P87=50 bleibt Hinweis auf mögliche unterschiedliche Aktualisierung. Kein universeller verzögerungsfreier Aliasnachweis.
+- Die neue P300-only-Beobachtung beantwortet die danach offene Aktualisierungsfrage positiv. Sie ergänzt den VS1-Vergleich, ohne dessen Übergangs- und Latenzgrenzen zu löschen.
 
 | Dokument | Bedeutung |
 | --- | --- |
-| [P300-only: Statusänderungen ohne externe GFA-Reads](p300-p87-p300-only-runbook.md) | **Nächster ausführbarer Test:** 37 neue Tests, Standard 300 s, selektive Dienstpause/Wiederherstellung; noch kein Hardwareergebnis |
-| [P87: Ergebnis des dynamischen VS1-Vergleichs](p300-p87-vs1-result-2026-10-08.md) | 59 Matches, Übergangsanalyse, P06-Nachkontrolle, P300-Frische weiterhin offen |
-| [P87-Konsolendaten und Statistik](evidence/p300-p87-vs1-result-2026-10-08.json) | Alle 60 Messzeilen, Originalhash, abgeleitete Statistik getrennt; keine originalen pairs.jsonl/summary.json importiert |
-| [GFA-Quellenabgleich und Kandidaten](p300-gfa-source-candidates-2026-10-08.md) | Quellenanalyse vor dem jetzt ausgeführten Test: Profilzuordnung, ursprüngliche P87-Hypothese, P06-/RAM-Grenzen |
-| [Getesteter P87-MQTT-Vergleich](https://github.com/SaulGoodman1337/optolink/blob/fbbebc267dbc5b09cb4c86eb28661c815102915e/docs/p300-p87-mirror-runbook.md) | Erhaltene Anleitung und vorab festgelegte Kriterien; Vergleich inzwischen durchgeführt, kein neuer Testauftrag |
-| [Quellenevidenz](evidence/p300-gfa-source-audit-2026-10-08.json) | Hashes, kleine Metadatenauswahl und getrennte Hypothesen; keine privaten Volltabellen |
-| [Idle-ENQ-Ergebnis](p300-idle-enq-result-2026-10-08.md) | Erfolgreiche Kommunikation, aber langsamer: dieser Optimierungszweig abgeschlossen |
+| [P300-only: Ergebnis beider Läufe und nächster Schritt](p300-p87-p300-only-result-2026-10-08.md) | **Aktueller Einstieg:** 300/600 s, späte Änderungen, Taktsperren-Abgrenzung und Export bereits vorhandener Vollmessungen |
+| [P300-only-Konsolenevidenz](evidence/p300-p87-p300-only-result-2026-10-08.json) | Beide ausgegebenen Ergebnisobjekte, Quellhash, Nachkontrollen und getrennte Berechnungen; keine erfundene Vollzeitreihe |
+| [Getesteter P300-only-Ablauf](https://github.com/SaulGoodman1337/optolink/blob/e667c4084d3392e64be30ecd89a9c4425b3e464b/docs/p300-p87-p300-only-runbook.md) | Erhaltene Versuchsanleitung und ursprüngliche Abnahmekriterien; inzwischen in zwei Läufen durchgeführt, kein neuer Testauftrag |
+| [P87: Ergebnis des dynamischen VS1-Vergleichs](p300-p87-vs1-result-2026-10-08.md) | 59 Matches, Übergangsanalyse und damalige P06-Nachkontrolle; separat von der jetzt positiven P300-Frische |
+| [P87-Konsolendaten und Statistik](evidence/p300-p87-vs1-result-2026-10-08.json) | Alle 60 früheren Messzeilen und abgeleitete Statistik |
+| [GFA-Quellenabgleich und Kandidaten](p300-gfa-source-candidates-2026-10-08.md) | Historische Kandidatenauswahl, vollständige Profilzuordnung, verbleibende P06-/RAM-Grenzen |
+| [Getesteter P87-MQTT-Vergleich](https://github.com/SaulGoodman1337/optolink/blob/fbbebc267dbc5b09cb4c86eb28661c815102915e/docs/p300-p87-mirror-runbook.md) | Vorab definierte Kriterien; Vergleich durchgeführt, kein neuer Testauftrag |
+| [Quellenevidenz](evidence/p300-gfa-source-audit-2026-10-08.json) | Hashes und Metadatenableitungen; keine privaten Volltabellen |
+| [Idle-ENQ-Ergebnis](p300-idle-enq-result-2026-10-08.md) | Erfolgreiche Kommunikation, aber langsamer: Optimierungszweig abgeschlossen |
 | [Idle-Messwerte](evidence/p300-idle-enq-result-2026-10-08.json) | Nutzertranskript und abgeleitete Vergleichswerte |
 | [Historischer Idle-Test](p300-idle-enq-comparison.md) | Verweis auf getestete Fassung; kein neuer Testauftrag |
 | [Ziele und Ein-ENQ-Ergebnis](p300-goals-and-single-enq-result-2026-10-08.md) | Anwendungsziele und erfolgreicher Ein-ENQ-Lauf |
-| [Zwei-ENQ-Basis und Ein-ENQ-Vorbereitung](p300-handover-baseline-result-and-single-enq.md) | Historische Vorbereitung des inzwischen ausgeführten Vergleichs |
+| [Zwei-ENQ-Basis und Ein-ENQ-Vorbereitung](p300-handover-baseline-result-and-single-enq.md) | Historische Vorbereitung des abgeschlossenen Vergleichs |
 | [Zwei-ENQ-Messwerte](evidence/p300-handover-baseline-2026-10-08.json) | Erhaltene Nutzer-Konsolenmessungen |
 | [Historischer Basistest](p300-handover-baseline-runbook.md) | Unverändertes Original über getesteten Commit |
 | [Direkte GFA-/VSKO-Quellenprüfung](p300-gfa-host-trace-2026-10-08.md) | Befehlsabbildung, C#-/IL-Provenienz |
@@ -43,7 +46,7 @@ Dieser Ordner enthält die vom produktiven Branch `optolink-splitter-ha` überno
 | [Historischer CANARY](p300-trial-install-rollback.md) | **Nicht erneut unverändert ausführen** |
 | [Hydraulikmatrix](wb2a-topology-hardware-matrix.md) | Reale Anlagenhardware, getrennt von Kommunikation |
 
-Privates Rohmaterial bleibt im privaten Quellenrepo. Neue veröffentlichbare Ableitungen und eigene Werkzeuge liegen hier. Der letzte Livebefund stammt vom Nutzer; der neue P300-only-Prober ist ausschließlich offline geprüft. Bestehende Produktion, MQTT-Beobachter, Handover-Helfer, Installer, HA-Profil und Updatekanal bleiben unverändert. P06 und P09 sind nicht durch einen P87-Statuskandidaten ersetzt; der Pumpen-Override bleibt unfertig.
+Die neuen Hardwareergebnisse stammen aus dem Nutzertranskript. Die aktuelle Auswertung ändert nur Dokumentation und Evidenz. Produktionsruntime, alle Prober, Tests, Installer, HA-Profil und Updatekanal bleiben unverändert. Privates Rohmaterial bleibt im privaten Quellenrepo; öffentlich werden nur erlaubte Ableitungen und eigene Werkzeuge dokumentiert.
 
 ## Einstieg in die übernommene Produktionsdokumentation
 
