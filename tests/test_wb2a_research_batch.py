@@ -147,12 +147,13 @@ class SyntheticCollectionTests(unittest.TestCase):
                 self.assertIn('uart1/offline-tests.txt',names)
                 self.assertEqual(json.load(arc.extractfile('uart1/batch-analysis.json'))['samples_verified'],2)
 
-    def test_archive_duplicate_refused(self):
+    def test_archive_repeat_reuses_identical_source(self):
         with tempfile.TemporaryDirectory() as d,patch.object(m,'OUTPUT',Path(d)/'bundle'):
             session=fixture(d);report,source=m.validate(session)
-            m.archive(session,source,report,'pass',{})
-            with self.assertRaisesRegex(m.BatchError,'already exists'):
-                m.archive(session,source,report,'pass',{})
+            first=m.archive(session,source,report,'pass',{})
+            second=m.archive(session,source,report,'pass',{})
+            self.assertEqual(first,second)
+            self.assertTrue(second.is_file())
 
     def test_read_symlink_refused(self):
         with tempfile.TemporaryDirectory() as d:
