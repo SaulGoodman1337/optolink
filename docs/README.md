@@ -13,6 +13,12 @@ selbst wechselte nicht. Status `55D3[7]`, P06
 und P09 blieben in diesem Fenster `00`.
 VS1 und alle aktiven Dienste wurden laut Mess-/
 Restore-Protokoll erfolgreich wiederhergestellt.
+Das **vollstaendige nachgereichte Originalarchiv** ist jetzt unabhaengig
+verifiziert: **77/77 P300-Antworten** mit gueltiger Adresse, Laenge,
+Pruefsumme und Sample-Payload, **143/143 archivierte Tests**,
+post-Restore MQTT-GFA-P80=20/P06=00 erfolgreich.
+Der RAM-Befund wird **nicht** mit GFA-P06 gleichgesetzt; vollstaendiger
+Status Byte2 wechselte B1->B2, P87-Byte7 blieb 00.
 **Keine UART1/GFA-Anbindung und kein P06-RPM-Alias nachgewiesen.**
 [Hardwareauswertung und vereinheitlichter Batchablauf](p300-uart1-live-result-and-batch-2026-10-08.md)
 sowie [abgeleitete Evidenz](evidence/p300-uart1-focus-result-2026-10-08.json).
