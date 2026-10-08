@@ -215,7 +215,7 @@ if ! "$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --apply; then
 fi
 
 echo "Enabling permanent VS1 timing and retained MQTT states..."
-python3 - "$APP_DIR/settings_ini.py" <<'PY'
+if ! python3 - "$APP_DIR/settings_ini.py" <<'PY'
 import ast
 from pathlib import Path
 import sys
@@ -270,6 +270,11 @@ if len(retain_assignments) != 1 or ast.literal_eval(retain_assignments[0].value)
 path.write_text(out)
 print("MQTT state retention verified: mqtt_retain = True")
 PY
+then
+  echo "Unable to enforce permanent VS1 settings and retained MQTT states; restoring previous profile." >&2
+  rollback_profile
+  exit 1
+fi
 
 # c_polllist.py gives poll_list.py precedence. Remove it after creating a
 # timestamped backup so the Home Assistant adapter becomes the active source.
