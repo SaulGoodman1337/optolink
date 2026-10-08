@@ -4,7 +4,11 @@ Stand: 2026-10-07. Entwicklungsbranch: `optolink-p300-migration`.
 
 ## Ausgangspunkt und Ausfuehrungsgrenze
 
-Basis ist `optolink-splitter-ha` bei `7bc69c32788dd19c7a35e787d0b2aa26c9548ce6`.
+Urspruengliche Basis war `optolink-splitter-ha` bei `7bc69c32788dd19c7a35e787d0b2aa26c9548ce6`.
+Die vier spaeteren HA-Commits bis `555528c5075315db0fd50fd17ee5dd3a806f67e0`
+wurden anschliessend per echtem Zwei-Eltern-Merge `42b120884035f28d6c9cd01ccd81cd691c42b74f`
+uebernommen. Fuer Testinstallation und Rollback siehe
+[p300-trial-install-rollback.md](p300-trial-install-rollback.md).
 Upstream bleibt `philippoo66/optolink-splitter` bei
 `c1ee204a1421447721603c5f21c6da7337fdac97`.
 
