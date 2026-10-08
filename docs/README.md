@@ -4,6 +4,20 @@ Dieser Ordner trennt produktive Betriebsdokumentation von der Forschung im Branc
 
 ## P300: aktueller Stand vom 8. Oktober 2026
 
+**Neuer opt-in Forschungsschritt:** Der UART1-DMA0-Fund `SAR0=0x161B`
+liefert einen engeren P300-RAM-Lesebereich als die frueheren 20-KiB-Dumps.
+Der alte Offline-Auditor bestand auf der LXC 17/17 Tests, fand aber unter
+`/tmp` keine alten `physical-ram-*-report.json` Dateien. Ein neuer,
+**nicht automatisch ausgefuehrter** 60-Sekunden-Test ist nun vorbereitet:
+nur `FC01 55D3/11` und `FC03 1600/32 + 1620/32`, nach VS1/P80-Gate,
+mit supervisiertem Dienst-Rollback. Vor dem Live-Test bitte auch andere
+lokale Speicherorte nach den alten RAM-Dateien absuchen.
+[Live-Test-Runbook](p300-uart1-p300-focus-runbook.md) /
+[vorheriger Offline-Hintergrund](p300-uart1-gfa-dataflow-offline-2026-10-08.md).
+**UART1-Anschluss an GFA und RPM-P06-Alias sind weiterhin UNBEWIESEN.**
+Kein Heizungsparameter-, RAM-Schreib- oder Produktivzweig-Eingriff.
+
+
 **NEU - P06-Istdrehzahl unter P300 (Source-First-Abschluss):**
 Ein weiterer modellgebundener Vergleich oeffentlicher VDensHO1-Kataloge
 und alle elf Bytes der bereits hochgeladenen 180 P06/P09-VS1-Paarmessungen
@@ -34,6 +48,8 @@ und Offline-Testwerkzeug. Kein neuer Thermenzugriff, kein Aendern der Produktion
 
 | Dokument | Bedeutung |
 | --- | --- |
+| [UART1-DMA0/P300-RAM-Fokus (einmaliger read-only Test)](p300-uart1-p300-focus-runbook.md) | **Naechster optionaler Geraeteversuch:** maximal 64 physische RAM-Bytes pro Runde, fester Handshake und VS1-Dienst-Rollback |
+| [UART1/Optolink Datenfluss aus alten Forschungsergebnissen](p300-uart1-gfa-dataflow-offline-2026-10-08.md) | DMA0-Quellpointer ist kein P06-Istwert; Offline-Auditor fuer vorhandene Dumps |
 | [P06-Istdrehzahl: modellgebundener Quellenaudit](p300-fan-actual-source-screen-2026-10-08.md) | **Aktueller Stand:** 11 Statusbytes, auszusondernde fremde Leseadressen, naechstes RAM-Evidenz-Gate |
 | [Fan-Quellenaudit-Evidenz](evidence/p300-fan-actual-source-screen-2026-10-08.json) | SHA256-gepinnte private Quelle, Modellgrenzen, Bytekennzahlen, keine RPM-Freigabe |
 | [P06/P09 gegen 55D3: 180-Runden-Ergebnis](p300-gfa-native-pair-result-2026-10-08.md) | **Aktueller Einstieg:** kein nativer P06-Istalias, voneinander getrennte Soll-/Istwerte, beobachtete Brennerphase |
