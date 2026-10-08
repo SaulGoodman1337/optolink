@@ -2,28 +2,36 @@
 
 Dieser Ordner enthält die vom produktiven Branch `optolink-splitter-ha` übernommene Betriebs- und Entwicklerdokumentation sowie die getrennt aufgeführte Arbeit des Entwicklungsbranches `optolink-p300-migration`.
 
-## P300-Entwicklung: aktueller Stand vom 8. Oktober 2026
+## P300-Entwicklung: Ziel und aktueller Stand vom 8. Oktober 2026
+
+**Ziel:** Kontrollierter zusätzlicher RAM-Zugriff ohne Verlust bestehender Optolink-/HA-Funktionen. Er soll die Forschung an einer temporären Pumpensteuerung und an einer möglichen Vitotrol-Raumtemperaturaufschaltung ermöglichen. P300, schnelle Protokollwechsel und ein Fork sind Mittel zum Zweck, keine eigenen Abnahmekriterien. RAM-Zugriff allein beweist weder eine funktionierende Pumpenregelung noch eine Vitotrol-Emulation.
 
 **Keine Produktionsfreigabe.** Der direkt gesendete C9/P80-Aufruf wurde von der lokalen WB2A zurückgewiesen. Die Quellenprüfung bestätigt den originalen VSKO-Weg über VS1/6B. Ein neuer nativer P300-GFA-Pfad ist nicht nachgewiesen.
 
-**Zwei-ENQ-Basistest jetzt an echter Hardware bestanden:** Session `run-20261008T092711Z-124106`, Prober 1.0.0, drei gültige Runden, `PASS_READ_ONLY_BASELINE` und anschließende MQTT-Abfragen P80=20/P06=00. Mittelwerte: P300-ENQ 1,998 s, erste VS1-ENQ 1,998 s, zusätzliche zweite ENQ 2,238 s. Gesamter Weg inklusive GFA 6,863 s. Das sind Stichproben, keine Firmware-Untergrenze oder Dauerlauffreigabe.
+**Beide Handover-Vergleiche jetzt an echter Hardware bestanden:**
 
-**Nächster vorbereiteter Vergleich:** Prober 1.1.0 bietet `--single-enq`. Nur der gemessene VS1-Rückweg verwendet dann die erste ENQ; Aufbau und Wiederherstellung bleiben bei zwei ENQs. Keine neue Adresse, kein C9, kein RAM, keine Parameterwrites. Die alte Basismessung wird nicht unverändert wiederholt. Ohne `--execute` bleibt das Werkzeug inert. 32 unveränderte Basistests plus 10 neue Tests prüfen den Code offline; Ein-ENQ-Geräteergebnis steht noch aus.
+- Zwei-ENQ-Basis: Session `run-20261008T092711Z-124106`, Prober 1.0.0, drei gültige Runden, `PASS_READ_ONLY_BASELINE`, anschließend MQTT P80=20/P06=00. Gesamter Weg inklusive GFA im Mittel 6,863 s.
+- Ein-ENQ-Vergleich: Session `run-20261008T094009Z-124230`, Prober 1.1.0 / Commit `ff5504d`, drei gültige Runden, `PASS_READ_ONLY_SINGLE_ENQ`, anschließend Originaldienst active/running und MQTT P80=20/P06=00. Gesamter Weg inklusive GFA im Mittel **4,610 s**, Bereich 4,569–4,637 s. Aufbau und Recovery blieben beim Zwei-ENQ-Pfad.
+
+Die zusätzliche zweite ENQ konnte in diesen drei gemessenen Rückwegen entfallen. Die beiden EOT-basierten ersten ENQ-Wartezeiten bleiben jeweils etwa 1,998 s. Die knapp 33 Prozent kürzere Gesamtdauer ist ein Fortschritt des Messablaufs, **keine Pumpen-RAM- oder Dauerbetriebsfreigabe**. Die E7-Arbeitskopie wird in der bisherigen Forschung etwa alle 2,1 s asynchron nachgeladen; ein lückenarmer Override ist mit dem aktuellen Wechselablauf nicht nachgewiesen.
+
+**Kein neuer Gerätetest aus dieser Zielklärung:** Den erfolgreichen Ein-ENQ-Vergleich nicht unverändert wiederholen. Erst einen konkreten weiterführenden Nutzenpfad belegen: deutlich kürzeres Unterbrechungsfenster, autonom frische GFA-Quelle unter P300 oder bewusst nur gelegentliche RAM-Diagnose. Produktives VS1 bleibt unverändert.
 
 | Dokument | Bedeutung |
 | --- | --- |
-| [Basisergebnis und Ein-ENQ-Vergleich](p300-handover-baseline-result-and-single-enq.md) | **Aktueller Teststand:** Teilzeiten, genaue Änderung, Aufruf, Wiederherstellung und Grenzen |
-| [Erhaltene Konsolenmesswerte](evidence/p300-handover-baseline-2026-10-08.json) | Drei echte Datensätze; Rechenhypothese getrennt von Messwerten |
-| [Historischer Handover-Basistest](p300-handover-baseline-runbook.md) | Verweis auf die jetzt erfolgreich ausgeführte Zwei-ENQ-Version und ihr unverändertes Original |
+| [Ziel und erfolgreiches Ein-ENQ-Ergebnis](p300-goals-and-single-enq-result-2026-10-08.md) | **Aktueller Einstieg:** Anwendungsziele, neue Messwerte, Abnahmekriterien und Grenzen |
+| [Basisergebnis und damaliger Ein-ENQ-Testplan](p300-handover-baseline-result-and-single-enq.md) | Historische Auswertung und Vorbereitung des inzwischen ausgeführten Vergleichs; kein neuer Testauftrag |
+| [Erhaltene Zwei-ENQ-Konsolenmesswerte](evidence/p300-handover-baseline-2026-10-08.json) | Drei echte Basisdatensätze; Ein-ENQ-Datensätze stehen im aktuellen Ergebnisbericht |
+| [Historischer Handover-Basistest](p300-handover-baseline-runbook.md) | Verweis auf die erfolgreich ausgeführte Zwei-ENQ-Version und ihr unverändertes Original |
 | [GFA-/VSKO-Auftrag: direkte Quellenprüfung](p300-gfa-host-trace-2026-10-08.md) | Direkt gelesene C#-Klasse, SDK-Kontexte und IL-Enumstellen; Quellen- und Aussagegrenzen |
-| [Fork, schnellere Wechsel und GFA-Alternativen](p300-fork-switching-gfa-options-2026-10-08.md) | Forschungsentwurf vor der neuen Basismessung; RAM-Spiegel und Alternativen bleiben offen |
+| [Fork, schnellere Wechsel und GFA-Alternativen](p300-fork-switching-gfa-options-2026-10-08.md) | Früher Forschungsentwurf; RAM-Spiegel und Alternativen bleiben offen |
 | [Quellenaudit und genaue Fundstellen](p300-switching-source-audit-2026-10-08.md) | Historischer Zeitablauf, ENQ-Folge, Upstream und Befehlsabbildung |
 | [C9-Hardwarebefund](p300-gfa-c9-hardware-rejection-2026-10-08.md) | Negativer C9-Gerätebefund; kein pauschales P300-Unmöglichkeitsurteil |
 | [P300-Migrationsplan](p300-migration.md) | Bestehender Kandidat und weiterhin geschlossene Freigabestufen |
 | [Historischer CANARY und Rollback](p300-trial-install-rollback.md) | **Kein erneuter unveränderter C9-Versuch** |
 | [Hydraulik-/Hardwarematrix](wb2a-topology-hardware-matrix.md) | Anlagenschema und realer Umbau, getrennt von der Protokollmigration |
 
-Der Ein-ENQ-Vergleich ist vorbereitet, nicht auf der Therme ausgeführt. Für ihn weder Stager noch alten P300-Kandidaten aktivieren. Produktives VS1 bleibt unverändert. Ein Wegfall der zweiten ENQ allein ergäbe bei sonst gleichen Zeiten rechnerisch noch etwa 4,625 s inklusive GFA, keine Pumpen-RAM-Freigabe.
+Der neue Ergebnisbericht beruht auf dem Nutzer-Konsolentranskript, nicht auf zusätzlich importierten Originaldateien measurement.json/recovery.json. In dieser Zielklärung wurden nur Dokumentation und Index geändert; keine Runtime, kein Installer und keine neue Probe.
 
 ## Einstieg in die übernommene Produktionsdokumentation
 
