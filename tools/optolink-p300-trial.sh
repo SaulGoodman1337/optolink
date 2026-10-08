@@ -41,6 +41,8 @@ def values(path):
                 pass
     return result
 p300, prod = map(values, sys.argv[1:])
+if prod.get("vs1protocol") is not True or prod.get("port_vitoconnect") is not None:
+    raise SystemExit("Original production is not the reviewed single-port VS1 setup")
 required = dict(vs1protocol=False, p300_experimental=True,
                 p300_virtual_write=False, p300_ram_read=False, port_vitoconnect=None)
 if any(p300.get(key, object()) != value for key, value in required.items()):
