@@ -3,6 +3,7 @@
 
 No C9, RAM, parameter writes or unreviewed opcodes.
 --single-enq changes only the measured VS1 return; setup/recovery stay two-ENQ.
+--idle-enq also waits for natural VS1 ENQ before P300, without sending EOT.
 --execute launches a short supervised systemd worker; ExecStopPost restores
 only services recorded BEFORE stopping them. Production files are never edited.
 """
@@ -25,8 +26,9 @@ import sys
 import termios
 import time
 
-VERSION = '1.1.0'
+VERSION = '1.2.0'
 VARIANTS = {2: 'two-enq-baseline', 1: 'single-enq-comparison'}
+IDLE_VARIANT = 'idle-enq-comparison'
 ROOT = Path('/root/p300-trial-work/handover-results')
 SETTINGS = Path('/opt/optolink/settings_ini.py')
 PYTHON = '/opt/optolink/venv/bin/python'
@@ -55,6 +57,14 @@ TX_ALLOWLIST = frozenset((b'\x04', b'\x16\x00\x00', b'\x06',
 
 class ProbeError(RuntimeError):
     pass
+
+
+def variant_name(enq_count: int, idle_enq: bool = False) -> str:
+    if type(enq_count) is not int or enq_count not in VARIANTS:
+        raise ProbeError('ENQ count must be exactly 1 or 2')
+    if type(idle_enq) is not bool or (idle_enq and enq_count != 1):
+        raise ProbeError('idle ENQ requires a boolean opt-in and single-ENQ return')
+    return IDLE_VARIANT if idle_enq else VARIANTS[enq_count]
 
 
 def atomic_json(path: Path, value: dict) -> None:
@@ -102,6 +112,7 @@ class Wire:
         self.trace = []
         self.samples = []
         self.last_io = self.clock()
+        self._warm_vs1 = None  # Last-byte RX time and trace length of fresh F7/00F8.
 
     def record(self, direction: str, data: bytes) -> None:
         self.trace.append({'t_monotonic': self.clock(), 'direction': direction, 'hex': data.hex()})
@@ -109,6 +120,7 @@ class Wire:
     def send(self, data: bytes) -> None:
         if data not in TX_ALLOWLIST:
             raise ProbeError('TX outside fixed read-only allowlist')
+        self._warm_vs1 = None
         self.record('TX', data)
         if self.port.write(data) != len(data):
             raise ProbeError('short serial write')
@@ -168,6 +180,8 @@ class Wire:
         self.quiet()
         if expected is not None and data != expected:
             raise ProbeError(f'VS1 identity mismatch: {data.hex()}')
+        if request == VS1_ID and count == 2 and expected == IDENT:
+            self._warm_vs1 = (self.trace[-1]['t_monotonic'], len(self.trace))
         return data
 
     def enter_vs1(self, enq_count: int = 2) -> dict:
@@ -238,6 +252,36 @@ class Wire:
                 'device_id_ms': (t3-t2)*1000, 'software_ms': (t4-t3)*1000,
                 'total_ms': (t4-t0)*1000}
 
+    def enter_p300_idle(self) -> dict:
+        """Source-motivated discriminator: let a verified VS1 session become idle.
+
+        No EOT, purge, keepalive or other TX before an actual natural ENQ.
+        The 500-ms Vitosoft keepalive is NOT a verified controller idle timeout.
+        One attempt only; no EOT fallback within the measurement.
+        """
+        proof = self._warm_vs1
+        self._warm_vs1 = None  # Consume proof even if a receive below fails.
+        if (proof is None or proof[1] != len(self.trace)
+                or not 0 <= self.clock() - proof[0] <= .250):
+            raise ProbeError('idle entry requires an immediately verified warm VS1 identity')
+        t0 = self.clock()
+        # Unlike recovery detection, an unexpected ACK/NACK is not silently skipped.
+        if self.exact(1, t0 + 6.0) != b'\x05':
+            raise ProbeError('natural VS1 ENQ missing: unexpected control/data')
+        t1 = self.clock()
+        self.send(b'\x16\x00\x00')
+        self.control(6)
+        t2 = self.clock()
+        self.p300_read(P300_ID, 0xF8, IDENT)
+        t3 = self.clock()
+        self.p300_read(P300_SOFTWARE, 0x778C, SOFTWARE)
+        t4 = self.clock()
+        return {'entry_mode': 'natural-enq-no-eot', 'eot_sent': False,
+                'enq_ms': (t1-t0)*1000,
+                'last_vs1_rx_to_enq_ms': (t1-proof[0])*1000,
+                'start_ack_ms': (t2-t1)*1000, 'device_id_ms': (t3-t2)*1000,
+                'software_ms': (t4-t3)*1000, 'total_ms': (t4-t0)*1000}
+
     def gfa_block(self) -> dict:
         result = {}
         for name, req in GFA.items():
@@ -250,9 +294,8 @@ class Wire:
             result[name] = data.hex()
         return result
 
-    def experiment(self, vs1_enq_count: int = 2) -> list[dict]:
-        if type(vs1_enq_count) is not int or vs1_enq_count not in VARIANTS:
-            raise ProbeError('unsupported handover variant')
+    def experiment(self, vs1_enq_count: int = 2, idle_enq: bool = False) -> list[dict]:
+        variant_name(vs1_enq_count, idle_enq)
         self.enter_vs1(2)  # Setup stays on the hardware-verified baseline.
         self.vs1(VS1_SOFTWARE, 2, SOFTWARE)
         self.gfa_block()
@@ -261,7 +304,7 @@ class Wire:
             # A real valid VS1 transaction immediately before each measured switch.
             self.vs1(VS1_ID, 2, IDENT)
             start = self.clock()
-            p300 = self.enter_p300()
+            p300 = self.enter_p300_idle() if idle_enq else self.enter_p300()
             vs1 = self.enter_vs1(vs1_enq_count)
             ident_end = self.clock()
             gfa = self.gfa_block()
@@ -363,9 +406,9 @@ def pause_services(session: Path, state: dict, action=command, inspect=unit_stat
 def worker(session: Path) -> int:
     state = validate_session(session)
     count = state.get('vs1_enq_count', 2)
-    if type(count) is not int or count not in VARIANTS:
-        raise ProbeError('invalid recorded ENQ count')
-    report = {'version': VERSION, 'variant': VARIANTS[count], 'samples': [],
+    idle_enq = state.get('idle_enq', False)
+    variant = variant_name(count, idle_enq)
+    report = {'version': VERSION, 'variant': variant, 'idle_enq': idle_enq, 'samples': [],
               'vs1_enq_count': count, 'setup_enq_count': 2, 'recovery_enq_count': 2,
               'experiment_pass': False, 'vs1_link_restored': False, 'errors': []}
     wire = None
@@ -388,7 +431,7 @@ def worker(session: Path) -> int:
             pause_services(session, state)
             s = open_serial(state['port'])
             wire = Wire(s)
-            report['samples'] = wire.experiment(count)
+            report['samples'] = wire.experiment(count, idle_enq=idle_enq)
             report['experiment_pass'] = True
         except BaseException as exc:
             report['errors'].append(str(exc) or type(exc).__name__)
@@ -498,9 +541,8 @@ def supervisor_command(session: Path) -> list[str]:
             PYTHON, '-u', str(script), '--worker', str(session)]
 
 
-def launch(vs1_enq_count: int = 2) -> int:
-    if type(vs1_enq_count) is not int or vs1_enq_count not in VARIANTS:
-        raise ProbeError('unsupported handover variant')
+def launch(vs1_enq_count: int = 2, idle_enq: bool = False) -> int:
+    variant = variant_name(vs1_enq_count, idle_enq)
     values, states = preflight()
     with locks():
         ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -513,20 +555,22 @@ def launch(vs1_enq_count: int = 2) -> int:
         script.chmod(0o600)
         atomic_json(session / 'state.json', {'version': VERSION, 'services': states,
                     'restore': [], 'port': values['port_optolink'],
-                    'vs1_enq_count': vs1_enq_count,
+                    'vs1_enq_count': vs1_enq_count, 'idle_enq': idle_enq,
                     'script_sha256': hashlib.sha256(script.read_bytes()).hexdigest()})
     # Neither the launcher nor its SSH session owns the serial descriptor.
     # ExecStopPost is registered BEFORE any production unit is stopped.
     args = supervisor_command(session)
     print('SESSION=' + str(session), flush=True)
-    print('VARIANT=' + VARIANTS[vs1_enq_count], flush=True)
+    print('VARIANT=' + variant, flush=True)
     result = subprocess.run(args, check=False)
     print('SESSION=' + str(session), flush=True)
     m = json.loads((session / 'measurement.json').read_text()) if (session / 'measurement.json').exists() else {}
     r = json.loads((session / 'recovery.json').read_text()) if (session / 'recovery.json').exists() else {}
     ok = result.returncode == 0 and m.get('experiment_pass') and m.get('vs1_link_restored') and r.get('services_restored')
-    ok = ok and m.get('variant') == VARIANTS[vs1_enq_count]
+    ok = ok and m.get('variant') == variant
     label = 'PASS_READ_ONLY_SINGLE_ENQ' if vs1_enq_count == 1 else 'PASS_READ_ONLY_BASELINE'
+    if idle_enq:
+        label = 'PASS_READ_ONLY_IDLE_ENQ'
     print('RESULT=' + (label if ok else 'FAIL_OR_NOT_VERIFIED'))
     for sample in m.get('samples', []):
         print(json.dumps(sample, sort_keys=True))
@@ -542,10 +586,13 @@ def main() -> int:
     modes.add_argument('--execute', action='store_true')
     modes.add_argument('--worker', type=Path, help=argparse.SUPPRESS)
     modes.add_argument('--recover', type=Path, help=argparse.SUPPRESS)
-    p.add_argument('--single-enq', action='store_true',
+    variants = p.add_mutually_exclusive_group()
+    variants.add_argument('--single-enq', action='store_true',
                    help='compare one-ENQ measured return; setup and recovery stay two-ENQ')
+    variants.add_argument('--idle-enq', action='store_true',
+                          help='wait for natural ENQ before P300; measured return uses one ENQ')
     args = p.parse_args()
-    if args.single_enq and (args.worker or args.recover):
+    if (args.single_enq or args.idle_enq) and (args.worker or args.recover):
         p.error('internal modes obtain the variant only from the recorded session')
     os.umask(0o077)
     if args.worker or args.recover:
@@ -553,9 +600,11 @@ def main() -> int:
             raise ProbeError('internal modes require a supervised systemd invocation')
         return worker(args.worker) if args.worker else recover(args.recover)
     if args.execute:
-        return launch(1 if args.single_enq else 2)
-    mode = 'single-ENQ' if args.single_enq else 'two-ENQ'
+        return launch(1 if args.single_enq or args.idle_enq else 2, args.idle_enq)
+    mode = 'single-ENQ' if args.single_enq or args.idle_enq else 'two-ENQ'
     print(f'PLAN ONLY: 3 warm VS1 -> P300 -> {mode} VS1 rounds; fixed identity/GFA reads.')
+    if args.idle_enq:
+        print('IDLE ENQ: no EOT or TX before natural VS1 ENQ; one attempt, no fallback.')
     print('Setup and recovery always use two ENQs; no implicit fallback inside a measurement.')
     print('No C9, RAM, writes, service operations or serial access without --execute.')
     print('Temporary telemetry pause; supervised recovery, no persistent unit/settings changes.')

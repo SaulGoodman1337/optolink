@@ -52,10 +52,11 @@ jobs:
           test -f docs/p300-trial-install-rollback.md
       - name: Run fixed handover and recovery regression tests
         run: |
-          python3 -m py_compile tools/wb2a-handover-probe.py tests/test_handover_probe.py tests/test_handover_single_enq.py
+          python3 -m py_compile tools/wb2a-handover-probe.py tests/test_handover_probe.py tests/test_handover_single_enq.py tests/test_handover_idle_enq.py
           python3 -m unittest discover -s tests -p 'test_handover*.py' -v
           python3 tools/wb2a-handover-probe.py
           python3 tools/wb2a-handover-probe.py --single-enq
+          python3 tools/wb2a-handover-probe.py --idle-enq
       - name: Run required P300 regression tests
         env:
           P300_UPSTREAM_ROOT: ${{ github.workspace }}/.p300-upstream

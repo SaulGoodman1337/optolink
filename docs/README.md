@@ -15,10 +15,11 @@ Dieser Ordner enthält die vom produktiven Branch `optolink-splitter-ha` überno
 
 Die zusätzliche zweite ENQ konnte in diesen drei gemessenen Rückwegen entfallen. Die beiden EOT-basierten ersten ENQ-Wartezeiten bleiben jeweils etwa 1,998 s. Die knapp 33 Prozent kürzere Gesamtdauer ist ein Fortschritt des Messablaufs, **keine Pumpen-RAM- oder Dauerbetriebsfreigabe**. Die E7-Arbeitskopie wird in der bisherigen Forschung etwa alle 2,1 s asynchron nachgeladen; ein lückenarmer Override ist mit dem aktuellen Wechselablauf nicht nachgewiesen.
 
-**Kein neuer Gerätetest aus dieser Zielklärung:** Den erfolgreichen Ein-ENQ-Vergleich nicht unverändert wiederholen. Erst einen konkreten weiterführenden Nutzenpfad belegen: deutlich kürzeres Unterbrechungsfenster, autonom frische GFA-Quelle unter P300 oder bewusst nur gelegentliche RAM-Diagnose. Produktives VS1 bleibt unverändert.
+**Neuer gezielter Vergleich vorbereitet:** Prober 1.2.0 bietet `--idle-enq`. Der gemessene VS1->P300-Einstieg wartet nach frischem Identitaetsread auf eine natuerliche ENQ, ohne vorher EOT zu senden. Der bestaetigte Ein-ENQ-Rueckweg sowie konservativer Aufbau/Recovery bleiben erhalten. Keine neue Adresse, kein C9 und kein RAM-/Parameterwrite. **Noch nicht an der Therme ausgefuehrt.** Kein identischer Wiederholungstest und kein dauerhaft aktivierter Hybridbetrieb; Details und Abnahmekriterien im neuen Runbook.
 
 | Dokument | Bedeutung |
 | --- | --- |
+| [Natuerliche VS1-ENQ statt EOT](p300-idle-enq-comparison.md) | **Naechster vorbereiteter Test:** passive ENQ abwarten, dann unveraenderter P300-Handshake; 60 Offline-Tests, noch kein Geraeteergebnis |
 | [Ziel und erfolgreiches Ein-ENQ-Ergebnis](p300-goals-and-single-enq-result-2026-10-08.md) | **Aktueller Einstieg:** Anwendungsziele, neue Messwerte, Abnahmekriterien und Grenzen |
 | [Basisergebnis und damaliger Ein-ENQ-Testplan](p300-handover-baseline-result-and-single-enq.md) | Historische Auswertung und Vorbereitung des inzwischen ausgeführten Vergleichs; kein neuer Testauftrag |
 | [Erhaltene Zwei-ENQ-Konsolenmesswerte](evidence/p300-handover-baseline-2026-10-08.json) | Drei echte Basisdatensätze; Ein-ENQ-Datensätze stehen im aktuellen Ergebnisbericht |
@@ -31,7 +32,7 @@ Die zusätzliche zweite ENQ konnte in diesen drei gemessenen Rückwegen entfalle
 | [Historischer CANARY und Rollback](p300-trial-install-rollback.md) | **Kein erneuter unveränderter C9-Versuch** |
 | [Hydraulik-/Hardwarematrix](wb2a-topology-hardware-matrix.md) | Anlagenschema und realer Umbau, getrennt von der Protokollmigration |
 
-Der neue Ergebnisbericht beruht auf dem Nutzer-Konsolentranskript, nicht auf zusätzlich importierten Originaldateien measurement.json/recovery.json. In dieser Zielklärung wurden nur Dokumentation und Index geändert; keine Runtime, kein Installer und keine neue Probe.
+Die bisherigen Live-Berichte beruhen auf Nutzer-Konsolentranskripten, nicht auf zusaetzlich importierten Originaldateien. Die neue Idle-ENQ-Variante aendert nur den isolierten Prober, seine Tests und Dokumentation. Produktionsruntime, Installer, HA-Profil und Updatekanal bleiben unveraendert.
 
 ## Einstieg in die übernommene Produktionsdokumentation
 
