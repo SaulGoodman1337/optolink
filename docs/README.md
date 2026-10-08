@@ -4,6 +4,23 @@ Dieser Ordner trennt produktive Betriebsdokumentation von der Forschung im Branc
 
 ## P300: aktueller Stand vom 8. Oktober 2026
 
+**NEUER NAECHSTER LIVE-SCHRITT – ein einziger Sammeltest:**
+Der alte, bereits dokumentierte 154-Messpunkt-DMA0-Watch weist den
+UART1-TX-Quellzeiger **dynamisch** im Bereich `0x161B..0x1622` nach;
+die damalige SFR-Aufnahme enthaelt `U1C1=0x07`
+(**UART1 TX- und RX-Hardware eingeschaltet**, noch nicht GFA zugeordnet).
+Das hochgeladene 25x64-Byte-Archiv zeigt TX-RAM-Muster mit 6 Zustaenden,
+aber keinen Flammenzyklus. Ein neuer gebuendelter, **explizit auszufuehrender**
+P300-Read-Only-Test erfasst Status, **DMA0-Quellzeiger/TCR** und denselben
+64-Byte-RAM-Bereich **in einer** betreuten Sitzung bis max. 600 s,
+mit automatischem Ende nach natuerlichem Flammenzyklus plus Nachlauf.
+Er liest **NICHT** das moeglicherweise zugriffssensitive UART1-RX-Datenregister.
+Ein-Befehl-Wrapper, Offline-CI, Protokoll-Allowlist, Original-VS1-Restore,
+MQTT-P80/P06-Nachkontrolle und automatischer Export eines einzigen
+privaten Archives sind vorbereitet: [Runbook und Datenflussnachweis](p300-uart1-dma0-natural-cycle-2026-10-08.md).
+**P06-Ist-Drehzahl und UART1/GFA-Kopplung weiterhin UNBEWIESEN.**
+
+
 **AKTUELL: UART1-Fokuslauf erfolgreich abgeschlossen.** Der Betreiber
 hat den 60-s-P300-FC03-Lauf mit 25 Status-/RAM-Runden
 bereits erfolgreich ausgefuehrt. 15 RAM-Bytes wechselten
@@ -64,6 +81,7 @@ und Offline-Testwerkzeug. Kein neuer Thermenzugriff, kein Aendern der Produktion
 
 | Dokument | Bedeutung |
 | --- | --- |
+| [UART1 DMA0/RAM/native Status: Natuerlicher Zyklus in einem Batch](p300-uart1-dma0-natural-cycle-2026-10-08.md) | **Naechster einmaliger read-only Messlauf:** dynamischer DMA0-TX-SAR0/TCR, 64 RAM-Bytes, natuerliche Flammenbit-Sequenz, VS1-Rueckkehr und ein Archiv |
 | [UART1: Hardwareergebnis und Ein-Befehl-Batch](p300-uart1-live-result-and-batch-2026-10-08.md) | **Aktuell:** 25 verifizierte Runden, 15 geaenderte RAM-Bytes, keine RPM-Freigabe, einheitlicher Datenexport |
 | [UART1: abgeleitete physische Lesemessung](evidence/p300-uart1-focus-result-2026-10-08.json) | Beobachtungsdauer, Trace-Allowlist, Werte-/Adressdelta und Restore-Befund; kein privater Volldump |
 | [Abgeschlossener UART1-P300-RAM-Fokus](p300-uart1-p300-focus-runbook.md) | Historischer einmaliger 60-s-Geraeteversuch vom 8. Oktober; nicht unveraendert wiederholen |
