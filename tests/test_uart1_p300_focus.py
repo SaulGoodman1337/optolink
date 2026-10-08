@@ -295,5 +295,105 @@ class OrchestrationTests(unittest.TestCase):
         self.assertEqual(m.summarize([])['outcome'],'NO_CHANGES_IN_UART1_FOCUS')
 
 
+
+class LifecycleTests(unittest.TestCase):
+    """Exercise the actual worker report and ExecStopPost ordering with fakes."""
+    def unit_state(self,unit):
+        return {'ActiveState':'active','SubState':'running','WorkingDirectory':'/opt/optolink'}
+
+    def trial(self, ram_fault=None):
+        clock=Clock()
+        peer=UART1Peer(clock)
+        peer.ram_fault=ram_fault
+        real_class=m.UART1Wire
+        state={'seconds':30,'port':'/dev/fake',
+               'services':{unit:True for unit in m.h.SERVICES},
+               'restore':list(m.h.SERVICES)}
+        with tempfile.TemporaryDirectory() as d, \
+             patch.object(Path,'read_text',return_value=
+                  "port_optolink='/dev/fake'\nport_vitoconnect=None\nvs1protocol=True\n"), \
+             patch.object(m.h,'unit_state',side_effect=self.unit_state), \
+             patch.object(m.h,'pause_services'), \
+             patch.object(m.h,'open_serial',return_value=peer), \
+             patch.object(m,'UART1Wire',side_effect=
+                  lambda serial:real_class(serial,clock.now,clock.sleep)), \
+             patch.object(m,'isolation'), patch.object(m.signal,'signal'):
+            # Patch Path.read_text only during guarded settings validation;
+            # worker writes measurement.json directly via atomic_json.
+            result=m.run_worker(Path(d),state)
+            report=json.loads((Path(d)/'measurement.json').read_bytes())
+        return result,report,peer
+
+    def test_worker_success_restores_vs1_and_gfa(self):
+        code,report,peer=self.trial()
+        self.assertEqual(code,0)
+        self.assertTrue(report['observation_complete'])
+        self.assertTrue(report['vs1_link_restored'])
+        self.assertFalse(report['errors'])
+        self.assertEqual(report['recovery_gfa']['P80'],'20')
+        self.assertGreater(report['comparison']['sample_count'],3)
+        self.assertFalse(report['comparison']['p06_rpm_alias_verified'])
+        self.assertTrue(peer.close_called)
+
+    def test_worker_physical_crc_error_attempts_vs1_recovery(self):
+        code,report,peer=self.trial('checksum')
+        self.assertEqual(code,1)
+        self.assertFalse(report['observation_complete'])
+        self.assertTrue(report['vs1_link_restored'])
+        self.assertEqual(report['recovery_gfa']['P80'],'20')
+        self.assertTrue(any('P300_CHECKSUM_INVALID' in s for s in report['errors']))
+        self.assertTrue(peer.close_called)
+
+    def test_execstoppost_main_first_on_success(self):
+        state={'services':{u:True for u in m.h.SERVICES},
+               'restore':list(m.h.SERVICES)}
+        calls=[]
+        with tempfile.TemporaryDirectory() as d, \
+             patch.object(m,'session_state',return_value=state), \
+             patch.object(m,'locks',return_value=contextlib.nullcontext()), \
+             patch.object(m.h,'command',side_effect=lambda c:calls.append(c[-1])), \
+             patch.object(m.h,'unit_state',side_effect=self.unit_state), \
+             patch.object(m.h,'wait_main_ready'):
+            code=m.recover(Path(d))
+            saved=json.loads((Path(d)/'recovery.json').read_text())
+        self.assertEqual(code,0)
+        self.assertTrue(saved['services_restored'])
+        self.assertEqual(calls[0],m.h.MAIN)
+        self.assertEqual(calls[-1],m.h.SERVICES[0])
+
+    def test_execstoppost_defers_writers_on_main_failure(self):
+        state={'services':{u:True for u in m.h.SERVICES},
+               'restore':list(m.h.SERVICES)}
+        calls=[]
+        def fail_main(argv):
+            calls.append(argv[-1])
+            if argv[-1]==m.h.MAIN:
+                raise m.Error('main start rejected')
+        with tempfile.TemporaryDirectory() as d, \
+             patch.object(m,'session_state',return_value=state), \
+             patch.object(m,'locks',return_value=contextlib.nullcontext()), \
+             patch.object(m.h,'command',side_effect=fail_main), \
+             patch.object(m.h,'wait_main_ready'):
+            code=m.recover(Path(d))
+            saved=json.loads((Path(d)/'recovery.json').read_text())
+        self.assertEqual(code,1)
+        self.assertFalse(saved['services_restored'])
+        self.assertEqual(calls,[m.h.MAIN])
+        self.assertTrue(any('VS1_NOT_READY_WRITERS_DEFERRED' in s for s in saved['errors']))
+
+    def test_unfinished_previous_session_fails_closed(self):
+        fake={k:k==m.h.MAIN for k in m.h.SERVICES}
+        with tempfile.TemporaryDirectory() as d, \
+             patch.object(m,'ROOT',Path(d)), \
+             patch.object(m,'locks',return_value=contextlib.nullcontext()), \
+             patch.object(m.h,'preflight',return_value=({'port_optolink':'/dev/fake'},fake)), \
+             patch.object(m.h,'unit_state',return_value={'ActiveState':'inactive'}), \
+             patch.object(m.subprocess,'run') as run:
+            p=Path(d)/'run-old';p.mkdir(mode=0o700)
+            (p/'state.json').write_text(json.dumps({'restore':[m.h.MAIN]}))
+            with self.assertRaisesRegex(m.Error,'PREVIOUS_RECOVERY_UNRESOLVED'):
+                m.launch(30)
+            run.assert_not_called()
+
 if __name__=='__main__':
     unittest.main()
