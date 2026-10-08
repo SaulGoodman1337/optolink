@@ -438,7 +438,7 @@ class LifecycleTests(unittest.TestCase):
             p=Path(d)/'run-old';p.mkdir(mode=0o700)
             (p/'state.json').write_text(json.dumps({'restore':[m.h.MAIN]}))
             with self.assertRaisesRegex(m.Error,'PREVIOUS_RECOVERY_UNRESOLVED'):
-                m.launch(30)
+                m.launch(600)
             run.assert_not_called()
 
 if __name__=='__main__':
