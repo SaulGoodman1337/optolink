@@ -173,6 +173,71 @@ Auch ein Reboot entfernt den ausschliesslich temporaeren Drop-in unter /run;
 er ersetzt aber keine nachfolgende Kontrolle von MQTT-Frische, Dienststatus
 und eventuell aktiven Party-/Zeitprogrammzuständen.
 
+## Vorlaeufiges Hardware-Ergebnis: 2026-10-08, 09:42 CEST
+
+Der erste zeitbegrenzte CANARY auf der echten WB2A erreichte den
+P300-Laufzeitprozess, aber NICHT `enter main loop`. Die Regelung sendete
+mindestens zweimal eine gueltige P300-Fehlerantwort (Message Type 3):
+
+~~~text
+09:42:13 P300_INIT_FAILED: controller rejected request
+09:42:13 init_protocol VS2/300 failed
+09:42:24 P300_INIT_FAILED: controller rejected request
+~~~
+
+`systemctl ActiveState=active` war irrefuehrend, weil der Upstream-Splitter im
+gleichen Prozess nach zehn Sekunden einen erneuten Initialisierungsversuch
+startet. Die erste CANARY-Version hatte nur ActiveState geprueft und deshalb
+voreilig Erfolg gemeldet. Diese Luecke wurde geschlossen: der CANARY erfordert
+jetzt einen frischen `enter main loop`-Journaleintrag der neuen PID und fuehrt
+bei Initialisierungsfehler oder ausbleibendem Erfolg sofort ein VS1-Rollback aus.
+
+Der bisherige `controller rejected request`-Text verraet NICHT, welcher der
+drei Init-Schritte die Fehlerantwort erhielt: FC01/00F8, FC01/778C oder
+FCC9/4050. Da P300-Virtual_READ auf dem Geraet bereits frueher erfolgreich war,
+ist C9 ein guter Verdacht, aber noch kein bestaetigter Firmwarebefund. Das
+Backend schreibt jetzt bei Protokollfehler `P300_INIT_STAGE_FAILED` mit der
+genauen Funktions-/Adresskombination, numerischem Fehlercode und bis zu acht
+Fehler-Payload-Bytes. Es werden keine neuen Befehle eingefuehrt.
+
+### Bestehenden Kandidaten fuer einen erneuten, kurzen Test aktualisieren
+
+**Erst pruefen, dass der alte CANARY bereits zurueckgerollt wurde:**
+
+~~~bash
+/usr/local/sbin/optolink-p300-trial rollback
+optolink-debug request 'r;0x00F8;2;raw;False' --timeout 8
+optolink-debug request 'gfaread;0x4050;1;raw;False' --timeout 8
+~~~
+
+Dann nur die geaenderte Python-Bibliothek im bereits separat erstellten
+Kandidaten aktualisieren. **Den Stager nicht wiederholen:** er verweigert
+absichtlich ein bereits vorhandenes Zielverzeichnis.
+
+~~~bash
+git -C /root/p300-trial-work/project pull --ff-only origin optolink-p300-migration
+git -C /root/p300-trial-work/project rev-parse HEAD
+bash -n /root/p300-trial-work/project/tools/optolink-p300-trial.sh
+install -o optolink -g optolink -m 0644 \
+  /root/p300-trial-work/project/tools/optolink_p300.py \
+  /opt/optolink-p300-candidate/optolink_p300.py
+~~~
+
+Das aktualisiert nicht die produktive VS1-Laufzeit. Anschliessend KURZEN,
+schreibgeschuetzten Diagnoseversuch durchfuehren, kein Langlauf:
+
+~~~bash
+bash /root/p300-trial-work/project/tools/optolink-p300-trial.sh activate 120
+journalctl -u optolink-splitter.service --since '2 minutes ago' --no-pager \
+  | grep -E 'P300_INIT|VS2/300|enter main loop|Restoring original'
+/usr/local/sbin/optolink-p300-trial status
+~~~
+
+Nach der neuen CANARY-Implementierung fuehrt ein erneutes Init-REJECT sofort
+zu VS1-Rollback und Exitstatus != 0. **Nicht automatisch wiederholen.**
+Das gesammelte Journal verrraet den exakten fehlschlagenden Schritt; danach
+erst ueber eine gezielte Protokollanpassung entscheiden.
+
 ## E. Was diese Freigabestufe ausdruecklich nicht beweist
 
 Der erste CANARY prueft P300-Handshake, virtuelle READs, C9-GFA,
