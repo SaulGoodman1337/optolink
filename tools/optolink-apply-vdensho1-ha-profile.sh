@@ -3,7 +3,7 @@ set -euo pipefail
 
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
-HELPER_REV="2026-09-25-r10-failsoft-poll"
+HELPER_REV="2026-10-08-r11-retained-ha-states"
 APP_DIR="/opt/optolink"
 VALIDATED_UPSTREAM_REF="c1ee204a1421447721603c5f21c6da7337fdac97"
 
@@ -214,8 +214,8 @@ if ! "$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --apply; then
   exit 1
 fi
 
-echo "Enabling permanent VS1 timing (global 25 ms; GFA retry 150 ms)..."
-python3 - "$APP_DIR/settings_ini.py" <<'PY'
+echo "Enabling permanent VS1 timing and retained MQTT states..."
+if ! python3 - "$APP_DIR/settings_ini.py" <<'PY'
 import ast
 from pathlib import Path
 import sys
@@ -237,16 +237,16 @@ for node in tree.body:
         values[name] = ast.literal_eval(node.value)
     except Exception:
         pass
-    if name in {"vs1protocol", "olbreath"}:
+    if name in {"vs1protocol", "olbreath", "mqtt_retain"}:
         nodes[name] = node
 
 if values.get("port_vitoconnect") is not None:
     raise SystemExit("Permanent VS1 requires port_vitoconnect=None; refusing profile activation.")
-if set(nodes) != {"vs1protocol", "olbreath"}:
-    raise SystemExit("Could not uniquely locate vs1protocol and olbreath settings.")
+if set(nodes) != {"vs1protocol", "olbreath", "mqtt_retain"}:
+    raise SystemExit("Could not uniquely locate vs1protocol, olbreath and mqtt_retain settings.")
 
 lines = src.splitlines(keepends=True)
-for name, value in (("vs1protocol", True), ("olbreath", 0.025)):
+for name, value in (("vs1protocol", True), ("olbreath", 0.025), ("mqtt_retain", True)):
     node = nodes[name]
     if node.lineno != getattr(node, "end_lineno", node.lineno):
         raise SystemExit(f"{name} must be a one-line top-level assignment.")
@@ -256,8 +256,25 @@ for name, value in (("vs1protocol", True), ("olbreath", 0.025)):
 
 out = "".join(lines)
 ast.parse(out)
+# Refuse profile activation if the edited file does not explicitly retain states.
+updated = ast.parse(out)
+retain_assignments = [
+    node for node in updated.body
+    if isinstance(node, ast.Assign)
+    and len(node.targets) == 1
+    and isinstance(node.targets[0], ast.Name)
+    and node.targets[0].id == "mqtt_retain"
+]
+if len(retain_assignments) != 1 or ast.literal_eval(retain_assignments[0].value) is not True:
+    raise SystemExit("mqtt_retain=True verification failed.")
 path.write_text(out)
+print("MQTT state retention verified: mqtt_retain = True")
 PY
+then
+  echo "Unable to enforce permanent VS1 settings and retained MQTT states; restoring previous profile." >&2
+  rollback_profile
+  exit 1
+fi
 
 # c_polllist.py gives poll_list.py precedence. Remove it after creating a
 # timestamped backup so the Home Assistant adapter becomes the active source.
