@@ -554,18 +554,28 @@ def recover(session: Path) -> int:
                       systemd_service_result=os.getenv('SERVICE_RESULT', 'not-supplied'))
         h.atomic_json(session / 'recovery.json', result)
     print(json.dumps(result, sort_keys=True), flush=True)
+    # ExecStopPost always tries to leave ONE upload artifact, even after a
+    # worker/protocol failure. Only the original service may be resumed first.
+    try:
+        health=post_restore_health()
+        h.atomic_json(session/'health.json',health)
+        archive=upload_bundle(session,health)
+        print('UPLOAD_ONE_FILE='+str(archive),flush=True)
+    except BaseException as exc:
+        errors.append('BUNDLE_OR_POSTCHECK: '+str(exc))
+        print('BUNDLE_OR_POSTCHECK_FAILED='+str(exc),flush=True)
     return int(bool(errors))
 
 
-def supervisor_command(session: Path, seconds: int) -> list[str]:
-    seconds_ok(seconds)
-    script = session / 'probe.py'
-    return ['systemd-run', '--unit=' + UNIT, '--wait', '--collect',
-            '--property=Type=exec', '--property=RuntimeMaxSec=' + str(seconds + 120),
-            '--property=TimeoutStopSec=180', '--property=KillMode=control-group',
+def supervisor_command(session: Path) -> list[str]:
+    """Detached transient unit. Deliberately NO RuntimeMaxSec."""
+    script=session/'probe.py'
+    return ['systemd-run','--unit='+UNIT,'--no-block','--collect',
+            '--property=Type=exec','--property=Restart=no',
+            '--property=TimeoutStopSec=240','--property=KillMode=control-group',
             '--property=UMask=0077',
             f'--property=ExecStopPost={h.PYTHON} -u {script} --recover {session}',
-            h.PYTHON, '-u', str(script), '--worker', str(session)]
+            h.PYTHON,'-u',str(script),'--worker',str(session)]
 
 
 
@@ -597,137 +607,186 @@ def post_restore_health() -> dict:
     return result
 
 
-def upload_bundle(session: Path, health: dict) -> Path:
-    """Package ONE private artifact even for an incomplete hardware run.
-
-    Only files from this one validated fresh experiment are included.
-    Never touches production settings and refuses symlinks/overwrites.
-    """
+def upload_bundle(session: Path,health: dict) -> Path:
+    """Atomic single private archive. Stream large logs rather than loading them."""
+    import stat
     if ROOT.is_symlink() or session.parent!=ROOT or session.is_symlink():
         raise Error('INVALID_BUNDLE_SESSION')
     if BUNDLES.is_symlink():
-        raise Error('BUNDLE_ROOT_SYMLINK')
+        raise Error('OUTPUT_ROOT_SYMLINK')
     BUNDLES.mkdir(parents=True,exist_ok=True,mode=0o700)
     os.chmod(BUNDLES,0o700)
-    archive=BUNDLES/('uart1-dma0-'+session.name+'-bundle.tar.gz')
-    if archive.exists() or archive.is_symlink():
-        raise Error('REFUSE_OVERWRITE_EXISTING_BUNDLE')
-    paths=('state.json','samples.jsonl','measurement.json','recovery.json')
+    target=BUNDLES/('uart1-overnight-'+session.name+'-bundle.tar.gz')
+    if target.exists() or target.is_symlink():
+        if not target.is_file() or target.is_symlink():
+            raise Error('INVALID_EXISTING_BUNDLE')
+        return target
+    names=('state.json','progress.json','samples.jsonl','trace.jsonl',
+           'measurement.json','recovery.json','health.json')
     included={}
-    for name in paths:
+    for name in names:
         path=session/name
-        if path.is_symlink():
-            raise Error('SESSION_FILE_SYMLINK')
-        if path.is_file():
-            raw=path.read_bytes()
-            if len(raw)>20_000_000:
-                raise Error('SESSION_FILE_TOO_BIG')
-            included[name]=raw
-    manifest={'schema_version':1,'session':session.name,
-              'source_sha256':{name:hashlib.sha256(raw).hexdigest()
-                               for name,raw in included.items()},
+        if not path.exists():
+            continue
+        info=path.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_uid!=0 or info.st_mode&0o077:
+            raise Error('UNSAFE_SESSION_FILE_'+name)
+        digest=hashlib.sha256()
+        with path.open('rb') as fd:
+            for chunk in iter(lambda:fd.read(1024*1024),b''):
+                digest.update(chunk)
+        included[name]={'sha256':digest.hexdigest(),'size_bytes':info.st_size}
+    manifest={'schema_version':1,'session':session.name,'files':included,
               'operational_health':health,
-              'source_capture':'P300 DMA0-SFR + 64 RAM + native status; no UART1 U1RB',
-              'uart1_rx_or_gfa_identity_verified':False,
-              'p06_rpm_alias_verified':False,
-              'production_approved':False,
-              'ram_write_approved':False}
-    included['bundle-manifest.json']=(json.dumps(manifest,indent=2,sort_keys=True)+'\n').encode()
-    with tarfile.open(archive,'x:gz') as tar:
-        for name,raw in included.items():
-            member=tarfile.TarInfo('uart1-dma0/'+name)
-            member.mode=0o600
-            member.mtime=0
-            member.size=len(raw)
-            tar.addfile(member,io.BytesIO(raw))
-    os.chmod(archive,0o600)
-    return archive
+              'uart1_gfa_link_proven':False,
+              'p06_measured_rpm_alias_proven':False,
+              'production_approved':False,'ram_write_approved':False,
+              'no_time_limit':True,
+              'read_allowlist':['FC01 0x55D3/11','FC03 0x0020/16',
+                                'FC03 0x1600/32','FC03 0x1620/32']}
+    temp=None
+    import tempfile
+    try:
+        with tempfile.NamedTemporaryFile(prefix='bundle-',suffix='.tar.gz',
+                  dir=BUNDLES,delete=False) as f:
+            temp=Path(f.name)
+        os.chmod(temp,0o600)
+        with tarfile.open(temp,'w:gz') as tar:
+            for name in included:
+                tar.add(session/name,arcname='uart1-overnight/'+name,
+                        recursive=False)
+            data=(json.dumps(manifest,sort_keys=True,indent=2)+'\n').encode()
+            item=tarfile.TarInfo('uart1-overnight/bundle-manifest.json')
+            item.size=len(data);item.mode=0o600;item.mtime=0
+            tar.addfile(item,io.BytesIO(data))
+        temp.rename(target)
+    except BaseException:
+        if temp is not None:temp.unlink(missing_ok=True)
+        raise
+    return target
 
 
-def launch(seconds: int) -> int:
-    seconds_ok(seconds)
+
+def latest_session() -> Path:
+    if ROOT.is_symlink() or not ROOT.is_dir():
+        raise Error('NO_OVERNIGHT_SESSION')
+    dirs=sorted(p for p in ROOT.glob('run-*') if p.is_dir() and not p.is_symlink())
+    if not dirs:
+        raise Error('NO_OVERNIGHT_SESSION')
+    return dirs[-1]
+
+
+def launch() -> int:
     with locks():
-        values, states = h.preflight()
-        if h.unit_state(UNIT).get('ActiveState') not in ('inactive', 'failed'):
-            raise Error('P300_UART1_DMA0_CYCLE_ALREADY_RUNNING')
-        for competing in ('optolink-p87-p300-check.service', 'optolink-handover-probe.service',
+        values,states=h.preflight()
+        if h.unit_state(UNIT).get('ActiveState') not in ('inactive','failed'):
+            raise Error('OVERNIGHT_UNIT_ALREADY_ACTIVE')
+        for competing in ('optolink-uart1-dma0-cycle.service',
+                          'optolink-p87-p300-check.service',
+                          'optolink-handover-probe.service',
                           'optolink-uart1-p300-focus.service'):
-            if h.unit_state(competing).get('ActiveState') not in ('inactive', 'failed'):
-                raise Error('COMPETING_PROBE_ACTIVE_' + competing)
+            if h.unit_state(competing).get('ActiveState') not in ('inactive','failed'):
+                raise Error('COMPETING_PROBE_ACTIVE_'+competing)
         if ROOT.is_symlink():
-            raise Error('RESULT_ROOT_IS_SYMLINK')
-        ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
-        os.chmod(ROOT, 0o700)
-        # One complete capture is enough: refuse repeated hardware outage.
-        for previous in ROOT.glob('run-*/measurement.json'):
-            if previous.is_file() and not previous.is_symlink():
-                old_report=json.loads(previous.read_text())
-                if old_report.get('observation_complete') and old_report.get('vs1_link_restored'):
-                    raise Error('DMA0_CYCLE_PROFILE_ALREADY_COMPLETED')
-        # Refuse to hide a failed/unfinished previous recovery with a new trial.
+            raise Error('SESSION_ROOT_SYMLINK')
+        ROOT.mkdir(parents=True,exist_ok=True,mode=0o700)
+        os.chmod(ROOT,0o700)
         for old in ROOT.glob('run-*/state.json'):
-            prior = json.loads(old.read_text())
-            recovery = old.with_name('recovery.json')
-            if prior.get('restore') and (not recovery.exists() or
-                    not json.loads(recovery.read_text()).get('services_restored')):
-                raise Error('PREVIOUS_RECOVERY_UNRESOLVED_' + old.parent.name)
-        stamp = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
-        session = ROOT / f'run-{stamp}-{os.getpid()}'
+            if old.is_symlink():raise Error('PREVIOUS_STATE_SYMLINK')
+            previous=json.loads(old.read_text())
+            rec=old.with_name('recovery.json')
+            if previous.get('restore') and (not rec.exists() or
+                    not json.loads(rec.read_text()).get('services_restored')):
+                raise Error('UNRESOLVED_VS1_RECOVERY_'+old.parent.name)
+        stamp=dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+        session=ROOT/f'run-{stamp}-{os.getpid()}'
         session.mkdir(mode=0o700)
-        for source, name in ((Path(__file__), 'probe.py'), (Path(__file__).with_name(HELPER), HELPER)):
-            shutil.copyfile(source, session / name)
-            (session / name).chmod(0o600)
-        h.atomic_json(session / 'state.json', dict(version=VERSION, seconds=seconds,
-                      services=states, restore=[], port=values['port_optolink'],
-                      script_sha256=hashlib.sha256((session/'probe.py').read_bytes()).hexdigest(),
-                      helper_sha256=HELPER_SHA256))
-    print('SESSION=' + str(session), flush=True)
-    result = subprocess.run(supervisor_command(session, seconds), check=False)
-    mpath, rpath = session / 'measurement.json', session / 'recovery.json'
-    m = json.loads(mpath.read_text()) if mpath.exists() else {}
-    r = json.loads(rpath.read_text()) if rpath.exists() else {}
-    ok = (result.returncode == 0 and m.get('observation_complete')
-          and m.get('vs1_link_restored') and not m.get('errors') and r.get('services_restored'))
-    print('SESSION=' + str(session), flush=True)
-    print('RESULT=' + (m.get('comparison', {}).get('outcome', 'FAILED_OR_INCOMPLETE')
-                      if ok else 'FAILED_OR_INCOMPLETE'), flush=True)
-    print(json.dumps(m.get('comparison', {}), sort_keys=True), flush=True)
-    print('LINK_AND_SERVICE_RESTORE=' + ('PASS' if m.get('vs1_link_restored') and r.get('services_restored') else 'NOT_VERIFIED'), flush=True)
-    print('GFA_AFTER=' + json.dumps(m.get('recovery_gfa'), sort_keys=True), flush=True)
-    for error in m.get('errors', []) + r.get('errors', []):
-        print('ERROR=' + error, flush=True)
-    health=post_restore_health()
-    print('POST_RESTORE_PRODUCTION=' + ('PASS' if health['production_main_verified'] else 'NOT_VERIFIED'), flush=True)
-    for name,item in health['gfa_reads'].items():
-        print('POST_RESTORE_'+name+'='+json.dumps(item,sort_keys=True),flush=True)
-    artifact=upload_bundle(session,health)
-    print('UPLOAD_ONE_FILE='+str(artifact),flush=True)
-    print('UART1_GFA_RX_AND_P06_RPM=NOT_VERIFIED',flush=True)
-    health_ok=(health['production_main_verified'] and
-               all(health['gfa_reads'].get(k,{}).get('format_and_identity_verified')
-                   for k in ('P80','P06')))
-    return 0 if ok and health_ok else 1
+        for src,name in ((Path(__file__),'probe.py'),
+                         (Path(__file__).with_name(HELPER),HELPER)):
+            shutil.copyfile(src,session/name)
+            (session/name).chmod(0o600)
+        h.atomic_json(session/'state.json',{
+            'version':VERSION,'no_time_limit':True,'services':states,
+            'restore':[],'port':values['port_optolink'],
+            'script_sha256':hashlib.sha256((session/'probe.py').read_bytes()).hexdigest(),
+            'helper_sha256':HELPER_SHA256})
+    print('SESSION='+str(session),flush=True)
+    result=subprocess.run(supervisor_command(session),capture_output=True,
+                          text=True,check=False,timeout=30)
+    if result.returncode:
+        raise Error('SYSTEMD_START_REJECTED: '+result.stderr[-500:])
+    print('OVERNIGHT_START_ACCEPTED='+UNIT,flush=True)
+    print('DURATION=UNTIL_OPERATOR_STOPS; NO_RUNTIMEMAXSEC',flush=True)
+    print('STATUS_CMD=systemctl status '+UNIT+' --no-pager',flush=True)
+    print('STOP_CMD=use reviewed batch action stop-overnight',flush=True)
+    return 0
+
+
+def status() -> int:
+    session=latest_session()
+    unit=h.unit_state(UNIT)
+    progress=session/'progress.json'
+    obj=json.loads(progress.read_text()) if progress.exists() else {}
+    print('SESSION='+str(session))
+    print('UNIT_ACTIVE='+unit.get('ActiveState','unknown'))
+    print('PROGRESS='+json.dumps(obj,sort_keys=True))
+    return 0
+
+
+def stop() -> int:
+    session=latest_session()
+    unit=h.unit_state(UNIT)
+    if unit.get('ActiveState') in ('active','activating','deactivating'):
+        proc=subprocess.run(['systemctl','stop',UNIT],capture_output=True,text=True,
+                            check=False,timeout=300)
+        if proc.returncode:
+            print('SYSTEMD_STOP_ERROR='+proc.stderr[-500:],flush=True)
+    elif unit.get('ActiveState') not in ('inactive','failed'):
+        raise Error('UNEXPECTED_UNIT_STATE_'+str(unit))
+    # systemctl stop waits for ExecStopPost, including service recovery and archive.
+    for _ in range(45):
+        if (session/'recovery.json').is_file():
+            break
+        time.sleep(1)
+    health=json.loads((session/'health.json').read_text()) if (session/'health.json').is_file() else post_restore_health()
+    if not (session/'health.json').exists():
+        h.atomic_json(session/'health.json',health)
+    archive=upload_bundle(session,health)
+    rec=json.loads((session/'recovery.json').read_text()) if (session/'recovery.json').is_file() else {}
+    measurement=json.loads((session/'measurement.json').read_text()) if (session/'measurement.json').is_file() else {}
+    print('SESSION='+str(session),flush=True)
+    print('LINK_AND_SERVICE_RESTORE='+('PASS' if measurement.get('vs1_link_restored') and rec.get('services_restored') else 'NOT_VERIFIED'),flush=True)
+    print('CAPTURE='+json.dumps(measurement.get('comparison',{}),sort_keys=True),flush=True)
+    print('UPLOAD_ONE_FILE='+str(archive),flush=True)
+    healthy=health.get('production_main_verified') and all(
+        health.get('gfa_reads',{}).get(key,{}).get('format_and_identity_verified')
+        for key in ('P80','P06'))
+    print('VS1_P80_P06_HEALTH='+('PASS' if healthy else 'NOT_VERIFIED'),flush=True)
+    return 0 if rec.get('services_restored') and healthy else 1
+
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__)
-    modes = p.add_mutually_exclusive_group()
-    modes.add_argument('--execute', action='store_true')
-    modes.add_argument('--worker', type=Path, help=argparse.SUPPRESS)
-    modes.add_argument('--recover', type=Path, help=argparse.SUPPRESS)
-    p.add_argument('--seconds', type=int, default=None)
-    args = p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__)
+    mode=p.add_mutually_exclusive_group()
+    mode.add_argument('--start',action='store_true')
+    mode.add_argument('--stop',action='store_true')
+    mode.add_argument('--status',action='store_true')
+    mode.add_argument('--worker',type=Path,help=argparse.SUPPRESS)
+    mode.add_argument('--recover',type=Path,help=argparse.SUPPRESS)
+    args=p.parse_args()
     os.umask(0o077)
     if args.worker or args.recover:
-        if args.seconds is not None or os.geteuid() != 0 or not os.getenv('INVOCATION_ID'):
-            p.error('internal mode requires systemd; duration comes from session')
+        if os.geteuid()!=0 or not os.getenv('INVOCATION_ID'):
+            p.error('worker/recover require controlled systemd context')
         return worker(args.worker) if args.worker else recover(args.recover)
-    seconds = seconds_ok(600 if args.seconds is None else args.seconds)
-    if args.execute:
-        return launch(seconds)
-    print(f'PLAN ONLY: max {seconds}s, auto-stop after natural flame+off+15s; FC01 55D3/11, FC03 0020/16, 1600/32, 1620/32.')
-    print('VS1 references only before/after; known external GFA readers paused; supervised restore.')
-    print('No U1RB/03AE read, no C9 or writes, no forced burner. UART1/GFA and P06 remain UNVERIFIED.')
+    if args.start:return launch()
+    if args.stop:return stop()
+    if args.status:return status()
+    print('PLAN ONLY: operator-stopped P300 capture; no duration cap, no auto-stop on flame changes.')
+    print('Fixed reads FC01 55D3/11, FC03 0020/16, 1600/32, 1620/32.')
+    print('No U1RB, RAM writes, pump override, burner trigger or serial access in plan mode.')
+    print('Starts detached by systemd; operator uses stop-overnight to restore VS1 and export.')
     return 0
 
 
