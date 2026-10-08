@@ -152,5 +152,107 @@
     "The source pointer SAR0=0x161B from prior snapshots does not itself change in this window; no evidence of fan rpm from this measurement.",
     "Full text transcript includes copied program sources; only private telemetry and derived evidence are relevant to technical conclusions.",
     "Automatic service restore was reported PASS, but separate current HA freshness still needs normal operational confirmation."
-  ]
+  ],
+  "archive_verified": {
+    "archive_file": "uart1-run-20261008T194615Z-126382-bundle.tar.gz",
+    "archive_sha256": "a0e2809c5eeb1477ac7ff3bd012cbd30c247ddebe4c8d5b63ed5e2c283e5f3c2",
+    "contains": [
+      "measurement.json",
+      "samples.jsonl",
+      "recovery.json",
+      "state.json",
+      "batch-analysis.json",
+      "batch-health.json",
+      "offline-tests.txt"
+    ],
+    "verified_full_file_hashes": {
+      "measurement.json": "2232d44ba062e739f015be23876dd03e32371c13a9f4a3d55b9270d2f5dc6121",
+      "samples.jsonl": "01ee68505581f2fcc2cc96d67aa24b36903a938efcd3c01d0141fab410cd8e98",
+      "recovery.json": "8b9f14646c1522d8764eab427f913fd76e890cfe88d00281fce90470182f7308",
+      "state.json": "5fc7d78e614726dc27b30435f79ca29e6f75e17cc62b923a346f343dcd97434e"
+    },
+    "jsonl_exactly_equals_measurement_samples": true,
+    "trace_rx_tx_monotonic": true,
+    "trace_records_total": 2763,
+    "trace_tx_records": 170,
+    "trace_rx_records": 2593,
+    "trace_p300_replies_with_recomputed_crc_address_length_payload": 77,
+    "p300_reply_failures": 0,
+    "response_counts": {
+      "identity_0x00f8": 1,
+      "software_0x778c": 1,
+      "FC01_55d3_11": 25,
+      "FC03_1600_32": 25,
+      "FC03_1620_32": 25
+    },
+    "tx_frames_all_allowlisted": true,
+    "regression_tests_passed_by_profile": {
+      "test_uart1_p300_focus.py": 29,
+      "test_uart1_gfa_ram_audit.py": 17,
+      "test_p87_p300_check.py": 37,
+      "test_handover*.py": 60
+    },
+    "regression_tests_total": 143,
+    "restore_details": {
+      "services_restored": true,
+      "errors": [],
+      "systemd_service_result": "success"
+    },
+    "post_restore_operational_check": {
+      "service_active_running_correct_directory": true,
+      "P80_response": "1;0x4050;20",
+      "P06_response": "1;0x4006;00",
+      "MQTT_returncodes": [
+        0,
+        0
+      ],
+      "Home_Assistant_entity_freshness_verified": false
+    },
+    "source_raw_archives_not_published": true
+  },
+  "archive_verified_analysis": {
+    "unique_full_native_status_states": 2,
+    "full_status_changes": [
+      {
+        "first_sample": 17,
+        "elapsed_s": 39.986,
+        "byte_index_zero_based": 2,
+        "from": "b1",
+        "to": "b2"
+      }
+    ],
+    "status_byte7_all": "00",
+    "dma0_historical_source_pointer_address": "0x161b",
+    "source_pointer_RAM_value_all": "00",
+    "changes_at_source_pointer": 0,
+    "ram_full_64byte_states": 6,
+    "first_occurrence_of_each_state": [
+      {
+        "sample": 1,
+        "elapsed_s": 0.522
+      },
+      {
+        "sample": 7,
+        "elapsed_s": 15.4
+      },
+      {
+        "sample": 8,
+        "elapsed_s": 17.809
+      },
+      {
+        "sample": 16,
+        "elapsed_s": 37.574
+      },
+      {
+        "sample": 19,
+        "elapsed_s": 44.867
+      },
+      {
+        "sample": 20,
+        "elapsed_s": 47.323
+      }
+    ],
+    "fivetime_changes_are_not_evidence_of_P06_actual_RPM": true,
+    "sampling_overlap_and_sensor_latency_unknown": true
+  }
 }
