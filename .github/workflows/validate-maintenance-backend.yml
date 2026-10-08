@@ -62,6 +62,9 @@ jobs:
           bash -n install/optolink-splitter-install.sh
           bash -n ct/optolink-splitter.sh
 
+      - name: Test retained MQTT states
+        run: python3 -m unittest discover -s tests -p "test_mqtt_retain_profile.py" -v
+
       - name: Validate clock codec
         run: |
           python3 tools/optolink-clock-sync.py --self-test
