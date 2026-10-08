@@ -326,7 +326,6 @@ def session_state(session: Path) -> dict:
         raise Error('SESSION_NOT_PRIVATE')
     private_file(session / 'state.json')
     state = json.loads((session / 'state.json').read_text())
-    seconds_ok(state['seconds'])
     if (set(state['services']) != set(h.SERVICES)
             or any(type(v) is not bool for v in state['services'].values())
             or len(state['restore']) != len(set(state['restore']))
@@ -342,71 +341,180 @@ def isolation(port: str) -> None:
     h.assert_no_owner(port)
 
 
+def resource_guard(session: Path, trace_stream, sample_stream) -> None:
+    """No clock limit. Stop safely if local storage would be exhausted."""
+    fs=shutil.disk_usage(session)
+    if fs.free < SAFE_FREE_BYTES:
+        raise Error('LOW_DISK_SPACE_FAILSAFE_VS1_RESTORE')
+    for writer in (trace_stream,sample_stream):
+        if writer is not None and writer.tell() >= MAX_LOG_BYTES:
+            raise Error('LOG_SIZE_FAILSAFE_VS1_RESTORE')
+
+
+def summarize_file(path: Path) -> dict:
+    """Bounded memory summary; complete sample JSONL is the evidence."""
+    from collections import Counter
+    counts=Counter()
+    statuses=Counter()
+    dma_sources=Counter()
+    destinations=Counter()
+    flame_samples=0
+    complete=0
+    n=0
+    prev=None
+    first_utc=last_utc=None
+    for text_line in path.open(encoding='utf-8'):
+        if not text_line.strip():
+            continue
+        row=json.loads(text_line)
+        n+=1
+        if row.get('index')!=n:
+            raise Error('SAMPLE_INDEX_INTEGRITY_FAILED')
+        ram=bytes.fromhex(row['ram_1600']+row['ram_1620'])
+        status=bytes.fromhex(row['native_block'])
+        dma=bytes.fromhex(row['dma0_0020'])
+        if len(ram)!=64 or len(status)!=11 or len(dma)!=16:
+            raise Error('SAMPLE_LENGTH_INTEGRITY_FAILED')
+        if row['flame_bit'] != bool(status[5] & FLAME_MASK):
+            raise Error('SAMPLE_FLAME_INTEGRITY_FAILED')
+        if row['dma0_source'] != f"0x{int.from_bytes(dma[:3], 'little')&0xfffff:05x}":
+            raise Error('SAMPLE_DMA_POINTER_INTEGRITY_FAILED')
+        if row['dma0_target'] != f"0x{int.from_bytes(dma[4:7], 'little')&0xfffff:05x}":
+            raise Error('SAMPLE_DMA_TARGET_INTEGRITY_FAILED')
+        if prev is not None:
+            for j,(x,y) in enumerate(zip(prev,ram)):
+                if x!=y:
+                    counts[f'0x{0x1600+j:04x}']+=1
+        prev=ram
+        first_utc=first_utc or row['utc']
+        last_utc=row['utc']
+        flame_samples+=int(row['flame_bit'])
+        complete=max(complete,row['complete_flame_cycles'])
+        statuses[row['native_b7']]+=1
+        dma_sources[row['dma0_source']]+=1
+        destinations[row['dma0_target']]+=1
+    return {
+        'sample_count':n,
+        'first_utc':first_utc,'last_utc':last_utc,
+        'flame_bit_samples':flame_samples,
+        'completed_natural_flame_cycles':complete,
+        'status_byte7_counts':dict(statuses),
+        'dma0_source_counts':dict(dma_sources),
+        'dma0_destination_counts':dict(destinations),
+        'changed_ram_addresses':dict(sorted(counts.items())),
+        'changed_ram_byte_count':len(counts),
+        'source_pointer_0x161b_byte_changes':counts['0x161b'],
+        'outcome':'OPERATOR_STOPPED_READ_ONLY; GFA_RX_AND_P06_RPM_NOT_VERIFIED',
+        'no_time_limit':True,
+        'uart1_rx_read_performed':False,
+        'p06_rpm_alias_verified':False,
+        'production_approved':False,
+        'ram_write_approved':False}
+
+
 def run_worker(session: Path, state: dict) -> int:
-    """Caller holds shared locks. All stop intentions are durable before action."""
-    report = dict(version=VERSION, samples=[], errors=[], reference_gfa=None,
-                  recovery_gfa=None, observation_complete=False, vs1_link_restored=False,
-                  transport='P300 FC01 55D3/11 and FC03 SFR_DMA0 0020/16 and RAM 1600/32,1620/32; no external GFA')
-    wire = serial = None
+    """Long-lived detached worker; samples and trace written incrementally."""
+    report=dict(version=VERSION,errors=[],reference_gfa=None,recovery_gfa=None,
+                observation_complete=False,operator_stop=False,
+                vs1_link_restored=False,
+                transport='P300 status + DMA0 SFR + 64B TX RAM only; no writes or GFA reads under P300',
+                trace_file='trace.jsonl',samples_file='samples.jsonl',
+                telemetry_disabled_for_observation=True)
+    serial=wire=trace_stream=sample_stream=None
+    current=None
+    count=0
     def stop(signum, frame):
-        raise Error('INTERRUPTED_' + str(signum))
-    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
-        signal.signal(sig, stop)
+        raise Error('OPERATOR_STOP_SIGNAL_'+str(signum))
+    for sig in (signal.SIGTERM,signal.SIGINT,signal.SIGHUP):
+        signal.signal(sig,stop)
     try:
-        current = h.read_settings(h.SETTINGS.read_text())
-        if current['port_optolink'] != state['port']:
-            raise Error('SETTINGS_CHANGED')
-        if h.unit_state(h.MAIN).get('WorkingDirectory') != '/opt/optolink':
-            raise Error('PRODUCTION_RUNTIME_CHANGED')
-        for unit, was_active in state['services'].items():
-            now = h.unit_state(unit).get('ActiveState')
-            if now not in ('active', 'inactive', 'failed') or (now == 'active') != was_active:
-                raise Error('SERVICE_CHANGED_SINCE_PREFLIGHT_' + unit)
-        h.pause_services(session, state)
+        current=h.read_settings(h.SETTINGS.read_text())
+        if current['port_optolink']!=state['port']:
+            raise Error('PRODUCTION_SETTINGS_CHANGED')
+        if h.unit_state(h.MAIN).get('WorkingDirectory')!='/opt/optolink':
+            raise Error('PRODUCTION_PATH_CHANGED')
+        for unit,was_active in state['services'].items():
+            now=h.unit_state(unit).get('ActiveState')
+            if now not in ('active','inactive','failed') or (now=='active')!=was_active:
+                raise Error('SERVICE_CHANGED_SINCE_PREFLIGHT_'+unit)
+        h.pause_services(session,state)
         isolation(state['port'])
-        serial = h.open_serial(state['port'])
-        wire = UART1Wire(serial)
-        report['reference_gfa'] = wire.reference()
-        print('PHASE=ENTERING_P300; external GFA polling paused', flush=True)
-        with (session / 'samples.jsonl').open('x', encoding='utf-8') as out:
-            previous = None
-            def save(row):
-                nonlocal previous
-                if row['index'] == 1:
-                    print('PHASE=P300_ONLY; first status, DMA0 SFR and both bounded RAM frames validated', flush=True)
-                out.write(json.dumps(row, sort_keys=True) + '\n')
-                out.flush()
-                if previous != (row['native_b7'], row['flame_bit']) or row['index'] % 20 == 0:
-                    print(json.dumps({k:row[k] for k in (
-                        'index', 'elapsed_s', 'native_b7', 'flame_bit', 'dma0_source',
-                        'since_last_external_gfa_s')}, sort_keys=True), flush=True)
-                previous = (row['native_b7'], row['flame_bit'])
-            wire.observe(state['seconds'], save, lambda: isolation(state['port']))
-        report['observation_complete'] = True
+        serial=h.open_serial(state['port'])
+        trace_stream=(session/'trace.jsonl').open('x',encoding='utf-8')
+        sample_stream=(session/'samples.jsonl').open('x',encoding='utf-8')
+        wire=UART1Wire(serial)
+        wire.trace_sink=trace_stream
+        report['reference_gfa']=wire.reference()
+        print('PHASE=P300_OVERNIGHT; VS1 readers paused; NO TIME CAP',flush=True)
+        old_flame=None
+        def save(row):
+            nonlocal count,old_flame
+            sample_stream.write(json.dumps(row,separators=(',',':'),sort_keys=True)+'\n')
+            count+=1
+            if (old_flame!=row['flame_bit'] or count % PROGRESS_EVERY==0):
+                print('SAMPLE=%d BURNER_FLAME=%d CYCLES=%d DMA0_TX=%s' % (
+                    count,int(row['flame_bit']),row['complete_flame_cycles'],row['dma0_source']),flush=True)
+            old_flame=row['flame_bit']
+            if count % PROGRESS_EVERY==0:
+                sample_stream.flush()
+                os.fsync(sample_stream.fileno())
+                h.atomic_json(session/'progress.json',{
+                    'sample_count':count,'elapsed_s':row['elapsed_s'],
+                    'last_sample_utc':row['utc'],
+                    'flame_bit':row['flame_bit'],
+                    'complete_flame_cycles':row['complete_flame_cycles'],
+                    'dma0_source':row['dma0_source'],
+                    'worker_status':'RUNNING_OPERATOR_STOPS',
+                    'no_time_limit':True})
+        wire.observe(save,lambda:isolation(state['port']),
+                     lambda:resource_guard(session,trace_stream,sample_stream))
     except BaseException as exc:
-        report['errors'].append(str(exc) or type(exc).__name__)
+        if str(exc)=='OPERATOR_STOP_SIGNAL_15':
+            report['operator_stop']=True
+            report['observation_complete']=True
+        else:
+            report['errors'].append(str(exc) or type(exc).__name__)
     finally:
-        for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
-            signal.signal(sig, signal.SIG_IGN)
+        for sig in (signal.SIGTERM,signal.SIGINT,signal.SIGHUP):
+            signal.signal(sig,signal.SIG_IGN)
         if wire is not None:
-            report['samples'] = wire.samples
-            report['comparison'] = summarize(wire.samples)
-            report['p300_phase_start_monotonic'] = wire.phase_start
-            report['p300_phase_end_monotonic'] = wire.phase_end
+            report['p300_phase_start_monotonic']=wire.phase_start
+            report['p300_phase_end_monotonic']=wire.clock()
             try:
                 isolation(state['port'])
-                report['recovery_gfa'] = wire.restore_link()
-                report['vs1_link_restored'] = True
+                report['recovery_gfa']=wire.restore_link()
+                report['vs1_link_restored']=True
             except BaseException as exc:
-                report['errors'].append('LINK_RECOVERY: ' + (str(exc) or type(exc).__name__))
-            report['trace'] = wire.trace
-        if serial is not None:
+                report['errors'].append('LINK_RECOVERY: '+str(exc))
             try:
-                serial.close()
+                wire.flush_trace()
+                report['trace_record_count']=wire.trace_records_written
             except BaseException as exc:
-                report['errors'].append('SERIAL_CLOSE: ' + str(exc))
-        h.atomic_json(session / 'measurement.json', report)
-    return int(bool(report['errors']) or not report['observation_complete'] or not report['vs1_link_restored'])
+                report['errors'].append('TRACE_FLUSH: '+str(exc))
+        if sample_stream is not None:
+            try:
+                sample_stream.flush()
+                os.fsync(sample_stream.fileno())
+                sample_stream.close()
+            except BaseException as exc:
+                report['errors'].append('SAMPLE_CLOSE: '+str(exc))
+        if trace_stream is not None:
+            try:
+                trace_stream.flush()
+                os.fsync(trace_stream.fileno())
+                trace_stream.close()
+            except BaseException as exc:
+                report['errors'].append('TRACE_CLOSE: '+str(exc))
+        if serial is not None:
+            try:serial.close()
+            except BaseException as exc:
+                report['errors'].append('SERIAL_CLOSE: '+str(exc))
+        if (session/'samples.jsonl').is_file():
+            try:report['comparison']=summarize_file(session/'samples.jsonl')
+            except BaseException as exc:report['errors'].append('OFFLINE_SUMMARY: '+str(exc))
+        report['sample_count']=count
+        h.atomic_json(session/'measurement.json',report)
+    return 0 if report['operator_stop'] and report['vs1_link_restored'] and not report['errors'] else 1
 
 
 def worker(session: Path) -> int:
