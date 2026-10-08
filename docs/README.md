@@ -6,11 +6,11 @@ Dieser Ordner trennt produktive Betriebsdokumentation von der Forschung im Branc
 
 **Ziel:** Kontrollierter RAM-Zugriff ohne Verlust bestehender HA-/Optolink-Funktionen, als Grundlage fuer Pumpen- und Vitotrol-Forschung. **Keine Produktionsfreigabe.**
 
-**Vollmessungen jetzt ausgewertet:** Alle sechs uebergebenen Originaldateien sind gelesen. 807/807 FC01-55D3-Antworten stimmen mit JSON- und JSONL-Samples ueberein; waehrend beider Beobachtungsfenster enthaelt die protokollierte TX-Spur nur Statusreads und ACKs. Mit der bereits vorhandenen Flammenbitzuordnung sind drei Flammenbitfenster von jeweils etwa 27 s sichtbar. Kein neues Temperatur-/Taktsperrenmodell wird daraus behauptet.
+**Aktueller Hardwarebefund:** Die erste direkte Same-Session-Messung von GFA-P06/P09 gegen den nativen 55D3-Block ist abgeschlossen: **180 von 180 Runden** stimmen in `pairs.jsonl` und `summary.json` ueberein. P06 war in 171 Runden stabil, aenderte sich aber in neun Klammern; P09 war in allen 180 Klammern stabil. Die Aufnahme enthaelt 24 Flammenbit-Samples und eine natuerliche Brennerphase mit Anlauf, Abwaertsrampe, Modulationsboden und Abschalten. **Der entscheidende Gegenbeleg fuer einen einfachen P06-RPM-Alias:** Nach dem Flammenbit-Ende ist P09=00 und P06 sinkt innerhalb einer Klammer von 0x52 auf 0x1D, waehrend Byte9 im Statusblock noch 33 zeigt.
 
-**Kein vorschneller RPM-Fund:** Byte0/Byte9 sind die bereits bekannten Ansteuer-/Modulationswerte, nicht zwei neue unabhaengige Sensoren. Ihre 27 beobachteten Wertepaarungen sind deterministisch korreliert, P06/P09 aber nicht gleichzeitig erfasst. Ein neuer messender-vs-steuernder Datenweg ist weiter offen.
+**Einordnung:** Status-Byte7 ist zuvor als dynamischer P87-Kandidat unter P300 belegt. Byte0/Byte9 sind Ansteuer-/Modulationswerte, **keine bewiesene Ist-Geblaesedrehzahl**. Auch P09 ist nicht als vollwertiger 1:1-Alias freigegeben. Eine beschraenkte quellenbasierte Suche nach einem unabhaengigen P06-Istwert hat deshalb Vorrang vor weiteren identischen 600-/900-Sekunden-Paarmessungen oder RAM-Schreibexperimenten.
 
-**Naechster Schritt bereits ausfuehrbar:** Ein separater MQTT-Beobachter liest `P80 -> P06 -> P09 -> 55D3/11 -> P09 -> P06` ueber den laufenden VS1-Splitter. Keine Dienstpause, keine Protokollumschaltung, kein RAM-/Parameterwrite. 23 neue Beobachter- und 15 Offline-Audittests; noch kein echter Lauf des neuen Beobachters. [Ausfuehrung und Abbruch](p300-gfa-native-pair-runbook.md).
+**Dokumentation und Reproduktion:** [180-Runden-Geraeteauswertung](p300-gfa-native-pair-result-2026-10-08.md), [abgeleitete Evidenz](evidence/p300-gfa-native-pair-result-2026-10-08.json), `tools/audit-gfa-native-pairs.py` (nur offline), 11 Regressionstests. Private Rohzeitreihen sind **nicht** im oeffentlichen Repository. VS1 bleibt produktiv, **keine P300-Migration oder Pumpen-RAM-Freigabe**.
 
 ### Abgeschlossene Bausteine
 
@@ -22,8 +22,10 @@ Dieser Ordner trennt produktive Betriebsdokumentation von der Forschung im Branc
 
 | Dokument | Bedeutung |
 | --- | --- |
-| [Vollmessungen und Byteaudit](p300-full-status-byte-audit-2026-10-08.md) | **Aktueller Einstieg:** Telegrammvalidierung, Flammenbitfenster, Byte0/Byte9-Abgrenzung, naechste Referenzmessung |
-| [Neue P06/P09-Paarmessung](p300-gfa-native-pair-runbook.md) | **Ausfuehrbarer naechster Test:** laufendes VS1, keine Dienstpause, keine automatischen Aliasfreigaben |
+| [P06/P09 gegen 55D3: 180-Runden-Ergebnis](p300-gfa-native-pair-result-2026-10-08.md) | **Aktueller Einstieg:** kein nativer P06-Istalias, voneinander getrennte Soll-/Istwerte, beobachtete Brennerphase |
+| [Abgeleitete P06/P09-Evidenz](evidence/p300-gfa-native-pair-result-2026-10-08.json) | Datei-Hashes, Paarzaehlung, Statusfenster, zehn ausgesuchte Gegenproben |
+| [Vollmessungen und Byteaudit](p300-full-status-byte-audit-2026-10-08.md) | Historisch: 807 P300-Statusantworten, drei kurze Flammenbitfenster und Quelle der Anschlussmessung |
+| [Durchgefuehrter P06/P09-MQTT-Vergleich](p300-gfa-native-pair-runbook.md) | Historischer, bereits abgeschlossener lesender VS1-Ablauf; nicht ohne neue Fragestellung wiederholen |
 | [Maschinelle Vollauswertung](evidence/p300-full-status-byte-audit-2026-10-08.json) | Hashes, Antwortpruefungen, Bytebereiche und beobachtete Bitfenster |
 | [P300-only-Konsolenbefund](p300-p87-p300-only-result-2026-10-08.md) | Historischer Bericht vor Uebergabe der nun ausgewerteten Originaldateien; kein erneuter Exportauftrag |
 | [P300-only-Konsolenevidenz](evidence/p300-p87-p300-only-result-2026-10-08.json) | Beide damaligen Konsolensummen und Nachkontrollen |
