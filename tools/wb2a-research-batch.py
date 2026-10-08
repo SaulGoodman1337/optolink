@@ -29,6 +29,7 @@ PYTHON = Path('/opt/optolink/venv/bin/python')
 PROBE = PROJECT/'tools/wb2a-uart1-p300-focus.py'
 FILES = ('measurement.json', 'samples.jsonl', 'recovery.json', 'state.json')
 TESTS = ('test_uart1_p300_focus.py', 'test_uart1_dma0_cycle.py',
+         'test_uart1_dma0_cycle_archive.py',
          'test_uart1_gfa_ram_audit.py', 'test_p87_p300_check.py',
          'test_handover*.py')
 RAM_ADDR = 0x1600
