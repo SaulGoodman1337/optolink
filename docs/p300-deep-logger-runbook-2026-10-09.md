@@ -1,5 +1,24 @@
 # WB2A/VDensHO1 20C2: P300 Deep Logger, VS1-P06-Referenz gegen nativen RAM
 
+**Nachtrag 9.10.2026 – dieser vierstündige Startplan ist inzwischen
+historisch, die tatsächliche Messung wurde bereits manuell nach
+55 min 34 s erfolgreich aufgenommen. Bitte DEN GLEICHEN Deep Logger
+nicht erneut starten.**
+[Verifizierte 8.256 P300-Rohantworten und echte P06-Klammern](p300-deep-result-2026-10-09.md).
+Der originale Worker wurde beim Stoppen mitten in einem noch
+offenen VS1-P10-Read per SIGTERM unterbrochen: EOT folgte vor dessen
+RX=00 und fuehrte zu `VS1_LINK_RESTORE=NOT_VERIFIED`.
+Die systemd-ExecStopPost-Wiederherstellung der sechs alten Units und
+produktive MQTT-P80/P06-Gesundheitsabfragen **waren erfolgreich**.
+Der Branch-Code wartet jetzt auf ganze GFA/P300-Telegramme,
+bevor ein Stoppsignal verarbeitet wird, und wiederholt EOT/ENQ
+bei bereits verifizierter VS1-Sitzung nicht unnoetig.
+**32 Offline-Tests bestanden, aktualisierter Stop-Fix noch nicht live getestet.**
+Das naechste Experiment ist **kein Nachlauf mit den gleichen acht
+Bloecken**, sondern ein explizit vorbereiteter, P06-vor-/nach-
+geklammerter kompletter Physical-RAM-Zustandsscan aus dem
+bisher historisch gelesenen 20-KiB-RAM-Bereich.
+
 **9.10.2026 | Research-Branch `optolink-p300-migration` | PR #46 bleibt Draft.
 Keine Produktivmigration, keine RAM- oder Parameter-Writes.**
 
