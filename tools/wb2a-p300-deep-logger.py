@@ -176,13 +176,26 @@ class DeepWire:
         self.w.quiet()
         stamp=self.w.clock()
         value=answer[0]
-        if name=='P80' and value not in (0x20,0xFF):
+        attempts=1
+        # The historical GFA stream sometimes returns FF transiently.
+        # One bounded re-read is already used by the pinned source helper.
+        if value==0xFF and name=='P80':
+            self.w.sleep(.150)
+            self.w.gap()
+            self.send(req)
+            answer=self.w.exact(1,self.w.clock()+2.0)
+            self.w.quiet()
+            stamp=self.w.clock()
+            value=answer[0]
+            attempts=2
+        if name=='P80' and value!=0x20:
             raise base.Error('WRONG_GFA_TYPE_P80')
         self.latest_p06=value if name=='P06' and value!=255 else self.latest_p06
         return {
             'key':name,'rx_utc':iso_utc(),'t_monotonic':stamp,
             'duration_ms':round((stamp-begin)*1000,3),
             'hex':answer.hex(),'valid':value!=255,
+            'attempts':attempts,
             'rpm':value*30 if name=='P06' and value!=255 else None,
             'percentage':(round(value*0.3922,3) if name=='P09' and value!=255 else None),
             'not_an_actual_rpm': name=='P09'
