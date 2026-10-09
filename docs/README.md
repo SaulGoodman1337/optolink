@@ -1,5 +1,7 @@
 # Dokumentationsindex
 
+- [Neuer P300→VS1-P06-Triggerlogger: 5-Minuten-Canary, 1–2h messwertgetriggerter Versuch und Restore-Runbook](p300-rpm-trigger-runbook-2026-10-09.md) – read-only, nur 3 bereits bewiesene P300-Frameformen, bis zu vier echte VS1-P06-Gegenproben, keine Ist-RPM-Freigabe.
+
 - [Abgeschlossen: 2h-Temporal-Full-Run mit 5.224 Zyklen, Multi-Level-RAM- und GFA-Statusspiegel-Audit (9.10.2026)](p300-temporal-fullrun-analysis-2026-10-09.md) – fuenf Brennerzyklen, 23.028 Rohframes valide, 0F20 29 Werte, kein verifizierter P06-Istwert.
 - [Aufgabe 1: naechster getriggerter P300→VS1-P06-Wirkvergleich und Single-Owner-Hybrid-Fallback](p300-rpm-next-experiment-and-architecture-2026-10-09.md) – Implementierungs-Gates und Abbruchregeln, noch kein neuer Hardwarelogger freigegeben.
 - [Maschinenlesbare 2h-Temporal-Evidenz](evidence/p300-temporal-fullrun-evidence-2026-10-09.json) – hashes, 5.224 validierte Zyklen, 9-Byte-Statuskopien und Messgrenzen.
