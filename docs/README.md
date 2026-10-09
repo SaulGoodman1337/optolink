@@ -4,6 +4,33 @@ Dieser Ordner trennt produktive Betriebsdokumentation von der Forschung im Branc
 
 ## P300: aktueller Stand vom 9. Oktober 2026
 
+**VERBINDLICHER ARBEITSAUFTRAG (9.10.2026): P300-Aufgabe 1 zuerst.**
+Vollstaendige Migration aller heute produktiven VS1-/MQTT-/HA-Funktionen
+einschliesslich der ECHTEN GFA-P06-Istdrehzahl; kein P09- oder
+55D3-Steuerfeld als Drehzahlersatz. **Vitotrol ist erst Aufgabe 2
+nach erfolgreicher P300-Migration und dann ein getrennter Branch;
+Pumpenoverride folgt als Aufgabe 3.** Bereits vorhandene Vitotrol-
+Quellenanalysen bleiben Archivbelege, sind kein aktueller Arbeitsauftrag.
+
+**NAECHSTER KONKRETER SCHRITT – neuer 4h/6h Deep Logger:**
+[Ein-Befehl-Runbook](p300-deep-logger-runbook-2026-10-09.md).
+Er misst erstmalig innerhalb EINER betreuten Sitzung wiederholte
+echte VS1/GFA-P06-Referenzen (P06/P09/P87/P10/P84/P80)
+**und** abwechselnd P300-Nativstatus, UART1-DMA und acht
+historisch belegte read-only Status-/RAM-Bloecke,
+mit praezisen Zeitstempeln und eventgesteuerten
+Phasenwechseln. Automatisches Ende nach 1-8h
+(Default 4h), originaler VS1-Service-Restore,
+MQTT-P80/P06-Gesundheitscheck und genau ein tar.gz.
+**Waehrend des Laufes ist die produktive
+HA-/MQTT-Optolink-Telemetrie wie beim Nachtlauf pausiert.**
+Der Logger selbst ist kein produktives P300-Profil;
+ein P06-Alias bleibt ohne Nachweis gesperrt.
+
+[**Komplettstand Aufgabe 1 samt Funktions-/Freigabematrix**](p300-task1-evidence-and-parity-2026-10-09.md).
+Keine neue Vitotrol-/Pumpenforschung vor Abschluss Aufgabe 1.
+Kein Merge von Draft-PR #46.
+
 **NEU - Vitotrol-Suchtelegramme in der abgeschlossenen Nachtmessung:**
 Bei 0x161A im UART1-Master-TX-RAM wurden fuer **KM-Bus-Klasse 0x11**
 an Slots 1 und 2 jeweils die exakt OpenV-kompatiblen
@@ -118,6 +145,8 @@ und Offline-Testwerkzeug. Kein neuer Thermenzugriff, kein Aendern der Produktion
 
 | Dokument | Bedeutung |
 | --- | --- |
+| [Aufgabe 1: gesicherte Fakten und 100-Prozent-VS1-Paritaetsmatrix](p300-task1-evidence-and-parity-2026-10-09.md) | **Aktueller Masterstand** fuer alle bisherigen Produktionsfunktionen, offenen P06-Beweis und Reihenfolge 1/2/3 |
+| [Ausfuehrbarer 4h/6h Deep Logger mit Real-P06](p300-deep-logger-runbook-2026-10-09.md) | **Jetzt starten:** VS1/GFA-P06-P09-P87 mit P300-FC01-/FC03-RAM-Fenstern, geordneter systemd-Stopp und Ein-Archiv-Upload |
 | [Vitotrol KM-Bus Klasse 0x11 Master-ID-Abfragen](p300-kmbus-vitotrol-master-tx-2026-10-09.md) | **Neuster Fortschritt:** CRC-validierte Slot-1-/Slot-2-Anfragen, exakt OpenV, UART1-Empfang und Slaveantwort weiterhin offen |
 | [Vitotrol-TX-Quellenaudit](evidence/p300-kmbus-vitotrol-master-tx-2026-10-09.json) | Privatarchiv-SHA, 54 CRC-gueltige Samples, 39 Beobachtungsfenster, klare Nichtfreigaben |
 | [Abgeschlossener 9-h-P300-Nachtlauf: KM-Bus TX und GFA-Verriegelung](p300-uart1-overnight-result-2026-10-09.md) | **Aktueller Befund:** 12.938 Samples, 51.752 Rohantworten, CRC-KM-Bus und BCD-Zeit, 3 Flammenfenster nach Verriegelung |
