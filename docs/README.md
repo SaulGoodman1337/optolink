@@ -4,6 +4,36 @@ Dieser Ordner trennt produktive Betriebsdokumentation von der Forschung im Branc
 
 ## P300: aktueller Stand vom 9. Oktober 2026
 
+**NEU - abgeschlossener Deep-Logger vom 9.10., Messdaten und Stop-Fix:**
+55 min 34 s innerhalb einer Sitzung, **2 komplette Flammenbitfenster**,
+2.680 echte VS1-Referenzrunden (5.360 P06-Reads; 1.836 gueltig
+mit RPM>0 bis 4.590 U/min), 1.769 P300-Runden, 52 Wechsel
+und **8.256 von 8.256 bytegenau gepruefte P300-Leseantworten**.
+In 2.593 P06-stabilen VS1-Klammern differierten P09
+und P06 **108-mal**; P09 bleibt kein Istwert.
+In 15 P06=0- und sieben P06~=83-geklammerten P300-Phasen
+**kein direkter Rohbyte-/16-Bit-RPM-Alias** in den acht
+abgefragten Bloecken. Die letzte Stop-Meldung
+`VS1_LINK_RESTORE=NOT_VERIFIED` wurde auf **SIGTERM
+waehrend laufender P10-Antwort** zurueckgefuehrt;
+`ExecStopPost` stellte alle sechs produktiven Units
+wieder her und verifizierte per MQTT P80=20/P06=00.
+Kein Produktivausfall daraus nachgewiesen;
+HA-Entity-Frische nicht separat kontrolliert.
+Der Signalhandler ist im **neuen Branch-Code** nun
+auf Runden-Grenzen verschoben; Vermeidung von
+neuer EOT-Synchronisierung bei bereits aktiver
+VS1-Sitzung; **32 Offline-Tests PASS**.
+**Alten identischen Logger nicht wiederholen.**
+[Kompletter Ergebnisbericht](p300-deep-result-2026-10-09.md),
+[abgeleitete Provenienz](evidence/p300-deep-vs1-p06-ram-result-2026-10-09.json).
+Naechster P06-Quellentest: nur P06-vor-/nach-geklammerte
+20-KiB-Physical-RAM-Dumps ueber den zuvor schon
+gelesenen Bereich 0x0400..0x53FF, danach
+unabhaengige RPM-Frische/Quellbeweispruefung.
+Vitotrol (Aufgabe 2) und Pumpenoverride (Aufgabe 3)
+bleiben nachgelagert.
+
 **VERBINDLICHER ARBEITSAUFTRAG (9.10.2026): P300-Aufgabe 1 zuerst.**
 Vollstaendige Migration aller heute produktiven VS1-/MQTT-/HA-Funktionen
 einschliesslich der ECHTEN GFA-P06-Istdrehzahl; kein P09- oder
@@ -145,6 +175,8 @@ und Offline-Testwerkzeug. Kein neuer Thermenzugriff, kein Aendern der Produktion
 
 | Dokument | Bedeutung |
 | --- | --- |
+| [Deep-Logger 9.10.: 5.360 GFA-P06 und 8.256 P300-Reads](p300-deep-result-2026-10-09.md) | **Aktuelles Ergebnis:** zwei Brennerzyklen, P06/P09 unterschieden, kein direkter RPM-Alias; Worker-Stop-Race gefunden und gefixt |
+| [Abgeleitete Deep-Logger-Evidenz](evidence/p300-deep-vs1-p06-ram-result-2026-10-09.json) | Quelle SHA, Trace/Checksums, echte P06-Baende, zeitliche Zustandsklammern, Restore-Evidenz |
 | [Aufgabe 1: gesicherte Fakten und 100-Prozent-VS1-Paritaetsmatrix](p300-task1-evidence-and-parity-2026-10-09.md) | **Aktueller Masterstand** fuer alle bisherigen Produktionsfunktionen, offenen P06-Beweis und Reihenfolge 1/2/3 |
 | [Ausfuehrbarer 4h/6h Deep Logger mit Real-P06](p300-deep-logger-runbook-2026-10-09.md) | **Jetzt starten:** VS1/GFA-P06-P09-P87 mit P300-FC01-/FC03-RAM-Fenstern, geordneter systemd-Stopp und Ein-Archiv-Upload |
 | [Vitotrol KM-Bus Klasse 0x11 Master-ID-Abfragen](p300-kmbus-vitotrol-master-tx-2026-10-09.md) | **Neuster Fortschritt:** CRC-validierte Slot-1-/Slot-2-Anfragen, exakt OpenV, UART1-Empfang und Slaveantwort weiterhin offen |
