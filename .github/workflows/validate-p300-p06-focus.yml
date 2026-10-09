@@ -1,0 +1,56 @@
+name: Validate WB2A P06 Focus Logger
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - 'tools/wb2a-p300-p06-focus.py'
+      - 'tools/wb2a-p300-p06-focus.sh'
+      - 'tests/test_p300_p06_focus.py'
+      - 'docs/p300-p06-focus-runbook-2026-10-09.md'
+      - '.github/workflows/validate-p300-p06-focus.yml'
+  pull_request:
+    paths:
+      - 'tools/wb2a-p300-p06-focus.py'
+      - 'tools/wb2a-p300-p06-focus.sh'
+      - 'tests/test_p300_p06_focus.py'
+      - '.github/workflows/validate-p300-p06-focus.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax and inert default
+        run: |
+          python -m py_compile tools/wb2a-p300-p06-focus.py tests/test_p300_p06_focus.py
+          bash -n tools/wb2a-p300-p06-focus.sh
+          python tools/wb2a-p300-p06-focus.py | grep -F 'PLAN ONLY:'
+      - name: P06 focus offline guards
+        run: python -m unittest discover -s tests -p test_p300_p06_focus.py -v
+      - name: Previous logger guards
+        run: |
+          python -m unittest discover -s tests -p test_p300_fullram_logger.py -v
+          python -m unittest discover -s tests -p test_p300_deep_logger.py -v
+      - name: Explicit read-only allowlist
+        run: |
+          python - <<'PY'
+          import importlib.util
+          spec=importlib.util.spec_from_file_location('logger','tools/wb2a-p300-p06-focus.py')
+          m=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(m)
+          assert len(m.RAM_ADDRESSES)==6 and len(m.ALLOWED_SPECS)==7
+          assert all(s[0] in (1,3) for s in m.ALLOWED_SPECS)
+          for fc in (2,4,0xc9):
+              try: m.frame((fc,0x0f20,32))
+              except ValueError: pass
+              else: raise AssertionError('forbidden read/write')
+          print('P06_FOCUS_NO_WRITE_PASS')
+          PY
