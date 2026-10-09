@@ -224,6 +224,18 @@ class DeepWire:
         self.w.enter_p300()
         self.set_phase('p300')
 
+    def restore_final_gfa(self):
+        """Use verified VS1 without new EOT; switch back only if in P300."""
+        base=load_local_base(Path(__file__).resolve().parent)
+        prior=self.phase
+        self.set_phase('recovery')
+        if prior!='vs1':
+            self.identify_vs1()
+        final=[self.vs1_read(k) for k in ('P80','P06','P09','P87')]
+        if final[0]['hex']!='20':
+            raise base.Error('FINAL_GFA_P80_NOT_20')
+        return final
+
     def read_native(self, spec):
         base=load_local_base(Path(__file__).resolve().parent)
         if self.phase!='p300':
@@ -561,16 +573,9 @@ def run_worker(session):
             signal.signal(sig,signal.SIG_IGN)
         if wire:
             try:
-                # An already verified VS1 session should not be reset needlessly.
-                # The old SIGTERM handler cut a P10 receive short then sent EOT,
-                # misinterpreting the still-pending P10 reply 00 as an ENQ.
-                phase_before_recovery=wire.phase
-                wire.set_phase('recovery')
-                if phase_before_recovery!='vs1':
-                    wire.identify_vs1()
-                final=[wire.vs1_read(k) for k in ('P80','P06','P09','P87')]
-                if final[0]['hex']!='20':
-                    raise base.Error('FINAL_GFA_P80_NOT_20')
+                # Old SIGTERM handler cut P10 before RX; defer stop until a
+                # completed read and avoid EOT when VS1 is already verified.
+                final=wire.restore_final_gfa()
                 report['final_gfa']=final
                 report['vs1_link_restored']=True
             except BaseException as exc:
