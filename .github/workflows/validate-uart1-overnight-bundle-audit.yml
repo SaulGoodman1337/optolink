@@ -1,0 +1,47 @@
+name: Validate WB2A Overnight KM-Bus Archive Auditor
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - 'tools/audit-uart1-overnight-bundle.py'
+      - 'tests/test_uart1_overnight_bundle_audit.py'
+      - '.github/workflows/validate-uart1-overnight-bundle-audit.yml'
+  pull_request:
+    paths:
+      - 'tools/audit-uart1-overnight-bundle.py'
+      - 'tests/test_uart1_overnight_bundle_audit.py'
+      - '.github/workflows/validate-uart1-overnight-bundle-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile offline-only source and tests
+        run: python -m py_compile tools/audit-uart1-overnight-bundle.py tests/test_uart1_overnight_bundle_audit.py
+      - name: Validate wire reconstruction, date/CRC and allowlist on synthetic data
+        run: python -m unittest discover -s tests -p test_uart1_overnight_bundle_audit.py -v
+      - name: Assert fully inert default
+        run: python tools/audit-uart1-overnight-bundle.py | grep 'PLAN ONLY'
+      - name: Verify derived evidence disclaims P06 alias and production approval
+        run: |
+          python - <<'PY'
+          import json
+          obj=json.load(open('docs/evidence/p300-uart1-overnight-result-2026-10-09.json'))
+          assert obj['audit']['samples'] == 12938
+          assert obj['audit']['verified_p300_request_response_pairs'] == 51752
+          assert obj['kmbus']['samples_kermit_crc_valid'] == 12573
+          assert obj['kmbus']['clock_packet']['observed_update_transitions'] == 55
+          assert obj['limits']['p06_actual_rpm_alias_verified'] is False
+          assert obj['limits']['ram_write_approved'] is False
+          assert obj['limits']['p300_production_approved'] is False
+          print('EVIDENCE_POLICY_PASS')
+          PY
