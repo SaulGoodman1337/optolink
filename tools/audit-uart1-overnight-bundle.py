@@ -97,6 +97,12 @@ def verify_wire(records, samples):
     if len(records) != 24 + n*12 + 14:
         raise ValueError('incomplete or extra TX/RX trace records')
     expected={a for a,*_ in FRAMES}
+    known_handshakes={'04','06','160000','01f700f802','f7778c02',
+                      '6b405001','6b400601','6b400901','6b405701',
+                      '4105000100f80200','41050001778c020b'}
+    if any(x['hex'] not in expected | known_handshakes for x in records
+           if x['direction']=='TX'):
+        raise ValueError('unexpected TX command in trace')
     count=Counter()
     for i, sample in enumerate(samples):
         if sample['index'] != i+1:
