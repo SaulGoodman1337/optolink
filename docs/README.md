@@ -1,5 +1,7 @@
 # Dokumentationsindex
 
+- [Abgeschlossen: RPM-Trigger-Canary mit SHA256-/Frame-Audit und Restore-Freigabe (9.10.2026)](p300-rpm-trigger-canary-audit-2026-10-09.md) – 231 Zyklen, 924 valide FC01/FC03-Frames, 288,8s P300-only, 6/6 Units gesund; Hinweis auf bereits belegte Ein-ENQ-Beschleunigung fuer separate Fork-Forschung.
+
 - [Neuer P300→VS1-P06-Triggerlogger: 5-Minuten-Canary, 1–2h messwertgetriggerter Versuch und Restore-Runbook](p300-rpm-trigger-runbook-2026-10-09.md) – read-only, nur 3 bereits bewiesene P300-Frameformen, bis zu vier echte VS1-P06-Gegenproben, keine Ist-RPM-Freigabe.
 
 - [Abgeschlossen: 2h-Temporal-Full-Run mit 5.224 Zyklen, Multi-Level-RAM- und GFA-Statusspiegel-Audit (9.10.2026)](p300-temporal-fullrun-analysis-2026-10-09.md) – fuenf Brennerzyklen, 23.028 Rohframes valide, 0F20 29 Werte, kein verifizierter P06-Istwert.
