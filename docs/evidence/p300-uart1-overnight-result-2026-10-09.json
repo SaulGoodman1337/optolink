@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "device": "VDensHO1 20C2 firmware 01.03",
+  "method": "offline-validation-of-operator-stopped-read-only-P300-session",
+  "source_archive": {
+    "sha256": "fc96b4bbfa60931cd36226bd8bcbd21299c436959164b085ccc47e9662fd5bed",
+    "session": "run-20261008T205413Z-126713",
+    "compressed_bytes": 1860000,
+    "raw_bundle_published": false
+  },
+  "audit": {
+    "samples": 12938,
+    "trace_records": 155294,
+    "verified_p300_request_response_pairs": 51752,
+    "missing_samples": 0,
+    "frame_checksum_failures": 0,
+    "unexpected_tx_in_p300": 0,
+    "hardware_write_requests": 0,
+    "manifest_member_hashes_verified": 7
+  },
+  "observed": {
+    "first_utc": "2026-10-08T20:54:22.515859+00:00",
+    "last_utc": "2026-10-09T06:03:14.210245+00:00",
+    "flame_samples": 273,
+    "flame_windows": [
+      {
+        "samples": [
+          11750,
+          11920
+        ],
+        "duration_s": 432.37
+      },
+      {
+        "samples": [
+          12058,
+          12112
+        ],
+        "duration_s": 137.277
+      },
+      {
+        "samples": [
+          12692,
+          12738
+        ],
+        "duration_s": 116.868
+      }
+    ],
+    "device_profile_lockout_bit": "0x55D3 byte5 & 0x40",
+    "lockout_windows": [
+      {
+        "samples": [
+          941,
+          11720
+        ],
+        "start_local": "2026-10-08 23:34:12 CEST",
+        "end_local": "2026-10-09 07:11:37 CEST"
+      },
+      {
+        "samples": [
+          11742,
+          11744
+        ],
+        "start_local": "2026-10-09 07:12:33 CEST",
+        "end_local": "2026-10-09 07:12:38 CEST"
+      }
+    ],
+    "lockout_cause_determined": false,
+    "p87_80_run": {
+      "samples": [
+        11722,
+        11741
+      ],
+      "status_semantics_known": false
+    }
+  },
+  "uart1": {
+    "dma0_destination": "0x003AA",
+    "samples_at_target": 12938,
+    "dma0_source_base": "0x0161B",
+    "base_samples": 12745,
+    "other_source_samples": 193,
+    "source_0x161b_contents": "00",
+    "source_0x161b_changes": 0,
+    "source_plus_remaining_count_endpoints": {
+      "0x01622": 151,
+      "0x01623": 10655,
+      "0x01625": 1612,
+      "0x0162F": 520
+    },
+    "changed_ram_byte_addresses": 25,
+    "rx_register_reads": 0
+  },
+  "kmbus": {
+    "buffer_start": "0x161A",
+    "framing": "DK SK CMD LEN DSL SSK data CRC16-KERMIT",
+    "reference": "https://github-wiki-see.page/m/openv/openv/wiki/KM-Bus",
+    "crc16": "poly-reflected-0x8408-init-0x0000-low-byte-first",
+    "samples_kermit_crc_valid": 12573,
+    "samples_crc_unmatched": 365,
+    "frame_patterns": [
+      {
+        "head": "01 00 B1 0A",
+        "samples": 10415
+      },
+      {
+        "head": "20 00 B3 0C",
+        "samples": 1601
+      },
+      {
+        "head": "FF 00 B3 16",
+        "samples": 519
+      }
+    ],
+    "validated_examples": [
+      "0100b10a01010106c731",
+      "2000b30cee0110c211f9e49b",
+      "ff00b316000101200226031004080522065007452112"
+    ],
+    "clock_packet": {
+      "head": "FF 00 B3 16",
+      "length": 22,
+      "valid_crc_snapshots": 513,
+      "total_snapshots": 519,
+      "bcd_fields": "tag01:century20, tag02:year26, tag03:month10, tag04:day08/09, tag05:hour22..07, tag06:minute, tag07:second",
+      "observed_update_transitions": 55,
+      "first_updated_clock_lag_min_s": 3.146,
+      "median_s": 4.574,
+      "max_s": 6.175,
+      "median_interval_between_updates_s": 596.195
+    },
+    "scope_note": "KM-Bus-formatted TX RAM is proven, but UART1 physical wiring/counterparty and GFA RX path remain unverified."
+  },
+  "recovery": {
+    "vs1_restored": true,
+    "services_restored": true,
+    "p80_20_verified": true,
+    "p06_valid_readback": true,
+    "homeassistant_entity_freshness_verified": false
+  },
+  "limits": {
+    "p06_actual_rpm_alias_verified": false,
+    "uart1_gfa_receive_path_verified": false,
+    "p300_production_approved": false,
+    "ram_write_approved": false,
+    "repeat_overlapping_live_capture_recommended": false
+  }
+}
