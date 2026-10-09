@@ -154,12 +154,14 @@ class TemporalTests(unittest.TestCase):
             self.assertFalse(result["quality"]["gfa_p06_actual_rpm_available_during_p300"])
             self.assertEqual(hashlib.sha256(result["core_payload"]).hexdigest(),
                              result["core_sha256"])
+            for stream in streams.values():stream.flush()
             self.assertEqual(len((root/"packets.jsonl").read_text().splitlines()),8)
 
     def test_failed_packet_keeps_utc_and_raw_bytes_without_success(self):
         with self.streams() as (root,streams):
             with self.assertRaisesRegex(m.F.PacketError,"receive deadline exceeded"):
                 m.observation_cycle(FakeWire(fail_at=3),streams,1)
+            for stream in streams.values():stream.flush()
             log=[json.loads(x) for x in (root/"packets.jsonl").read_text().splitlines()]
             self.assertEqual(len(log),3)
             self.assertEqual(log[-1]["result"],"ERROR")
@@ -176,6 +178,7 @@ class TemporalTests(unittest.TestCase):
             with patch.object(m.time,"sleep",return_value=None):
                 summary=m.measurement_stream(root,FakeWire(),streams,stop,
                       m.time.monotonic()+20,counters,pulse=after)
+            for stream in streams.values():stream.flush()
             self.assertEqual(summary["cycles"],3)
             self.assertTrue(summary["no_vs1_during_stream"])
             self.assertFalse(summary["actual_rpm_during_stream_measured"])
