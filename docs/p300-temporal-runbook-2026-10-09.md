@@ -1,5 +1,7 @@
 # P300 Temporal: detailreicher RAM-/Status-Dynamiklogger und Experimentplan
 
+> **Live-Update 9.10.2026, 15:14 MESZ:** Der Fokuslauf (8 COMPLETE, qualifiziert 3 OFF / 1 × 2490 RPM) und der 5-Minuten-Temporal-Canary (191 vollstaendige Kernzyklen, 852 valide Telegramme, Restore gesund) sind **abgeschlossen und die hochgeladenen Archive unabhaengig SHA256-validiert**. Der **2h Full-Run** `run-20261009T131357Z-220351` **laeuft bereits** mit eigenstaendig gepinntem Code. **Keinen zweiten Logger starten.** Siehe [Live-Checkpoint, Archive und Auswerte-/Entscheidungsplan](p300-temporal-live-checkpoint-and-decision-plan-2026-10-09.md). Die folgenden Startanweisungen sind das urspruengliche historische Runbook, nicht eine Aufforderung zum erneuten Start.
+
 Stand 09.10.2026. **Ausschließlich Aufgabe 1, Gerät 20C2 / Software 0103 / P80=20.** Die Produktionsinstallation /opt/optolink wird nicht verändert; PR #46 bleibt Draft und wird nicht gemergt. Der aktuell laufende Fokuslogger muss zuerst vollständig beendet und gesund wiederhergestellt werden. Der Temporal-Logger ist ein neuer, erst offline zu testender experimenteller Protokollbesitzer, noch nicht live an der WB2A erprobt.
 
 ## 1. Ausgangsbefund und zentrale Änderung der Methode
