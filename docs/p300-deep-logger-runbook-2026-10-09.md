@@ -230,8 +230,12 @@ Erst danach werden die zuvor aktiven
 Serviceprogramme, Schedule-/Party-Emulation,
 Wartung, Uhren-Timer wieder aufgenommen.
 Die Nachkontrolle fordert P80=20 und
-einen formgueltigen P06-Read ueber den
-laufenden Originalsplitter an.
+einen gueltigen, **nicht-FF**-P06-Read ueber den
+laufenden Originalsplitter an. Ein syntaktisch
+gueltiger Antwortstring mit P06=FF ist KEIN
+positiver Drehzahl-/Restore-Health-Nachweis;
+es erfolgt hoechstens ein zweiter, zeitbegrenzt
+lesender P06-Check, danach NOT_VERIFIED.
 Vollstaendige HA-Entity-Aktualitaet ist
 darueber hinaus nicht separat nachgewiesen.
 
