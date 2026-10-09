@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "scope": "offline replay of genuine recorded read-only P300 cycle JSONL; no new boiler requests",
+  "criteria": {
+    "coherent_native_status_a_b": true,
+    "flame_on_both_statuses": true,
+    "lockout_on_either": false,
+    "ram_0x0f20": 84,
+    "ram_0x1c76": 84,
+    "high": {
+      "fc01_byte0_at_both_endpoints_min": 60,
+      "fc01_byte9_at_both_endpoints_min": 55
+    },
+    "low": {
+      "fc01_byte0_at_both_endpoints_max": 42,
+      "fc01_byte9_at_both_endpoints_max": 40
+    },
+    "consecutive_samples_per_trigger": 4,
+    "high_first_then_low": true,
+    "minimum_high_low_spacing_s": 15,
+    "maximum_high_low_spacing_s": 600
+  },
+  "observations": [
+    {
+      "bundle": "p300-rpm-trigger-run-20261009T174812Z-293099-bundle.tar.gz",
+      "source_sha256": "87d76c873a2e34ae310205f7f70a3c8831c07b8f35dc5e51df1fb0563efcf3ae",
+      "cycles": 2185,
+      "high_qualifying_cycles": 16,
+      "high_longest_consecutive": 16,
+      "high_first_cycle": 1370,
+      "high_end_cycle": 1385,
+      "high_first_utc": "2026-10-09T18:16:55.826979+00:00",
+      "low_qualifying_cycles": 256,
+      "low_longest_consecutive": 256,
+      "low_first_cycle": 1401,
+      "low_end_cycle": 1656,
+      "low_first_utc": "2026-10-09T18:17:34.580001+00:00",
+      "natural_burner_cycle": "same flame-on interval, as observed between native rising and falling edges",
+      "implication": "old HIGH-RAM 0x88 would never trigger; high/low FC01 modulation plateau would have qualified"
+    },
+    {
+      "bundle": "p300-temporal-run-20261009T131357Z-220351-bundle.tar.gz",
+      "source_sha256": "f174ee298d60aa2a4a1c31dfc8784a5c0f278475870e823db27bb03d5f06cbda",
+      "cycles": 5224,
+      "high_qualifying_cycles": 173,
+      "low_qualifying_cycles": 1276,
+      "implication": "several natural periods in old 2h recording, no guarantee of future high load"
+    }
+  ],
+  "method": {
+    "source": "cycles.jsonl in archives, streamed read-only without extraction",
+    "classification": "native status bracket + two RAM byte candidates, no RPM computed from status",
+    "manual_hardware_operations": false,
+    "actual_p06_during_p300_measured": false,
+    "do_not_conclude": "A qualified trigger is NOT a verified P300 actual fan-speed channel"
+  },
+  "files": [
+    "tools/wb2a-p300-rpm-mod-trigger.py",
+    "tools/wb2a-p300-rpm-mod-trigger.sh",
+    "tests/test_p300_rpm_mod_trigger.py",
+    "docs/p300-rpm-mod-trigger-runbook-2026-10-09.md"
+  ]
+}
