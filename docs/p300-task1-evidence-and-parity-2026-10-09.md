@@ -24,6 +24,27 @@ in historischen Forschungsnotizen.
 
 ## 1. Was bei genau diesem Geraet erwiesen ist
 
+**Neuer P06-Hardwaredatensatz vom 9.10.:**
+[Der VS1/P300-Deep-Logger ist beendet und ausgewertet](p300-deep-result-2026-10-09.md).
+5.360 echte VS1-GFA-P06-Werte (1.836 gueltig mit RPM>0
+bis zu 4.590 U/min), **2** vollstaendige Flammenbitfenster,
+**8.256/8.256** P300-Frames gegen die Rohspur validiert.
+**108 von 2.593** stabilen P06-Klammern zeigen andere
+P09-Rohwerte: somit keine RPM-Ersetzung durch Soll-Modulation.
+15 P06=0- und sieben P06~=0x53-geklammerte
+P300-Phasen erlauben erstmals einen gezielten Vergleich.
+In den acht existierenden Status-/SFR-/RAM-Bloecken wurde
+**kein direkter 8-bit-P06- oder 16-bit-RPM-Spiegel** gefunden.
+Die Branch-Software hat inzwischen einen beim
+manuellen Stop aufgetretenen SIGTERM/P10-Race behoben;
+**32 neue Logger-Tests PASS**, keine produktiven Aenderungen.
+Der einstige 4h-Startplan ist abgeschlossen,
+**nicht unveraendert erneut starten**.
+Neuer P06-Quellenansatz: vollstaendig 20KiB
+physikalisches RAM **zustandsgepaart** gegen VS1-P06
+lesen und vergleichen (historisch bereits lesbarer
+0x0400..0x53FF-Raum), kein SFR-U1RB und keine Writes.
+
 | Schicht | Stand und harte Grenze | Primärbeleg |
 |---|---|---|
 | Grundgeraet | `00F8=20C2`, Firmware `778C=0103`; GFA-Typ `P80=20` | [Identitaet und Handover](p300-goals-and-single-enq-result-2026-10-08.md) |
@@ -171,7 +192,13 @@ nachgewiesen ist**, wird Vitotrol im neuen Branch
 als Aufgabe 2 begonnen. Die Pumpenoverride-
 Forschung wartet als Aufgabe 3.
 
-**Jetzt konkrete Aktion:**
-[Neues Logger-Runbook](p300-deep-logger-runbook-2026-10-09.md)
-fuer den einmaligen vier- oder sechsstaendigen Lauf
-ausfuehren; danach genau **ein** tar.gz zurueckgeben.
+**Naechster technischer Beweisschritt (nach erfolgter Auswertung):**
+Nicht denselben acht-Block-Logger nochmals starten. Stattdessen
+P06-geklammerte, vollstaendige 20-KiB-Physical-RAM-Reads in mehreren
+stabilen echten P06=0- und P06>0-Zustaenden entwerfen und
+quellen-/risikobewusst freigeben. Die Messmethode muss die
+~89 Sekunden Buszeit pro 20KiB-Snapshot aus den realen
+FC03-Latenzen beruecksichtigen, mit vor-/nachher P06 pruefen
+und die eigenen Optolink-UART-Puffer als falsche Kandidaten
+ausschliessen. Produktionsmigration bis echtem RPM-Sensorbeleg
+gesperrt; Full-Parity-Abnahmematrix oben bleibt verbindlich.
