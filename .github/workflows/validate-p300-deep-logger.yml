@@ -1,0 +1,56 @@
+name: Validate P300 Deep Multi-hour Logger
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - 'tools/wb2a-p300-deep-logger.py'
+      - 'tools/wb2a-p300-deep-logger.sh'
+      - 'tests/test_p300_deep_logger.py'
+      - 'docs/p300-deep-logger-runbook-2026-10-09.md'
+      - '.github/workflows/validate-p300-deep-logger.yml'
+  pull_request:
+    paths:
+      - 'tools/wb2a-p300-deep-logger.py'
+      - 'tools/wb2a-p300-deep-logger.sh'
+      - 'tests/test_p300_deep_logger.py'
+      - '.github/workflows/validate-p300-deep-logger.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python module compile
+        run: |
+          python -m py_compile tools/wb2a-p300-deep-logger.py tests/test_p300_deep_logger.py
+          bash -n tools/wb2a-p300-deep-logger.sh
+      - name: Wire, GFA, DMA and no-writes synthetic regression tests
+        run: python -m unittest discover -s tests -p test_p300_deep_logger.py -v
+      - name: Start is not default; print inert plan
+        run: python tools/wb2a-p300-deep-logger.py | grep 'PLAN ONLY'
+      - name: Assert bounded run, read-only protocol set and exact GFA aliases
+        run: |
+          python - <<'PY'
+          import importlib.util
+          p='tools/wb2a-p300-deep-logger.py'
+          spec=importlib.util.spec_from_file_location('log',p)
+          m=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(m)
+          assert m.DEFAULT_HOURS==4 and m.MAX_HOURS==8
+          assert len(m.ALL_READS)==8
+          assert m.EXTRA_GFA=={'P10':bytes.fromhex('6b400a01'),
+                               'P84':bytes.fromhex('6b405401')}
+          assert all(fn in (1,3) and count<=32 for fn,addr,count,_ in m.ALL_READS)
+          assert {x[1] for x in m.ALL_READS} & {0x03ae,0x03af,0x196c,0x19ae}==set()
+          assert 'optolink-uart1-overnight.service' in m.SELF_NAMED_SERVICE_UNITS
+          assert m.entry_config()['no_write'] is True
+          print('DEEP_LOGGER_READONLY_BOUNDS_PASS')
+          PY
