@@ -613,6 +613,8 @@ def guard_canary_completed(root=None,bundles=None):
             health=json.loads((session/"health.json").read_text())
             bundle=bundles/("p300-temporal-"+session.name+"-bundle.tar.gz")
             if (measurement.get("observation_complete") and
+                measurement.get("signal") is None and
+                measurement.get("p300_stream",{}).get("p300_only_duration_s",0) >= 240 and
                 measurement.get("worker_vs1_restored") and
                 not measurement.get("errors") and
                 measurement.get("counts",{}).get("CYCLES",0)>=CANARY_MIN_CYCLES and
