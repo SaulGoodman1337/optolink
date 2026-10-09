@@ -71,3 +71,14 @@ Default `campaign.py` is **plan-only**. A hardware run requires exactly
 `--include-early-vs1` flag for the speculative second stage. No historical
 failed hypothesis is considered a success. Detailed German runbook:
 `docs/handover-multistage-campaign-2026-10-09.md`.
+
+## Live evidence forensic replay and offline batching (2026-10-09)
+
+The real seven-round campaign and both unsuccessful early-before-ENQ trials
+are analyzed in `docs/handover-campaign-real-forensics-2026-10-09.md`.
+`campaign_forensics.py` reads ONLY existing session JSON and does not send
+any MQTT/serial messages. `phase_executor.py` integrates the offline typed
+planner with the injected, preverified coordinator to demonstrate a single
+P300 session for multiple **identity** reads. It is **not** a production
+adapter, a physical RAM interface or a substitute for real GFA P06.
+The unmodified production splitter and P300 logger remain entirely separate.
