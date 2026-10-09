@@ -174,16 +174,23 @@ def _verified_boot_record(result: dict) -> bool:
 
 
 def worker(session: Path) -> int:
-    """Runs only under systemd, after snapshot verification and preflight."""
-    live = _live()
-    state = live.verify_session(session)
-    verify_stage(session, ROOT)
-    base = live.base
+    """Fail closed and persist diagnostics even if staged verification fails.
+
+    Earlier builds created ``inprocess-*`` sessions, which the legacy
+    recovery validator rejects before the worker could write measurement.json.
+    The outer catch now includes all imports, source checks and lock entry.
+    """
     outcome = {'version': VERSION, 'experiment_pass': False,
                'vs1_link_restored': False, 'errors': [], 'history': [],
-               'source_sha256': state['source_sha256']}
-    with base.locks():
-        try:
+               'source_sha256': {}, 'stage_rc': None,
+               'verified_boot_result': False}
+    try:
+        live = _live()
+        state = live.verify_session(session)
+        verify_stage(session, ROOT)
+        outcome['source_sha256'] = state['source_sha256']
+        base = live.base
+        with base.locks():
             live.guard_other_research()
             if base.read_settings(base.SETTINGS.read_text())['port_optolink'] != state['port']:
                 raise AcceptanceRejected('serial port changed since preflight')
@@ -208,15 +215,55 @@ def worker(session: Path) -> int:
             boot = json.loads(path.read_text()) if path.is_file() and not path.is_symlink() else {}
             outcome['verified_boot_result'] = _verified_boot_record(boot)
             if proc.returncode != 0 or not outcome['verified_boot_result']:
-                raise AcceptanceRejected('patched real main-loop did not verify hybrid boot')
+                raise AcceptanceRejected('patched original main loop did not verify hybrid boot')
             outcome['experiment_pass'] = True
-            # A worker exit is NOT proof of recovery. ExecStopPost independently
-            # reinitializes VS1 before restoring the original service.
+    except BaseException as exc:
+        detail = type(exc).__name__ + ': ' + str(exc)
+        outcome['errors'].append(detail)
+        print('HYBRID_WORKER_ERROR=' + detail[:400], file=sys.stderr, flush=True)
+    finally:
+        try:
+            _atomic_json(session, 'measurement.json', outcome)
         except BaseException as exc:
-            outcome['errors'].append(type(exc).__name__ + ': ' + str(exc))
-        finally:
-            base.atomic_json(session / 'measurement.json', outcome)
+            print('HYBRID_MEASUREMENT_WRITE_ERROR=' + type(exc).__name__,
+                  file=sys.stderr, flush=True)
+            return 1
     return 0 if outcome['experiment_pass'] else 1
+
+
+def staged_preflight(session: Path, root: Path) -> dict:
+    """Read-only boot check using the *staged* imports and legacy validator.
+
+    No systemctl, serial port, MQTT, service start/stop, or worker execution.
+    Used as a separate process before systemd-run is even invoked.
+    """
+    live = _live()
+    state = live.verify_session(session)
+    manifest = verify_stage(session, root)
+    return {'session_version': state['version'],
+            'staged_version': manifest['version'],
+            'recovery_entry': str(session / 'live_probe.py'),
+            'source_files_verified': len(manifest['source_sha256'])}
+
+
+def run_staged_preflight(session: Path, root: Path, python: str) -> None:
+    """Launch an independent exact staged entrypoint without side effects."""
+    env = os.environ.copy()
+    env['PYTHONPATH'] = f'{session}:{root}'
+    cmd = [python, '-u', str(session / 'hybrid_acceptance.py'),
+           '--staged-preflight', str(session), '--root', str(root)]
+    try:
+        completed = subprocess.run(cmd, cwd=str(root), env=env,
+                                   capture_output=True, text=True, timeout=15,
+                                   check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise AcceptanceRejected('staged worker preflight could not start: '
+                                 + type(exc).__name__) from exc
+    if (completed.returncode != 0 or
+            'HYBRID_STAGED_PREFLIGHT=PASS' not in completed.stdout.splitlines()):
+        detail = (completed.stderr.strip() or completed.stdout.strip())[-1200:]
+        raise AcceptanceRejected('staged worker/recovery preflight failed '
+                                 f'(rc={completed.returncode}): {detail}')
 
 
 def execute() -> int:
@@ -225,6 +272,12 @@ def execute() -> int:
         raise AcceptanceRejected('root required for supervised hardware one-shot')
     _verify_original(ROOT)  # all static checks before service activity
     values, services = live.preflight()
+    # A prior failed release reported no recovery manifest. Before pausing
+    # anything, prove the original production MQTT GFA path is healthy now.
+    health_before = live.read_health()
+    if (set(health_before) != {'P80', 'P06'} or
+            any(entry.get('valid') is not True for entry in health_before.values())):
+        raise AcceptanceRejected('original production GFA P80/P06 health not verified; no services stopped')
     base = live.base
     if base.unit_state(UNIT).get('ActiveState') not in ('inactive', 'failed', 'not-found'):
         raise AcceptanceRejected('in-process acceptance unit already running')
@@ -232,9 +285,13 @@ def execute() -> int:
         BASE.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(BASE, 0o700)
         stamp = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
-        session = BASE / f'inprocess-{stamp}-{os.getpid()}'
+        session = BASE / f'run-inprocess-{stamp}-{os.getpid()}'
         live.snapshot(session, values, services, experiment='standard')
         stage(session, ROOT)
+    # Run the real staged entrypoint's import graph and legacy validate_session
+    # BEFORE starting systemd or pausing any production service.
+    run_staged_preflight(session, ROOT, base.PYTHON)
+    print('HYBRID_STAGED_PREFLIGHT=PASS', flush=True)
     argv = [
         'systemd-run', '--unit=' + UNIT, '--wait', '--collect',
         '--property=Type=exec', '--property=RuntimeMaxSec=105',
@@ -266,8 +323,16 @@ def execute() -> int:
         boot = {}
     boot_verified = _verified_boot_record(boot)
     restored = bool(recovery.get('services_restored') and recovery.get('overall_verified'))
-    # Independent, *later* MQTT GFA check after the old service is back.
-    health = live.read_health() if restored else {}
+    # Independently report the actual production state even when the recovery
+    # manifest is missing. Observation is NOT a substitute for recovery proof.
+    try:
+        production_state = base.unit_state(base.MAIN)
+        production_active = (production_state.get('ActiveState') == 'active'
+                             and production_state.get('SubState') == 'running'
+                             and production_state.get('WorkingDirectory') == str(ROOT))
+    except (OSError, RuntimeError, subprocess.SubprocessError):
+        production_active = False
+    health = live.read_health() if production_active else {}
     healthy = set(health) == {'P80','P06'} and all(v.get('valid') for v in health.values())
     passed = bool(unit_rc == 0 and restored and healthy and outcome.get('experiment_pass')
                   and outcome.get('verified_boot_result') and boot_verified)
@@ -278,7 +343,9 @@ def execute() -> int:
               'phase_ms': boot.get('time_ms', {}) if boot_verified else {},
               'gfa': ({'P80': boot['gfa_p80_hex'], 'P06': boot['gfa_p06_hex']}
                       if boot_verified else {}),
-              'services_restored': restored, 'production_health': health,
+              'services_restored': restored,
+              'production_splitter_running': production_active,
+              'production_health': health,
               'worker_errors': outcome.get('errors',[]),
               'independent_recovery': recovery.get('independent_link_restore',{}),
               'production_changes_performed': False}
@@ -293,11 +360,19 @@ def main(argv=None) -> int:
     group=p.add_mutually_exclusive_group()
     group.add_argument('--execute',action='store_true')
     group.add_argument('--worker',type=Path,help=argparse.SUPPRESS)
+    group.add_argument('--staged-preflight',type=Path,help=argparse.SUPPRESS)
     p.add_argument('--accept-telemetry-pause',action='store_true')
     p.add_argument('--root',type=Path,default=ROOT,
                    help='source audit target for PLAN ONLY; hardware always uses original /opt/optolink')
     args=p.parse_args(argv)
     os.umask(0o077)
+    if args.staged_preflight is not None:
+        if args.accept_telemetry_pause:
+            raise AcceptanceRejected('staged preflight never accepts a service pause')
+        details = staged_preflight(args.staged_preflight, args.root)
+        print('HYBRID_STAGED_PREFLIGHT=PASS')
+        print('HYBRID_STAGED_PREFLIGHT_DETAILS=' + json.dumps(details, sort_keys=True))
+        return 0
     if args.worker is not None:
         if args.accept_telemetry_pause or os.geteuid() != 0 or 'INVOCATION_ID' not in os.environ:
             raise AcceptanceRejected('worker only permitted in supervised systemd unit')
