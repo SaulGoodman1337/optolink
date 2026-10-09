@@ -1,41 +1,54 @@
-# WB2A: einmalige reale Abnahme des neuen Handover-Managers
+# WB2A read-only Hardware-Akzeptanz: Single-owner Fast-Return v1
 
-**Status: VORBEREITET; NICHT AN DER HEIZUNG AUSGEFÜHRT.** Forschungsbranch `optolink-handover-acceleration`. Das Repository-/CI-Ergebnis ist kein Hardwareergebnis.
+**AUSDRUECKLICHER GERÄTETEST: NIE automatisch durch CI.** Nur nach ausdrücklicher Betreiberfreigabe. Die normale Ausführung ohne `--execute` ist inert. **Kein Test bei laufendem RPM-/P300-Logger**. Der Prober verweigert den Start, bevor der erste Dienst gestoppt wird, wenn Forschungseinheiten/Prozesse aktiv sind. Keine unbekannten OpCodes und keine Schreibkommandos.
 
-## Wozu dieser Versuch dient
+## Ziel und Änderungen gegenüber dem bereits geprüften 4,610-s-Prober
 
-Der erste echte Test des **neuen**, bisher nur mit Fake-Serial/PTY geprüften Single-Owner-Koordinators mit exakt einer vollständigen `VS1 -> P300 -> VS1`-Messrunde. Nicht Wiederholung des alten Probe-1.1.0-Quellcodes und **kein** Versuch eines unbekannten Fast-Switch-Kommandos. Er trennt drei ENQ-Phasen (zwei bei konservativer Kaltinitialisierung, eine für P300-Einstieg, eine beim schnellen Rückweg) durch einzelne `ReadOnlyWire.exact(1)`-Empfangszeitstempel. Die Kaltinitialisierung wird separat ausgewiesen, nicht als eingesparte Nutzzeit deklariert.
+- **Ein vollständiger Durchgang** aus ursprünglich produktivem VS1 nach verifiziertem P300 und zurück nach verifiziertem VS1; kein repetitives Dreifach-Messen.
+- P300-Identität `20C2` und Software `0103` werden in `verify_p300()` exakt geprüft. Der zweite unmittelbar nachfolgende **redundante** P300-Identitätsread entfällt.
+- VS1-Rückkehr mit **einem ENQ** (bereits erfolgreich auf dieser WB2A gemessen). **Gerätekennung, Software, P80 und P06** werden im VS1-Rückweg geprüft. P80/P06 werden nur aus dieser **unmittelbar vorangegangenen** Verifikation in die Ergebniszeile übernommen (Alter höchstens 0,75 s); weitere separate Reads erfolgen für P09/P87. Keine wiederverwendeten alten Sitzungen nach EOT.
+- Zeitstempel pro *einzelnem* `0x05` aus dem ungebündelten Reader und für Phasen. Hostzeiten einschließlich USB/Kernel/Jitter, **keine Leitungs-/Controller-Uhr**. Der alte zusammengefasste `RX 060505` wird nicht als simultan interpretiert.
+- Cold Setup und unabhängiger Recovery-Pfad benötigen weiterhin konservativ **zwei ENQs**. Fehler in Fast-Return werden nicht als Erfolg mit stiller Recovery maskiert.
+- Genau bekannte feste Telegramme (VS1-Identität, Software, GFA P80/P06/P09/P87, P300-Identität, Software und EOT/START/ACK). **Keine** RAM-Reads/Writes, RPCs, Codierungen, Gas-/Pumpenkommandos oder GFA-C9-Versuche.
 
-Die bekannten Hardwarewerte sind ~4,610 s für die frühere Ein-ENQ-Proberunde einschließlich GFA und ~6,863 s für die Zwei-ENQ-Baseline. Die neue Implementierung prüft zusätzlich Softwarekennung und P80/P06 beim VS1-Rückweg sowie einen zusätzlichen P300-Identitätsread; ihre absolute Zeit muss nicht identisch ausfallen. **Unter vier Sekunden ist kein begründeter Erwartungswert**. Ein Erfolg ist sichere Verifikation, eindeutige Phase-Timestamps und vollständig wiederhergestellter originaler VS1-Betrieb.
+Der Gewinn durch entfernte doppelte Reads ist **eine Software-Hypothese** und kein gemessener Gerätevorteil. Der Test kann über/unter 4,61 s liegen, weil der Umfang der Identitäts- und GFA-Verifikation gegenüber dem historischen Probeformat unterschiedlich segmentiert ist. **Keine neue ENQ-Umgehung und kein erwarteter sub-4-s-Effekt.**
 
-## Erlaubte Steuer-/Datenbytes
+## Vorbedingungen und Zustandsabsicherung
 
-Nur die bestätigten EOT `04`, ENQ `05` als Empfang, P300 Start `16 00 00` / ACK `06`, P300 FC01-Identitäten (00F8/2→20C2, 778C/2→0103), VS1 `01 F7 00 F8 02` (20C2), VS1 `F7 77 8C 02` (0103), GFA/VS1 `6B 40 50 01`, `6B 40 06 01`, `6B 40 09 01`, `6B 40 57 01`. Prüfung vollständiger Frames, CRC, Bytezahl, Funktions-/Adress-/Softwareschlüssels und gültiger P80-/P06-Antwort. **Keine** unbekannten Opcode-, RPC-, RAM-, Regelungs- oder Schreibbefehle. P09 wird nicht als tatsächliche Drehzahl klassifiziert.
+- Nur Optolink LXC mit produktivem unverändertem VS1 unter `/opt/optolink` und bereits installiertem pySerial. Original `/opt/optolink` wird **nicht** beschrieben.
+- `/root/p300-trial-work/project` und `optolink-p300-migration` bleiben unangetastet. Auf separatem GitHub-Forschungsbranch testen, nicht aus einem laufenden RPM-Checkout.
+- Der Vorcheck verweigert laufende/unklare P300-/RPM-Systemd-Units oder Prozessnamen, eine nicht passende Originaldienst-Workdir, einen anderen/aktiven Portbesitzer nach dem kontrollierten Dienststopp, fehlende Python-Venv oder geänderte Runtime-Settings.
+- Bereits aktive Originaldienste werden vor dem Stopp in einer privaten Session festgehalten; Stop-Intent liegt vor jedem Stopp persistent auf Platte. Supervisor via `systemd-run --wait` registriert **ExecStopPost vor** jeglichem Service-Stopp. Ein separater Prozess stellt auch nach Worker-Crash/SIGKILL mit zwei ENQs wieder VS1 her und startet Originalsplitter **vor** Hilfsdiensten. Er meldet den Fehler, wenn dies scheitert.
+- Der Worker hält ein Linux-Serial `exclusive=True` sowie `TIOCEXCL` und eine kooperative Port-Lease. `flock` allein verhindert keine fremden Prozesse; echte Owner-Prüfung erfolgt vor und nach Portöffnung.
+- SIGTERM wird nicht mitten im aktuellen Telegramm als Python-Exception geworfen; der Supervisor läuft unabhängig vom Worker.
+- Der *absolute* Testschluss ist erst erfolgreich, wenn nach ExecStopPost auch produktive MQTT-GFA-P80/P06-Reads frisch validiert werden. Keine bloße `active`-Meldung als Healthbeleg.
 
-## Trennung von laufender Forschung
+## Einmalige Ausführung
 
-Dieser Probe-Runner hat einen separaten Ergebnisordner (`/root/p300-trial-work/handover-acceleration-live-results`), eigenen Systemd-Unit-Namen und neue Dateien. Er **verweigert** die Ausführung, wenn ein P300-/P06-/UART1-Logger per Unitstatus oder `/proc/.../cmdline` erkannt wird. Zusätzlich werden die vorhandenen Locks der bisherigen Handover-Forschung, der Portbesitzer-Scan, `pySerial(exclusive=True)` und Linux `TIOCEXCL` benutzt. Wenn eine Unklarheit oder Rennen auftritt: **abbrechen**, keinen Logger beenden, nicht einfach neu starten.
+Im Optolink LXC als root, **nur wenn kein anderer Logger läuft**. Die genaue, durch CI grün bestätigte Commit-SHA muss vor Ausführung festgelegt sein. Nie blind `git pull` in den aktiven RPM-Worktree; einen neuen temporären Checkout verwenden.
 
-## Temporäre Dienstunterbrechung und unabhängige Recovery
+```bash
+# Der Betreiber ersetzt PINNED_SHA durch den im Chat genannten CI-grünen Commit.
+set -euo pipefail
+d=$(mktemp -d /tmp/optolink-handover-real.XXXXXX)
+git clone -q --depth 1 --single-branch -b optolink-handover-acceleration \
+  https://github.com/SaulGoodman1337/optolink.git "$d/repo"
+cd "$d/repo"
+test "$(git rev-parse HEAD)" = PINNED_SHA
+/opt/optolink/venv/bin/python -m unittest discover -s tests -p 'test_handover*.py' -q
+/opt/optolink/venv/bin/python -u tools/handover_acceleration/live_probe.py --execute --accept-telemetry-pause
+```
 
-Ein Hardwarewechsel erfordert exklusiven physischen Portbesitz. Für **diesen ausdrücklich auszulösenden einmaligen Versuch** werden ausschließlich die vorab dokumentierten und tatsächlich aktiven originalen Optolink-Units vorübergehend gestoppt; ihre vorherigen Zustände werden persistent gespeichert und in umgekehrter Reihenfolge wiederhergestellt. Keine Unit-Datei, Produktionsquelle oder Einstellung wird ersetzt. Der Haupteigentümer `/opt/optolink` wird als letzter gestoppt und als erster wiederhergestellt.
+Ohne `--execute --accept-telemetry-pause` zeigt der Prober lediglich einen Plan. Mit den Flags werden Dienste zeitweilig **bewusst pausiert**, nur wenn keine Konkurrenzforschung läuft. Vorher unbedingt laufenden RPM-Logger regulär beenden lassen. **Nicht stoppen, nur um diesen Versuch schneller auszuführen.**
 
-Der Live-Worker läuft als transienter Systemd-Dienst mit bereits beim Start registriertem **ExecStopPost**. Nach einem regulären Fehler oder SIGKILL führt ein **anderer Prozess** eine konservative 2-ENQ-VS1-Verifikation mit Originalgerätekennung/Software, P80=20 und gültigem P06 durch, sofern der Worker diese Rückkehr nicht bereits lückenlos bestätigt hat. Dann startet er den originalen Splitter, prüft dessen neue echte `enter main loop`-Bereitschaft und erst danach zuvor aktive Zusatz-/Writer-Dienste. Bei Recovery-Fehlern wird nicht als Erfolg gemeldet; writerabhängige Dienste werden bei fehlendem Splitter-Health nicht angefahren. System-/Kernel-/USB-Ausfälle oder Stromverlust lassen sich nicht absolut durch Software garantieren.
+## Ergebnisartefakte und Abbruch
 
-Anschließend werden frische produktive P80/P06-Reads über die bekannte `optolink-debug`-API versucht. Eine fehlgeschlagene Post-Restore-Abfrage macht das Gesamtresultat `FAIL_OR_NOT_VERIFIED`, auch wenn der Splitter als Prozess läuft.
+Unter `/root/p300-trial-work/handover-acceleration-live-results/run-*` liegen `state.json`, `measurement.json`, `recovery.json`, `summary.json`, source SHA256 Manifest und ENQ-Ereignisse. Console `RESULT=PASS_VERIFIED_READ_ONLY_REAL_HANDOVER` verlangt gültige Identitäten und GFA, bestätigten VS1-Link, wiederhergestellte ursprüngliche Dienste sowie frische MQTT-Reads. `RESULT=FAIL_OR_NOT_VERIFIED` ist ein Stop-Signal, **nicht** erneut identisch ausführen; zuerst Recoveryprotokoll auswerten.
 
-## Abnahme vor Hardware-Zugriff
+Bei unerwartetem `FAIL`, fehlender `summary.json` oder blockierter Recovery **keinen zweiten seriellen Prozess öffnen**. Eine separate Konsolenprüfung von `systemctl` und der Session-Protokolle durchführen, vor allem laufende Portbesitzer ausschließen. Ein fehlgeschlagener Restore kann manuell ein konservatives Backup-/Service-Restore-Runbook erfordern. Kein automatischer Loop von Hardwareversuchen.
 
-1. Nur beim Betreiber als root im LXC, wenn keine RPM-Messung läuft. Keine parallele Konsole darf den Port bedienen.
-2. Download/Checkout des **exakt gepinnten** `optolink-handover-acceleration`-Commits in ein eigenes Verzeichnis (nicht `/opt/optolink` oder laufende Worktrees), Prüfung des Hashes.
-3. Python-Offline-CI von `test_handover*.py`, einschließlich Test des Live-Workers und des separaten Recoverypfads: **grün** auf GitHub Actions Python 3.11 und 3.12 sowie lokal auf dem LXC.
-4. Erst mit zwei ausdrücklichen Flags `--execute --accept-telemetry-pause` ist ein einzelner Hardware-Rundwechsel möglich. Ohne beide Flags nur `PLAN ONLY` bzw. Fehlerrückgabe.
-5. Nach dem `systemd-run --wait`: Zustand und Ergebnisdateien ausgeben. **Kein automatischer zweiter Durchlauf nach einem Fehler**.
+## Test- und Quellenverweise
 
-## Ergebnisartefakte
+Offline Regression: `python -m unittest discover -s tests -p 'test_handover*.py' -q` (lokal 77/77 vor CI). Neben aktuellen Tests werden originale konservative Restorebausteine aus dem unveränderten, **Git-Blob-gepinnten** `tools/wb2a-handover-probe.py` (`006c3c75f6e5e0dc3f564156985912bffb1d9bdc`) in `tools/handover_acceleration/legacy_probe.py` kopiert. Dieser Quellstand wurde aus dem Forschungsbranch gelesen, **ohne** ihn zu verändern.
 
-Pro privater Session: `state.json`, geprüfte Snapshots der ausführbaren Quellcodes, `measurement.json` (Stufenzeit, pro Byte empfangene `05`, alle erlaubten TX/RX, P06/P80), `recovery.json` (unabhängiger Link- und Dienst-Restore), `summary.json`. Diese bleiben in einem privaten `0700`-Ordner. Der Treiber erhält keinen neuen seriellen Schreibpfad jenseits bekannter Protokollkontrolltelegramme.
-
-## Einschränkungen
-
-Es gibt in dieser Umgebung **keine direkte SSH-/LXC-Verbindung** zum realen Gerät. Ein GitHub-Commit, CI-Lauf oder lokaler Fake-Test führt den Live-Aufruf nicht aus. Der Betreiber muss den freigegebenen, gepinnten Einzeiler am richtigen LXC auslösen. Eine Rückmeldung über `SUMMARY` und `RESULT` ist nötig, damit aus tatsächlichen Messwerten geschlossen werden kann. Keine Produktionseinbindung und kein PR-46-Merge.
+Weitere Messbelege: `docs/handover-acceleration-research-2026-10-09.md`, `docs/handover-timed-peer-offline-2026-10-09.md`. Ein erfolgreicher Offline-/HW-Test ist keine Produktivfreigabe, Pumpen-RAM-Kontrollfreigabe oder Hinweis auf einen unbekannten Fast-Switch-Befehl.

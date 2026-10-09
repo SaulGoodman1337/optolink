@@ -57,7 +57,9 @@ CONFLICT_SCRIPTS = (
     'wb2a-p300-rpm-trigger.py', 'wb2a-p300-deep-logger.py',
     'wb2a-p300-temporal-logger.py', 'wb2a-p300-p06-focus.py',
     'wb2a-p300-fullram-logger.py', 'wb2a-uart1-overnight.py',
-    'wb2a-handover-probe.py',
+    'wb2a-handover-probe.py', 'wb2a-uart1-p300-focus.py',
+    'wb2a-uart1-dma0-cycle.py', 'wb2a-research-batch.py',
+    'vs1-p300-handover-latency-probe.py', 'wb2a-p87-p300-check.py',
 )
 
 # An independent namespace; reuse legacy lock names used by the research
@@ -100,6 +102,11 @@ def preflight():
     return values, states
 
 
+def git_blob_sha(data: bytes) -> str:
+    """Pin the reviewed legacy recovery helper by its exact git blob SHA."""
+    return hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
+
+
 def ensure_hashes(session: Path, state: dict):
     for filename, expected in state['source_sha256'].items():
         path = session / filename
@@ -115,6 +122,8 @@ def verify_session(session: Path):
     if set(state.get('source_sha256', {})) != set(SOURCE_NAMES):
         refuse('unexpected session source manifest')
     ensure_hashes(session, state)
+    if git_blob_sha((session / 'legacy_probe.py').read_bytes()) != LEGACY_BLOB_SHA:
+        refuse('legacy recovery helper does not match reviewed SHA')
     return state
 
 
@@ -126,6 +135,8 @@ def snapshot(session: Path, values: dict, services: dict):
         src, dst = here / name, session / name
         if not src.is_file() or src.is_symlink():
             refuse('missing or symbolic source: ' + name)
+        if name == 'legacy_probe.py' and git_blob_sha(src.read_bytes()) != LEGACY_BLOB_SHA:
+            refuse('wrong legacy recovery helper source version')
         shutil.copyfile(src, dst)
         os.chmod(dst, 0o600)
         hashes[name] = hashlib.sha256(dst.read_bytes()).hexdigest()
@@ -166,10 +177,14 @@ def worker(session: Path) -> int:
                   experiment_pass=False, vs1_link_restored=False,
                   phases_ms={}, gfa={}, errors=[], history=[], events=[], enq_trace=[],
                   source_sha256=state['source_sha256'])
-    # Abort on first signal; never intentionally abort in the middle of a
-    # complete frame. Systemd ExecStopPost still handles SIGKILL independently.
+    # Defer graceful stop until a complete telegram/handshake has finished.
+    # systemd ExecStopPost remains independent if the worker dies or is killed.
+    pending_signals: list[int] = []
     def interrupted(signum, _frame):
-        refuse('signal_' + str(signum))
+        pending_signals.append(signum)
+    def check_stop():
+        if pending_signals:
+            refuse('operator stop signal_' + str(pending_signals[0]))
     old_signals = {s: signal.getsignal(s) for s in
                    (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)}
     for s in old_signals:
@@ -200,24 +215,30 @@ def worker(session: Path) -> int:
                 result['phases_ms']['cold_setup'] = round((setup_done - start_setup) * 1000, 3)
                 if manager.mode is not Mode.VS1_VERIFIED:
                     refuse('cold VS1 not verified')
+                check_stop()
                 t0 = time.monotonic()
-                manager.to_p300()
+                manager.to_p300()  # verifies P300 ID 20C2 and software 0103
                 t1 = time.monotonic()
-                p300_id = manager.p300_identity()
+                check_stop()
+                # No duplicate P300 ID read: already checked inside to_p300().
+                manager.to_vs1_fast()  # re-verifies VS1 ID, software, P80, P06
                 t2 = time.monotonic()
-                manager.to_vs1_fast()
-                t3 = time.monotonic()
-                for name in ('P80', 'P06', 'P09', 'P87'):
+                check_stop()
+                # Values below were physically read *during this VS1 return*,
+                # not cached from an earlier session. Reject aged snapshots.
+                snap = manager.verified_gfa_snapshot(max_age=.75)
+                result['gfa'].update({k: v.hex() for k, v in snap.items()})
+                for name in ('P09', 'P87'):
                     result['gfa'][name] = manager.gfa_read(name).hex()
-                t4 = time.monotonic()
+                    check_stop()
+                t3 = time.monotonic()
                 result['phases_ms'].update({
-                    'vs1_to_p300': round((t1-t0)*1000,3),
-                    'p300_identity': round((t2-t1)*1000,3),
-                    'p300_to_vs1_fast': round((t3-t2)*1000,3),
-                    'gfa_block': round((t4-t3)*1000,3),
-                    'roundtrip_with_gfa': round((t4-t0)*1000,3),
+                    'vs1_to_p300_with_verified_identity': round((t1-t0)*1000,3),
+                    'p300_to_vs1_fast_with_verified_gfa': round((t2-t1)*1000,3),
+                    'remaining_gfa_block_p09_p87': round((t3-t2)*1000,3),
+                    'roundtrip_with_gfa': round((t3-t0)*1000,3),
                 })
-                if p300_id != bytes.fromhex('20c2') or result['gfa']['P80'] != '20' or result['gfa']['P06'] == 'ff':
+                if result['gfa']['P80'] != '20' or result['gfa']['P06'] == 'ff':
                     refuse('identity or GFA invalid')
                 if manager.mode is not Mode.VS1_VERIFIED:
                     refuse('final VS1 not verified')
@@ -358,8 +379,7 @@ def execute() -> int:
     health = read_health() if safe and measurement.get('experiment_pass') else {}
     ok = bool(service_rc == 0 and safe and measurement.get('experiment_pass') and
               measurement.get('vs1_link_restored'))
-    if health:
-        ok = ok and all(h.get('valid') for h in health.values())
+    ok = ok and set(health) == {'P80', 'P06'} and all(h.get('valid') for h in health.values())
     report = {'result': 'PASS_VERIFIED_READ_ONLY_REAL_HANDOVER' if ok else 'FAIL_OR_NOT_VERIFIED',
               'session': str(session), 'unit_rc': service_rc,
               'phase_ms': measurement.get('phases_ms'),

@@ -459,3 +459,46 @@ class OfflineHandoverTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class VerifiedSnapshotTests(unittest.TestCase):
+    """Only session-local GFA acquired inside fresh VS1 handshake is reusable."""
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.clock = FakeClock()
+
+    def coordinator(self, script):
+        return HandoverCoordinator(lambda: FakePort(script),
+                PortLease(Path(self.tmp.name) / 'port.lock'),
+                clock=self.clock.monotonic, sleep=self.clock.sleep)
+
+    def test_stored_gfa_was_read_during_verified_vs1_not_a_cache(self):
+        m = self.coordinator(expect_vs1(2, p06=b'\x12') +
+                    expect_p300() + expect_vs1(1, p06=b'\x23'))
+        with m:
+            self.assertEqual(m.verified_gfa_snapshot(), {'P80':b'\x20','P06':b'\x12'})
+            m.to_p300()
+            with self.assertRaisesRegex(ProtocolError, 'verified VS1'):
+                m.verified_gfa_snapshot()
+            m.to_vs1_fast()
+            self.assertEqual(m.verified_gfa_snapshot(), {'P80':b'\x20','P06':b'\x23'})
+
+    def test_snapshot_rejected_if_too_old(self):
+        m = self.coordinator(expect_vs1())
+        with m:
+            self.clock.sleep(.76)
+            with self.assertRaisesRegex(ProtocolError, 'stale'):
+                m.verified_gfa_snapshot()
+
+    def test_unbounded_freshness_limit_rejected(self):
+        m = self.coordinator(expect_vs1())
+        with m:
+            with self.assertRaisesRegex(ProtocolError, 'missing or unbounded'):
+                m.verified_gfa_snapshot(max_age=10)
+
+    def test_bad_identity_cannot_publish_snapshot(self):
+        m = self.coordinator(expect_vs1(2, p80=b'\x21'))
+        with self.assertRaisesRegex(ProtocolError, 'P80'):
+            with m:
+                pass
+        self.assertNotEqual(m.mode, Mode.VS1_VERIFIED)

@@ -119,10 +119,7 @@ class LiveWorkerTests(unittest.TestCase):
         self.base_state = lambda unit: {'WorkingDirectory': '/opt/optolink',
                                          'ActiveState': 'active' if unit == m.base.MAIN else 'inactive'}
         self.fake_port = FakePort(expect_vs1(2) + expect_p300() +
-                                  [(P300_ID, p300_reply(0xf8, DEVICE_ID)), (ACK, b'')] +
-                                  expect_vs1(1) + [(GFA['P80'], b'\x20'),
-                                                   (GFA['P06'], b'\x00'),
-                                                   (GFA['P09'], b'\x0a'),
+                                  expect_vs1(1) + [(GFA['P09'], b'\x0a'),
                                                    (GFA['P87'], b'\x00')])
         self.stack = contextlib.ExitStack()
         self.addCleanup(self.stack.close)
@@ -156,6 +153,9 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertTrue(self.fake_port.closed)
         self.assertFalse(self.fake_port.script)
         self.assertIn('roundtrip_with_gfa', evidence['phases_ms'])
+        self.assertEqual(evidence['gfa']['P09'], '0a')
+        self.assertEqual(len([w for w in self.fake_port.writes if w == P300_ID]), 1)
+        self.assertEqual(len([w for w in self.fake_port.writes if w == GFA['P80']]), 2)
         self.assertEqual([len(x['enq_wait_ms']) for x in evidence['enq_trace']], [2, 1, 1])
         self.assertEqual(len([x for x in evidence['events'] if x['direction'] == 'RX' and x['hex'] == '05']), 4)
 

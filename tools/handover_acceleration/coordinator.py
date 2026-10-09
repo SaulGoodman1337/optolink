@@ -116,6 +116,8 @@ class ReadOnlyWire:
         self.last_io = self.clock()
         self.phase = WirePhase.FAILED_CLOSED
         self.events: list[tuple[str, str, float]] = []
+        # Values obtained as part of the current, verified VS1 handshake only.
+        self._handshake_gfa: dict[str, tuple[bytes, float]] = {}
 
     def _event(self, kind: str, data: bytes):
         self.events.append((kind, data.hex(), self.clock()))
@@ -202,6 +204,7 @@ class ReadOnlyWire:
         return result
 
     def verify_vs1(self, enqs: int):
+        self._handshake_gfa.clear()
         self.phase = WirePhase.VS1_SYNC
         try:
             self.sync(enqs)
@@ -210,13 +213,20 @@ class ReadOnlyWire:
                 raise ProtocolError("VS1 device identity mismatch")
             if self.vs1_read(VS1_SOFTWARE, 2) != SOFTWARE:
                 raise ProtocolError("VS1 software identity mismatch")
-            if self.vs1_read(GFA["P80"], 1) != b"\x20":
+            p80 = self.vs1_read(GFA["P80"], 1)
+            p80_at = self.clock()
+            if p80 != b"\x20":
                 raise ProtocolError("GFA P80 identity mismatch")
-            if self.vs1_read(GFA["P06"], 1) == b"\xff":
+            p06 = self.vs1_read(GFA["P06"], 1)
+            p06_at = self.clock()
+            if p06 == b"\xff":
                 raise ProtocolError("GFA P06 invalid FF")
         except BaseException:
+            self._handshake_gfa.clear()
             self.phase = WirePhase.FAILED_CLOSED
             raise
+        # Publication is atomic only after all VS1 identity checks succeeded.
+        self._handshake_gfa = {'P80': (p80, p80_at), 'P06': (p06, p06_at)}
         self.phase = WirePhase.VS1_VERIFIED
 
     def p300_read(self, request: bytes, expected: bytes) -> bytes:
@@ -254,6 +264,7 @@ class ReadOnlyWire:
         return body[5:-1]
 
     def verify_p300(self):
+        self._handshake_gfa.clear()
         self.phase = WirePhase.P300_SYNC
         try:
             self.sync(1)
@@ -344,6 +355,7 @@ class HandoverCoordinator:
         self.mode = Mode.FAILED_CLOSED
         if self.wire is not None:
             self.wire.phase = WirePhase.FAILED_CLOSED
+            self.wire._handshake_gfa.clear()
 
     def to_p300(self):
         with self._lock:
@@ -377,6 +389,23 @@ class HandoverCoordinator:
                 raise RestoreError("recovery already attempted; operator required")
             self._recovery_attempted = True
             self._verify_vs1(2, recovery=True)
+
+    def verified_gfa_snapshot(self, *, max_age: float = 0.75) -> dict[str, bytes]:
+        """Use *only* recent P80/P06 from the current verified VS1 handshake.
+
+        An older value must never be represented as a newly queried reading.
+        This does not replace a new GFA operation after expiry or EOT.
+        """
+        with self._lock:
+            if self.mode is not Mode.VS1_VERIFIED or self.wire is None:
+                raise ProtocolError("no verified VS1 GFA snapshot")
+            values = self.wire._handshake_gfa
+            if set(values) != {'P80', 'P06'} or not 0 < max_age <= 1.0:
+                raise ProtocolError("missing or unbounded GFA snapshot")
+            now = self.clock()
+            if any(not 0 <= now - t <= max_age for _value, t in values.values()):
+                raise ProtocolError("VS1 GFA snapshot is stale")
+            return {key: value for key, (value, _at) in values.items()}
 
     def gfa_read(self, name: str) -> bytes:
         with self._lock:

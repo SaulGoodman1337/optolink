@@ -40,3 +40,18 @@ The GFA ledger rejects invalid P80, FF and unverified samples. It requires
 matching session generation and maximum age on readback, and never maps P09
 modulation to P06 measured RPM. Its `vs1_verified` argument is a future
 integration precondition, not a cryptographic proof of transport state.
+
+## Optional one-shot real hardware acceptance (explicit opt-in)
+
+`live_probe.py` is a separate, **non-production** test requiring
+`--execute --accept-telemetry-pause`. Its default is inert. It is installed
+in this research branch together with a Git-blob-pinned copy of the existing
+read-only recovery helper, `legacy_probe.py`.
+
+The code refuses to stop production if another P300/RPM research logger is
+active, then supervises a single VS1->P300->VS1 cycle with systemd
+`ExecStopPost` recovery. The active original services are selectively restored
+and tested after the worker exits. **Never run if an RPM logger is active;
+let its normal run complete.** Read `docs/handover-live-acceptance-2026-10-09.md`
+before using the opt-in flags. The read-only wire and fake-peer tests are safe
+on a machine with an active logger, but the execution flags are not.
