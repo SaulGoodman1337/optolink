@@ -4,8 +4,9 @@ The application has exactly three synchronous request call sites:
   - poll item, MQTT request, TCP request.
 Vitoconnect direct-forwarding and the keepalive remain untouched; this patch
 refuses to run for a different structure instead of guessing replacement sites.
-The shim stays legacy-only unless a FUTURE explicitly reviewed maint owner is
-bound; environment opt-in enables only a transparent in-process dispatch shim.
+The ordinary shim stays legacy-only. The separately supervised test startup
+may exercise a single fixed read-only in-process P300 batch and then exit.
+No input enables recurring hybrid writes or dynamic generic addresses.
 """
 from __future__ import annotations
 
@@ -34,6 +35,30 @@ def handover_legacy_or_shim(request, ser):
     return _handover_dispatch_bridge.response_to_request(request, ser)
 
 '''
+
+BOOT = '''
+                # ONE-SHOT SELF-TERMINATING ACCEPTANCE ONLY; no production mode.
+                # This executes before any poll / MQTT / TCP frame is dispatched.
+                if os.environ.get('OPTO_HYBRID_BOOT_ONESHOT') == 'confirmed-readonly':
+                    if not (settings.vs1protocol and settings.port_vitoconnect is None
+                            and os.environ.get('OPTO_RESEARCH_DISPATCH_SHADOW') == '1'):
+                        raise SystemExit(76)
+                    from pathlib import Path as _HybridPath
+                    from handover_acceleration.hybrid_boot import run_one_shot
+                    try:
+                        _report = run_one_shot(
+                            serOptolink, settings, requests_util.response_to_request,
+                            vs12_adapter.reset_vs1sync,
+                            _HybridPath(os.environ['OPTO_HYBRID_REPORT_DIR']))
+                        print('HYBRID_BOOT_RESULT=' + _report['status'], flush=True)
+                    except BaseException as _error:
+                        logger.exception('one-shot borrowed-port experiment failed')
+                        print('HYBRID_BOOT_FAILURE=' + type(_error).__name__, flush=True)
+                        raise SystemExit(78)
+                    # Exit before starting any normal application dispatch loop.
+                    raise SystemExit(0)
+'''
+
 
 SETUP = '''\n                # Optional transparent legacy-only diagnostic shim. No P300
                 # transitions or extra serial opens are enabled here.
@@ -66,7 +91,7 @@ def patch_dispatcher(source: str) -> str:
     for old, _ in CALL_SITES:
         patched = patched.replace(old, old.replace('requests_util.response_to_request',
                                                     'handover_legacy_or_shim'))
-    patched = patched.replace(ANCHOR, ANCHOR + SETUP, 1)
+    patched = patched.replace(ANCHOR, ANCHOR + SETUP + BOOT, 1)
     if patched.count('handover_legacy_or_shim(item, ser)') != 1:
         raise PatchRejected('poll seam not installed')
     if patched.count('handover_legacy_or_shim(msg, serOptolink)') != 2:

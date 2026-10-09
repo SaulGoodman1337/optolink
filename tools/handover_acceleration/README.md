@@ -101,3 +101,24 @@ Optolink main loop; the patch is inert by default and, even with the shadow
 flag, does not enable P300 maintenance. The original program, services,
 operational parameters and HA writers are not patched or redeployed.
 See `docs/handover-inprocess-dispatcher-integration-2026-10-09.md`.
+
+For a non-invasive comparison against the actually installed production
+sources, use `dispatcher_runtime_audit.py --root /opt/optolink`. It reads only
+three Python source files, never imports/runs them and never touches settings,
+services, MQTT or any serial device. It reports whether the strict shadow-copy
+patch source constraints match the deployed HA-patched main loop.
+
+## Supervised in-process, read-only acceptance release candidate
+
+`hybrid_acceptance.py` makes a versioned, copied build from the **actual
+installed** `/opt/optolink/optolinkvs2_switch.py`, with the operator-verified
+SHA256 pinned; it never edits the original code or starts a second serial
+process while the old owner is running. `hybrid_boot.py` executes exactly one
+fixed FC01 identity plus two FC03/32 reads after borrowing the same handle
+inside the copied original process, then restores and verifies real VS1/GFA
+before exiting. A separate systemd worker/recovery path restores original
+services and verifies their MQTT data afterwards. The feature is disabled by
+default and explicitly refuses unrelated code/transport profiles. It is
+**one-shot hardware acceptance**, not an installed recurring hybrid service.
+
+See `docs/handover-inprocess-oneshot-release-2026-10-09.md`.
