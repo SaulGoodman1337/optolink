@@ -1,0 +1,58 @@
+name: Validate WB2A Full RAM P06 Logger
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - 'tools/wb2a-p300-fullram-logger.py'
+      - 'tools/wb2a-p300-fullram-logger.sh'
+      - 'tests/test_p300_fullram_logger.py'
+      - 'docs/p300-fullram-runbook-2026-10-09.md'
+      - '.github/workflows/validate-p300-fullram-logger.yml'
+  pull_request:
+    paths:
+      - 'tools/wb2a-p300-fullram-logger.py'
+      - 'tools/wb2a-p300-fullram-logger.sh'
+      - 'tests/test_p300_fullram_logger.py'
+      - '.github/workflows/validate-p300-fullram-logger.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and shell syntax
+        run: |
+          python -m py_compile tools/wb2a-p300-fullram-logger.py tests/test_p300_fullram_logger.py
+          bash -n tools/wb2a-p300-fullram-logger.sh
+      - name: Full-RAM read-only tests
+        run: python -m unittest discover -s tests -p 'test_p300_fullram_logger.py' -v
+      - name: Existing deep logger regression
+        run: python -m unittest discover -s tests -p 'test_p300_deep_logger.py' -v
+      - name: Inert plan and exact geometry
+        run: |
+          python tools/wb2a-p300-fullram-logger.py | grep -F '640 x 32 B = 20480 B'
+          python - <<'PY'
+          import importlib.util
+          spec = importlib.util.spec_from_file_location("logger", "tools/wb2a-p300-fullram-logger.py")
+          m = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(m)
+          assert len(m.addresses()) == 640
+          assert m.addresses()[0] == 0x0400 and m.addresses()[-1] == 0x53e0
+          assert all(m.request_frame(3, addr, 32)[3] == 3 for addr in m.addresses())
+          for fc in (2, 4, 0xc9):
+              try:
+                  m.request_frame(fc, 0x4006, 1)
+              except ValueError:
+                  pass
+              else:
+                  raise AssertionError("forbidden device command")
+          print("FULLRAM_GEOMETRY_AND_NO_WRITE_PASS")
+          PY
