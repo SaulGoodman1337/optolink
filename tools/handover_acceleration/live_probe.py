@@ -127,7 +127,7 @@ def verify_session(session: Path):
     return state
 
 
-def snapshot(session: Path, values: dict, services: dict):
+def snapshot(session: Path, values: dict, services: dict, *, experiment: str = "standard"):
     session.mkdir(mode=0o700)
     here = Path(__file__).resolve().parent
     hashes = {}
@@ -145,7 +145,7 @@ def snapshot(session: Path, values: dict, services: dict):
         port=values['port_optolink'], source_sha256=hashes,
         start_utc=dt.datetime.now(dt.timezone.utc).isoformat(),
         expected_device='20c2', expected_software='0103', expected_p80='20',
-        accept_telemetry_pause=True,
+        accept_telemetry_pause=True, experiment=experiment,
     ))
 
 
@@ -173,6 +173,9 @@ def enq_trace(events: list[dict]) -> list[dict]:
 
 def worker(session: Path) -> int:
     state = verify_session(session)
+    experiment = state.get("experiment", "standard")
+    if experiment not in ("standard", "early_p300_start"):
+        refuse("unknown experiment variant in session before service stop")
     result = dict(version=VERSION, run='ONE_READ_ONLY_REAL_HANDOVER',
                   experiment_pass=False, vs1_link_restored=False,
                   phases_ms={}, gfa={}, errors=[], history=[], events=[], enq_trace=[],
@@ -217,7 +220,10 @@ def worker(session: Path) -> int:
                     refuse('cold VS1 not verified')
                 check_stop()
                 t0 = time.monotonic()
-                manager.to_p300()  # verifies P300 ID 20C2 and software 0103
+                if experiment == "early_p300_start":
+                    manager.to_p300_early_start_experiment()  # known START before ENQ
+                else:
+                    manager.to_p300()  # verified documented START after ENQ
                 t1 = time.monotonic()
                 check_stop()
                 # No duplicate P300 ID read: already checked inside to_p300().
@@ -333,13 +339,7 @@ def recover(session: Path) -> int:
 
 def parse_debug_health(stdout: str, command: str, expected_addr: int,
                        key: str) -> dict:
-    """Validate one actual optolink-debug MQTT reply, not its connection banner.
-
-    optolink-debug prints a broker banner and:
-        gfaread;... <- Vito/resp: 1;0x4050;20
-    Its process exit code can be zero even for '<- timeout'. Fail closed
-    on extra replies, wrong address/status, FF, or malformed output.
-    """
+    """Extract the actual GFA response after optolink-debug's MQTT banner."""
     lines = [line.strip() for line in stdout.splitlines() if ' <- ' in line]
     if len(lines) != 1:
         return {'valid': False, 'response': '', 'reason': 'MISSING_OR_MULTIPLE_REPLY_LINES'}
@@ -370,7 +370,7 @@ def parse_debug_health(stdout: str, command: str, expected_addr: int,
 
 
 def read_health() -> dict:
-    """MQTT-only existing-service read; never opens or controls serial ports."""
+    """MQTT via original splitter only; do not open a second serial handle."""
     results = {}
     for key, address in (('P80', 0x4050), ('P06', 0x4006)):
         command = f'gfaread;0x{address:04x};1;raw;False'
@@ -391,7 +391,7 @@ def read_health() -> dict:
 
 
 def health_only() -> int:
-    """Non-disruptive postcheck: existing MQTT owner only, no port or service stop."""
+    """No stop/start or serial access; the existing MQTT owner handles reads."""
     guard_other_research()
     main = base.unit_state(base.MAIN)
     if (main.get('ActiveState') != 'active' or
@@ -399,20 +399,22 @@ def health_only() -> int:
             main.get('WorkingDirectory') != '/opt/optolink'):
         refuse('production VS1 splitter not confirmed active; health-only refused')
     health = read_health()
-    passed = set(health) == {'P80', 'P06'} and all(v.get('valid') for v in health.values())
-    print('PRODUCTION_HEALTH=' + ('PASS' if passed else 'FAIL_NOT_VERIFIED'), flush=True)
-    print('PRODUCTION_HEALTH_JSON=' + json.dumps(health, sort_keys=True), flush=True)
+    passed = set(health) == {'P80','P06'} and all(v.get('valid') for v in health.values())
+    print('PRODUCTION_HEALTH=' + ('PASS' if passed else 'FAIL_NOT_VERIFIED'),flush=True)
+    print('PRODUCTION_HEALTH_JSON=' + json.dumps(health,sort_keys=True),flush=True)
     return 0 if passed else 1
 
 
-def execute() -> int:
+def execute(*, experiment: str = "standard") -> int:
+    if experiment not in ("standard", "early_p300_start"):
+        refuse("unknown experiment requested")
     values, services = preflight()
     with base.locks():
         base.ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(base.ROOT, 0o700)
         stamp = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
         session = base.ROOT / f'run-{stamp}-{os.getpid()}'
-        snapshot(session, values, services)
+        snapshot(session, values, services, experiment=experiment)
     prog = session / 'live_probe.py'
     argv = [
         'systemd-run', '--unit=' + UNIT, '--wait', '--collect',
@@ -438,7 +440,10 @@ def execute() -> int:
     ok = bool(service_rc == 0 and safe and measurement.get('experiment_pass') and
               measurement.get('vs1_link_restored'))
     ok = ok and set(health) == {'P80', 'P06'} and all(h.get('valid') for h in health.values())
-    report = {'result': 'PASS_VERIFIED_READ_ONLY_REAL_HANDOVER' if ok else 'FAIL_OR_NOT_VERIFIED',
+    label = ('PASS_VERIFIED_READ_ONLY_EARLY_START_EXPERIMENT'
+             if experiment == 'early_p300_start' else 'PASS_VERIFIED_READ_ONLY_REAL_HANDOVER')
+    report = {'result': label if ok else 'FAIL_OR_NOT_VERIFIED',
+              'experiment': experiment,
               'session': str(session), 'unit_rc': service_rc,
               'phase_ms': measurement.get('phases_ms'),
               'enq_trace': measurement.get('enq_trace'), 'gfa': measurement.get('gfa'),
@@ -457,11 +462,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument('--execute', action='store_true')
-    actions.add_argument('--health-only', action='store_true',
-                         help='only check original production VS1 GFA via MQTT; no switching')
+    actions.add_argument('--health-only', action='store_true')
     actions.add_argument('--worker', type=Path, help=argparse.SUPPRESS)
     actions.add_argument('--recover', type=Path, help=argparse.SUPPRESS)
     parser.add_argument('--accept-telemetry-pause', action='store_true')
+    parser.add_argument('--experiment-early-p300-start', action='store_true',
+                        help='experimental, known START immediately after EOT before ENQ')
     args = parser.parse_args()
     os.umask(0o077)
     if args.worker or args.recover:
@@ -469,13 +475,15 @@ def main() -> int:
             refuse('internal worker/recovery must be invoked by systemd only')
         return worker(args.worker) if args.worker else recover(args.recover)
     if args.health_only:
-        if args.accept_telemetry_pause:
-            refuse('health-only never accepts a telemetry pause')
+        if args.experiment_early_p300_start or args.accept_telemetry_pause:
+            refuse('health-only never accepts any experiment or telemetry pause')
         return health_only()
+    if args.experiment_early_p300_start and not args.execute:
+        refuse('early-start trial requires --execute and explicit telemetry pause')
     if args.execute:
         if not args.accept_telemetry_pause:
             refuse('must explicitly accept temporary telemetry/service pause')
-        return execute()
+        return execute(experiment='early_p300_start' if args.experiment_early_p300_start else 'standard')
     print('PLAN ONLY. One real read-only VS1->P300->VS1 cycle (new manager).')
     print('No serial or systemd activity without --execute --accept-telemetry-pause.')
     print('Temporary interruption of previously-active original services; selective restore.')

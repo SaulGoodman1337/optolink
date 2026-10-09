@@ -373,6 +373,42 @@ class HandoverCoordinator:
             self._recovery_attempted = False
             self.history.append(("p300", "verified"))
 
+    def to_p300_early_start_experiment(self):
+        """RESEARCH ONLY: test known START immediately after EOT, before ENQ.
+
+        Not the documented protocol: OpenV specifies ENQ before 16 00 00.
+        This one alternate *timing* uses known control/identity READ frames,
+        not an unknown operation/address. A fresh ACK AND valid identities
+        are mandatory. Failure is never silently retried as a success.
+        A separate two-ENQ VS1 restore is required after an unsuccessful run.
+        """
+        with self._lock:
+            if self.mode != Mode.VS1_VERIFIED or self.wire is None:
+                raise ProtocolError("early-start trial requires verified VS1")
+            self.mode = Mode.SWITCHING
+            w = self.wire
+            w._handshake_gfa.clear()
+            try:
+                w.phase = WirePhase.P300_SYNC
+                w.reset_before_eot()
+                w.tx(EOT)
+                # Line idle after known EOT: avoid contiguous bytes. We do
+                # NOT wait for ENQ. No GFA, RAM, RPC or parameter write.
+                w.sleep(.025)
+                w.phase = WirePhase.P300_HANDSHAKE
+                w.tx(b"\x16\x00\x00")
+                w.control(ACK, timeout=.35)
+                w.p300_read(P300_ID, DEVICE_ID)
+                w.p300_read(P300_SOFTWARE, SOFTWARE)
+            except BaseException:
+                self._fail_closed()
+                self.history.append(("p300_early_start", "failed"))
+                raise
+            w.phase = WirePhase.P300_VERIFIED
+            self.mode = Mode.P300_VERIFIED
+            self._recovery_attempted = False
+            self.history.append(("p300_early_start", "verified"))
+
     def to_vs1_fast(self):
         with self._lock:
             if self.mode != Mode.P300_VERIFIED:
