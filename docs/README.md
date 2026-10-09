@@ -2,9 +2,29 @@
 
 Dieser Ordner trennt produktive Betriebsdokumentation von der Forschung im Branch `optolink-p300-migration`.
 
-## P300: aktueller Stand vom 8. Oktober 2026
+## P300: aktueller Stand vom 9. Oktober 2026
 
-**NEUER NAECHSTER LIVE-SCHRITT – ein einziger Sammeltest:**
+**NEU - abgeschlossener UART1-P300-Nachtlauf mit KM-Bus-TX-Nachweis:**
+Der Betreiber hat die detached systemd-Aufnahme geordnet beendet;
+Original-VS1, P80 und P06 wurden erfolgreich zurueckgeprueft.
+Das private Archiv enthaelt 12.938 Runden mit **51.752/51.752**
+bytegenau validierten P300-Leseantworten und 155.294 TX/RX-Spureintraegen.
+Bei 0x161A liegen KM-Bus-formatierte UART1-TX-Frames mit
+**12.573/12.938 gueltigen CRC16/Kermit-Pufferansichten**;
+ein 22-Byte-Broadcast enthaelt per BCD kodiertes Datum/Uhrzeit
+(55 natuerliche Zeitupdates). Der Drehzahl-Istwert P06 und
+der UART1-RX-/GFA-Datenweg sind damit **nicht** nachgewiesen.
+Separat war das bekannte Verriegelungsbit rund 7 h 37 min gesetzt,
+bevor drei natuerliche Flammenbitfenster beobachtet wurden.
+Keine dokumentierte Stoerungsursache und keine Verbindung zum
+historisch bekannten Geblaeseanlaufproblem nachgewiesen.
+**Nicht den gleichen Nachtlauf wiederholen.**
+[Komplette technische Nachtauswertung](p300-uart1-overnight-result-2026-10-09.md),
+[reduzierte Evidenz](evidence/p300-uart1-overnight-result-2026-10-09.json),
+[rein lokaler Bundle-Auditor](../tools/audit-uart1-overnight-bundle.py)
+und neue Offline-CI. Keine HA-/RPM-Aliasfreigabe oder RAM-Writes.
+
+**Historisch: Vorbereitung des inzwischen abgeschlossenen DMA0-Sammeltests:**
 Der alte, bereits dokumentierte 154-Messpunkt-DMA0-Watch weist den
 UART1-TX-Quellzeiger **dynamisch** im Bereich `0x161B..0x1622` nach;
 die damalige SFR-Aufnahme enthaelt `U1C1=0x07`
@@ -81,7 +101,9 @@ und Offline-Testwerkzeug. Kein neuer Thermenzugriff, kein Aendern der Produktion
 
 | Dokument | Bedeutung |
 | --- | --- |
-| [UART1 DMA0/RAM/native Status: Natuerlicher Zyklus in einem Batch](p300-uart1-dma0-natural-cycle-2026-10-08.md) | **Naechster einmaliger read-only Messlauf:** dynamischer DMA0-TX-SAR0/TCR, 64 RAM-Bytes, natuerliche Flammenbit-Sequenz, VS1-Rueckkehr und ein Archiv |
+| [Abgeschlossener 9-h-P300-Nachtlauf: KM-Bus TX und GFA-Verriegelung](p300-uart1-overnight-result-2026-10-09.md) | **Aktueller Befund:** 12.938 Samples, 51.752 Rohantworten, CRC-KM-Bus und BCD-Zeit, 3 Flammenfenster nach Verriegelung |
+| [Abgeleitete Nachtlauf-Evidenz](evidence/p300-uart1-overnight-result-2026-10-09.json) | Archiv-SHA, TX/RX-Integritaet, Lockout-, UART1- und KM-Bus-Kennzahlen, **kein P06-Alias** |
+| [UART1 DMA0/RAM/native Status: Natuerlicher Zyklus in einem Batch](p300-uart1-dma0-natural-cycle-2026-10-08.md) | **Historischer, bereits abgeschlossener read-only-Lesetest:** dynamischer DMA0-TX-SAR0/TCR, 64 RAM-Bytes, natuerliche Flammenbit-Sequenz, VS1-Rueckkehr und ein Archiv |
 | [UART1: Hardwareergebnis und Ein-Befehl-Batch](p300-uart1-live-result-and-batch-2026-10-08.md) | **Aktuell:** 25 verifizierte Runden, 15 geaenderte RAM-Bytes, keine RPM-Freigabe, einheitlicher Datenexport |
 | [UART1: abgeleitete physische Lesemessung](evidence/p300-uart1-focus-result-2026-10-08.json) | Beobachtungsdauer, Trace-Allowlist, Werte-/Adressdelta und Restore-Befund; kein privater Volldump |
 | [Abgeschlossener UART1-P300-RAM-Fokus](p300-uart1-p300-focus-runbook.md) | Historischer einmaliger 60-s-Geraeteversuch vom 8. Oktober; nicht unveraendert wiederholen |
