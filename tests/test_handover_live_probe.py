@@ -243,9 +243,9 @@ class ProductionHealthParserTests(unittest.TestCase):
 
     @staticmethod
     def output(command, reply):
-        return ('Connecting as user mqtt to MQTT broker local-host:1883.\\n'
-                ' MQTT connected successfully.\\n' +
-                f'{command} <- Vito/resp: {reply}\\n')
+        return ('Connecting as user mqtt to MQTT broker local-host:1883.\n'
+                ' MQTT connected successfully.\n' +
+                f'{command} <- Vito/resp: {reply}\n')
 
     def test_real_debug_banner_and_gfa_p80_are_valid(self):
         actual = self.output(self.CMD80, '1;0x4050;20')
@@ -261,7 +261,7 @@ class ProductionHealthParserTests(unittest.TestCase):
         self.assertEqual(r['reason'], 'OK')
 
     def test_success_exit_with_timeout_output_is_not_success(self):
-        r = m.parse_debug_health(f'{self.CMD80} <- timeout\\n',
+        r = m.parse_debug_health(f'{self.CMD80} <- timeout\n',
                                   self.CMD80, 0x4050, 'P80')
         self.assertFalse(r['valid'])
         self.assertEqual(r['reason'], 'NO_MQTT_REPLY_OR_TIMEOUT')
