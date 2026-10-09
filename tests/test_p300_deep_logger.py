@@ -193,7 +193,7 @@ class DeepLoggerTests(unittest.TestCase):
             command=action,
             wait_main_ready=lambda:log.append(('ready',)),
             unit_state=state,
-            atomic_json=lambda path,data:log.append(('json',path.name,data['services_restored']))
+            atomic_json=lambda path,data:log.append(('json',path.name,data.get('services_restored')))
         )
         fakebase=SimpleNamespace(h=fakeh,locks=contextlib.nullcontext)
         state={'restore':['optolink-party-emulator.service','optolink-splitter.service']}
@@ -217,7 +217,7 @@ class DeepLoggerTests(unittest.TestCase):
             command=lambda args:log.append(tuple(args)),
             wait_main_ready=bad_ready,
             unit_state=lambda unit:{'ActiveState':'active'},
-            atomic_json=lambda path,data:log.append(('json',data['services_restored']))
+            atomic_json=lambda path,data:log.append(('json',data.get('services_restored')))
         )
         fakebase=SimpleNamespace(h=fakeh,locks=contextlib.nullcontext)
         state={'restore':['optolink-party-emulator.service','optolink-splitter.service']}
