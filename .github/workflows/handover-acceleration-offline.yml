@@ -1,0 +1,33 @@
+name: Handover acceleration (offline only)
+
+on:
+  push:
+    branches:
+      - optolink-handover-acceleration
+    paths:
+      - 'tools/handover_acceleration/**'
+      - 'tests/test_handover*.py'
+      - '.github/workflows/handover-acceleration-offline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-regression:
+    name: Offline regression (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile prototype
+        run: python -m compileall -q tools/handover_acceleration
+      - name: Test fake-peer, port-lease, PTY and timing arithmetic (no hardware)
+        run: python -m unittest discover -s tests -p 'test_handover*.py' -v

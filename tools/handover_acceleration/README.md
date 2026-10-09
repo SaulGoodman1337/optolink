@@ -1,0 +1,28 @@
+# Experimental handover coordinator - offline only
+
+This package is a **protocol-state model**, not a configured Optolink service.
+
+- No production import path, pySerial constructor, device discovery, systemd command,
+  GFA write, RAM write, or operator-facing hardware command is provided.
+- `HandoverCoordinator` accepts an injected serial-like object and a **cooperative**
+  `PortLease`. The caller must not pass a real port while another owner exists.
+- `ReadOnlyWire` permits only fixed read-only identity/GFA telegrams and
+  protocol-control frames. Its low-level allowlist is phase-specific.
+- The `2 ENQ` initial/rescue path and the `1 ENQ` verified P300-to-VS1 return
+  come from **distinct** previously measured test conditions; the fake peer
+  does **not** establish any new controller behavior.
+- The model does not support the complete production polling / writeback API,
+  nor FC03 diagnostics; no production deployment is authorized.
+- `fcntl.flock` only cooperates with other processes taking the same lock.
+  Before any future actual port integration an independent supervisor, kernel
+  `TIOCEXCL` / pySerial `exclusive=True`, real owner detection, selective
+  restoration of previously active services and fail-safe restart must exist.
+
+Run locally on Linux with Python 3.11+ (only standard library and fake ports):
+
+```sh
+python -m unittest discover -s tests -p 'test_handover*.py' -v
+```
+
+The PTY test uses `pty.openpty()` (a virtual pair in the test process), **not**
+`/dev/ttyUSB*` or a Viessmann interface.
