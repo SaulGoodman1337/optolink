@@ -1,5 +1,7 @@
 # Dokumentationsindex
 
+- [P06 vs. P300, RAM-Muster und HALL/KM-Bus-Hypothesen (9.10.2026)](p300-p06-hall-kmbus-hypothesen-2026-10-09.md) – echte GFA-P06-Quelle, redundante Statusspeicher, separater HALL/PWM-Geblaesepfad und spaetere KM-Bus-RX-Denkoption (keine Produktionsfreigabe).
+
 ### Naechste Stufe vorbereitet: kurzer P06-Fokuslogger (noch KEIN Live-Test)
 
 Nach dem [validierten Voll-RAM-Ergebnis](p300-fullram-result-2026-10-09.md) wurde im Forschungsbranch der [gezielte P06-Fokuslogger](../tools/wb2a-p300-p06-focus.py) mit [separatem deutschen Runbook](p300-p06-focus-runbook-2026-10-09.md) implementiert. Er erfasst nur sechs historisch erfolgreiche FC03/32-Bloecke um **0x0F20 und 0x1C76** samt Status-Negativkontrolle 0x0F29/55D3-Byte7. Jede Aufnahme hat echte VS1-P06/P09/P80/P87-Referenzen vor und nach einem kurzen P300-Fenster, zwei Roh-RAM-Runden und gepinnten Read-only-Systemd-Lifecycle mit Original-VS1-Restore. Ein fehlgeschlagener Return-Handshake wie bei Snapshot 80 erzeugt **PARTIAL**, nie einen fingierten RPM-Wert.
