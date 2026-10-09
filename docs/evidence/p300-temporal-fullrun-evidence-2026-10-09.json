@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "verified_by": "offline independent archive auditor",
+  "run_id": "run-20261009T131357Z-220351",
+  "bundle_sha256": "f174ee298d60aa2a4a1c31dfc8784a5c0f278475870e823db27bb03d5f06cbda",
+  "bundle_bytes": 2288000,
+  "source_commit": "eb7a9549b812caa95f934950d32ce01b613e7d28",
+  "validated": {
+    "manifest_sha256_ok": 23,
+    "manifest_sha256_failed": 0,
+    "pinned_source_hashes_ok": 6,
+    "fc01_fc03_framing_checksum_errors": 0,
+    "known_read_only_p300_packets": 23028,
+    "p300_identity_reads": 2,
+    "unexpected_or_write_transmissions": 0,
+    "cycles": 5224,
+    "contexts": 533,
+    "core_bytes": 334336,
+    "context_bytes": 68224,
+    "core_context_bin_mismatches": 0,
+    "trace_entries": 69306
+  },
+  "finish": {
+    "data_quality": "COMPLETE",
+    "errors": [],
+    "vs1_restored": true,
+    "services_restored": 6,
+    "systemd_result": "success",
+    "gfa_p80": "20",
+    "gfa_p06": "00",
+    "gfa_p06_ff_invalid": false,
+    "ha_entity_freshness_verified": false,
+    "p300_actual_p06_rpm_verified": false
+  },
+  "phenomena": {
+    "flame_rises": 5,
+    "flame_falls": 5,
+    "lockout_edges": 0,
+    "byte7_frame_edges": 36,
+    "byte7_events_counter": 15,
+    "byte0_frame_edges": 274,
+    "byte9_frame_edges": 267,
+    "coherent_status_pairs": 5200,
+    "noncoherent_status_pairs": 24,
+    "mirror_three_pair_mismatch_cycles": 21,
+    "mirror_0f20_1c76_mismatch_cycles": 15,
+    "core_read_separation_median_seconds": 0.1632,
+    "start_candidate_before_flame_seconds": {
+      "min": 10.704,
+      "median": 11.528,
+      "max": 12.129
+    },
+    "zero_candidate_before_flame_off_seconds": {
+      "min": 2.137,
+      "median": 2.593,
+      "max": 3.134
+    },
+    "candidate_0f20": {
+      "distinct_values": 29,
+      "distinct_max": 172,
+      "zeros": 3474,
+      "byte84": 1683,
+      "other_values_cycles": 67,
+      "other_values_first_utc": "2026-10-09T13:59:23.198441+00:00",
+      "other_values_last_utc": "2026-10-09T14:00:54.059554+00:00",
+      "transitions": 60
+    },
+    "candidate_1c76": {
+      "distinct_values": 27,
+      "transitions": 59
+    },
+    "native_status_mirror": {
+      "ram_0f21_09": 5223,
+      "ram_0f21_other": 1,
+      "ram_0f22_to_0f2a_matches_fc01_first9_endpoint": 5222,
+      "ram_1c77_to_1c7f_matches_fc01_first9_endpoint": 5224,
+      "ram_two_ninebyte_windows_equal": 5108,
+      "n_cycles": 5224
+    },
+    "hypothetical_raw_if_p06_plus1": {
+      "ram_hex": "ac",
+      "raw_hex": "ab",
+      "rpm_not_actual": 5130
+    },
+    "dynamic_ram0f20_fc01_byte0_pearson_descriptive": 0.7505
+  },
+  "cross_check_prior_focus": {
+    "read_only_focus_capture_ids": [
+      4,
+      7
+    ],
+    "pre_real_p06_rpm": 4410,
+    "post_real_p06_rpm_ranges": [
+      [
+        3870,
+        4050
+      ],
+      [
+        4050,
+        4230
+      ]
+    ],
+    "p300_ram_0f20_hex": "54",
+    "p300_ram_1c76_hex": "54",
+    "classification": "TRANSITION_OR_UNKNOWN",
+    "conclusion": "counterevidence to immediate P06+1 mirror, NOT simultaneous P06 measurement"
+  },
+  "decision": {
+    "true_p300_p06_sensor_verified": false,
+    "next": "single safe P300-first trigger then VS1 P06 and P300 recheck only in natural high candidate states; if no stable proof, single-owner P300/VS1-GFA hybrid",
+    "production_merge_allowed": false,
+    "task2_or3_allowed": false
+  },
+  "citations": [
+    "docs/p300-temporal-fullrun-analysis-2026-10-09.md",
+    "docs/p300-rpm-next-experiment-and-architecture-2026-10-09.md"
+  ]
+}
