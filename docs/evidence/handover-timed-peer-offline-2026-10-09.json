@@ -1,0 +1,57 @@
+{
+  "controller": "synthetic TimedPeer; monotonic virtual time and fixed responses",
+  "note": "Absolute synthetic durations include more VS1 verification than original probe. Only paired delta isolates the extra ENQ wait. No performance guarantee.",
+  "production_modified": false,
+  "python_version": "3.13.5",
+  "records": [
+    {
+      "historic_profile_index": 1,
+      "sim_max_host_sleep_ms": 25.0,
+      "sim_one_enq_p300_ms": 2140.0,
+      "sim_one_enq_return_and_gfa_ms": 2543.0,
+      "sim_one_enq_total_ms": 4683.0,
+      "sim_only_readonly_steps": true,
+      "sim_saving_ms": 2238.0,
+      "sim_two_enq_total_ms": 6921.0,
+      "source_p300_first_enq_ms": 1996.9262860249728,
+      "source_vs1_additional_enq_ms": 2237.470232998021,
+      "source_vs1_first_enq_ms": 1997.6557079935446
+    },
+    {
+      "historic_profile_index": 2,
+      "sim_max_host_sleep_ms": 25.0,
+      "sim_one_enq_p300_ms": 2142.0,
+      "sim_one_enq_return_and_gfa_ms": 2544.0,
+      "sim_one_enq_total_ms": 4686.0,
+      "sim_only_readonly_steps": true,
+      "sim_saving_ms": 2237.0,
+      "sim_two_enq_total_ms": 6923.0,
+      "source_p300_first_enq_ms": 1998.9537069341168,
+      "source_vs1_additional_enq_ms": 2237.6668649958447,
+      "source_vs1_first_enq_ms": 1998.1562299653888
+    },
+    {
+      "historic_profile_index": 3,
+      "sim_max_host_sleep_ms": 25.0,
+      "sim_one_enq_p300_ms": 2140.0,
+      "sim_one_enq_return_and_gfa_ms": 2543.0,
+      "sim_one_enq_total_ms": 4683.0,
+      "sim_only_readonly_steps": true,
+      "sim_saving_ms": 2238.0,
+      "sim_two_enq_total_ms": 6921.0,
+      "source_p300_first_enq_ms": 1996.82713591028,
+      "source_vs1_additional_enq_ms": 2237.8985040122643,
+      "source_vs1_first_enq_ms": 1997.8605279466137
+    }
+  ],
+  "run_date_utc": "2026-10-09T18:40:14.750941+00:00",
+  "source": "Archived Oct 8 2026 WB2A baseline/single-ENQ ENQ phase durations, 3 samples.",
+  "summary": {
+    "profile_count": 3,
+    "sim_one_enq_mean_ms": 4684.0,
+    "sim_saving_mean_ms": 2237.667,
+    "sim_two_enq_mean_ms": 6921.667,
+    "source_extra_enq_mean_ms": 2237.679
+  },
+  "title": "Offline timed-peer comparison, not a hardware measurement"
+}
