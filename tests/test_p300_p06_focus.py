@@ -178,6 +178,38 @@ class Tests(unittest.TestCase):
         self.assertFalse(r["info"]["p06_alias_verified"])
         self.assertEqual(len(r["ram"]),1)
 
+    def test_failed_packet_emits_verifiable_raw_error(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            (root/"captures").mkdir()
+            streams={k:(root/(k+".jsonl")).open("w+")
+                     for k in ("vs1","ram","status","switch","trace")}
+            wire=FakeWire()
+            def fail_packet(spec):
+                raise m.F.PacketError("receive deadline exceeded",
+                    received=bytes.fromhex("064125"),
+                    tx_utc="2026-10-09T12:00:00+00:00",tx_monotonic=10.0)
+            wire.packet=fail_packet
+            base=SimpleNamespace(h=SimpleNamespace(
+                atomic_json=lambda path,data:path.write_text(json.dumps(data))))
+            try:
+                with patch.object(m.F,"switch",side_effect=lambda *args: None), \
+                     patch.object(m.F,"read_status",return_value=status()), \
+                     patch.object(m.F.DEEP,"load_local_base",return_value=base):
+                    with self.assertRaisesRegex(m.F.PacketError,"receive deadline exceeded"):
+                        m.capture(root,wire,streams,1,ref("60"),Stop())
+            finally:
+                for stream in streams.values():stream.close()
+            entry=json.loads((root/"ram.jsonl").read_text().splitlines()[0])
+            self.assertEqual(entry["result"],"ERROR")
+            self.assertEqual(entry["rx_observed_hex"],"064125")
+            self.assertEqual(entry["address"],"0x0f00")
+            self.assertEqual(entry["retry_count"],0)
+            cap=json.loads((root/"captures/c00001.json").read_text())
+            self.assertEqual(cap["marker"],"PARTIAL")
+            self.assertEqual(cap["packets_ok"],0)
+
     def test_small_resource_limits_and_plan(self):
         self.assertEqual(m.DEFAULT_HOURS,1)
         self.assertEqual(m.MAX_HOURS,3)
