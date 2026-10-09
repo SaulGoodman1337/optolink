@@ -82,6 +82,19 @@ def iso_utc():
     return dt.datetime.now(dt.timezone.utc).isoformat()
 
 
+class DeferredStop:
+    """Systemd stop only requests exit; never interrupt a half-read GFA or P300 frame."""
+    def __init__(self):
+        self.signum = None
+
+    def on_signal(self, signum, frame):
+        self.signum = signum
+
+    def check(self):
+        if self.signum is not None:
+            raise RuntimeError('OPERATOR_STOP_SIGNAL_' + str(self.signum))
+
+
 def load_local_base(directory: Path):
     global BASE
     if BASE is not None:
@@ -356,10 +369,9 @@ def run_worker(session):
     flame_confirmed=False
     on_streak=0
     off_streak=0
-    def stop_handler(signum,frame):
-        raise RuntimeError('OPERATOR_STOP_SIGNAL_'+str(signum))
+    stop_latch=DeferredStop()
     for sig in (signal.SIGTERM,signal.SIGINT,signal.SIGHUP):
-        signal.signal(sig,stop_handler)
+        signal.signal(sig,stop_latch.on_signal)
     def progress(phase,last=None):
         base.h.atomic_json(session/'progress.json',{
             'phase':phase,'last_sample_utc':iso_utc(),'elapsed_s':round(time.monotonic()-start,2),
@@ -398,6 +410,7 @@ def run_worker(session):
         rise_since=None
         last_zero=None
         while time.monotonic()-phase_start<VS1_WINDOW_S and time.monotonic()<deadline:
+            stop_latch.check()  # only at a safe boundary between complete GFA reads
             now=time.monotonic()
             n=counter['vs1']+1
             reads=[wire.vs1_read('P06'),wire.vs1_read('P09'),
@@ -439,6 +452,7 @@ def run_worker(session):
         phase_start=time.monotonic()
         edge_time=None
         while time.monotonic()-phase_start<P300_WINDOW_S and time.monotonic()<deadline:
+            stop_latch.check()  # never abort an in-flight P300 request or response
             t=time.monotonic()
             round_idx=counter['p300']+1
             results={}
@@ -527,6 +541,7 @@ def run_worker(session):
         print('DEEP_LOGGER_STARTED=VS1_REFERENCE_ALTERNATING_P300',flush=True)
         progress('VS1')
         while time.monotonic()<deadline:
+            stop_latch.check()
             safety()
             reason=vs1_window()
             if time.monotonic()>=deadline:break
@@ -546,8 +561,13 @@ def run_worker(session):
             signal.signal(sig,signal.SIG_IGN)
         if wire:
             try:
+                # An already verified VS1 session should not be reset needlessly.
+                # The old SIGTERM handler cut a P10 receive short then sent EOT,
+                # misinterpreting the still-pending P10 reply 00 as an ENQ.
+                phase_before_recovery=wire.phase
                 wire.set_phase('recovery')
-                wire.identify_vs1()
+                if phase_before_recovery!='vs1':
+                    wire.identify_vs1()
                 final=[wire.vs1_read(k) for k in ('P80','P06','P09','P87')]
                 if final[0]['hex']!='20':
                     raise base.Error('FINAL_GFA_P80_NOT_20')
