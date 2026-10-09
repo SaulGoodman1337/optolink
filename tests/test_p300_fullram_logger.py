@@ -168,6 +168,23 @@ class FullRam(unittest.TestCase):
                     self.assertEqual(hashlib.sha256(payload).hexdigest(), row["sha256"])
                 self.assertFalse(manifest["rpm_alias_verified"])
 
+    def test_progress_counts_logged_switches_not_unrelated_frames(self):
+        from collections import Counter
+        from types import SimpleNamespace
+        import time
+        with tempfile.TemporaryDirectory() as td:
+            session = Path(td)
+            switches = session / "switch.jsonl"
+            switches.write_text(''.join(json.dumps({"result": state}) + "\\n"
+                                        for state in ("OK", "OK", "ERROR")))
+            captured = []
+            base = SimpleNamespace(h=SimpleNamespace(atomic_json=lambda path, data: captured.append(data)))
+            counts = Counter()
+            with patch.object(m.DEEP, "load_local_base", return_value=base):
+                m.progress(session, "P300_SCAN", counts, time.monotonic(), 4)
+            self.assertEqual(counts["SWITCHES"], 3)
+            self.assertEqual(captured[0]["switch_count"], 3)
+
     def test_stop_guard_and_recovery_dependencies(self):
         self.assertEqual(m.UNIT, "optolink-p300-fullram-logger.service")
         self.assertEqual(m.DEFAULT_HOURS, 4)
