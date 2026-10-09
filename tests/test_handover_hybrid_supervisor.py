@@ -118,6 +118,7 @@ class SupervisionTests(unittest.TestCase):
             (session/'recovery.json').write_text(json.dumps({
                 'services_restored':True,'overall_verified':True,
                 'independent_link_restore':{'verified':True}}))
+            (session/'hybrid-result.json').write_text(json.dumps(HybridAcceptanceTests.good_boot()))
             return types.SimpleNamespace(returncode=0)
         with patch.object(h,'_live',return_value=self.live),\
              patch.object(h,'_verify_original',return_value={'shadow_source_copy_supported':True}),\
@@ -134,6 +135,25 @@ class SupervisionTests(unittest.TestCase):
         self.assertNotIn('/dev/ttyUSB',argv)
         self.assertFalse(any(x[0]=='paused' for x in self.events))
 
+    def test_supervisor_success_cannot_mask_missing_actual_boot_record(self):
+        def fake_systemd_run(*args,**kwargs):
+            session=next(self.session.glob('inprocess-*'))
+            (session/'measurement.json').write_text(json.dumps({
+                'experiment_pass':True,'verified_boot_result':True}))
+            (session/'recovery.json').write_text(json.dumps({
+                'services_restored':True,'overall_verified':True}))
+            return types.SimpleNamespace(returncode=0)
+        with patch.object(h,'_live',return_value=self.live),\
+             patch.object(h,'_verify_original',return_value={}),\
+             patch.object(h,'stage',return_value={}),\
+             patch.object(h.subprocess,'run',side_effect=fake_systemd_run),\
+             patch.object(h,'BASE',self.session),\
+             patch.object(h.os,'geteuid',return_value=0):
+            self.assertEqual(h.execute(),1)
+        summary=json.loads(next(self.session.glob('inprocess-*/hybrid-summary.json')).read_text())
+        self.assertFalse(summary['boot_record_verified'])
+        self.assertEqual(summary['phase_ms'],{})
+
     def test_post_restore_gfa_health_failure_rejects_success(self):
         def fake_systemd_run(*args,**kwargs):
             session=next(self.session.glob('inprocess-*'))
@@ -141,6 +161,7 @@ class SupervisionTests(unittest.TestCase):
                 'experiment_pass':True,'verified_boot_result':True}))
             (session/'recovery.json').write_text(json.dumps({
                 'services_restored':True,'overall_verified':True}))
+            (session/'hybrid-result.json').write_text(json.dumps(HybridAcceptanceTests.good_boot()))
             return types.SimpleNamespace(returncode=0)
         self.live.read_health=lambda:{'P80':{'valid':True},'P06':{'valid':False}}
         with patch.object(h,'_live',return_value=self.live),\

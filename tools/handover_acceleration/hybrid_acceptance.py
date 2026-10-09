@@ -257,15 +257,26 @@ def execute() -> int:
         recovery = json.loads((session / 'recovery.json').read_text())
     except (OSError, ValueError):
         recovery = {}
+    try:
+        boot_path = session / 'hybrid-result.json'
+        boot = (json.loads(boot_path.read_text())
+                if boot_path.is_file() and not boot_path.is_symlink() else {})
+    except (OSError, ValueError):
+        boot = {}
+    boot_verified = _verified_boot_record(boot)
     restored = bool(recovery.get('services_restored') and recovery.get('overall_verified'))
     # Independent, *later* MQTT GFA check after the old service is back.
     health = live.read_health() if restored else {}
     healthy = set(health) == {'P80','P06'} and all(v.get('valid') for v in health.values())
     passed = bool(unit_rc == 0 and restored and healthy and outcome.get('experiment_pass')
-                  and outcome.get('verified_boot_result'))
+                  and outcome.get('verified_boot_result') and boot_verified)
     label = 'PASS_VERIFIED_INPROCESS_FIXED_FC03' if passed else 'FAIL_OR_NOT_VERIFIED'
     report = {'result': label, 'unit_rc': unit_rc, 'session': str(session),
               'worker_verified': bool(outcome.get('verified_boot_result')),
+              'boot_record_verified': boot_verified,
+              'phase_ms': boot.get('time_ms', {}) if boot_verified else {},
+              'gfa': ({'P80': boot['gfa_p80_hex'], 'P06': boot['gfa_p06_hex']}
+                      if boot_verified else {}),
               'services_restored': restored, 'production_health': health,
               'worker_errors': outcome.get('errors',[]),
               'independent_recovery': recovery.get('independent_link_restore',{}),

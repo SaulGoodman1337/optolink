@@ -66,7 +66,12 @@ exit status 1. Success requires:
 - Results live in
   `/root/p300-trial-work/handover-acceleration-live-results/inprocess-.../`:
   `hybrid-result.json`, `measurement.json`, `recovery.json`,
-  `hybrid-summary.json`, the manifest and staged source copies.
+  `hybrid-summary.json`, the manifest and staged source copies. The
+  `HYBRID_SUMMARY` console line includes separately attributed, measured
+  `phase_ms.attach`, `phase_ms.p300_and_vs1`, `phase_ms.total`,
+  original post-return GFA values and independent recovery status. A PASS
+  requires a second verification of the actual on-disk boot evidence, not
+  only a worker-generated success flag.
 
 The unit has separate execution/stop time limits and a distinct root-owned
 recovery process. This substantially reduces risk but **does not guarantee**
