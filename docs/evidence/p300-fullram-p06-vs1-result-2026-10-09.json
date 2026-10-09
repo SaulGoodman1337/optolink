@@ -1,0 +1,238 @@
+{
+  "schema_version": 1,
+  "run_id": "run-20261009T083607Z-144293",
+  "archive": "p300-fullram-run-20261009T083607Z-144293-bundle.tar.gz",
+  "archive_sha256": "94d5842b6dc5759ecb446a4c617b60b72873b639885d116032f783abdef8431c",
+  "source_commit": "6ae32a9fd458767e753d99f02dfec933af36db0f",
+  "identity": {
+    "device": "20c2",
+    "software": "0103",
+    "p80": "20"
+  },
+  "run_start_utc": "2026-10-09T08:36:08.028930+00:00",
+  "run_end_utc": "2026-10-09T11:26:09.777490+00:00",
+  "counts": {
+    "archive_members": 177,
+    "manifest_verified_files": 176,
+    "manifest_hash_errors": 0,
+    "ram_bytes_per_scan": 20480,
+    "block_length": 32,
+    "distinct_block_addresses": 640,
+    "valid_fc03_block_reads": 51200,
+    "valid_fc01_55d3_status": 1600,
+    "rawtrace_events": 175101,
+    "unrecognized_or_write_tx": 0,
+    "complete_snapshots": 79,
+    "partial_snapshots": 1,
+    "all_640_block_scans": 80,
+    "stable_off": 48,
+    "stable_running": 11,
+    "complete_transition_or_unknown": 20,
+    "vs1_p06_total": 3532,
+    "vs1_p06_valid": 3527,
+    "vs1_p06_zero": 2488,
+    "vs1_p06_positive": 1039,
+    "vs1_p06_ff_invalid": 5,
+    "vs1_positive_rpm_levels": 35,
+    "vs1_peak_positive_rpm": 4440,
+    "native_flame_true_statuses": 464,
+    "native_flame_on_edges": 6,
+    "native_flame_off_edges": 5,
+    "native_lockout_true_statuses": 0,
+    "switch_total": 160,
+    "switch_success": 159,
+    "switch_error": 1,
+    "invalid_protocol_frames": 0,
+    "invalid_reconstructed_ram_files": 0
+  },
+  "ram_scan_seconds": {
+    "min": 107.218,
+    "median": 107.679,
+    "max": 109.595
+  },
+  "switch_mean_seconds": {
+    "vs1_to_p300": 2.165,
+    "p300_to_vs1_successful": 4.327
+  },
+  "stable_positive_p06_rpm_levels": [
+    2490
+  ],
+  "stable_positive_ids": [
+    7,
+    21,
+    22,
+    35,
+    36,
+    49,
+    50,
+    51,
+    64,
+    65,
+    78
+  ],
+  "scan80": {
+    "marker": "PARTIAL",
+    "blocks_ok": 640,
+    "status_ok": 20,
+    "ram_bytes": 20480,
+    "scan_direction": "descending",
+    "raw_file": "snapshots/s00080.partial.bin",
+    "post_p06_reference": null,
+    "reason": "vs1_identity_timeout_after_complete_ram_scan"
+  },
+  "direct_p06_raw_byte_matches": 0,
+  "direct_integer_16_32_rpm_matches": 0,
+  "binary_state_screen": {
+    "off_zero_on_constant_nonzero_count": 30,
+    "exact_constant_different_between_groups_count": 34,
+    "addresses_zero_to_constant_nonzero": [
+      [
+        "0x0f20",
+        "54"
+      ],
+      [
+        "0x0f22",
+        "26"
+      ],
+      [
+        "0x0f28",
+        "0b"
+      ],
+      [
+        "0x0f29",
+        "62"
+      ],
+      [
+        "0x1060",
+        "22"
+      ],
+      [
+        "0x1061",
+        "01"
+      ],
+      [
+        "0x1071",
+        "01"
+      ],
+      [
+        "0x1076",
+        "22"
+      ],
+      [
+        "0x1077",
+        "01"
+      ],
+      [
+        "0x10a4",
+        "02"
+      ],
+      [
+        "0x1885",
+        "04"
+      ],
+      [
+        "0x18a3",
+        "04"
+      ],
+      [
+        "0x18b1",
+        "04"
+      ],
+      [
+        "0x1b67",
+        "42"
+      ],
+      [
+        "0x1b68",
+        "01"
+      ],
+      [
+        "0x1b7a",
+        "42"
+      ],
+      [
+        "0x1b7b",
+        "01"
+      ],
+      [
+        "0x1b8d",
+        "42"
+      ],
+      [
+        "0x1b8e",
+        "01"
+      ],
+      [
+        "0x1ba0",
+        "42"
+      ],
+      [
+        "0x1ba1",
+        "01"
+      ],
+      [
+        "0x1bb8",
+        "42"
+      ],
+      [
+        "0x1bb9",
+        "01"
+      ],
+      [
+        "0x1c08",
+        "3f"
+      ],
+      [
+        "0x1c09",
+        "01"
+      ],
+      [
+        "0x1c76",
+        "54"
+      ],
+      [
+        "0x1c7d",
+        "0b"
+      ],
+      [
+        "0x1c7e",
+        "62"
+      ],
+      [
+        "0x1cbf",
+        "01"
+      ],
+      [
+        "0x1cc0",
+        "01"
+      ]
+    ],
+    "priority_unverified_candidates": [
+      "0x0f20",
+      "0x1c76"
+    ],
+    "direct_native_status_b7_mirror": "0x0f29",
+    "interpretation": "State correlation only, no actual P06 sensor proof"
+  },
+  "error": {
+    "code": "receive deadline exceeded",
+    "phase": "p300_to_vs1",
+    "snapshot_id": 80,
+    "requested_vs1_id_hex": "01f700f802",
+    "identity_responded": false,
+    "failed_switch_seconds": 6.237,
+    "independent_vs1_reconnect_succeeded": true
+  },
+  "restore": {
+    "services_restored": 6,
+    "errors": 0,
+    "production_main_verified": true,
+    "mqtt_gfa_p80_hex": "20",
+    "mqtt_gfa_p06_hex": "53",
+    "mqtt_gfa_p06_rpm": 2490,
+    "ha_entity_freshness_verified": false
+  },
+  "production_approved": false,
+  "fan_rpm_alias_verified": false,
+  "next_step": "brief P06-bracketed read-only FC03 0f20/1c76 plus FC01 during actual high-rpm windows; otherwise single-owner P300 with deliberate VS1-GFA phases"
+}
