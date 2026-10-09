@@ -46,6 +46,7 @@ PINNED_INSTALLED_SHA256 = 'e4be265db857d32486fd50aa7eee359e9a054b951e478d5847f17
 COMPONENTS = (
     '__init__.py', 'coordinator.py', 'scheduler.py', 'phase_planner.py',
     'phase_executor.py', 'dispatcher_bridge.py', 'hybrid_boot.py',
+    'dispatcher_patch.py', 'dispatcher_runtime_audit.py',
 )
 STAGE_FILES = tuple('handover_acceleration/' + p for p in COMPONENTS) + (
     'optolinkvs2_switch.py', 'hybrid_acceptance.py',

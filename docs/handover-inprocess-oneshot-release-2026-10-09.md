@@ -109,7 +109,9 @@ Python 3.11 and 3.12 and compiles a patched copy of the SHA-pinned upstream
 `optolinkvs2_switch.py` (Git blob
 `1fae36baae1c2ef264906c8eca76ef15c5152974`). New tests execute the
 patch-generated main function under injected MQTT/TCP/serial dependencies,
-verify no legacy request is processed in the one-shot mode, and exercise
+verify no legacy request is processed in the one-shot mode, validate
+that the copied worker imports its full module graph without access to
+the original research checkout, and exercise
 CRC failure, wrong ID, P80/P06 invalidity, symlink/stage tampering, unit
 failure, service-state mismatch, watchdog timeout and post-restore health
 failure. **These are software regression results, not another physical test.**

@@ -1,6 +1,7 @@
 """Versioned staged runtime acceptance: command-free, hash-verified, fail-closed."""
 import contextlib
 import hashlib
+import subprocess
 import json
 import os
 import sys
@@ -41,6 +42,19 @@ class HybridAcceptanceTests(unittest.TestCase):
         self.assertIn('handover_legacy_or_shim',text)
         self.assertEqual((self.source/'optolinkvs2_switch.py').read_bytes(),source_before)
         self.assertEqual((self.session/'hybrid_acceptance.py').stat().st_mode&0o077,0)
+
+    def test_staged_worker_import_graph_runs_without_repository_checkout(self):
+        with patch.object(h,'_verify_original',return_value=self.source_stub):
+            h.stage(self.session,self.source)
+        env=dict(os.environ,PYTHONPATH=str(self.session))
+        env.pop('INVOCATION_ID',None)
+        cmd=[sys.executable,str(self.session/'hybrid_acceptance.py'),
+             '--worker',str(self.session)]
+        completed=subprocess.run(cmd,cwd=str(self.session),env=env,
+                                 capture_output=True,text=True,timeout=10)
+        self.assertEqual(completed.returncode,1)
+        self.assertIn('supervised systemd unit',completed.stderr)
+        self.assertNotIn('ImportError',completed.stderr)
 
     def test_staged_tamper_is_rejected(self):
         with patch.object(h,'_verify_original',return_value=self.source_stub):
