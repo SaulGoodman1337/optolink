@@ -20,3 +20,18 @@ Der ursprüngliche serielle Hardwaretest (4,610 s Ein-ENQ-Mittel) bleibt ein una
 Alle Tests per `python -m unittest discover -s tests -p 'test_handover*.py' -q`. FC03-Golden-Wire-Nachweise umfassen die exakten Ausgangstelegramme und gültige bzw. ungültige Antworten; bei CRC/Funktions-/Adressfehlern folgt ein konservativer VS1-Restore, falsche Parameter werden vor TX abgewiesen. Batch-/Bridge-Nachweise umfassen dieselbe Portidentität, Mainthread-Besitz, Write-/Readback-Barrieren, Erhaltung sämtlicher Altantworten, abschließende VS1-Frische sowie Verbote für unbekannte Datenpfade. Für die neue Direktintegration wird in CI außerdem der originale, gegengepinnte Hauptloop **als Kopie** gepatcht und kompiliert.
 
 **Nächste konkrete Entscheidung:** Das Shadow-Seam-Layout mit der produktiv angepassten `/opt/optolink/optolinkvs2_switch.py` vergleichen und sämtliche externen Write-/Readback-Transaktionen katalogisieren; erst anschließend echten P300-Wartungsdispatch freischalten. Der nächste LXC-Test für diesen Schritt darf ausschließlich `dispatcher_patch.py --source /opt/optolink/optolinkvs2_switch.py` im Prüfmodus aufrufen: keine Systemd-Änderungen, keine Ports, keine MQTT-Transaktionen.
+
+## Live-Checkout-Kompatibilität ohne Hardware- oder Dienstzugriff
+
+Die zusätzliche `dispatcher_runtime_audit.py` prüft ausschließlich die drei
+Python-Quellen `optolinkvs2_switch.py`, `requests_util.py` und `vs12_adapter.py`
+aus dem bestehenden `/opt/optolink`-Verzeichnis. Der Test importiert sie **nicht**
+und liest **keine** `settings.*`, Anmeldedaten, Systemd- oder serielle Geräte.
+Er gibt nur einen Quellhash, Call-Site-Zähler, GFA-/Write-Fähigkeitsflags und
+`shadow_source_copy_supported` als JSON aus. Bei abweichendem Hauptloop ist
+das ein dokumentierter Grund, die Patch-Generierung nicht blind auszuführen;
+die strukturelle Abweichung wird diagnostiziert, nicht überschrieben.
+
+Read-only Testkommando (nach gepinntem Git-Checkout):
+
+`python tools/handover_acceleration/dispatcher_runtime_audit.py --root /opt/optolink`
