@@ -532,8 +532,8 @@ def recover(session):
         old=json.loads((session/"progress.json").read_text()) if (
             session/"progress.json").is_file() else {}
         old.update(state="RESTORED" if healthy and not errors else "RESTORE_NOT_VERIFIED",
-                   restored_utc=utc(),"services_restored":not errors,
-                   "p80_p06_production_health_verified":healthy)
+                   restored_utc=utc(),services_restored=not errors,
+                   p80_p06_production_health_verified=healthy)
         h.atomic_json(session/"progress.json",old)
         if not healthy:errors.append("PRODUCTION_P80_P06_NOT_VERIFIED")
     except BaseException as exc:errors.append("POST_RESTORE_HEALTH:"+str(exc))
