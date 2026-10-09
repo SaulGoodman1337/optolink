@@ -26,3 +26,17 @@ python -m unittest discover -s tests -p 'test_handover*.py' -v
 
 The PTY test uses `pty.openpty()` (a virtual pair in the test process), **not**
 `/dev/ttyUSB*` or a Viessmann interface.
+
+## Offline request policy and provenance
+
+`scheduler.py` adds a bounded read-only queue and a separate GFA freshness
+ledger. A ticket contains an absolute monotonic deadline, explicitly typed
+read kind and queued/running/terminal state. Only one consumer can hold an
+in-flight ticket. The queue prefers a currently active protocol for at most a
+configurable batch before serving the other pending mode; it **does not**
+perform any serial I/O or switching. It is **not** yet wired to the coordinator.
+
+The GFA ledger rejects invalid P80, FF and unverified samples. It requires
+matching session generation and maximum age on readback, and never maps P09
+modulation to P06 measured RPM. Its `vs1_verified` argument is a future
+integration precondition, not a cryptographic proof of transport state.
