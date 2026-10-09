@@ -191,7 +191,8 @@ class IndependentRestoreTests(unittest.TestCase):
 
     def test_successful_worker_skips_duplicate_eot(self):
         (self.session / 'measurement.json').write_text(json.dumps({
-            'experiment_pass': True, 'vs1_link_restored': True}))
+            'experiment_pass': True, 'vs1_link_restored': True,
+            'history': [['vs1', 'verified:1']]}))
         with patch.object(m.base, 'open_serial', side_effect=AssertionError('do not open'), create=True):
             result = m.link_restore(self.session, self.state)
         self.assertTrue(result['verified'])

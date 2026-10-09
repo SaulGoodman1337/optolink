@@ -229,6 +229,45 @@ class ReadOnlyWire:
         self._handshake_gfa = {'P80': (p80, p80_at), 'P06': (p06, p06_at)}
         self.phase = WirePhase.VS1_VERIFIED
 
+    def verify_vs1_early_identity_experiment(self):
+        """Experimental VS1 return: read a KNOWN identity before any ENQ.
+
+        Only a fresh full identity/software/P80/P06 handshake permits VERIFIED.
+        A 350-ms negative observation does not prove no later response is
+        possible; in particular it is NOT a new controller minimum latency.
+        """
+        self._handshake_gfa.clear()
+        self.phase = WirePhase.VS1_SYNC
+        try:
+            self.reset_before_eot()
+            self.tx(EOT)
+            self.sleep(.025)
+            self.phase = WirePhase.VS1_HANDSHAKE
+            self.tx(STX + VS1_ID)
+            try:
+                identity = self.exact(2, .35)
+            except ProtocolError as exc:
+                raise ProtocolError('EARLY_VS1_NO_IDENTITY_WITHIN_350MS') from exc
+            self.quiet()
+            if identity != DEVICE_ID:
+                raise ProtocolError('EARLY_VS1_WRONG_IDENTITY')
+            if self.vs1_read(VS1_SOFTWARE, 2) != SOFTWARE:
+                raise ProtocolError('EARLY_VS1_WRONG_SOFTWARE')
+            p80 = self.vs1_read(GFA['P80'], 1)
+            p80_at = self.clock()
+            if p80 != b'\x20':
+                raise ProtocolError('EARLY_VS1_P80_MISMATCH')
+            p06 = self.vs1_read(GFA['P06'], 1)
+            p06_at = self.clock()
+            if p06 == b'\xff':
+                raise ProtocolError('EARLY_VS1_P06_FF')
+        except BaseException:
+            self._handshake_gfa.clear()
+            self.phase = WirePhase.FAILED_CLOSED
+            raise
+        self._handshake_gfa = {'P80': (p80, p80_at), 'P06': (p06, p06_at)}
+        self.phase = WirePhase.VS1_VERIFIED
+
     def p300_read(self, request: bytes, expected: bytes) -> bytes:
         if self.phase not in (WirePhase.P300_HANDSHAKE,
                               WirePhase.P300_VERIFIED):
@@ -414,6 +453,25 @@ class HandoverCoordinator:
             if self.mode != Mode.P300_VERIFIED:
                 raise ProtocolError("fast return requires verified P300")
             self._verify_vs1(1, recovery=False)  # no silent second ENQ
+
+    def to_vs1_early_identity_experiment(self):
+        """Research only: known VS1 STX/identity immediately after EOT.
+
+        One opt-in attempt; failure is recorded before conservative VS1
+        recovery. No unknown addresses, writes, RAM, or free-form frames.
+        """
+        with self._lock:
+            if self.mode != Mode.P300_VERIFIED or self.wire is None:
+                raise ProtocolError('early VS1 requires a freshly verified P300')
+            self.mode = Mode.SWITCHING
+            try:
+                self.wire.verify_vs1_early_identity_experiment()
+            except BaseException:
+                self._fail_closed()
+                self.history.append(('vs1_early_identity', 'failed'))
+                raise
+            self.mode = Mode.VS1_VERIFIED
+            self.history.append(('vs1_early_identity', 'verified'))
 
     def restore_vs1(self):
         with self._lock:

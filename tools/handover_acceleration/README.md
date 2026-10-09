@@ -55,3 +55,19 @@ and tested after the worker exits. **Never run if an RPM logger is active;
 let its normal run complete.** Read `docs/handover-live-acceptance-2026-10-09.md`
 before using the opt-in flags. The read-only wire and fake-peer tests are safe
 on a machine with an active logger, but the execution flags are not.
+
+## Seven-round protocol phase campaign (research only)
+
+The `campaign.py` entrypoint runs a fixed seven-round **known-handshake**
+EOT-phase sweep with immutable read-only frames and two control rounds. Only
+after complete independent restoration and a fresh validated production MQTT
+P80/P06 check may it run **one separately supervised** early-VS1-identity
+experiment, which sends the known VS1 ID read after EOT before ENQ. It never
+repeats the previously negative early-P300-START experiment. All stage
+manifests and raw events stay in a private research results directory.
+
+Default `campaign.py` is **plan-only**. A hardware run requires exactly
+`--execute --accept-telemetry-pause` and the separate
+`--include-early-vs1` flag for the speculative second stage. No historical
+failed hypothesis is considered a success. Detailed German runbook:
+`docs/handover-multistage-campaign-2026-10-09.md`.

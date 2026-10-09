@@ -171,14 +171,96 @@ def enq_trace(events: list[dict]) -> list[dict]:
     return groups
 
 
+# Known documented handshakes ONLY. The delays are BEFORE EOT, never
+# inserted mid-frame. Matched control rounds bound clock drift. This can
+# distinguish EOT-relative waits from a periodic beacon but cannot alone
+# establish the controller's UART-level timer implementation.
+PHASE_SWEEP = (
+    ('control_a', 0, 0),
+    ('vs1_idle_400', 400, 0),
+    ('vs1_idle_1100', 1100, 0),
+    ('p300_idle_400', 0, 400),
+    ('p300_idle_1100', 0, 1100),
+    ('both_idle_700', 700, 700),
+    ('control_b', 0, 0),
+)
+
+
+def perform_phase_sweep(manager, check_stop, *, monotonic=time.monotonic,
+                        sleep=time.sleep, conditions=PHASE_SWEEP) -> list[dict]:
+    """Seven round trips with already verified P300 and VS1 telegrams.
+
+    Any wrong identity, CRC, GFA or timeout aborts all subsequent rounds;
+    manager's context then restores VS1 conservatively before service restart.
+    """
+    if manager.mode is not Mode.VS1_VERIFIED:
+        refuse('phase sweep requires verified VS1 before first frame')
+    observations = []
+    for label, vs1_idle_ms, p300_idle_ms in conditions:
+        check_stop()
+        if vs1_idle_ms:
+            sleep(vs1_idle_ms / 1000)
+        check_stop()
+        t0 = monotonic()
+        manager.to_p300()
+        t1 = monotonic()
+        check_stop()
+        if p300_idle_ms:
+            sleep(p300_idle_ms / 1000)
+        check_stop()
+        t2 = monotonic()
+        manager.to_vs1_fast()
+        t3 = monotonic()
+        snap = manager.verified_gfa_snapshot(max_age=.75)
+        if snap.get('P80') != b'\x20' or snap.get('P06') == b'\xff':
+            refuse('phase sweep invalid GFA P80/P06 identity gate')
+        p09 = manager.gfa_read('P09')
+        p87 = manager.gfa_read('P87')
+        if manager.mode is not Mode.VS1_VERIFIED:
+            refuse('phase sweep final VS1 identity not verified')
+        t4 = monotonic()
+        observations.append(dict(
+            label=label, vs1_idle_ms=vs1_idle_ms, p300_idle_ms=p300_idle_ms,
+            to_p300_ms=round((t1 - t0)*1000, 3),
+            to_vs1_ms=round((t3 - t2)*1000, 3),
+            handover_and_gfa_ms=round(((t1-t0)+(t4-t2))*1000, 3),
+            full_elapsed_after_vs1_idle_ms=round((t4-t0)*1000, 3),
+            gfa={'P80': snap['P80'].hex(), 'P06': snap['P06'].hex(),
+                 'P09': p09.hex(), 'P87': p87.hex()},
+            verified=True))
+        check_stop()
+    return observations
+
+
+def associate_sweep_enqs(observations: list[dict], traces: list[dict]) -> list[dict]:
+    """Associate each actual EOT/ENQ group with its corresponding trial.
+
+    Raise rather than silently map an incomplete trace to a different round.
+    All host RX timestamp reports remain timestamp-of-read, not wire timings.
+    """
+    if len(traces) != 1 + 2 * len(observations):
+        raise ValueError('unexpected EOT count in phase sweep trace')
+    if len(traces[0]['enq_wait_ms']) != 2:
+        raise ValueError('cold VS1 setup had unexpected ENQ count')
+    enriched = []
+    for index, obs in enumerate(observations):
+        forward, back = traces[1+2*index:3+2*index]
+        if len(forward['enq_wait_ms']) != 1 or len(back['enq_wait_ms']) != 1:
+            raise ValueError('unexpected first ENQ count in sweep trial')
+        sample = dict(obs)
+        sample['p300_eot_enq_ms'] = forward['enq_wait_ms'][0]
+        sample['vs1_eot_enq_ms'] = back['enq_wait_ms'][0]
+        enriched.append(sample)
+    return enriched
+
 def worker(session: Path) -> int:
     state = verify_session(session)
     experiment = state.get("experiment", "standard")
-    if experiment not in ("standard", "early_p300_start"):
+    if experiment not in ("standard", "early_p300_start", "phase_sweep", "early_vs1_identity"):
         refuse("unknown experiment variant in session before service stop")
-    result = dict(version=VERSION, run='ONE_READ_ONLY_REAL_HANDOVER',
+    result = dict(version=VERSION, run='READ_ONLY_REAL_HANDOVER_CAMPAIGN',
                   experiment_pass=False, vs1_link_restored=False,
-                  phases_ms={}, gfa={}, errors=[], history=[], events=[], enq_trace=[],
+                  phases_ms={}, gfa={}, trials=[], errors=[], history=[], events=[], enq_trace=[],
                   source_sha256=state['source_sha256'])
     # Defer graceful stop until a complete telegram/handshake has finished.
     # systemd ExecStopPost remains independent if the worker dies or is killed.
@@ -219,41 +301,57 @@ def worker(session: Path) -> int:
                 if manager.mode is not Mode.VS1_VERIFIED:
                     refuse('cold VS1 not verified')
                 check_stop()
-                t0 = time.monotonic()
-                if experiment == "early_p300_start":
-                    manager.to_p300_early_start_experiment()  # known START before ENQ
+                if experiment == 'phase_sweep':
+                    start_sweep = time.monotonic()
+                    result['trials'] = perform_phase_sweep(manager, check_stop)
+                    result['phases_ms']['sweep_wall_time_ms'] = round(
+                        (time.monotonic()-start_sweep)*1000, 3)
+                    result['gfa'].update(result['trials'][-1]['gfa'])
                 else:
-                    manager.to_p300()  # verified documented START after ENQ
-                t1 = time.monotonic()
-                check_stop()
-                # No duplicate P300 ID read: already checked inside to_p300().
-                manager.to_vs1_fast()  # re-verifies VS1 ID, software, P80, P06
-                t2 = time.monotonic()
-                check_stop()
-                # Values below were physically read *during this VS1 return*,
-                # not cached from an earlier session. Reject aged snapshots.
-                snap = manager.verified_gfa_snapshot(max_age=.75)
-                result['gfa'].update({k: v.hex() for k, v in snap.items()})
-                for name in ('P09', 'P87'):
-                    result['gfa'][name] = manager.gfa_read(name).hex()
+                    t0 = time.monotonic()
+                    if experiment == 'early_p300_start':
+                        manager.to_p300_early_start_experiment()
+                    else:
+                        manager.to_p300()  # documented start AFTER ENQ
+                    t1 = time.monotonic()
                     check_stop()
-                t3 = time.monotonic()
-                result['phases_ms'].update({
-                    'vs1_to_p300_with_verified_identity': round((t1-t0)*1000,3),
-                    'p300_to_vs1_fast_with_verified_gfa': round((t2-t1)*1000,3),
-                    'remaining_gfa_block_p09_p87': round((t3-t2)*1000,3),
-                    'roundtrip_with_gfa': round((t3-t0)*1000,3),
-                })
-                if result['gfa']['P80'] != '20' or result['gfa']['P06'] == 'ff':
-                    refuse('identity or GFA invalid')
-                if manager.mode is not Mode.VS1_VERIFIED:
-                    refuse('final VS1 not verified')
+                    if experiment == 'early_vs1_identity':
+                        manager.to_vs1_early_identity_experiment()
+                    else:
+                        manager.to_vs1_fast()
+                    t2 = time.monotonic()
+                    check_stop()
+                    snap = manager.verified_gfa_snapshot(max_age=.75)
+                    result['gfa'].update({k: v.hex() for k, v in snap.items()})
+                    for name in ('P09', 'P87'):
+                        result['gfa'][name] = manager.gfa_read(name).hex()
+                        check_stop()
+                    t3 = time.monotonic()
+                    result['phases_ms'].update({
+                        'vs1_to_p300_with_verified_identity': round((t1-t0)*1000,3),
+                        'p300_to_vs1_with_verified_gfa': round((t2-t1)*1000,3),
+                        'remaining_gfa_block_p09_p87': round((t3-t2)*1000,3),
+                        'roundtrip_with_gfa': round((t3-t0)*1000,3),
+                    })
+                    if result['gfa']['P80'] != '20' or result['gfa']['P06'] == 'ff':
+                        refuse('identity or GFA invalid')
+                    if manager.mode is not Mode.VS1_VERIFIED:
+                        refuse('final VS1 not verified')
             # Count success only after the port has actually closed and the
             # lease has been released without a context-manager exception.
             result['vs1_link_restored'] = manager.mode is Mode.DETACHED
             result['experiment_pass'] = result['vs1_link_restored']
         except BaseException as exc:
             result['errors'].append(type(exc).__name__ + ': ' + str(exc))
+            # __exit__ may already have performed and verified the separate
+            # conservative two-ENQ restore. If so, capture that fact without
+            # pretending that the experiment succeeded. A crash has no such
+            # durable proof, so ExecStopPost will still restore independently.
+            if (manager is not None and manager.mode is Mode.DETACHED
+                    and manager.history
+                    and manager.history[-1][0] == 'vs1'
+                    and manager.history[-1][1].startswith('verified:')):
+                result['vs1_link_restored'] = True
         finally:
             # Preserve useful frame timing evidence even if the manager raised.
             if manager is not None:
@@ -262,6 +360,13 @@ def worker(session: Path) -> int:
                 result['events'] = [dict(direction=k, hex=v, t_monotonic=t)
                                     for k,v,t in wire_reference.events]
                 result['enq_trace'] = enq_trace(result['events'])
+                if experiment == 'phase_sweep' and result['experiment_pass']:
+                    try:
+                        result['trials'] = associate_sweep_enqs(
+                            result['trials'], result['enq_trace'])
+                    except ValueError as exc:
+                        result['experiment_pass'] = False
+                        result['errors'].append('SWEEP_TRACE_INCONSISTENT: ' + str(exc))
             # Do not let another SIGTERM truncate the durable evidence.
             for s in old_signals:
                 signal.signal(s, signal.SIG_IGN)
@@ -283,9 +388,16 @@ def link_restore(session: Path, state: dict) -> dict:
     if mfile.exists():
         try:
             recorded = json.loads(mfile.read_text())
-            if recorded.get('experiment_pass') and recorded.get('vs1_link_restored'):
-                # Main will independently reinitialize VS1 on start. Avoid
-                # additional EOT when worker already ended in verified VS1.
+            history = recorded.get('history', [])
+            last = history[-1] if isinstance(history, list) and history else None
+            if (recorded.get('vs1_link_restored') is True and
+                    isinstance(last, list) and len(last) == 2 and
+                    ((last[0] == 'vs1' and str(last[1]).startswith('verified:')) or
+                     last == ['vs1_early_identity', 'verified'])):
+                # Even a failed speculative experiment can have a separate
+                # *proven successful* worker restore. Avoid a destructive
+                # redundant EOT, but never skip if the worker crashed or the
+                # measurement/history is absent or contradicted.
                 note['verified'] = True
                 return note
         except (ValueError, OSError):
@@ -406,7 +518,7 @@ def health_only() -> int:
 
 
 def execute(*, experiment: str = "standard") -> int:
-    if experiment not in ("standard", "early_p300_start"):
+    if experiment not in ("standard", "early_p300_start", "phase_sweep", "early_vs1_identity"):
         refuse("unknown experiment requested")
     values, services = preflight()
     with base.locks():
@@ -440,12 +552,16 @@ def execute(*, experiment: str = "standard") -> int:
     ok = bool(service_rc == 0 and safe and measurement.get('experiment_pass') and
               measurement.get('vs1_link_restored'))
     ok = ok and set(health) == {'P80', 'P06'} and all(h.get('valid') for h in health.values())
-    label = ('PASS_VERIFIED_READ_ONLY_EARLY_START_EXPERIMENT'
-             if experiment == 'early_p300_start' else 'PASS_VERIFIED_READ_ONLY_REAL_HANDOVER')
+    labels = {'standard': 'PASS_VERIFIED_READ_ONLY_REAL_HANDOVER',
+              'early_p300_start': 'PASS_VERIFIED_READ_ONLY_EARLY_START_EXPERIMENT',
+              'phase_sweep': 'PASS_VERIFIED_READ_ONLY_PHASE_SWEEP',
+              'early_vs1_identity': 'PASS_VERIFIED_READ_ONLY_EARLY_VS1_EXPERIMENT'}
+    label = labels[experiment]
     report = {'result': label if ok else 'FAIL_OR_NOT_VERIFIED',
               'experiment': experiment,
               'session': str(session), 'unit_rc': service_rc,
               'phase_ms': measurement.get('phases_ms'),
+              'trials': measurement.get('trials'),
               'enq_trace': measurement.get('enq_trace'), 'gfa': measurement.get('gfa'),
               'measurement_errors': measurement.get('errors'),
               'independent_recovery': recovery.get('independent_link_restore'),
@@ -466,8 +582,13 @@ def main() -> int:
     actions.add_argument('--worker', type=Path, help=argparse.SUPPRESS)
     actions.add_argument('--recover', type=Path, help=argparse.SUPPRESS)
     parser.add_argument('--accept-telemetry-pause', action='store_true')
-    parser.add_argument('--experiment-early-p300-start', action='store_true',
-                        help='experimental, known START immediately after EOT before ENQ')
+    variants = parser.add_mutually_exclusive_group()
+    variants.add_argument('--experiment-early-p300-start', action='store_true',
+                        help='historical negative experiment; do not repeat unchanged')
+    variants.add_argument('--experiment-phase-sweep', action='store_true',
+                        help='seven standard rounds with different idle-to-EOT offsets')
+    variants.add_argument('--experiment-early-vs1-identity', action='store_true',
+                        help='research: known VS1 identity read immediately after EOT')
     args = parser.parse_args()
     os.umask(0o077)
     if args.worker or args.recover:
@@ -475,15 +596,21 @@ def main() -> int:
             refuse('internal worker/recovery must be invoked by systemd only')
         return worker(args.worker) if args.worker else recover(args.recover)
     if args.health_only:
-        if args.experiment_early_p300_start or args.accept_telemetry_pause:
+        if (args.experiment_early_p300_start or args.experiment_phase_sweep
+                or args.experiment_early_vs1_identity or args.accept_telemetry_pause):
             refuse('health-only never accepts any experiment or telemetry pause')
         return health_only()
-    if args.experiment_early_p300_start and not args.execute:
-        refuse('early-start trial requires --execute and explicit telemetry pause')
+    if (args.experiment_early_p300_start or args.experiment_phase_sweep
+            or args.experiment_early_vs1_identity) and not args.execute:
+        refuse('experiment requires --execute and explicit telemetry pause')
     if args.execute:
         if not args.accept_telemetry_pause:
             refuse('must explicitly accept temporary telemetry/service pause')
-        return execute(experiment='early_p300_start' if args.experiment_early_p300_start else 'standard')
+        experiment = ('early_p300_start' if args.experiment_early_p300_start else
+                      'phase_sweep' if args.experiment_phase_sweep else
+                      'early_vs1_identity' if args.experiment_early_vs1_identity
+                      else 'standard')
+        return execute(experiment=experiment)
     print('PLAN ONLY. One real read-only VS1->P300->VS1 cycle (new manager).')
     print('No serial or systemd activity without --execute --accept-telemetry-pause.')
     print('Temporary interruption of previously-active original services; selective restore.')
