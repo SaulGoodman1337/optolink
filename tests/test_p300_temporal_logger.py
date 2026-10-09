@@ -274,10 +274,73 @@ class TemporalTests(unittest.TestCase):
         self.assertEqual([x for x in calls if isinstance(x,list)],
                          [["systemctl","start","optolink-splitter.service"]])
 
+    def test_five_minute_canary_gate_all_fields_and_early_stop(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/"runs"
+            bundles=Path(td)/"bundles"
+            root.mkdir()
+            bundles.mkdir()
+            session=root/"run-20261009T150000Z-1234"
+            session.mkdir()
+            (session/"state.json").write_text(json.dumps(
+                {"mode":"canary","hours":1,"duration_seconds":300}))
+            measurement={"observation_complete":True,
+                         "worker_vs1_restored":True,"errors":[],
+                         "signal":None,
+                         "p300_stream":{"p300_only_duration_s":300},
+                         "counts":{"CYCLES":120}}
+            health={"production_main_verified":True,
+                "gfa_reads":{"P80":{"format_and_identity_verified":True},
+                             "P06":{"p06_non_ff_verified":True}}}
+            (session/"measurement.json").write_text(json.dumps(measurement))
+            (session/"recovery.json").write_text(json.dumps({"services_restored":True}))
+            (session/"health.json").write_text(json.dumps(health))
+            dest=bundles/("p300-temporal-"+session.name+"-bundle.tar.gz")
+            with self.assertRaisesRegex(RuntimeError,"CANARY_REQUIRED"):
+                m.guard_canary_completed(root,bundles)
+            dest.write_bytes(b"fixture")
+            self.assertEqual(m.guard_canary_completed(root,bundles),session)
+            measurement["signal"]=signal.SIGTERM
+            (session/"measurement.json").write_text(json.dumps(measurement))
+            with self.assertRaisesRegex(RuntimeError,"CANARY_REQUIRED"):
+                m.guard_canary_completed(root,bundles)
+            measurement["signal"]=None
+            measurement["p300_stream"]["p300_only_duration_s"]=10
+            (session/"measurement.json").write_text(json.dumps(measurement))
+            with self.assertRaisesRegex(RuntimeError,"CANARY_REQUIRED"):
+                m.guard_canary_completed(root,bundles)
+            measurement["p300_stream"]["p300_only_duration_s"]=300
+            (session/"measurement.json").write_text(json.dumps(measurement))
+            health["gfa_reads"]["P06"]["p06_non_ff_verified"]=False
+            (session/"health.json").write_text(json.dumps(health))
+            with self.assertRaisesRegex(RuntimeError,"CANARY_REQUIRED"):
+                m.guard_canary_completed(root,bundles)
+
+    def test_mode_duration_state_is_tamper_checked(self):
+        session=Path("/tmp/run-test")
+        template={"focus_sha256":"dummy","hours":1,"mode":"canary",
+                  "duration_seconds":300}
+        with patch.object(m.FOCUS,"validate_state",return_value=template),\
+             patch.object(m.F.DEEP,"check_hash",return_value=None):
+            self.assertEqual(m.validate_state(session)["mode"],"canary")
+            template["duration_seconds"]=600
+            with self.assertRaisesRegex(RuntimeError,"CANARY_DURATION"):
+                m.validate_state(session)
+            template["mode"],template["hours"],template["duration_seconds"]="full",2,7200
+            self.assertEqual(m.validate_state(session)["duration_seconds"],7200)
+            template["duration_seconds"]=300
+            with self.assertRaisesRegex(RuntimeError,"FULL_DURATION"):
+                m.validate_state(session)
+            template["mode"]="unknown"
+            with self.assertRaisesRegex(RuntimeError,"MODE_INVALID"):
+                m.validate_state(session)
+
     def test_config_limits_and_false_rpm_alias(self):
         self.assertEqual(m.DEFAULT_HOURS,2)
         self.assertEqual(m.MAX_HOURS,3)
         self.assertEqual(m.MAX_CYCLES,24000)
+        self.assertEqual(m.CANARY_SECONDS,300)
+        self.assertEqual(m.CANARY_MIN_CYCLES,30)
         self.assertEqual(m.ROOT.name,"p300-temporal-results")
         self.assertEqual(m.CURRENT_UNIT,"optolink-p300-p06-focus.service")
         self.assertEqual(m.CORE_ADDRESSES,(0x0f20,0x1c76))
