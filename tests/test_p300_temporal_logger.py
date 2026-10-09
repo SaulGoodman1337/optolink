@@ -204,11 +204,14 @@ class TemporalTests(unittest.TestCase):
 
     def test_previous_focus_restore_requires_non_ff_valid_gfa(self):
         with tempfile.TemporaryDirectory() as td:
-            root=Path(td)
+            root=Path(td)/"results"
+            root.mkdir()
+            bundles=Path(td)/"bundles"
+            bundles.mkdir()
             session=root/"run-20261009T000000Z-1"
             session.mkdir()
             with self.assertRaisesRegex(RuntimeError,"RECOVERY_NOT_COMPLETE"):
-                m.guard_finished_focus(root)
+                m.guard_finished_focus(root,bundles)
             (session/"recovery.json").write_text(json.dumps(
                 {"services_restored":True,"errors":[]}))
             health={"production_main_verified":True,
@@ -217,14 +220,18 @@ class TemporalTests(unittest.TestCase):
                                     "p06_non_ff_verified":False}}}
             (session/"health.json").write_text(json.dumps(health))
             with self.assertRaisesRegex(RuntimeError,"HEALTH_UNRESOLVED"):
-                m.guard_finished_focus(root)
+                m.guard_finished_focus(root,bundles)
             health["gfa_reads"]["P06"]["p06_non_ff_verified"]=True
             (session/"health.json").write_text(json.dumps(health))
-            self.assertIsNone(m.guard_finished_focus(root))
+            with self.assertRaisesRegex(RuntimeError,"ARCHIVE_MISSING"):
+                m.guard_finished_focus(root,bundles)
+            target=bundles/("p300-p06-focus-"+session.name+"-bundle.tar.gz")
+            target.write_bytes(b"fixture")
+            self.assertIsNone(m.guard_finished_focus(root,bundles))
             (session/"recovery.json").write_text(json.dumps(
                 {"services_restored":False,"errors":["test"]}))
             with self.assertRaisesRegex(RuntimeError,"HEALTH_UNRESOLVED"):
-                m.guard_finished_focus(root)
+                m.guard_finished_focus(root,bundles)
 
     def test_archive_manifest_replay(self):
         with tempfile.TemporaryDirectory() as td:
