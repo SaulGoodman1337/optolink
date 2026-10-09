@@ -116,6 +116,50 @@ SHA256 `fc96b4bbfa60931cd36226bd8bcbd21299c436959164b085ccc47e9662fd5bed`.
 Die Rohdatei wird nicht nach GitHub gestellt.
 [Abgeleitete Quelle und Negativfreigaben](evidence/p300-kmbus-vitotrol-master-tx-2026-10-09.json).
 
+## Source-First-Fortsetzung: UART1-RX-Interrupt statt Register-Live-Read
+
+Die Renesas-M16C/62P-Architektur kennt fuer UART1 die
+folgenden **verschiedenen** Daten- und Interruptadressen:
+
+| Hardware-Element | M16C/62P-Quelle | Beweisgrenze am lokalen 20C2 |
+|---|---|---|
+| UART1 TX-Datenregister | `U1TB @ 0x03AA` | Lokal durch DMA0-Ziel bereits dynamisch bestaetigt |
+| UART1 RX-Datenregister | `U1RB @ 0x03AE..0x03AF` | **NICHT live lesen**: moegliche RX-Side-Effects |
+| UART1 Receive-Interrupt-Control | `S1RIC @ 0x0054` | SFR-Adresse quellendokumentiert, **keine neue lokale Probe** |
+| UART1 Receive/ACK-Interrupt | **Vektor 20**, relocatable `INTB + 0x50..0x53` | Der konkrete lokale `INTB`-Wert und Handler-Code sind nicht bekannt |
+
+Eine [Renesas-M16C/62P-Anwendung mit Interruptvektortabelle](https://community.renesas.com/mcu/legacy-mcu/f/m16c---forum/1452/m16c-62p-i2c-help-wanted/4466)
+nennt die UART1-Receive-Routine ausdruecklich unter
+Vektor 20. Das [M16C/62P-Hardwarehandbuch](https://docs.rs-online.com/a1c7/0900766b80a63c2a.pdf)
+belegt die SFR-Register. **`INTB+0x50` ist ein Offset
+in der verschiebbaren Interrupttabelle, KEINE feste
+aus dem bisherigen P300-Physical_READ freigegebene RAM-Adresse.**
+Nicht mit der SFR-Adresse `S1RIC=0x0054` verwechseln.
+
+Beide DMA-Kanaele wurden im historischen SFR-Sample fuer
+**Sendevorgaenge** beobachtet: DMA0 -> UART1/U1TB;
+DMA1 -> UART0/U0TB. Daraus kann als **Suchhypothese**
+eine Interrupt-/Software-RX-Verarbeitung folgen;
+ein aktivierter Handler, dessen SRAM-Pufferadresse und
+ein moeglicher Slaveantwort-Speicher sind damit
+noch nicht bewiesen.
+
+Der alte [20-Bit-Bridge-Quellenaudit](https://github.com/SaulGoodman1337/optolink/blob/optolink-research/config/optolink-splitter/research/firmware-20bit-bridge-static-2026-09-26.md)
+bestaetigt die Beschraenkung des regulaeren P300/VS2-
+Adressraums und hat **keinen** risikoarm belegten
+ROM-zu-RAM-Proxy gefunden. Damit darf der RX-ISR-Zeiger
+nicht durch frei erfundene Service-Anfragen gesucht werden.
+
+**Naechster statischer Gate:** Sobald eine echte,
+geraetegenau zugeordnete Firmwarekopie oder
+ein gesicherter INTB-/Vektortabellen-Snapshot vorhanden
+ist, zuerst **offline** Vektor 20 dekodieren,
+die ISR/Lesestellen von `U1RB` und den RAM-Ablagepuffer
+identifizieren, dann gegen die bekannte
+KM-Bus-Antwortform `00 11 B3 ... F8 ... FB` abgleichen.
+Kein solcher Speicherort ist aktuell nachgewiesen;
+**keine Live-RX-/SFR-Messung oder ungezielte Adressliste.**
+
 ## Der folgende technisch notwendige Schritt
 
 **Gesucht ist nicht mehr, ob die WB2A an Vitotrol-Slots
