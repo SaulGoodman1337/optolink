@@ -1,5 +1,14 @@
 # WB2A / VDensHO1 20C2: operator-gesteuerter P300-Nachtlauf
 
+**Historisches Runbook fuer den bereits abgeschlossenen Nachtlauf vom 8./9.10.2026 – nicht erneut starten.**
+Der systemd-Operator-Stopp wurde am 9.10. ausgefuehrt. Original-VS1 und
+die GFA-P80/P06-Lesekommunikation wurden erfolgreich wiederhergestellt.
+Die vollstaendige Auswertung von 12.938 Runden zeigt jetzt
+CRC-gueltige KM-Bus-TX-RAM-Telegramme, eine mehrstuendige
+GFA-Verriegelungsanzeige und drei danach beobachtete Flammenfenster.
+**Kein P06-Drehzahl-Alias und kein weiterer identischer Live-Test freigegeben.**
+Aktueller [Nachtlaufbericht](p300-uart1-overnight-result-2026-10-09.md).
+
 **Stand 8.10.2026 – ausschließlich Research-Branch `optolink-p300-migration`.**
 Der Betreiber wünscht einen einzigen, von ihm selbst beendeten Nachtlauf mit
 beliebig vielen **natürlichen** Brennerzyklen, ohne wiederholtes Copy/Paste.
