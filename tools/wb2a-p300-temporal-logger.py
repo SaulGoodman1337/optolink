@@ -552,8 +552,9 @@ def competing(base):
             raise RuntimeError("TEMPORAL_COMPETING_LOGGER:"+unit)
 
 
-def guard_finished_focus():
-    root=Path("/root/p300-trial-work/p300-p06-focus-results")
+def guard_finished_focus(root=None):
+    root=(Path("/root/p300-trial-work/p300-p06-focus-results")
+          if root is None else Path(root))
     if root.is_symlink():
         raise RuntimeError("TEMPORAL_FOCUS_ROOT_SYMLINK")
     if not root.exists():return
