@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "measurement_name": "wb2a-p300-rpm-trigger-early-stop",
+  "audit_method": "offline independent tar/jsonl/frame/bin/trace review",
+  "source_archive": "p300-rpm-trigger-run-20261009T174812Z-293099-bundle.tar.gz",
+  "archive_sha256": "87d76c873a2e34ae310205f7f70a3c8831c07b8f35dc5e51df1fb0563efcf3ae",
+  "archive_bytes": 991551,
+  "session": "run-20261009T174812Z-293099",
+  "pinned_source_commit": "b795e9b4ad89ff7ce854746d588b5bfcd1818b08",
+  "audit": {
+    "manifest_files_valid": 24,
+    "manifest_failed": 0,
+    "pinned_source_hashes_valid": 7,
+    "read_only_p300_frames_valid": 8740,
+    "unknown_or_write_transmissions": 0,
+    "core_cycles_valid": 2185,
+    "core_bin_bytes": 139840,
+    "core_bin_sha_offset_mismatches": 0,
+    "frame_counts": {
+      "fc01_0x55d3_11": 4370,
+      "fc03_0x0f20_32": 2185,
+      "fc03_0x1c60_32": 2185
+    },
+    "trace_events": 26362,
+    "trace_tx": 17552,
+    "trace_rx": 8810,
+    "unknown_tx_commands": 0
+  },
+  "timing": {
+    "start_utc": "2026-10-09T17:48:12.633784+00:00",
+    "end_utc": "2026-10-09T18:34:04.757538+00:00",
+    "duration_seconds": 2752.124,
+    "p300_only_approx_seconds": 2731.556,
+    "vs1_to_p300_seconds": 2.166,
+    "p300_to_vs1_seconds": 4.325
+  },
+  "ending": {
+    "operator_stop": true,
+    "signal": 15,
+    "data_quality": "PARTIAL",
+    "observation_complete": false,
+    "worker_errors": [],
+    "worker_vs1_restored": true,
+    "systemd_result": "exit-code",
+    "recovery_services_restored": true,
+    "recovery_error_count": 0,
+    "production_main_verified": true,
+    "production_gfa_p80_raw": "20",
+    "production_gfa_p06_raw": "00",
+    "production_p06_non_ff": true,
+    "ha_entity_freshness_verified": false,
+    "initial_vs1_p06_valid": 11,
+    "initial_vs1_p06_ff_invalid": 1,
+    "final_vs1_p06_valid": 12
+  },
+  "candidates": {
+    "0x0F20": {
+      "distinct_raw_values": [
+        0,
+        84
+      ],
+      "samples_0": 1888,
+      "samples_84": 297
+    },
+    "0x1C76": {
+      "distinct_raw_values": [
+        0,
+        84
+      ],
+      "samples_0": 1888,
+      "samples_84": 297
+    },
+    "raw_trigger_min": 136,
+    "high_sample_count": 0,
+    "real_vs1_triggered_crosscheck_count": 0,
+    "flame_on_cycles": 289,
+    "flame_off_to_on_cycle": 1370,
+    "flame_on_to_off_cycle": 1659,
+    "candidate_change_cycles_0f20": [
+      1361,
+      1658
+    ],
+    "candidate_change_cycles_1c76": [
+      1360,
+      1657
+    ],
+    "distinct_combined_candidate_change_cycles": 10,
+    "actual_rpm_candidate_field_changes_total": 4,
+    "distinct_rpm_candidate_mismatch_cycles": [
+      1360,
+      1657
+    ],
+    "three_pair_combined_mismatch_cycles": [
+      1360,
+      1657,
+      1659
+    ],
+    "status_mirror_0f22_0f2a_matches_fc01_endpoint": 2184,
+    "status_mirror_1c77_1c7f_matches_fc01_endpoint": 2185,
+    "two_nine_byte_status_windows_equal": 2169,
+    "native_byte0_flame_on_observed_range": [
+      38,
+      69
+    ],
+    "native_byte9_flame_on_observed_range": [
+      33,
+      66
+    ],
+    "native_byte0_ge60_flame_on_coherent_samples": 17,
+    "p300_actual_p06_verified": false
+  },
+  "next_step": {
+    "current_trigger_at_0x88_worth_repeating_in_night_reduction": false,
+    "offline_possible_better_trigger": ">=3 or 4 consecutive flame-on FC01 byte0 >=60, candidate RAM=0x54, no lockout, compare true VS1 GFA P06 after verified handover",
+    "hardware_approved": false,
+    "if_inconclusive": "prioritize single-owner P300/VS1 hybrid",
+    "no_new_live_session_started": true,
+    "production_modified": false,
+    "pr46_remains_draft": true
+  }
+}
