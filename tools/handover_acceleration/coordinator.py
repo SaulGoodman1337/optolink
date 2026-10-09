@@ -2,7 +2,8 @@
 
 The only serial object is injected by the caller *after* taking the advisory
 lease. This is deliberately not a ready-to-run heating-controller client.
-No arbitrary address, write, RPC, RAM or GFA-alias interfaces are exposed.
+No arbitrary address, write, RPC, arbitrary RAM or GFA-alias interfaces are exposed.
+Only two previously verified FC03/32 read blocks are admitted offline.
 """
 from __future__ import annotations
 
@@ -25,8 +26,23 @@ GFA = {"P80": bytes.fromhex("6b405001"),
        "P87": bytes.fromhex("6b405701")}
 P300_ID = bytes.fromhex("4105000100f80200")
 P300_SOFTWARE = bytes.fromhex("41050001778c020b")
+
+
+def _fixed_p300_request(fc: int, addr: int, length: int) -> bytes:
+    """Exact fixed reviewed read-only FC03 requests; no caller-supplied opcodes."""
+    prefix = bytes((0x41, 0x05, 0x00, fc, addr >> 8, addr & 0xff, length))
+    return prefix + bytes((sum(prefix[1:]) & 0xff,))
+
+
+# Prior WB2A FC03 reads were verified by the separate P300 research logger.
+# Restrict this prototype to exact reviewed read blocks: no arbitrary RAM.
+P300_RAM_READS = {
+    "ram_0f20_32": (0x03, 0x0f20, 32, _fixed_p300_request(3, 0x0f20, 32)),
+    "ram_1c60_32": (0x03, 0x1c60, 32, _fixed_p300_request(3, 0x1c60, 32)),
+}
 TX_ALLOW = frozenset([EOT, ACK, b"\x16\x00\x00", STX + VS1_ID,
-                      VS1_SOFTWARE, *GFA.values(), P300_ID, P300_SOFTWARE])
+                      VS1_SOFTWARE, *GFA.values(), P300_ID, P300_SOFTWARE,
+                       *(v[3] for v in P300_RAM_READS.values())])
 
 
 class ProtocolError(RuntimeError):
@@ -71,7 +87,8 @@ PHASE_TX_ALLOW = {
     WirePhase.P300_SYNC: frozenset((EOT,)),
     WirePhase.P300_HANDSHAKE: frozenset((b"\x16\x00\x00", ACK,
                                            P300_ID, P300_SOFTWARE)),
-    WirePhase.P300_VERIFIED: frozenset((P300_ID, ACK)),
+    WirePhase.P300_VERIFIED: frozenset((P300_ID, ACK,
+                                           *(v[3] for v in P300_RAM_READS.values()))),
 }
 
 
@@ -203,6 +220,35 @@ class ReadOnlyWire:
         self.quiet()
         return result
 
+    def verify_attached_vs1(self):
+        """Verify an already running VS1 session without resetting the interface.
+
+        Only valid after the owning main loop has completed the preceding
+        request and grants the same serial handle exclusively. This neither
+        sends EOT nor assumes a prior identity/FF answer is still valid.
+        """
+        self._handshake_gfa.clear()
+        self.phase = WirePhase.VS1_HANDSHAKE
+        try:
+            if self.vs1_read(STX + VS1_ID, 2) != DEVICE_ID:
+                raise ProtocolError("attached VS1 device identity mismatch")
+            if self.vs1_read(VS1_SOFTWARE, 2) != SOFTWARE:
+                raise ProtocolError("attached VS1 software mismatch")
+            p80 = self.vs1_read(GFA["P80"], 1)
+            p80_at = self.clock()
+            if p80 != b"\x20":
+                raise ProtocolError("attached VS1 GFA P80 mismatch")
+            p06 = self.vs1_read(GFA["P06"], 1)
+            p06_at = self.clock()
+            if p06 == b"\xff":
+                raise ProtocolError("attached VS1 P06 FF invalid")
+        except BaseException:
+            self._handshake_gfa.clear()
+            self.phase = WirePhase.FAILED_CLOSED
+            raise
+        self._handshake_gfa = {"P80": (p80, p80_at), "P06": (p06, p06_at)}
+        self.phase = WirePhase.VS1_VERIFIED
+
     def verify_vs1(self, enqs: int):
         self._handshake_gfa.clear()
         self.phase = WirePhase.VS1_SYNC
@@ -302,6 +348,41 @@ class ReadOnlyWire:
         self.quiet()
         return body[5:-1]
 
+    def p300_read_ram_fixed(self, name: str) -> bytes:
+        """Read one known FC03 block only after exact P300 identity verification."""
+        if self.phase != WirePhase.P300_VERIFIED:
+            raise ProtocolError("P300 RAM read requires a verified P300 session")
+        if name not in P300_RAM_READS:
+            raise ProtocolError("P300 RAM block not on the fixed allowlist")
+        fc, addr, size, request = P300_RAM_READS[name]
+        try:
+            self.gap()
+            self.tx(request)
+            deadline = self.clock() + 3.0  # one absolute timeout for whole response
+            self.control_until(ACK, deadline)
+            for _ in range(8):
+                first = self.exact_until(1, deadline)
+                if first != ACK:
+                    break
+            if first != b"\x41":
+                raise ProtocolError("P300 RAM STX mismatch")
+            body_length = self.exact_until(1, deadline)[0]
+            if body_length != 5 + size:
+                raise ProtocolError("P300 RAM length mismatch")
+            body = self.exact_until(body_length + 1, deadline)
+            if (body_length + sum(body[:-1])) & 0xff != body[-1]:
+                raise ProtocolError("P300 RAM checksum mismatch")
+            if (body[0] != 1 or body[1] != fc or
+                    int.from_bytes(body[2:4], "big") != addr or
+                    body[4] != size or len(body[5:-1]) != size):
+                raise ProtocolError("P300 RAM function/address/count mismatch")
+            self.tx(ACK)
+            self.quiet()
+            return body[5:-1]
+        except BaseException:
+            self.phase = WirePhase.FAILED_CLOSED
+            raise
+
     def verify_p300(self):
         self._handshake_gfa.clear()
         self.phase = WirePhase.P300_SYNC
@@ -334,6 +415,23 @@ class HandoverCoordinator:
         self._lock = threading.RLock()
         self.history: list[tuple[str, str]] = []
         self._recovery_attempted = False
+        self._borrowed_port = False
+
+    @classmethod
+    def borrow_existing_vs1(cls, existing_port, lease: PortLease, *,
+                            clock=time.monotonic, sleep=time.sleep):
+        """Use the already open serial object; never reopen or close it.
+
+        The first action is fresh read-only VS1 identity, SW, P80, P06
+        verification in the currently initialized VS1 session. NO EOT,
+        no zero-cost trust of the original splitter state and NO fallbacks.
+        The surrounding in-process loop remains the sole serial owner.
+        """
+        if existing_port is None:
+            raise ProtocolError("existing owned VS1 serial port required")
+        owner = cls(lambda: existing_port, lease, clock=clock, sleep=sleep)
+        owner._borrowed_port = True
+        return owner
 
     def __enter__(self):
         with self._lock:
@@ -344,7 +442,10 @@ class HandoverCoordinator:
                 self.wire = ReadOnlyWire(self.open_port(), clock=self.clock,
                                          sleep=self.sleep)
                 self.mode = Mode.UNKNOWN
-                self._verify_vs1(2, recovery=False)
+                if self._borrowed_port:
+                    self._verify_attached_vs1()
+                else:
+                    self._verify_vs1(2, recovery=False)
             except BaseException:
                 self.mode = Mode.FAILED_CLOSED
                 self._close_resources()
@@ -353,7 +454,7 @@ class HandoverCoordinator:
 
     def _close_resources(self):
         try:
-            if self.wire is not None:
+            if self.wire is not None and not self._borrowed_port:
                 self.wire.port.close()
         finally:
             self.wire = None
@@ -377,6 +478,18 @@ class HandoverCoordinator:
             if restore_error is not None:
                 raise RestoreError("VS1 restore not confirmed") from restore_error
         return False
+
+    def _verify_attached_vs1(self):
+        assert self.wire is not None
+        self.mode = Mode.SWITCHING
+        try:
+            self.wire.verify_attached_vs1()
+        except BaseException:
+            self.mode = Mode.FAILED_CLOSED
+            self.history.append(('vs1_attached', 'failed'))
+            raise
+        self.mode = Mode.VS1_VERIFIED
+        self.history.append(('vs1_attached', 'verified_without_eot'))
 
     def _verify_vs1(self, count: int, *, recovery: bool):
         assert self.wire is not None
@@ -524,6 +637,20 @@ class HandoverCoordinator:
             assert self.wire is not None
             try:
                 return self.wire.p300_read(P300_ID, DEVICE_ID)
+            except BaseException:
+                self._fail_closed()
+                raise
+
+    def p300_ram_read(self, name: str) -> bytes:
+        """Allowlisted FC03 diagnostic; never a GFA RPM replacement."""
+        with self._lock:
+            if self.mode is not Mode.P300_VERIFIED:
+                raise ProtocolError("P300 RAM request requires verified P300")
+            if name not in P300_RAM_READS:
+                raise ProtocolError("unknown fixed FC03 diagnostic; wire unchanged")
+            assert self.wire is not None
+            try:
+                return self.wire.p300_read_ram_fixed(name)
             except BaseException:
                 self._fail_closed()
                 raise

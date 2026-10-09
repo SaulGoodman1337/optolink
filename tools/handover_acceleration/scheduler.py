@@ -31,10 +31,12 @@ class ReadKind(Enum):
     VS1_P09 = "vs1_p09"
     VS1_P87 = "vs1_p87"
     P300_ID = "p300_identity"
+    P300_RAM_0F20_32 = "p300_ram_0f20_32"
+    P300_RAM_1C60_32 = "p300_ram_1c60_32"
 
     @property
     def mode(self) -> str:
-        return "p300" if self is ReadKind.P300_ID else "vs1"
+        return "p300" if self.name.startswith("P300_") else "vs1"
 
 
 class TicketState(Enum):

@@ -17,7 +17,7 @@ jobs:
   offline-regression:
     name: Offline regression (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     strategy:
       fail-fast: false
       matrix:
@@ -29,5 +29,15 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Compile prototype
         run: python -m compileall -q tools/handover_acceleration
-      - name: Test fake-peer, port-lease, PTY and timing arithmetic (no hardware)
+      - name: Test fake-peer, port-lease, PTY, P300 FC03, old and new dispatch paths (no hardware)
         run: python -m unittest discover -s tests -p 'test_handover*.py' -v
+      - name: Verify pinned original dispatcher has exactly three patchable call sites
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 2 --max-time 30 -o "$RUNNER_TEMP/optolinkvs2_switch.py" \
+            'https://raw.githubusercontent.com/philippoo66/optolink-splitter/c1ee204a1421447721603c5f21c6da7337fdac97/optolinkvs2_switch.py'
+          test "$(git hash-object "$RUNNER_TEMP/optolinkvs2_switch.py")" = 1fae36baae1c2ef264906c8eca76ef15c5152974
+          python tools/handover_acceleration/dispatcher_patch.py \
+            --source "$RUNNER_TEMP/optolinkvs2_switch.py" \
+            --output "$RUNNER_TEMP/optolink-shadow-generated.py"
+          python -m py_compile "$RUNNER_TEMP/optolink-shadow-generated.py"

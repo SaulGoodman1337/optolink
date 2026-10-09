@@ -82,3 +82,22 @@ planner with the injected, preverified coordinator to demonstrate a single
 P300 session for multiple **identity** reads. It is **not** a production
 adapter, a physical RAM interface or a substitute for real GFA P06.
 The unmodified production splitter and P300 logger remain entirely separate.
+
+## New offline main-loop bridge and physically documented FC03 read fixtures
+
+`dispatcher_bridge.py` now models a *single existing* serial owner with exact
+legacy MQTT/TCP/poll preservation. Every historical request still passes to
+`requests_util.response_to_request`, including writes and readbacks. Maintenance
+remains disabled by default; the proof of an active VS1 owner is invalidated
+by any opaque legacy operation, and failed maintenance closes its dispatch
+boundary until external recovery. `HandoverCoordinator.borrow_existing_vs1`
+checks fresh VS1 ID/software/P80/P06 without opening or closing the current
+serial handle; only the fake-port path is proven so far. Offline FC03 reads are
+restricted to two previously hardware-researched diagnostic addresses:
+`0x0f20/32` and `0x1c60/32`. P300 RAM is not a valid GFA P06 source.
+
+`dispatcher_patch.py` constructs/compiles a *copy* of the pinned original
+Optolink main loop; the patch is inert by default and, even with the shadow
+flag, does not enable P300 maintenance. The original program, services,
+operational parameters and HA writers are not patched or redeployed.
+See `docs/handover-inprocess-dispatcher-integration-2026-10-09.md`.
