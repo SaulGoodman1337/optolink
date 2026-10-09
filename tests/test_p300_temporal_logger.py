@@ -204,17 +204,24 @@ class TemporalTests(unittest.TestCase):
             root=Path(td)
             session=root/"run-20261009T000000Z-1"
             session.mkdir()
-            with patch.object(m.Path,"__new__",wraps=Path.__new__):
-                # Use a temporary parent for exact fixed-path checking.
-                pass
-            # Test validation logic using targeted Path construction.
-            original=m.guard_finished_focus.__globals__["Path"]
-            class FakePath(type(Path())):
-                pass
-            # Lack of a recorded old run never allows an active unit; that is
-            # checked by competing(), while old restoration is checked on disk.
-            self.assertTrue(callable(original))
-            self.assertTrue(callable(m.guard_finished_focus))
+            with self.assertRaisesRegex(RuntimeError,"RECOVERY_NOT_COMPLETE"):
+                m.guard_finished_focus(root)
+            (session/"recovery.json").write_text(json.dumps(
+                {"services_restored":True,"errors":[]}))
+            health={"production_main_verified":True,
+                "gfa_reads":{"P80":{"format_and_identity_verified":True},
+                             "P06":{"format_and_identity_verified":True,
+                                    "p06_non_ff_verified":False}}}
+            (session/"health.json").write_text(json.dumps(health))
+            with self.assertRaisesRegex(RuntimeError,"HEALTH_UNRESOLVED"):
+                m.guard_finished_focus(root)
+            health["gfa_reads"]["P06"]["p06_non_ff_verified"]=True
+            (session/"health.json").write_text(json.dumps(health))
+            self.assertIsNone(m.guard_finished_focus(root))
+            (session/"recovery.json").write_text(json.dumps(
+                {"services_restored":False,"errors":["test"]}))
+            with self.assertRaisesRegex(RuntimeError,"HEALTH_UNRESOLVED"):
+                m.guard_finished_focus(root)
 
     def test_archive_manifest_replay(self):
         with tempfile.TemporaryDirectory() as td:
