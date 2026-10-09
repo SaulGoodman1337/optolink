@@ -1,5 +1,7 @@
 # Dokumentationsindex
 
+- [Temporal-Full-Run Live-Checkpoint, verifizierte Fokus-/Canary-Archive und Auswerte-Entscheidungsbaum (9.10.2026)](p300-temporal-live-checkpoint-and-decision-plan-2026-10-09.md) – bereits aktiver 2h P300-only-Run, kein erneuter Start; Restore-, RAM-/Status-Mirror- und P06-Gates.
+
 - [Naechster P300-Temporal-Logger: natuerliche Brennerzyklen, RAM-Spiegel, gestufte 1,5s/0,5s-Abtastrate und sichere VS1-Wiederherstellung (9.10.2026)](p300-temporal-runbook-2026-10-09.md) – erst NACH Fokus-Logger-Recovery+Privatarchiv, kein automatischer Start, keine P06-Sensorfreigabe.
 
 - [GFA unter P300: tiefe Vitosoft-, Protokoll-, Katalog- und Internetnachpruefung (9.10.2026)](p300-gfa-p300-quellennachpruefung-2026-10-09.md) – C9/Sequenz-Konflikt, VS1/VSKO-Sonderrouting, autonomer Status und verbliebene read-only RPC-/Virtual-Diagnose-Hypothesen; keine Produktionsfreigabe.
