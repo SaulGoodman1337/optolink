@@ -117,7 +117,8 @@ class SupervisionTests(unittest.TestCase):
         with patch.object(h, '_live', return_value=self.live), \
              patch.object(h, '_verify_original', return_value={}), \
              patch.object(h, 'stage', side_effect=AssertionError('must not stage')), \
-             patch.object(h.subprocess, 'run', side_effect=AssertionError('must not execute')):
+             patch.object(h.subprocess, 'run', side_effect=AssertionError('must not execute')), \
+             patch.object(h.os, 'geteuid', return_value=0):
             with self.assertRaisesRegex(h.AcceptanceRejected, 'no services stopped'):
                 h.execute()
         self.assertFalse(self.events)
