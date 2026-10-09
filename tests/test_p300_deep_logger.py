@@ -276,6 +276,48 @@ class DeepLoggerTests(unittest.TestCase):
         self.assertEqual(app.UNIT,'optolink-p300-deep-logger.service')
         self.assertLess(app.VS1_WINDOW_S,app.P300_WINDOW_S)
 
+    def test_post_restore_p06_zero_is_valid(self):
+        from types import SimpleNamespace
+        obj={'production_main_verified':True,
+             'gfa_reads':{'P80':{'format_and_identity_verified':True},
+                          'P06':{'returncode':0,'stdout':'1;0x4006;00',
+                                 'format_and_identity_verified':True}}}
+        fake=SimpleNamespace(post_restore_health=lambda:obj)
+        with patch.object(app.subprocess,'run') as called:
+            result=app.post_restore_health(fake)
+            called.assert_not_called()
+        self.assertTrue(result['gfa_p06_actual_rpm_quality_verified'])
+        self.assertTrue(result['gfa_reads']['P06']['p06_non_ff_verified'])
+
+    def test_post_restore_p06_ff_bounded_retry_passes(self):
+        from types import SimpleNamespace
+        obj={'production_main_verified':True,
+             'gfa_reads':{'P80':{'format_and_identity_verified':True},
+                          'P06':{'returncode':0,'stdout':'1;0x4006;ff',
+                                 'format_and_identity_verified':True}}}
+        fake=SimpleNamespace(post_restore_health=lambda:obj)
+        response=SimpleNamespace(returncode=0,stdout='1;0x4006;53\n',stderr='')
+        with patch.object(app.time,'sleep') as sleeper, \
+             patch.object(app.subprocess,'run',return_value=response) as called:
+            result=app.post_restore_health(fake)
+            self.assertEqual(called.call_count,1)
+            self.assertEqual(sleeper.call_count,1)
+        self.assertTrue(result['gfa_reads']['P06']['p06_non_ff_verified'])
+
+    def test_post_restore_p06_double_ff_is_not_health_pass(self):
+        from types import SimpleNamespace
+        obj={'production_main_verified':True,
+             'gfa_reads':{'P80':{'format_and_identity_verified':True},
+                          'P06':{'returncode':0,'stdout':'1;0x4006;ff',
+                                 'format_and_identity_verified':True}}}
+        fake=SimpleNamespace(post_restore_health=lambda:obj)
+        response=SimpleNamespace(returncode=0,stdout='1;0x4006;FF\n',stderr='')
+        with patch.object(app.time,'sleep'), \
+             patch.object(app.subprocess,'run',return_value=response):
+            result=app.post_restore_health(fake)
+        self.assertFalse(result['gfa_p06_actual_rpm_quality_verified'])
+        self.assertFalse(result['gfa_reads']['P06']['format_and_identity_verified'])
+
     def test_competing_services_include_old_overnight(self):
         self.assertIn('optolink-uart1-overnight.service',app.SELF_NAMED_SERVICE_UNITS)
         self.assertIn('optolink-handover-probe.service',app.SELF_NAMED_SERVICE_UNITS)
