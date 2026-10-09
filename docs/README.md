@@ -1,5 +1,9 @@
 # Dokumentationsindex
 
+- [Abgeschlossen: 2h-Temporal-Full-Run mit 5.224 Zyklen, Multi-Level-RAM- und GFA-Statusspiegel-Audit (9.10.2026)](p300-temporal-fullrun-analysis-2026-10-09.md) – fuenf Brennerzyklen, 23.028 Rohframes valide, 0F20 29 Werte, kein verifizierter P06-Istwert.
+- [Aufgabe 1: naechster getriggerter P300→VS1-P06-Wirkvergleich und Single-Owner-Hybrid-Fallback](p300-rpm-next-experiment-and-architecture-2026-10-09.md) – Implementierungs-Gates und Abbruchregeln, noch kein neuer Hardwarelogger freigegeben.
+- [Maschinenlesbare 2h-Temporal-Evidenz](evidence/p300-temporal-fullrun-evidence-2026-10-09.json) – hashes, 5.224 validierte Zyklen, 9-Byte-Statuskopien und Messgrenzen.
+
 - [Temporal-Full-Run Live-Checkpoint, verifizierte Fokus-/Canary-Archive und Auswerte-Entscheidungsbaum (9.10.2026)](p300-temporal-live-checkpoint-and-decision-plan-2026-10-09.md) – bereits aktiver 2h P300-only-Run, kein erneuter Start; Restore-, RAM-/Status-Mirror- und P06-Gates.
 
 - [Naechster P300-Temporal-Logger: natuerliche Brennerzyklen, RAM-Spiegel, gestufte 1,5s/0,5s-Abtastrate und sichere VS1-Wiederherstellung (9.10.2026)](p300-temporal-runbook-2026-10-09.md) – erst NACH Fokus-Logger-Recovery+Privatarchiv, kein automatischer Start, keine P06-Sensorfreigabe.
