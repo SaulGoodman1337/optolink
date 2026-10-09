@@ -13,17 +13,27 @@ aelteren Statusmeldungen dieser Datei:**
   aktuell keine Vitotrol-Entwicklung.
 - **Aufgabe 3:** Pumpenoverride erst danach.
 
-**Bereit fuer EINEN neuen read-only 4h/6h Differentiallogger:**
-[Ausfuehrbare Schritte](p300-deep-logger-runbook-2026-10-09.md).
-Neu statt P300-only: Echte VS1-P06/P09-GFA-Phasen
-wechseln mit FC01-Status plus historisch belegten
-FC03-RAM-Bloecken unter P300. Dieses Design
-behebt noch keine gleichzeitige P300-P06-Lesbarkeit,
-macht aber die alte, dokumentiert zu wenig
-referenzierte Messluecke kleiner. Der alte
-VS1-Produktionssplitter und die vorher aktiven
-Hilfsdienste werden nach Test-Ende wiederhergestellt;
-waehrend der exklusiven Messung sind sie pausiert.
+**Das P06-VS1/P300-Differentialexperiment vom 9.10. IST ABGESCHLOSSEN:**
+[Abschlussbericht, P300-Frametest und RPM-Speichervergleich](p300-deep-result-2026-10-09.md).
+2.680 VS1-Referenzrunden mit 5.360 echten P06-Proben und
+1.769 P300-Runden (8.256 bytegenau validierte FC01/FC03-Reads),
+zwei natuerliche Flammenbitfenster, 52 Wechsel.
+GFA-P06 und P09 differierten in 108 von 2.593
+stabilen Referenzklammern. In acht gezielten
+P300-Bloecken kein direkt 8-bit-/16-bit-kodierter
+P06-Istwertspiegel. Kein P06-Alias und keine
+Produktionsfreigabe. Ein SIGTERM im laufenden
+VS1-P10-Read verursachte ein falsches Worker-Restore-NOT_VERIFIED;
+ExecStopPost hat den Originalsplitter und alle sechs
+Aktivdienste restauriert und P80=20/P06=00 geprueft.
+Der Stop-Race wurde fuer kuenftige Tests im Branch
+behandelt und 32 Offline-Regressionen bestanden.
+**Keine identische Loggerwiederholung.**
+Die naechste Quellensuche ist ein durch echte
+VS1-P06-Vor-/Nachreferenzen geklammerter
+kompletter RAM-Scan des bereits historisch
+lesbaren internen 0x0400..0x53FF-Bereichs,
+nicht ein erneutes Lesen der gleichen acht Bloecke.
 
 **Alle bisherigen Ergebnisse und die verbindliche
 Funktionsparitaetsmatrix:**
