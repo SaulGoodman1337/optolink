@@ -588,7 +588,35 @@ def worker(session):
 
 
 def post_restore_health(base):
-    return base.post_restore_health()
+    """A formatted FF is not a real fan-speed sample or a positive health gate."""
+    health=base.post_restore_health()
+    p06=health.get('gfa_reads',{}).get('P06')
+    if not p06:
+        return health
+    def decode_non_ff(text):
+        found=re.findall(r'1;0x4006;([0-9a-fA-F]{2})\\b',text or '',re.I)
+        return bool(found) and found[-1].lower()!='ff'
+    non_ff=(p06.get('returncode')==0 and decode_non_ff(p06.get('stdout','')))
+    p06['p06_non_ff_verified']=non_ff
+    if not non_ff and health.get('production_main_verified'):
+        # One bounded read-only MQTT retry after a historically observed FF.
+        try:
+            time.sleep(.150)
+            proc=subprocess.run(
+                ['optolink-debug','request','gfaread;0x4006;1;raw;False',
+                 '--timeout','8'],
+                capture_output=True,text=True,timeout=14,check=False)
+            p06['retry_returncode']=proc.returncode
+            p06['retry_stdout']=proc.stdout[-600:]
+            p06['retry_stderr']=proc.stderr[-300:]
+            non_ff=proc.returncode==0 and decode_non_ff(proc.stdout)
+            p06['p06_non_ff_verified']=non_ff
+        except (OSError,subprocess.TimeoutExpired) as exc:
+            p06['retry_error']=str(exc)
+    p06['format_and_identity_verified']=bool(
+        p06.get('format_and_identity_verified') and p06['p06_non_ff_verified'])
+    health['gfa_p06_actual_rpm_quality_verified']=p06['format_and_identity_verified']
+    return health
 
 
 def bundle(session,base):
