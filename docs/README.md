@@ -1,5 +1,7 @@
 # Dokumentationsindex
 
+- [RPM-Trigger-Kurzlauf 09.10.2026: 2185 valide P300-Zyklen, 1 natuerlicher Brennerzyklus, 0 High-Trigger, sauberer Restore](p300-rpm-trigger-early-stop-result-2026-10-09.md) – warum RAM nur 00/54 zeigte, welche Statusbytes den Changezaehler treiben und warum ein modulationsgetriggerter VS1-P06-Vergleich allenfalls als letzter kurzer Test sinnvoll waere; [Evidenz-JSON](evidence/p300-rpm-trigger-early-stop-evidence-2026-10-09.json).
+
 - [Abgeschlossen: RPM-Trigger-Canary mit SHA256-/Frame-Audit und Restore-Freigabe (9.10.2026)](p300-rpm-trigger-canary-audit-2026-10-09.md) – 231 Zyklen, 924 valide FC01/FC03-Frames, 288,8s P300-only, 6/6 Units gesund; Hinweis auf bereits belegte Ein-ENQ-Beschleunigung fuer separate Fork-Forschung.
 
 - [Neuer P300→VS1-P06-Triggerlogger: 5-Minuten-Canary, 1–2h messwertgetriggerter Versuch und Restore-Runbook](p300-rpm-trigger-runbook-2026-10-09.md) – read-only, nur 3 bereits bewiesene P300-Frameformen, bis zu vier echte VS1-P06-Gegenproben, keine Ist-RPM-Freigabe.
