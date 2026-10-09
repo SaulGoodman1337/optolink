@@ -94,10 +94,11 @@ class LiveGuardTests(unittest.TestCase):
                 m.guard_other_research(unit_state=lambda _: {'ActiveState': 'activating'}, proc_root=Path(td))
 
     def test_research_guard_precedes_production_checks(self):
-        with patch.object(m, 'guard_other_research', side_effect=m.base.ProbeError('RUNNING')):
-            with patch.object(m.base, 'preflight', side_effect=AssertionError('must not preflight'), create=True):
-                with self.assertRaisesRegex(m.base.ProbeError, 'RUNNING'):
-                    m.preflight()
+        with patch.object(m.os, 'geteuid', return_value=0), \
+             patch.object(m, 'guard_other_research', side_effect=m.base.ProbeError('RUNNING')), \
+             patch.object(m.base, 'preflight', side_effect=AssertionError('must not preflight'), create=True):
+            with self.assertRaisesRegex(m.base.ProbeError, 'RUNNING'):
+                m.preflight()
 
     def test_source_manifest_rejects_tampering(self):
         with tempfile.TemporaryDirectory() as td:
