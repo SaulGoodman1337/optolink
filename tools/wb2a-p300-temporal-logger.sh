@@ -5,9 +5,11 @@ umask 077
 PROJECT=/root/p300-trial-work/project
 cd "$PROJECT"
 [[ "$(pwd -P)" == "$PROJECT" ]] || { echo "REFUSED: research checkout only" >&2; exit 1; }
-[[ $# -le 2 ]] || { echo "Usage: plan | start [hours 1..3] | status | stop" >&2; exit 2; }
+[[ $# -le 2 ]] || { echo "Usage: plan | canary | start [hours 1..3] | status | stop" >&2; exit 2; }
 case "${1:-plan}" in
-  start)
+  start|canary)
+    mode="${1:-plan}"
+    [[ "$mode" != "canary" || $# -eq 1 ]] || exit 2
     hours="${2:-2}"
     [[ "$hours" =~ ^[1-3]$ ]] || { echo "REFUSED: hours must be 1..3" >&2; exit 2; }
     [[ "$(git branch --show-current)" == "optolink-p300-migration" ]] || {
@@ -24,6 +26,9 @@ case "${1:-plan}" in
     "$PY" -m unittest discover -s tests -p 'test_p300_fullram_logger.py' -v
     "$PY" -m unittest discover -s tests -p 'test_p300_deep_logger.py' -v
     "$PY" -m unittest discover -s tests -p 'test_uart1_overnight.py' -v
+    if [[ "$mode" == "canary" ]]; then
+      exec "$PY" -u tools/wb2a-p300-temporal-logger.py --canary
+    fi
     exec "$PY" -u tools/wb2a-p300-temporal-logger.py --start --hours "$hours"
     ;;
   status)
