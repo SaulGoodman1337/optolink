@@ -1,5 +1,18 @@
 # Aufgabe 1: P300-Migration mit 100 % VS1-Funktionsparitaet – konsolidierte Evidenz
 
+## Aktualisierung 9.10.2026 – Voll-RAM-Experiment BEGRENZT ABGESCHLOSSEN
+
+**Der 20-KiB-P06-geklammerte Logger wurde bereits real ausgefuehrt; den gleichen Vier-Stunden-Lauf NICHT erneut starten.**
+[Abschlussbericht und Integritaetsanalyse](p300-fullram-result-2026-10-09.md) ·
+[maschinenlesbare Evidenz](evidence/p300-fullram-p06-vs1-result-2026-10-09.json).
+
+- **79 COMPLETE, 1 PARTIAL** (Nr. 80 mit allen 640 RAM-Reads, jedoch ohne gueltige nachfolgende P06-Klammer), **51.200/51.200** FC03- und **1.600/1.600** FC01-Frames gueltig; alle 176 Manifestdateien korrekt. 48 stabile OFF-, elf stabile ON-Snapshots. Alle elf ON-Snapshots lagen jedoch nur bei **P06=0x53 / 2.490 U/min**.
+- Kein direkter 00→53-P06-Rohwert- oder 0→2490-U/min-16/32-Bit-Spiegel im 20-KiB-RAM. **0x0F20 und 0x1C76** zeigen 00→54, sind aber **nicht** als echte Drehzahl bewiesen. 0x0F29 spiegelt FC01-Statusbyte 7.
+- Ein Timeout beim **P300→VS1-Identitaetswechsel nach dem vollstaendigen RAM-Scan 80** beendete die Messung. Recovery stellte alle sechs zuvor aktiven Units und gueltige MQTT-GFA P80/P06 her. **HA-Entity-Frische nicht nachgewiesen.**
+- **Naechster Aufgabe-1-Schritt:** gezielte kurze P06-geklammerte, read-only RAM-Fokusmessungen bei nachgewiesenen **verschiedenen positiven RPM-Niveaus**. Bei weiterhin fehlendem unabhaengigem Sensor: gemeinsame serielle P300/VS1-Owner-Architektur mit echten VS1-GFA-P06-Abfragephasen und nachgewiesener Gesamtfunktionsparitaet.
+- PR #46 bleibt **Draft und ungemergt**, produktiver VS1-Betrieb unveraendert. Keine Vitotrol-/Pumpen-Nebenprojekte.
+
+
 **WB2A / VDensHO1 / 20C2 / Software 01.03 / GFA P80=20**
 **Stand 9.10.2026 | nur `optolink-p300-migration` | PR #46 ungemergt**
 
