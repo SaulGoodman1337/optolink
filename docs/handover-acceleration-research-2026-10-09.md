@@ -69,11 +69,48 @@ stateDiagram-v2
 
 **VS1-Grundmodus + seltene P300-Diagnosefenster** ist für die aktuelle Produktion die plausiblere Entwicklungsoption. Ein P300-Grundmodus mit regelmäßigem VS1-GFA-Fenster wäre zu langsam für den diskutierten asynchronen RAM-Reload (~2,1 s), selbst mit einem validen schnelleren VS1-Rückweg. Fork sinnvoll **erst**, wenn die HA-Integration des Single-Owner-Managers nicht anders wartbar wird; Fork ersetzt keine Gerätetimer.
 
-## Offline-Regression und offene Integrationsgates
+## Offline-Implementierung und Teststand
 
-Isolierter Prototyp im begleitenden Downloadarchiv mit `tools/handover_acceleration/coordinator.py`, `tests/test_handover_acceleration.py`, `tests/test_handover_latency_budget.py`. Lokal **23/23 Tests bestanden**: erfolgreiche Ein-ENQ-Rückkehr, P300-/VS1-Identität, P80/P06, ACK/NACK, Checksumme, falsche Adresse, Timeout, Port-Lock-Konkurrenz, Thread-Serialisierung, kein stiller Fast-Erfolg bei Recovery, automatisch begrenzter konservativer VS1-Restore. Nicht Hardware-CI. Zur Reproduktion: `python -m unittest discover -s tests -p 'test_handover*.py' -v`.
+Der **unabhängige Forschungsbranch** enthält jetzt ausführbare, aber bewusst
+hardwarelose Komponenten:
 
-Vor Produktionsintegration fehlen u. a. realer OS-Portbesitz (flock allein bindet Fremdprozesse nicht), PTY-/Kernel-Fehlerprüfung, unabhängige Recovery-Aufsicht, Service-Manifest und selektiver Restore, HA-Schreib-/Readback-Parität, Queue-Fairness, Langzeitfrische und Benchmarks. Alle Schreiboperationen bleiben gesperrt. Es wird **kein** weiterer Hardwareversuch beantragt, solange die verbleibende Frage keine begründete neue Protokollhypothese erfordert. Jede spätere Hardwareprobe benötigt neue ausdrückliche Freigabe, Offline-CI und verifizierten VS1-Rückfall.
+- `tools/handover_acceleration/coordinator.py`: explizite Handshakezustände,
+  feste Read-only-Freigabelisten auch auf Wire-Ebene, Geräte- und
+  Softwareidentität, P80/P06-Prüfung, konservativer Einmal-Restore.
+- `tools/handover_acceleration/scheduler.py`: begrenzte und typisierte
+  Read-only-Queue, begrenzte Protokoll-Batches, Cancellation nur vor
+  einem begonnenen Frame, Frischemodell mit Quellen-/Sitzungsnachweis.
+- `tests/test_handover_acceleration.py`, `test_handover_pty.py`,
+  `test_handover_scheduler.py`, `test_handover_latency_budget.py`:
+  **51/51 Offline-Tests erfolgreich**; Linux-PTY ist ein virtueller
+  Kerneltransport und kein Test der echten seriellen Hardware.
+- `.github/workflows/handover-acceleration-offline.yml`: CI auf Python
+  3.11 und 3.12, beide erfolgreich beim Commit `713a97c3`
+  ([Workflow](https://github.com/SaulGoodman1337/optolink/actions/runs/37973198847)).
+
+**Nicht integriert und nicht freigegeben:** produktiver Dispatcher, echter
+serieller Port, vollständige HA-Schreib- und Readback-Parität, unabhängiger
+Recovery-Supervisor, echte USB/CP2102-Timings und Hardware-Beschleunigung.
+Die Queue und der Frischeledger sind noch **nicht** mit dem
+Protokollkoordinator verbunden. `flock` ist kooperativ und kann einen
+Fremdprozess allein nicht verhindern. Weitere GFA-Adressen, P300-GFA-Aliase
+und Writes bleiben gesperrt.
+
+Der ergänzende [Integrationsaudit](handover-dispatcher-integration-audit-2026-10-09.md)
+zeigt, dass der vorhandene produktive Splitter selbst bereits ein zentraler
+serieller Besitzer ist. Ein späterer Manager sollte daher **innerhalb des
+bestehenden Hauptloops** die serielle Transaktionsgrenze übernehmen,
+nicht einen zweiten Portbesitzer starten. Die vorhandenen MQTT-/TCP- und
+HA-Semantiken sind dabei unverändert zu erhalten.
+
+Weitere Dokumentation:
+[Phase 2: Wire-Guards und PTY](handover-acceleration-phase-2-2026-10-09.md),
+[Phase 3: Queue und Datenfrische](handover-acceleration-phase-3-2026-10-09.md).
+
+**Ein weiterer Hardwaretest wird nicht beantragt.** Erst eine neue
+quellenbelegte Hypothese, eine definierte Offline-CI-Abnahme, ein
+unabhängiger Recoverypfad und ausdrückliche Nutzerfreigabe können einen
+späteren Versuch rechtfertigen.
 
 ## Quellenverweise
 
