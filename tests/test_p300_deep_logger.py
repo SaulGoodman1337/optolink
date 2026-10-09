@@ -163,6 +163,73 @@ class DeepLoggerTests(unittest.TestCase):
         with self.assertRaisesRegex(Exception,'WRONG_GFA_TYPE'):
             wire.vs1_read('P80')
 
+    def test_p80_single_transient_ff_retries_and_recovers(self):
+        fake=Fake([b'\xff',b'\x20'])
+        fake.sleep=lambda seconds:None
+        wire=app.DeepWire(fake)
+        answer=wire.vs1_read('P80')
+        self.assertEqual(answer['hex'],'20')
+        self.assertEqual(answer['attempts'],2)
+        self.assertEqual(fake.port.tx,[app.load_local_base(PATH.parent).h.GFA['P80']]*2)
+
+    def test_p80_two_ff_returns_error(self):
+        fake=Fake([b'\xff',b'\xff'])
+        fake.sleep=lambda seconds:None
+        wire=app.DeepWire(fake)
+        with self.assertRaisesRegex(Exception,'WRONG_GFA_TYPE'):
+            wire.vs1_read('P80')
+
+    def test_recovery_main_before_any_helpers(self):
+        import contextlib
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        log=[]
+        def action(args):
+            log.append(tuple(args))
+        def state(unit):
+            return {'ActiveState':'active'}
+        fakeh=SimpleNamespace(
+            MAIN='optolink-splitter.service',
+            command=action,
+            wait_main_ready=lambda:log.append(('ready',)),
+            unit_state=state,
+            atomic_json=lambda path,data:log.append(('json',path.name,data['services_restored']))
+        )
+        fakebase=SimpleNamespace(h=fakeh,locks=contextlib.nullcontext)
+        state={'restore':['optolink-party-emulator.service','optolink-splitter.service']}
+        with patch.object(app,'load_local_base',return_value=fakebase), \
+             patch.object(app,'validate_state',return_value=state), \
+             patch.object(app,'post_restore_health',return_value={'production_main_verified':True}), \
+             patch.object(app,'bundle',return_value=Path('/tmp/fake-bundle.tar.gz')):
+            self.assertEqual(app.recover(Path('/tmp/fake-session')),0)
+        self.assertEqual(log[0],('systemctl','start','optolink-splitter.service'))
+        self.assertEqual(log[1],('ready',))
+        self.assertEqual(log[2],('systemctl','start','optolink-party-emulator.service'))
+
+    def test_recovery_defers_writers_on_main_failure(self):
+        import contextlib
+        from types import SimpleNamespace
+        log=[]
+        def bad_ready():
+            raise RuntimeError('splitter unready')
+        fakeh=SimpleNamespace(
+            MAIN='optolink-splitter.service',
+            command=lambda args:log.append(tuple(args)),
+            wait_main_ready=bad_ready,
+            unit_state=lambda unit:{'ActiveState':'active'},
+            atomic_json=lambda path,data:log.append(('json',data['services_restored']))
+        )
+        fakebase=SimpleNamespace(h=fakeh,locks=contextlib.nullcontext)
+        state={'restore':['optolink-party-emulator.service','optolink-splitter.service']}
+        with patch.object(app,'load_local_base',return_value=fakebase), \
+             patch.object(app,'validate_state',return_value=state), \
+             patch.object(app,'post_restore_health',return_value={'production_main_verified':False}), \
+             patch.object(app,'bundle',return_value=Path('/tmp/fake-bundle.tar.gz')):
+            self.assertEqual(app.recover(Path('/tmp/fake-session')),1)
+        self.assertEqual([v for v in log if v[:2]==('systemctl','start')],
+                         [('systemctl','start','optolink-splitter.service')])
+        self.assertIn(('json',False),log)
+
     def test_extra_gfa_uses_only_vs1(self):
         wire=app.DeepWire(Fake([b'\x03']))
         v=wire.vs1_read('P10')
