@@ -50,7 +50,7 @@ Phase C: **ununterbrochener P300-Only-Status-/RAM-Stream**, kein erneuter VS1-GF
 
 Phase D: kontrolliert nach VS1 wechseln, Identität prüfen, erneut echte GFA-Referenz erfassen. Danach wird nochmals ein geprüfter P80/P06-Read im Worker vorgenommen. Der eigene systemd-ExecStopPost stellt die zuvor aktiven Originaldienste wieder her, **Hauptsplitter zuerst**, und prüft Produktiv-MQTT-P80/P06-Nicht-FF. Ein HA-Entity-Frischenachweis ist dadurch nicht automatisch gegeben. Fehlgeschlagene Messung und erfolgreiche Wiederherstellung bleiben getrennte Qualitätsmerkmale.
 
-**Dauer:** Standard 2h; Startargument 1, 2 oder 3h, höchstens 24.000 Kernzyklen. Startreserve mindestens 768 MiB, Laufreserve mindestens 256 MiB; private Rohsession max. 192 MiB, Einzeldatei max. 96 MiB. Nur diese zwei bekannten RAM-Kandidaten plus Nachbarschaft; keine Wiederholung des früheren 640-Block-Vollscans.
+**Dauer:** zwingender 5-Minuten-Canary vor der ersten vollen Messung; anschließend Standard 2h, Startargument 1, 2 oder 3h, höchstens 24.000 Kernzyklen. Startreserve mindestens 768 MiB, Laufreserve mindestens 256 MiB; private Rohsession max. 192 MiB, Einzeldatei max. 96 MiB. Nur diese zwei bekannten RAM-Kandidaten plus Nachbarschaft; keine Wiederholung des früheren 640-Block-Vollscans.
 
 ## 5. Start-Gates und Bedienung – NICHT während des laufenden Fokusloggers
 
@@ -78,6 +78,32 @@ bash tools/wb2a-p300-temporal-logger.sh stop
 ~~~
 
 **Systemd-Unit:** optolink-p300-temporal.service. Keine automatische Aktivierung. Type=exec, Restart=no, TimeoutStopSec=300, KillMode=control-group; ExecStopPost führt den gesonderten Produktions-Restore aus. Die vollen Rohdaten bleiben nur in privaten Session-Verzeichnissen. Das Profil für HA/MQTT bleibt produktiv unangetastet.
+
+### Zweistufige Hardware-Freigabe: zuerst kurzer Canary, dann Hauptlauf
+
+**Vor dem ersten zweistündigen Lauf MUSS ein erfolgreicher fünfminütiger Canary erfolgen.** Der Code verlangt hierfür ausdrücklich eine zuvor angelegte Canarysitzung mit MODE=canary und DURATION_SECONDS=300, mindestens 30 vollständig protokollierten Kernzyklen, einer P300-only-Beobachtungszeit von mindestens 240 Sekunden, keinem Stoppsignal, measurement.observation_complete=true, worker_vs1_restored=true, keinen Workerfehlern, recovery.services_restored=true, produktiver P80-/P06-Nicht-FF-Health und vorhandenem Canary-Tar.gz-Archiv. Ein nur gestarteter oder vorzeitig abgebrochener Canary schaltet den Langlauf NICHT frei.
+
+Reihenfolge nach vollständigem Fokus-Restore und Archivkontrolle:
+
+~~~bash
+# 0. Nur informationshalber, keine Geräte- oder Serviceaktion
+bash tools/wb2a-p300-temporal-logger.sh plan
+
+# 1. Erst fünf Minuten P300-Read-only-Canary, eigener geordneter VS1-Restore
+bash tools/wb2a-p300-temporal-logger.sh canary
+
+# 2. Den Canary bis Unit inactive, RESTORED, P80/P06-Health und Bundle abwarten
+bash tools/wb2a-p300-temporal-logger.sh status
+
+# 3. Erst wenn der Canary wirklich bestanden ist, Langzeitlogger
+bash tools/wb2a-p300-temporal-logger.sh start 2
+
+# 4. Status / manueller sicherer Stopp des jeweils aktiven Experiments
+bash tools/wb2a-p300-temporal-logger.sh status
+bash tools/wb2a-p300-temporal-logger.sh stop
+~~~
+
+Die Canary-Ausführung pausiert ebenfalls vorübergehend produktive Optolink-Telemetrie. Sie ist **kein** unabhängiger Tachonachweis; ihr Zweck ist die praktische Transportsicherheit, Datendichte und Recoveryprüfung der neuen Software. Ein Fehler im Canary verlangt zuerst Fehleranalyse und Wiederherstellung, nicht automatisches Weiterfahren mit zwei Stunden.
 
 ## 6. Reproduzierbare Rohdatenausgabe
 
