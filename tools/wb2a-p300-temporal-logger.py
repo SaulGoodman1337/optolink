@@ -25,7 +25,7 @@ import tarfile
 import tempfile
 import time
 
-VERSION = "1.0.0-p300-temporal-candidate"
+VERSION = "1.1.0-p300-temporal-candidate"
 PROJECT = Path("/root/p300-trial-work/project")
 ROOT = Path("/root/p300-trial-work/p300-temporal-results")
 BUNDLES = Path("/root/p300-trial-work/research-bundles")
@@ -33,6 +33,8 @@ UNIT = "optolink-p300-temporal.service"
 CURRENT_UNIT = "optolink-p300-p06-focus.service"
 PYTHON = "/opt/optolink/venv/bin/python"
 DEFAULT_HOURS, MAX_HOURS = 2, 3
+CANARY_SECONDS = 5 * 60
+CANARY_MIN_CYCLES = 30
 REFERENCE_SECONDS = 6.0
 MIN_FREE = 256 * 1024 * 1024
 PREFLIGHT_FREE = 768 * 1024 * 1024
@@ -330,6 +332,17 @@ def validate_state(session):
     F.DEEP.check_hash(session/"focus.py",data["focus_sha256"])
     if not 1 <= data["hours"] <= MAX_HOURS:
         raise RuntimeError("TEMPORAL_HOURS_OUT_OF_RANGE")
+    seconds = data.get("duration_seconds")
+    mode = data.get("mode")
+    if (mode == "canary" and
+            (data["hours"] != 1 or type(seconds) is not int or
+             seconds != CANARY_SECONDS)):
+        raise RuntimeError("TEMPORAL_CANARY_DURATION_INVALID")
+    if (mode == "full" and
+            (type(seconds) is not int or seconds != data["hours"]*3600)):
+        raise RuntimeError("TEMPORAL_FULL_DURATION_INVALID")
+    if mode not in ("canary", "full"):
+        raise RuntimeError("TEMPORAL_MODE_INVALID")
     return data
 
 
@@ -354,14 +367,16 @@ def run_worker(session):
     base=F.DEEP.load_local_base(session)
     h=base.h
     started=time.monotonic()
-    deadline=started+state["hours"]*3600
+    deadline=started+state["duration_seconds"]
     stop=F.DEEP.DeferredStop()
     for sig in (signal.SIGTERM,signal.SIGINT,signal.SIGHUP):
         signal.signal(sig,stop.on_signal)
     wire=handle=None
     streams={}
     counts=Counter()
-    report={"version":VERSION,"start_utc":utc(),"errors":[],
+    report={"version":VERSION,"mode":state["mode"],
+            "duration_seconds":state["duration_seconds"],
+            "start_utc":utc(),"errors":[],
             "read_only":True,"writes_issued":False,
             "actual_rpm_p300_verified":False,
             "observation_complete":False,"worker_vs1_restored":False,
@@ -394,12 +409,15 @@ def run_worker(session):
                 report["initial_vs1"]["p06_valid"] < 1):
             raise RuntimeError("TEMPORAL_INITIAL_VS1_P06_INVALID")
         if stop.signum is not None:raise RuntimeError("TEMPORAL_STOP_DURING_PRE")
-        progress(session,"VS1_TO_P300",started,state["hours"],counts)
+        progress(session,"VS1_TO_P300",started,state["hours"],counts,
+                 extra={"mode":state["mode"],"duration_seconds":state["duration_seconds"]})
         F.switch(wire,streams["switch"],"TEMPORAL_VS1_TO_P300",True)
-        progress(session,"P300_STREAM",started,state["hours"],counts)
+        progress(session,"P300_STREAM",started,state["hours"],counts,
+                 extra={"mode":state["mode"],"duration_seconds":state["duration_seconds"]})
         report["p300_stream"]=measurement_stream(
             session,wire,streams,stop,deadline,counts,
-            checkpoint=lambda phase,c: progress(session,phase,started,state["hours"],c))
+            checkpoint=lambda phase,c: progress(session,phase,started,state["hours"],c,
+              extra={"mode":state["mode"],"duration_seconds":state["duration_seconds"]}))
         F.switch(wire,streams["switch"],"TEMPORAL_P300_TO_VS1",False)
         report["final_vs1"]=F.reference(wire,streams["vs1"],0,"POST",
                                         stop=None,seconds=REFERENCE_SECONDS)
@@ -581,10 +599,38 @@ def guard_finished_focus(root=None, bundles=None):
         raise RuntimeError("TEMPORAL_PREVIOUS_FOCUS_ARCHIVE_MISSING")
 
 
-def start(hours):
+def guard_canary_completed(root=None,bundles=None):
+    root=ROOT if root is None else Path(root)
+    bundles=BUNDLES if bundles is None else Path(bundles)
+    matches=sorted(x for x in root.glob("run-*/state.json") if x.is_file())
+    for sf in matches:
+        try:
+            state=json.loads(sf.read_text())
+            if state.get("mode")!="canary":continue
+            session=sf.parent
+            measurement=json.loads((session/"measurement.json").read_text())
+            recovery=json.loads((session/"recovery.json").read_text())
+            health=json.loads((session/"health.json").read_text())
+            bundle=bundles/("p300-temporal-"+session.name+"-bundle.tar.gz")
+            if (measurement.get("observation_complete") and
+                measurement.get("worker_vs1_restored") and
+                not measurement.get("errors") and
+                measurement.get("counts",{}).get("CYCLES",0)>=CANARY_MIN_CYCLES and
+                recovery.get("services_restored") and
+                health.get("production_main_verified") and
+                health.get("gfa_reads",{}).get("P80",{}).get("format_and_identity_verified") and
+                health.get("gfa_reads",{}).get("P06",{}).get("p06_non_ff_verified") and
+                bundle.is_file() and not bundle.is_symlink()):
+                return session
+        except (OSError,ValueError,KeyError,TypeError):
+            continue
+    raise RuntimeError("TEMPORAL_SUCCESSFUL_FIVE_MIN_CANARY_REQUIRED")
+
+
+def start(hours, canary=False):
     if os.geteuid()!=0:
         raise RuntimeError("TEMPORAL_ROOT_REQUIRED")
-    if type(hours) is not int or not 1<=hours<=MAX_HOURS:
+    if type(hours) is not int or not 1<=hours<=MAX_HOURS or (canary and hours!=1):
         raise RuntimeError("TEMPORAL_HOURS_MUST_BE_1_TO_3")
     if any(p.is_symlink() for p in (PROJECT,ROOT,BUNDLES)):
         raise RuntimeError("TEMPORAL_UNSAFE_ROOT")
@@ -607,6 +653,8 @@ def start(hours):
                   not json.loads(rec.read_text()).get("services_restored") or
                   not health.is_file()):
                 raise RuntimeError("TEMPORAL_OLDER_RESTORE_UNRESOLVED")
+        if not canary:
+            guard_canary_completed()
         session=ROOT/("run-"+dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")+
                       "-"+str(os.getpid()))
         session.mkdir(mode=0o700)
@@ -625,7 +673,10 @@ def start(hours):
             hashes[name]=F.sha256(session/name)
         commit=h.command(["git","-C",str(PROJECT),"rev-parse","HEAD"]).strip()
         h.atomic_json(session/"state.json",{
-            "version":VERSION,"hours":hours,"services":services,"restore":[],
+            "version":VERSION,"hours":hours,
+            "mode":"canary" if canary else "full",
+            "duration_seconds":CANARY_SECONDS if canary else hours*3600,
+            "services":services,"restore":[],
             "port":settings["port_optolink"],"source_checkout_sha":commit,
             "logger_sha256":hashes["logger.py"],"focus_sha256":hashes["focus.py"],
             "fullram_sha256":hashes["fullram.py"],"deep_sha256":hashes["deep.py"],
@@ -644,6 +695,8 @@ def start(hours):
     print("SESSION="+str(session),flush=True)
     print("UNIT="+UNIT,flush=True)
     print("HOURS="+str(hours),flush=True)
+    print("MODE="+("canary" if canary else "full"),flush=True)
+    print("DURATION_SECONDS="+str(CANARY_SECONDS if canary else hours*3600),flush=True)
     print("READ_ONLY_P300_TEMPORAL=YES",flush=True)
     return 0
 
@@ -702,7 +755,7 @@ def stop():
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     group=p.add_mutually_exclusive_group()
-    for flag in ("start","stop","status"):group.add_argument("--"+flag,action="store_true")
+    for flag in ("start","stop","status","canary"):group.add_argument("--"+flag,action="store_true")
     group.add_argument("--worker",type=Path)
     group.add_argument("--recover",type=Path)
     p.add_argument("--hours",type=int,default=DEFAULT_HOURS)
@@ -713,12 +766,13 @@ def main():
             p.error("supervised root systemd required")
         return worker(args.worker) if args.worker else recover(args.recover)
     if args.start:return start(args.hours)
+    if args.canary:return start(1,canary=True)
     if args.status:return status()
     if args.stop:return stop()
     print("PLAN ONLY:",VERSION)
     print("VS1 references; exactly one P300 entry; FC01/11 before/after two FC03/32 blocks.")
     print("Optional four fixed RAM context blocks every 12 seconds; burst on natural flame/state transitions.")
-    print("P06 actual RPM never inferred under P300; read-only, 1..3h, 24k-cycle cap.")
+    print("P06 actual RPM never inferred under P300; read-only, 5min canary, then 1..3h full, 24k-cycle cap.")
     print("Previous P06-focus restore+P80/P06 non-FF must pass before starting.")
     return 0
 
