@@ -457,6 +457,12 @@ def validate_state(session):
     return state
 
 def progress(session, phase, counts, start, hours, recent=None):
+    # Count durable switch records, including failed attempts. The snapshot worker
+    # does not own this counter: switches occur inside capture_snapshot().
+    switch_log = session / "switch.jsonl"
+    if switch_log.is_file():
+        with switch_log.open(encoding="utf-8") as source:
+            counts["SWITCHES"] = sum(bool(line.strip()) for line in source)
     base = DEEP.load_local_base(Path(__file__).resolve().parent)
     base.h.atomic_json(session / "progress.json", {
         "state": "RUNNING_READ_ONLY", "phase": phase, "updated_utc": utc(),
