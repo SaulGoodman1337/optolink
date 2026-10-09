@@ -552,9 +552,10 @@ def competing(base):
             raise RuntimeError("TEMPORAL_COMPETING_LOGGER:"+unit)
 
 
-def guard_finished_focus(root=None):
+def guard_finished_focus(root=None, bundles=None):
     root=(Path("/root/p300-trial-work/p300-p06-focus-results")
           if root is None else Path(root))
+    bundles=BUNDLES if bundles is None else Path(bundles)
     if root.is_symlink():
         raise RuntimeError("TEMPORAL_FOCUS_ROOT_SYMLINK")
     if not root.exists():return
@@ -575,6 +576,9 @@ def guard_finished_focus(root=None):
         not h.get("gfa_reads",{}).get("P06",{}).get("format_and_identity_verified") or
         not h.get("gfa_reads",{}).get("P06",{}).get("p06_non_ff_verified")):
         raise RuntimeError("TEMPORAL_PREVIOUS_FOCUS_VS1_HEALTH_UNRESOLVED")
+    archive=bundles/("p300-p06-focus-"+recent.name+"-bundle.tar.gz")
+    if archive.is_symlink() or not archive.is_file():
+        raise RuntimeError("TEMPORAL_PREVIOUS_FOCUS_ARCHIVE_MISSING")
 
 
 def start(hours):
