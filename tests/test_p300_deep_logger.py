@@ -318,6 +318,74 @@ class DeepLoggerTests(unittest.TestCase):
         self.assertFalse(result['gfa_p06_actual_rpm_quality_verified'])
         self.assertFalse(result['gfa_reads']['P06']['format_and_identity_verified'])
 
+    def test_sigterm_is_deferred_until_gfa_read_completes(self):
+        import signal
+        latch=app.DeferredStop()
+        fake=Fake([b'\x53'])
+        original=fake.exact
+        def read_after_signal(n,deadline):
+            latch.on_signal(signal.SIGTERM,None)
+            return original(n,deadline)
+        fake.exact=read_after_signal
+        wire=app.DeepWire(fake)
+        # This must complete the pending GFA response despite SIGTERM.
+        sample=wire.vs1_read('P06')
+        self.assertEqual(sample['rpm'],2490)
+        self.assertEqual(fake.port.tx,[app.load_local_base(PATH.parent).h.GFA['P06']])
+        with self.assertRaisesRegex(RuntimeError,'OPERATOR_STOP_SIGNAL_15'):
+            latch.check()
+
+    def test_sigterm_not_raised_inside_p300_frame(self):
+        import signal
+        latch=app.DeferredStop()
+        data=bytes(range(32))
+        fake=Fake(make_response(3,0x1600,data))
+        original=fake.exact
+        def read_after_signal(n,deadline):
+            latch.on_signal(signal.SIGTERM,None)
+            return original(n,deadline)
+        fake.exact=read_after_signal
+        wire=app.DeepWire(fake)
+        wire.set_phase('p300')
+        sample=wire.read_native(app.FAST_READS[2])
+        self.assertEqual(sample['hex'],data.hex())
+        self.assertEqual(fake.port.tx[-1],b'\x06')
+        with self.assertRaisesRegex(RuntimeError,'OPERATOR_STOP_SIGNAL_15'):
+            latch.check()
+
+    def test_verified_vs1_stop_has_no_new_eot(self):
+        wire=app.DeepWire(Fake())
+        wire.set_phase('vs1')
+        with patch.object(wire,'identify_vs1') as reenter, \
+             patch.object(wire,'vs1_read',side_effect=[
+                {'hex':'20','key':'P80'}, {'hex':'53','key':'P06'},
+                {'hex':'53','key':'P09'}, {'hex':'62','key':'P87'}]) as read:
+            final=wire.restore_final_gfa()
+        reenter.assert_not_called()
+        self.assertEqual([x['key'] for x in final],['P80','P06','P09','P87'])
+        self.assertEqual(wire.phase,'recovery')
+        self.assertEqual(read.call_count,4)
+
+    def test_p300_stop_switches_to_vs1_before_final_gfa(self):
+        wire=app.DeepWire(Fake())
+        wire.set_phase('p300')
+        with patch.object(wire,'identify_vs1') as reenter, \
+             patch.object(wire,'vs1_read',side_effect=[
+                {'hex':'20','key':'P80'}, {'hex':'00','key':'P06'},
+                {'hex':'00','key':'P09'}, {'hex':'00','key':'P87'}]):
+            final=wire.restore_final_gfa()
+        reenter.assert_called_once_with()
+        self.assertEqual(final[0]['hex'],'20')
+
+    def test_p300_stop_wrong_gfa_type_is_not_success(self):
+        wire=app.DeepWire(Fake())
+        wire.set_phase('vs1')
+        with patch.object(wire,'vs1_read',side_effect=[
+             {'hex':'21','key':'P80'},{'hex':'00','key':'P06'},
+             {'hex':'00','key':'P09'},{'hex':'00','key':'P87'}]):
+            with self.assertRaisesRegex(Exception,'FINAL_GFA_P80'):
+                wire.restore_final_gfa()
+
     def test_competing_services_include_old_overnight(self):
         self.assertIn('optolink-uart1-overnight.service',app.SELF_NAMED_SERVICE_UNITS)
         self.assertIn('optolink-handover-probe.service',app.SELF_NAMED_SERVICE_UNITS)
