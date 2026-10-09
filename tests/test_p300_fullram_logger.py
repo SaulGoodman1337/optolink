@@ -175,7 +175,7 @@ class FullRam(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             session = Path(td)
             switches = session / "switch.jsonl"
-            switches.write_text(''.join(json.dumps({"result": state}) + "\\n"
+            switches.write_text(''.join(json.dumps({"result": state}) + "\n"
                                         for state in ("OK", "OK", "ERROR")))
             captured = []
             base = SimpleNamespace(h=SimpleNamespace(atomic_json=lambda path, data: captured.append(data)))
