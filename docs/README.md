@@ -1,5 +1,12 @@
 # Dokumentationsindex
 
+### Naechste Stufe vorbereitet: kurzer P06-Fokuslogger (noch KEIN Live-Test)
+
+Nach dem [validierten Voll-RAM-Ergebnis](p300-fullram-result-2026-10-09.md) wurde im Forschungsbranch der [gezielte P06-Fokuslogger](../tools/wb2a-p300-p06-focus.py) mit [separatem deutschen Runbook](p300-p06-focus-runbook-2026-10-09.md) implementiert. Er erfasst nur sechs historisch erfolgreiche FC03/32-Bloecke um **0x0F20 und 0x1C76** samt Status-Negativkontrolle 0x0F29/55D3-Byte7. Jede Aufnahme hat echte VS1-P06/P09/P80/P87-Referenzen vor und nach einem kurzen P300-Fenster, zwei Roh-RAM-Runden und gepinnten Read-only-Systemd-Lifecycle mit Original-VS1-Restore. Ein fehlgeschlagener Return-Handshake wie bei Snapshot 80 erzeugt **PARTIAL**, nie einen fingierten RPM-Wert.
+
+**Kein P06-Sensorbeweis und keine Produktionsfreigabe.** Das naechste Datenziel sind mindestens **zwei verschiedene stabile positive echte P06-RPM-Niveaus**. Die Messung startet nicht automatisch; der Anwender fuehrt nach CI-PASS den separaten Startwrapper in der Optolink-LXC aus. Falls die Kandidaten bei geaenderten echten P06-Drehzahlen unveraendert bleiben, ist die direkte RPM-Alias-Hypothese zu verwerfen und die **Single-Owner P300+VS1-GFA-Hybridarchitektur** weiter zu untersuchen. Aufgabe 2/3 bleiben gesperrt; PR #46 nicht mergen.
+
+
 ## Aktualisierung 9.10.2026 – Voll-RAM-Experiment BEGRENZT ABGESCHLOSSEN
 
 **Der 20-KiB-P06-geklammerte Logger wurde bereits real ausgefuehrt; den gleichen Vier-Stunden-Lauf NICHT erneut starten.**
