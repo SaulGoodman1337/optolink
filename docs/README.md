@@ -1,5 +1,7 @@
 # Dokumentationsindex
 
+- [Naechster P300-Temporal-Logger: natuerliche Brennerzyklen, RAM-Spiegel, gestufte 1,5s/0,5s-Abtastrate und sichere VS1-Wiederherstellung (9.10.2026)](p300-temporal-runbook-2026-10-09.md) – erst NACH Fokus-Logger-Recovery+Privatarchiv, kein automatischer Start, keine P06-Sensorfreigabe.
+
 - [GFA unter P300: tiefe Vitosoft-, Protokoll-, Katalog- und Internetnachpruefung (9.10.2026)](p300-gfa-p300-quellennachpruefung-2026-10-09.md) – C9/Sequenz-Konflikt, VS1/VSKO-Sonderrouting, autonomer Status und verbliebene read-only RPC-/Virtual-Diagnose-Hypothesen; keine Produktionsfreigabe.
 
 - [P06 vs. P300, RAM-Muster und HALL/KM-Bus-Hypothesen (9.10.2026)](p300-p06-hall-kmbus-hypothesen-2026-10-09.md) – echte GFA-P06-Quelle, redundante Statusspeicher, separater HALL/PWM-Geblaesepfad und spaetere KM-Bus-RX-Denkoption (keine Produktionsfreigabe).
