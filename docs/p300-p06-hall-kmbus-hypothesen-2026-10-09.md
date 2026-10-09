@@ -48,6 +48,8 @@ Es gibt aber bereits **positiven P300-Mitschnitt-Indizienbeweis fuer KM-Bus-Mast
 
 **Noch nicht belegt:** UART1-Empfangs-Ringpuffer, KM-Bus-Slaveantworten, angeschlossene Fernbedienung, KM-Bus-Leserechte fuer beliebige Datenpunkte, echte P06-Verfuegbarkeit. Das UART1-RX-Datenregister `U1RB @ 0x03AE` ist ein peripheres Register, das beim Lesen RX-Flags/Empfangszustand beeinflussen kann: **nicht live probeweise lesen**, kein blindes SFR-/ISR-/Speicher-Scanning. Statische Firmware/INTB/Vektor-20-/RX-Buffer-Nachweise zuerst, danach eng begrenzte passiv read-only Pruefung.
 
+**Elektrische Gegenprobe vor jedem Hardwaregedanken:** Die OpenV-KM-Bus-Rekonstruktion basiert auf *anderen* Viessmann-Geraeten (u.a. Vitotronic 200KW2), beschreibt eine M-Bus-aehnliche Zweidrahtschnittstelle mit etwa 28,8 V Ruhe-, 14,4 V Sendepegel, strommodulierter Slaveantwort und 1200 Baud/8E1. Das ist **kein TTL-UART**. Diese Pegel sind **nicht als Live-Messung an der konkreten WB2A bestaetigt**, verdeutlichen aber, warum ein normaler USB-UART/Logikanalysator keinesfalls direkt angeschlossen werden darf. Quelle: https://github.com/openv/openv/wiki/KM-Bus .
+
 Eine **physische** KM-Bus-Aufzeichnung waere konzeptionell separat: freigegebenes galvanisch sicheres, hochohmiges Sniffing an geeignetem Bus-Zugang, mit Analyse beider Richtungen, Adress-/CRC16-/Timing-Parsen und ohne Businteraktion. Keine Anschlussanleitung, bevor Hardwarestand, Spannungspegel, Schutzkonzept und Fachfreigabe geklaert sind.
 
 ### Hypothesen-Gates und Aufgabenprioritaet
