@@ -1,5 +1,35 @@
 # P300-Migration: isolierter Kandidat, noch keine Produktionsfreigabe
 
+**Aktualisierter Forschungsstand 9.10.2026 – Aufgaben- und Liveplan vor allen
+aelteren Statusmeldungen dieser Datei:**
+
+- **Aufgabe 1:** Vollstaendige VS1->P300-Migration mit allen realen
+  HA-/MQTT-/GFA-Funktionen, einschliesslich des gemessenen GFA-P06-Istwerts.
+  C9/P80 unter P300 ist weiterhin abgewiesen; kein Phantom-RPM-Alias.
+  Alle vorhandenen Funktionen muessen fuer den Produktionsbetrieb
+  vollstaendig nachgewiesen sein.
+- **Aufgabe 2:** Erst DANACH Vitotrol-Emulation in einem **separaten Branch**.
+  Die gespeicherten UART1-KM-Bus-Telegramme sind historische Evidenz,
+  aktuell keine Vitotrol-Entwicklung.
+- **Aufgabe 3:** Pumpenoverride erst danach.
+
+**Bereit fuer EINEN neuen read-only 4h/6h Differentiallogger:**
+[Ausfuehrbare Schritte](p300-deep-logger-runbook-2026-10-09.md).
+Neu statt P300-only: Echte VS1-P06/P09-GFA-Phasen
+wechseln mit FC01-Status plus historisch belegten
+FC03-RAM-Bloecken unter P300. Dieses Design
+behebt noch keine gleichzeitige P300-P06-Lesbarkeit,
+macht aber die alte, dokumentiert zu wenig
+referenzierte Messluecke kleiner. Der alte
+VS1-Produktionssplitter und die vorher aktiven
+Hilfsdienste werden nach Test-Ende wiederhergestellt;
+waehrend der exklusiven Messung sind sie pausiert.
+
+**Alle bisherigen Ergebnisse und die verbindliche
+Funktionsparitaetsmatrix:**
+[Aufgabe-1-Masterbericht](p300-task1-evidence-and-parity-2026-10-09.md).
+Draft PR #46 bleibt ungemergt; kein Produktionscheckout-Update.
+
 Stand: 2026-10-08. Entwicklungsbranch: `optolink-p300-migration`.
 
 **Live-Sperrgrund (bewiesen 2026-10-08):** P300-Virtual_READ fuer 20C2/0103
