@@ -1,0 +1,38 @@
+{
+  "evidence_class": "user_pasted_console",
+  "source": "User posted LXC terminal output in chat after original live handover experiment",
+  "observation_time": "after 2026-10-09T19:05:52Z; exact timestamp not present in pasted health output",
+  "code_commit": "9c1922a08cadb5525f9b177b525bf166ea759e1a",
+  "command_mode": "live_probe.py --health-only",
+  "interpretation_scope": "separate later production VS1 health check; NOT a retroactive acceptance of original end-to-end result",
+  "execution": {
+    "production_health": "PASS",
+    "gfa_readings": {
+      "P80": {
+        "rc": 0,
+        "reason": "OK",
+        "response": "1;0x4050;20",
+        "valid": true
+      },
+      "P06": {
+        "rc": 0,
+        "reason": "OK",
+        "response": "1;0x4006;00",
+        "valid": true
+      }
+    }
+  },
+  "prior_handover": {
+    "session": "run-20261009T190552Z-294681",
+    "original_result": "FAIL_OR_NOT_VERIFIED",
+    "real_handover_gfa_ms": 4666.291,
+    "source_code_commit": "c408f62dcc636d9c487b7bbd499f87df1bd6101f"
+  },
+  "caveats": [
+    "P06 is the real VS1-GFA raw byte, not a proxy from P09",
+    "No serial protocol switching in health-only mode",
+    "No raw measurement archive verified",
+    "Original failure result preserved",
+    "No new handover speed claim"
+  ]
+}

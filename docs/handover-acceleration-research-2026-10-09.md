@@ -69,6 +69,32 @@ stateDiagram-v2
 
 **VS1-Grundmodus + seltene P300-Diagnosefenster** ist für die aktuelle Produktion die plausiblere Entwicklungsoption. Ein P300-Grundmodus mit regelmäßigem VS1-GFA-Fenster wäre zu langsam für den diskutierten asynchronen RAM-Reload (~2,1 s), selbst mit einem validen schnelleren VS1-Rückweg. Fork sinnvoll **erst**, wenn die HA-Integration des Single-Owner-Managers nicht anders wartbar wird; Fork ersetzt keine Gerätetimer.
 
+## Stand nach der realen WB2A-Akzeptanzmessung am 2026-10-09
+
+Der neue Zustandsmanager wurde in einem einmaligen read-only
+Hardwarelauf verifiziert: 4666,291 ms pro vollständigem VS1→P300→VS1
+inklusive GFA, gegenüber historisch 4610,091 ms (n=3).
+Es gibt **keinen gemessenen zusätzlichen Geschwindigkeitsgewinn**.
+Die zwei ENQ-Phasen dauerten 2010,961 ms und 1998,460 ms. Das
+ursprüngliche Endergebnis war wegen eines Health-Ausgabeparserfehlers
+`FAIL_OR_NOT_VERIFIED`. Mit dem korrigierten ausschließlich über MQTT
+arbeitenden `--health-only` Modus bestätigte der Betreiber später
+`PRODUCTION_HEALTH=PASS` und echte P80=`20`/P06=`00`.
+Es bleibt ein **separater nachträglicher Nachweis**, keine rückwirkende
+Änderung des ursprünglichen Testbefunds.
+
+Details:
+[Hardwarelauf, Parserfehler und nachträglicher Check](handover-live-result-parser-fix-2026-10-09.md),
+[Normalisiertes post-hoc Ergebnis](evidence/handover-production-health-posthoc-2026-10-09.json).
+
+Die Messung bestätigt kein Fast-Switch-Telegramm ohne ENQ.
+Mehrere künftige P300-Diagnoseaufträge können nur dann substantiell
+effizienter werden, wenn sie *in derselben aktuell verifizierten*
+P300-Phase abgearbeitet werden können, während GFA-/VS1-Frische,
+Serialisierung und alle Write-/Readback-Grenzen erhalten bleiben.
+Eine reine Polling- oder Parser-Optimierung kann die etwa 4,009 s
+beider beobachteter ENQ-Wartezeiten nicht entfernen.
+
 ## Offline-Implementierung und Teststand
 
 Der **unabhängige Forschungsbranch** enthält jetzt ausführbare, aber bewusst

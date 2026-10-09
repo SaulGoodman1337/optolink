@@ -75,6 +75,41 @@ testen. Erst bestehende Splittergesundheit und den Brokerpfad prüfen.
 Der Original-Live-Rundweg von 4666,291 ms bleibt unabhängig von einer
 nachträglichen Health-Prüfung valide messbar.
 
+## Separat nachgewiesener Produktionszustand (post-hoc)
+
+Der Betreiber hat nach Einchecken des Parser-Fixes und nach erfolgreich
+abgeschlossener Python-3.11/3.12-CI den gepinnten Commit
+`9c1922a08cadb5525f9b177b525bf166ea759e1a` im LXC geladen und
+`live_probe.py --health-only` ausgeführt.
+
+Ergebnis aus der vom Betreiber geposteten Konsole:
+
+```text
+PRODUCTION_HEALTH=PASS
+PRODUCTION_HEALTH_JSON={"P06": {"rc": 0, "reason": "OK", "response": "1;0x4006;00", "valid": true}, "P80": {"rc": 0, "reason": "OK", "response": "1;0x4050;20", "valid": true}}
+```
+
+**Interpretation:** Der bestehende produktive VS1-Splitter hat nach
+dem Protokolltest beide echten GFA-Reads über den MQTT-Debugclient
+bestätigt; P80=20 und P06-Rohwert 00 sind korrekt.
+`--health-only` öffnet selbst keinen seriellen Port und stoppt keine
+Dienste. Die Eingabe belegt keine veränderten Heizungswerte und keine
+zusätzliche Handover-Beschleunigung.
+
+**Beleggrenze:** Der Konsolenauszug hat keinen eigenen timestamp.
+Dies ist ein *späterer* unabhängiger Produktions-Healthcheck, kein
+Zeitstempel unmittelbar nach `run-20261009T190552Z-294681`.
+Der ursprüngliche `summary.json`-Befund
+`FAIL_OR_NOT_VERIFIED` bleibt unverändert; er darf nicht nachträglich
+in einen erfolgreich abgeschlossenen ursprünglichen End-to-End-Test
+umbenannt werden. Die on-wire-Messung selbst zeigte keine
+`measurement_errors`, die Originaldienste wurden als wiederhergestellt
+gemeldet. Eine nochmalige identische Hardwareprobe ist unnötig.
+
+Beweisquelle: Betreiber-Konsolenausgabe im Forschungs-Chat, kein
+unabhängig heruntergeladenes Roharchiv. Die normalisierte Einzeldokumentation
+liegt in `docs/evidence/handover-production-health-posthoc-2026-10-09.json`.
+
 ## Sicherheitsgrenzen
 
 Nur Branch `optolink-handover-acceleration`. Keine Änderung an
