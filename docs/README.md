@@ -4,6 +4,23 @@ Dieser Ordner trennt produktive Betriebsdokumentation von der Forschung im Branc
 
 ## P300: aktueller Stand vom 9. Oktober 2026
 
+**NEU - Vitotrol-Suchtelegramme in der abgeschlossenen Nachtmessung:**
+Bei 0x161A im UART1-Master-TX-RAM wurden fuer **KM-Bus-Klasse 0x11**
+an Slots 1 und 2 jeweils die exakt OpenV-kompatiblen
+**0x33/F8/04-Identitaetsabfragen** nachgewiesen:
+27+27 CRC-gueltige Pufferansichten, verteilt ueber
+19+20 nichtbenachbarte Samplefenster.
+Klasse 0x20/Slot 0xEE zeigt ebenfalls die im
+historischen OpenV-Referenzsystem dokumentierte B3-Form.
+**Nur Master-TX, keine Slaveantwort, keine angeschlossene
+Vitotrol, kein P06-Alias und kein neues Live-RAM-Gate
+bestaetigt.**
+[Quellengestuetzter Slotvergleich](p300-kmbus-vitotrol-master-tx-2026-10-09.md),
+[abgeleitete Evidenz](evidence/p300-kmbus-vitotrol-master-tx-2026-10-09.json),
+[Offline-Decoder](../tools/audit-kmbus-master-tx.py) und 12 Tests.
+Der naechste offene Beweisschritt ist die **UART1-RX-Pufferzuordnung
+aus statischer Firmware-/ISR-Evidenz**, nicht ein erneuter Nachtlauf.
+
 **NEU - abgeschlossener UART1-P300-Nachtlauf mit KM-Bus-TX-Nachweis:**
 Der Betreiber hat die detached systemd-Aufnahme geordnet beendet;
 Original-VS1, P80 und P06 wurden erfolgreich zurueckgeprueft.
@@ -101,6 +118,8 @@ und Offline-Testwerkzeug. Kein neuer Thermenzugriff, kein Aendern der Produktion
 
 | Dokument | Bedeutung |
 | --- | --- |
+| [Vitotrol KM-Bus Klasse 0x11 Master-ID-Abfragen](p300-kmbus-vitotrol-master-tx-2026-10-09.md) | **Neuster Fortschritt:** CRC-validierte Slot-1-/Slot-2-Anfragen, exakt OpenV, UART1-Empfang und Slaveantwort weiterhin offen |
+| [Vitotrol-TX-Quellenaudit](evidence/p300-kmbus-vitotrol-master-tx-2026-10-09.json) | Privatarchiv-SHA, 54 CRC-gueltige Samples, 39 Beobachtungsfenster, klare Nichtfreigaben |
 | [Abgeschlossener 9-h-P300-Nachtlauf: KM-Bus TX und GFA-Verriegelung](p300-uart1-overnight-result-2026-10-09.md) | **Aktueller Befund:** 12.938 Samples, 51.752 Rohantworten, CRC-KM-Bus und BCD-Zeit, 3 Flammenfenster nach Verriegelung |
 | [Abgeleitete Nachtlauf-Evidenz](evidence/p300-uart1-overnight-result-2026-10-09.json) | Archiv-SHA, TX/RX-Integritaet, Lockout-, UART1- und KM-Bus-Kennzahlen, **kein P06-Alias** |
 | [UART1 DMA0/RAM/native Status: Natuerlicher Zyklus in einem Batch](p300-uart1-dma0-natural-cycle-2026-10-08.md) | **Historischer, bereits abgeschlossener read-only-Lesetest:** dynamischer DMA0-TX-SAR0/TCR, 64 RAM-Bytes, natuerliche Flammenbit-Sequenz, VS1-Rueckkehr und ein Archiv |
