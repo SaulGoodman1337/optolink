@@ -578,6 +578,18 @@ def run_worker(session):
         except BaseException as exc:
             report['errors'].append('POST_SUMMARY:'+str(exc))
         h.atomic_json(session/'measurement.json',report)
+        try:
+            h.atomic_json(session/'progress.json',{
+                'state':'WORKER_EXITED_RECOVERY_PENDING',
+                'ended_utc':report['ended_utc'],
+                'actual_duration_s':report['duration_s'],
+                'counts':report['counts'],
+                'natural_flame_cycles':report['natural_flame_cycles'],
+                'worker_vs1_restored':report['vs1_link_restored'],
+                'worker_errors':report['errors']})
+        except BaseException as exc:
+            report['errors'].append('FINAL_PROGRESS:'+str(exc))
+            h.atomic_json(session/'measurement.json',report)
     return 0 if report['vs1_link_restored'] and report['observation_finished'] and not report['errors'] else 1
 
 
@@ -700,6 +712,14 @@ def recover(session):
     try:
         health=post_restore_health(base)
         h.atomic_json(session/'health.json',health)
+        path=session/'progress.json'
+        state_progress=json.loads(path.read_text()) if path.is_file() else {}
+        state_progress['state']=('RESTORED' if not errs else 'RESTORE_NOT_VERIFIED')
+        state_progress['restored_utc']=iso_utc()
+        state_progress['service_restore_verified']=not errs
+        state_progress['post_restore_p06_non_ff_verified']=bool(
+            health.get('gfa_reads',{}).get('P06',{}).get('p06_non_ff_verified'))
+        h.atomic_json(path,state_progress)
         output=bundle(session,base)
         print('UPLOAD_ONE_FILE='+str(output),flush=True)
     except BaseException as exc:
@@ -726,6 +746,8 @@ def start(hours):
     with base.locks():
         values,services=h.preflight()
         verify_competing_services(base)
+        if shutil.disk_usage(PROJECT).free<MIN_DISK_BYTES:
+            raise RuntimeError('PREFLIGHT_INSUFFICIENT_FREE_DISK')
         ROOT.mkdir(parents=True,exist_ok=True,mode=0o700)
         os.chmod(ROOT,0o700)
         for old in ROOT.glob('run-*/state.json'):
@@ -764,7 +786,7 @@ def start(hours):
     if proc.returncode!=0:
         raise RuntimeError('SYSTEMD_START_REJECTED:'+proc.stderr[-500:])
     print('SESSION='+str(session),flush=True)
-    print('LOGGER_STARTED='+UNIT,flush=True)
+    print('SYSTEMD_LOGGER_START_ACCEPTED='+UNIT,flush=True)
     print('MAX_HOURS='+str(hours),flush=True)
     print('STATUS_CMD=bash '+str(PROJECT/'tools'/'wb2a-p300-deep-logger.sh')+' status',flush=True)
     print('STOP_CMD=bash '+str(PROJECT/'tools'/'wb2a-p300-deep-logger.sh')+' stop',flush=True)
