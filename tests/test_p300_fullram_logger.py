@@ -168,6 +168,58 @@ class FullRam(unittest.TestCase):
                     self.assertEqual(hashlib.sha256(payload).hexdigest(), row["sha256"])
                 self.assertFalse(manifest["rpm_alias_verified"])
 
+    def test_full_ram_but_vs1_return_timeout_is_partial_not_verified(self):
+        from types import SimpleNamespace
+        import time
+        class Wire:
+            phase = "vs1"
+            def packet(self, spec):
+                return {"data": bytes([spec[1] & 255]) * 32,
+                        "payload_hex": (bytes([spec[1] & 255]) * 32).hex(),
+                        "result": "OK"}
+        class Stop:
+            signum = None
+        def switch_fail_after_ram(wire, stream, reason, to_p300):
+            if to_p300:
+                wire.phase = "p300"
+            else:
+                wire.phase = "recovery"
+                raise RuntimeError("receive deadline exceeded")
+        reference = {"snapshot_id": 1, "side": "PRE", "stable": True,
+                     "identity_verified": True, "p06_raw_unique": ["53"],
+                     "p06_rpm_unique": [2490], "p06_valid": 12}
+        with tempfile.TemporaryDirectory() as td:
+            folder = Path(td)
+            (folder / "snapshots").mkdir()
+            streams = {}
+            try:
+                for name in ("vs1", "blocks", "status", "switch", "trace"):
+                    streams[name] = (folder / (name + ".jsonl")).open("w+")
+                base = SimpleNamespace(h=SimpleNamespace(
+                    atomic_json=lambda path, data:
+                        path.write_text(json.dumps(data), encoding="utf-8")))
+                with patch.object(m, "reference", return_value=reference), \
+                     patch.object(m, "switch", side_effect=switch_fail_after_ram), \
+                     patch.object(m, "read_status", return_value={"flame": True}), \
+                     patch.object(m.DEEP, "load_local_base", return_value=base):
+                    meta = m.capture_snapshot(
+                        folder, Wire(), streams, 1, True, time.monotonic() + 1000,
+                        Stop(), lambda *args: None)
+            finally:
+                for f in streams.values():
+                    f.close()
+            self.assertEqual(meta["blocks_ok"], 640)
+            self.assertEqual(meta["bytes_stored"], 20480)
+            self.assertEqual(meta["marker"], "PARTIAL")
+            self.assertIsNone(meta["post_reference"])
+            self.assertEqual(meta["classification"], "TRANSITION_OR_UNKNOWN")
+            self.assertTrue((folder / "snapshots/s00001.partial.bin").is_file())
+            self.assertFalse((folder / "snapshots/s00001.bin").exists())
+            self.assertIn("receive deadline exceeded", meta["errors"])
+            # The 640 records still exist; no hypothetical P06 is manufactured.
+            self.assertEqual(
+                sum(1 for _ in (folder / "blocks.jsonl").open()), 640)
+
     def test_progress_counts_logged_switches_not_unrelated_frames(self):
         from collections import Counter
         from types import SimpleNamespace
