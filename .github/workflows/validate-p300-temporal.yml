@@ -1,0 +1,59 @@
+name: Validate WB2A P300 Temporal Logger
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - 'tools/wb2a-p300-temporal-logger.py'
+      - 'tools/wb2a-p300-temporal-logger.sh'
+      - 'tests/test_p300_temporal_logger.py'
+      - 'docs/p300-temporal-runbook-2026-10-09.md'
+      - '.github/workflows/validate-p300-temporal.yml'
+  pull_request:
+    paths:
+      - 'tools/wb2a-p300-temporal-logger.py'
+      - 'tools/wb2a-p300-temporal-logger.sh'
+      - 'tests/test_p300_temporal_logger.py'
+      - '.github/workflows/validate-p300-temporal.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  temporal-offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and inert plan
+        run: |
+          python -m py_compile tools/wb2a-p300-temporal-logger.py tests/test_p300_temporal_logger.py
+          bash -n tools/wb2a-p300-temporal-logger.sh
+          python tools/wb2a-p300-temporal-logger.py | grep -F 'PLAN ONLY:'
+      - name: Temporal offline tests
+        run: python -m unittest discover -s tests -p test_p300_temporal_logger.py -v
+      - name: Existing P06 and transport tests
+        run: |
+          python -m unittest discover -s tests -p test_p300_p06_focus.py -v
+          python -m unittest discover -s tests -p test_p300_fullram_logger.py -v
+          python -m unittest discover -s tests -p test_p300_deep_logger.py -v
+      - name: Read-only new logger frame allowlist and owner guards
+        run: |
+          python - <<'PY'
+          import importlib.util
+          s=importlib.util.spec_from_file_location('t','tools/wb2a-p300-temporal-logger.py')
+          m=importlib.util.module_from_spec(s)
+          s.loader.exec_module(m)
+          assert len(m.SPECS)==7
+          assert set(m.SPECS)==set(m.FOCUS.ALLOWED_SPECS)
+          assert all(x[0] in (1,3) for x in m.SPECS)
+          assert m.CURRENT_UNIT=='optolink-p300-p06-focus.service'
+          for op in (2,4,7,9,201):
+              try: m.frame((op,0x0f20,32))
+              except ValueError: pass
+              else: raise AssertionError('unexpected write or unknown function allowed')
+          print('P300_TEMPORAL_READ_ONLY_WHITELIST_PASS')
+          PY
