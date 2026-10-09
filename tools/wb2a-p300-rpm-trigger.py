@@ -354,9 +354,11 @@ def run_worker(session):
                     probe=crosscheck(session,wire,streams,trigger_no,
                                      list(recent),counts,stopper,deadline)
                 except BaseException as exc:
+                    # A failed P300->VS1 transition may have left the wire in
+                    # recovery/unknown phase. Do not issue normal GFA reads.
                     report["errors"].append(
                         "CROSSCHECK_"+str(trigger_no)+":"+str(exc))
-                    break
+                    raise RuntimeError("TRIGGER_CROSSCHECK_ABORT_TO_RECOVERY") from exc
                 last_probe={"trigger_no":trigger_no,"result":probe["result"],
                             "quality":probe.get("quality","TRANSITION_OR_UNKNOWN"),
                             "real_vs1_p06_rpm":probe.get("real_vs1_p06_rpm",[]),
@@ -377,6 +379,11 @@ def run_worker(session):
                     else BASE_INTERVAL)-(time.monotonic()-clock)
             if remain>0 and stopper.signum is None:
                 time.sleep(min(remain,1.5))
+        # Capture the actual observation interval before the final VS1 reads.
+        # Canary has no probes, so this is true uninterrupted P300 residence.
+        if p300_start is not None:
+            report["p300_stream_seconds_approx"]=round(
+                time.monotonic()-p300_start,3)
         if wire.phase=="p300":
             F.switch(wire,streams["switch"],"TRIGGER_FINAL_P300_TO_VS1",False)
         report["final_vs1"]=F.reference(
@@ -385,7 +392,11 @@ def run_worker(session):
         final=report["final_vs1"]
         if not final.get("identity_verified") or final.get("p06_valid",0)<1:
             raise RuntimeError("TRIGGER_FINAL_VS1_GFA_UNVERIFIED")
-        report["observation_complete"]=not report["errors"]
+        report["operator_stop"]=stopper.signum is not None
+        # An operator-terminated run can restore safely but is not a completed
+        # requested-duration observation.
+        report["observation_complete"]=(
+            not report["errors"] and stopper.signum is None)
     except BaseException as exc:
         report["errors"].append(str(exc) or type(exc).__name__)
     finally:
@@ -413,8 +424,7 @@ def run_worker(session):
         report["end_utc"]=utc()
         report["duration_seconds_actual"]=round(time.monotonic()-started,3)
         report["p300_started"]=p300_start is not None
-        report["p300_stream_seconds_approx"]=round(
-            time.monotonic()-p300_start,3) if p300_start is not None else 0
+        report.setdefault("p300_stream_seconds_approx",0)
         report["counts"]=dict(counts)
         report["trigger_count"]=counts["TRIGGERS"]
         report["last_trigger"]=last_probe
