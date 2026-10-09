@@ -1,5 +1,7 @@
 # Dokumentationsindex
 
+- [Neuer **HIGH/LOW-Modulationstrigger** fuer echten VS1-GFA-P06-Wirkvergleich](p300-rpm-mod-trigger-runbook-2026-10-09.md) – vom echten Kurzlauf offline als erreichbar validiert (16 HIGH/256 LOW), getrennte 5-Min-Canary-Session, max. zwei wahre P06-Gegenproben, read-only; noch keine Hardwarefreigabe ohne Canary.
+
 - [RPM-Trigger-Kurzlauf 09.10.2026: 2185 valide P300-Zyklen, 1 natuerlicher Brennerzyklus, 0 High-Trigger, sauberer Restore](p300-rpm-trigger-early-stop-result-2026-10-09.md) – warum RAM nur 00/54 zeigte, welche Statusbytes den Changezaehler treiben und warum ein modulationsgetriggerter VS1-P06-Vergleich allenfalls als letzter kurzer Test sinnvoll waere; [Evidenz-JSON](evidence/p300-rpm-trigger-early-stop-evidence-2026-10-09.json).
 
 - [Abgeschlossen: RPM-Trigger-Canary mit SHA256-/Frame-Audit und Restore-Freigabe (9.10.2026)](p300-rpm-trigger-canary-audit-2026-10-09.md) – 231 Zyklen, 924 valide FC01/FC03-Frames, 288,8s P300-only, 6/6 Units gesund; Hinweis auf bereits belegte Ein-ENQ-Beschleunigung fuer separate Fork-Forschung.
