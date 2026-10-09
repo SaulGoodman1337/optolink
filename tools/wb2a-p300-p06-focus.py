@@ -178,7 +178,19 @@ def capture(session, wire, streams, ident, pre, stopper):
                     if stopper.signum is not None:
                         rec["stop_reason"] = "SIGNAL_AFTER_COMPLETE_SERIAL_FRAME"
                         break
-                    pkt = wire.packet(spec)
+                    try:
+                        pkt = wire.packet(spec)
+                    except F.PacketError as exc:
+                        F.write_jsonl(streams["ram"], {
+                            "snapshot_id": ident, "round": round_no,
+                            "fc": spec[0], "address": f"0x{spec[1]:04x}",
+                            "requested_length": spec[2],
+                            "request_hex": frame(spec).hex(),
+                            "rx_observed_hex": exc.received.hex(),
+                            "tx_utc": exc.tx_utc, "tx_monotonic": exc.tx_monotonic,
+                            "rx_utc": utc(), "rx_monotonic": time.monotonic(),
+                            "retry_count": 0, "result": "ERROR", "error": str(exc)})
+                        raise
                     rec["packets_ok"] += 1
                     data = pkt["data"]
                     payload[spec[1]] = data
