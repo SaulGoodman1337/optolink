@@ -594,7 +594,7 @@ def post_restore_health(base):
     if not p06:
         return health
     def decode_non_ff(text):
-        found=re.findall(r'1;0x4006;([0-9a-fA-F]{2})\\b',text or '',re.I)
+        found=re.findall(r'1;0x4006;([0-9a-fA-F]{2})\b',text or '',re.I)
         return bool(found) and found[-1].lower()!='ff'
     non_ff=(p06.get('returncode')==0 and decode_non_ff(p06.get('stdout','')))
     p06['p06_non_ff_verified']=non_ff
