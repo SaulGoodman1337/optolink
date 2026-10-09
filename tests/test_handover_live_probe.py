@@ -235,5 +235,108 @@ class IndependentRestoreTests(unittest.TestCase):
         self.assertTrue(saved['services_restored'])
 
 
+
+class ProductionHealthParserTests(unittest.TestCase):
+    """Regression: real optolink-debug produces a banner plus an arrow reply."""
+    CMD80 = 'gfaread;0x4050;1;raw;False'
+    CMD06 = 'gfaread;0x4006;1;raw;False'
+
+    @staticmethod
+    def output(command, reply):
+        return ('Connecting as user mqtt to MQTT broker local-host:1883.\\n'
+                ' MQTT connected successfully.\\n' +
+                f'{command} <- Vito/resp: {reply}\\n')
+
+    def test_real_debug_banner_and_gfa_p80_are_valid(self):
+        actual = self.output(self.CMD80, '1;0x4050;20')
+        r = m.parse_debug_health(actual, self.CMD80, 0x4050, 'P80')
+        self.assertTrue(r['valid'])
+        self.assertEqual(r['response'], '1;0x4050;20')
+        self.assertNotIn('Connecting', r['response'])
+
+    def test_real_debug_banner_and_zero_rpm_valid(self):
+        r = m.parse_debug_health(self.output(self.CMD06, '1;0x4006;00'),
+                                  self.CMD06, 0x4006, 'P06')
+        self.assertTrue(r['valid'])
+        self.assertEqual(r['reason'], 'OK')
+
+    def test_success_exit_with_timeout_output_is_not_success(self):
+        r = m.parse_debug_health(f'{self.CMD80} <- timeout\\n',
+                                  self.CMD80, 0x4050, 'P80')
+        self.assertFalse(r['valid'])
+        self.assertEqual(r['reason'], 'NO_MQTT_REPLY_OR_TIMEOUT')
+
+    def test_failed_status_and_wrong_p80_are_rejected(self):
+        for reply in ('0;0x4050;20', '1;0x4050;21',
+                      '1;0x4050;ff', '1;0x4050;1234'):
+            with self.subTest(reply=reply):
+                self.assertFalse(m.parse_debug_health(
+                    self.output(self.CMD80, reply),
+                    self.CMD80, 0x4050, 'P80')['valid'])
+
+    def test_wrong_address_rejected(self):
+        r = m.parse_debug_health(self.output(self.CMD80, '1;0x4006;20'),
+                                  self.CMD80, 0x4050, 'P80')
+        self.assertEqual(r['reason'], 'WRONG_ADDRESS')
+
+    def test_duplicated_mqtt_reply_rejected(self):
+        r = m.parse_debug_health(self.output(self.CMD80, '1;0x4050;20') * 2,
+                                  self.CMD80, 0x4050, 'P80')
+        self.assertEqual(r['reason'], 'MISSING_OR_MULTIPLE_REPLY_LINES')
+
+    def test_read_health_parses_actual_debug_output_and_no_banner_stored(self):
+        def fake_run(args, **kwargs):
+            cmd = args[2]
+            reply = '1;0x4050;20' if '4050' in cmd else '1;0x4006;00'
+            return types.SimpleNamespace(
+                returncode=0, stdout=self.output(cmd, reply))
+        with patch.object(m.subprocess, 'run', side_effect=fake_run):
+            h = m.read_health()
+        self.assertTrue(all(x['valid'] for x in h.values()))
+        self.assertEqual(h['P06']['response'], '1;0x4006;00')
+        self.assertNotIn('broker', json.dumps(h).lower())
+
+    def test_read_health_debug_client_exit_nonzero_is_failure(self):
+        with patch.object(m.subprocess, 'run',
+                          return_value=types.SimpleNamespace(
+                              returncode=1,
+                              stdout=self.output(self.CMD80, '1;0x4050;20'))):
+            r = m.read_health()
+        self.assertFalse(r['P80']['valid'])
+        self.assertEqual(r['P80']['reason'], 'DEBUG_CLIENT_EXIT_NONZERO')
+
+    def test_health_only_refuses_when_original_service_not_running(self):
+        with patch.object(m, 'guard_other_research'), \
+             patch.object(m.base, 'unit_state', return_value={'ActiveState': 'inactive'}), \
+             patch.object(m, 'read_health', side_effect=AssertionError('must not read')):
+            with self.assertRaisesRegex(m.base.ProbeError, 'not confirmed active'):
+                m.health_only()
+
+    def test_health_only_requires_no_research_conflict(self):
+        with patch.object(m, 'guard_other_research',
+                          side_effect=m.base.ProbeError('research busy')), \
+             patch.object(m, 'read_health', side_effect=AssertionError('must not read')):
+            with self.assertRaisesRegex(m.base.ProbeError, 'research busy'):
+                m.health_only()
+
+    def test_health_only_no_serial_and_no_service_stop(self):
+        with patch.object(m, 'guard_other_research'), \
+             patch.object(m.base, 'unit_state',
+                          return_value={'ActiveState':'active', 'SubState':'running',
+                                        'WorkingDirectory':'/opt/optolink'}), \
+             patch.object(m.base, 'pause_services',
+                          side_effect=AssertionError('must not stop')), \
+             patch.object(m.base, 'open_serial',
+                          side_effect=AssertionError('must not open port')), \
+             patch.object(m, 'read_health', return_value={
+                 'P80': {'valid': True}, 'P06': {'valid': True}}):
+            self.assertEqual(m.health_only(), 0)
+
+    def test_health_only_cli_dispatch_is_isolated(self):
+        with patch.object(sys, 'argv', ['live_probe.py', '--health-only']), \
+             patch.object(m, 'health_only', return_value=0), \
+             patch.object(m, 'execute', side_effect=AssertionError('must not execute')):
+            self.assertEqual(m.main(), 0)
+
 if __name__ == '__main__':
     unittest.main()
