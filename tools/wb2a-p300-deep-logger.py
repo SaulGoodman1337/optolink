@@ -374,6 +374,7 @@ def run_worker(session):
     def switch(label, to_p300):
         phase_before=wire.phase
         t=time.monotonic()
+        started_utc=iso_utc()
         if to_p300:
             wire.identify_p300()
         else:
@@ -381,8 +382,10 @@ def run_worker(session):
             wire.identify_vs1()
             wire.set_phase('vs1')
         secs=round(time.monotonic()-t,4)
-        write_line(streams['switches'],{'index':counter['switch']+1,'started_utc':iso_utc(),
+        write_line(streams['switches'],{'index':counter['switch']+1,
+            'started_utc':started_utc,'finished_utc':iso_utc(),
             'from':phase_before,'to':wire.phase,'reason':label,'duration_s':secs,
+            'switch_start_t_monotonic':t,
             'switch_end_t_monotonic':time.monotonic(),'safe_2_enq_vs1':True})
         counter['switch']+=1
         streams['switches'].flush()
@@ -406,6 +409,7 @@ def run_worker(session):
             if invalid_p80:
                 raise base.Error('GFA_P80_TYPE_GUARD')
             p06=[x for x in reads if x['key']=='P06']
+            last_vs1_read[0]=p06[-1]['t_monotonic']
             if all(x['valid'] for x in p06):
                 if last_zero is None:
                     last_zero=p06[-1]['rpm']==0
@@ -525,7 +529,6 @@ def run_worker(session):
         while time.monotonic()<deadline:
             safety()
             reason=vs1_window()
-            last_vs1_read[0]=time.monotonic()
             if time.monotonic()>=deadline:break
             switch(reason,True)
             reason=p300_window()
