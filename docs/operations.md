@@ -10,14 +10,80 @@ Im bestehenden Optolink-LXC als `root`:
 update
 ```
 
-Der Update-Kanal ist in `/etc/community-scripts-private.conf` fest auf
-`optolink-splitter-ha` konfiguriert.
+Der aktive Update-Kanal wird ausschließlich über
+`/etc/community-scripts-private.conf` bestimmt. Vor der einmaligen
+Umstellung auf `main` ist es gewöhnlich `optolink-splitter-ha`;
+danach liefert derselbe Befehl `update` den freigegebenen Stand aus
+`main`. Der lokale Kanal ändert sich durch einen GitHub-Merge
+**nicht** von selbst.
 
 Einmalige Migration einer älteren Installation:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SaulGoodman1337/optolink/optolink-splitter-ha/tools/optolink-splitter-ha-bootstrap.sh | bash
 ```
+
+### Vor dem ersten Update aus `main`
+
+Der Release-Pfad ist bewusst zweistufig:
+zuerst Integration in `optolink-splitter-ha`, danach der
+geprüfte Merge nach `main`. Erst wenn der dortige Updater und die
+deutsche Hybrid-Dokumentation vorhanden sind, darf die LXC-Instanz
+auf `main` umgestellt werden.
+
+```bash
+# Zuerst den aktuellen lokalen Update-Bezug kontrollieren:
+grep -E '^COMMUNITY_SCRIPTS_(REPO|REF|TARGET)=' \
+  /etc/community-scripts-private.conf
+
+# Nur NACH der bestätigten main-Freigabe einmalig ausführen:
+optolink-update-main-umstellen --freigeben
+
+# Anschließend wie gewohnt:
+update
+```
+
+Die Umstellung erstellt eine root-geschützte Sicherung der bisherigen
+Update-Konfiguration und prüft vorab, ob `main` den vollständigen
+Installer einschließlich Hybridmodulen und Betriebsanleitung enthält.
+Sie führt **selbst kein Update aus**. Anschließend bleibt
+`COMMUNITY_SCRIPTS_REF=main` persistent.
+
+**Wichtig:** Der Upstream-Profil-Installer nutzt `git reset --hard`
+auf die verifizierte Upstream-Revision. Lokal geänderte, getrackte
+Dateien werden deshalb *vor* dem Reset mitsamt Patch und
+Dateikopien unter `/var/backups/optolink-update/`
+root-geschützt gesichert. Diese Sicherung ersetzt nicht die
+fachliche Prüfung der lokalen Anpassungen:
+nicht automatisch reproduzierbare Änderungen müssen vor dem
+ersten `update` einzeln übernommen oder bewusst zurückgestellt
+werden. Das ist insbesondere auf bestehenden LXC-Systemen mit
+historischen Hotfixes wichtig.
+
+Bei aktivem `optolink-hybrid-continuous-canary.service`
+verweigert der Updater den Wechsel von Laufzeitbibliotheken.
+Es findet keine automatische P300-Freigabe statt.
+
+### Optionaler VS1/P300-Lesetest
+
+Der Splitter bleibt standardmäßig in VS1. Für ein ausdrücklich
+beaufsichtigtes, schreibgeschütztes P300-Fenster gilt:
+
+```bash
+optolink-hybrid status
+sudo optolink-hybrid vorbereiten --kennung hybrid-check-01
+sudo optolink-hybrid pruefen hybrid-check-01
+sudo optolink-hybrid testen hybrid-check-01 \
+  --telemetriepause-bestaetigt
+```
+
+Die Vorbereitung und Prüfung ändern keine produktive
+Systemd-Unit. Nur der explizit bestätigte Test setzt
+vorübergehend einen root-eigenen Systemd-Canary ein.
+Der unabhängige `ExecStopPost`-Pfad stellt beim Testende
+oder beim Ausfall des Canary-Supervisors die Originaldienste
+wieder her. Details, Sperrmarker und Grenzen siehe
+[VS1/P300-Protokollwechsel](hybrid-protokollwechsel.md).
 
 ## 2. Schnellcheck nach Update oder Reboot
 

@@ -1,99 +1,131 @@
-# Optolink-Splitter + Home Assistant
+# Optolink-Splitter mit Home Assistant
 
-This branch is the **production branch** for the local Optolink-Splitter deployment.
+Dieses Repository stellt eine geprüfte Home-Assistant-Integration
+für die **Viessmann Vitodens 200-W WB2A / VDensHO1 / 20C2 / SW03**
+bereit. Der Zweig `optolink-splitter-ha` ist der Integrationszweig
+für produktive Komponenten. Nach der geprüften Freigabe
+werden dessen Änderungen auch in `main` übernommen.
 
-It deliberately contains only the components required to operate the splitter with the validated VDensHO1 / 20C2 Home Assistant integration. Firmware reverse engineering, EEPROM/KBus experiments, one-off probes, data captures and Optolink-Web are intentionally excluded.
+Firmware-Reverse-Engineering, EEPROM- und KM-Bus-Versuche,
+einmalige Datensammlungen und experimentelle Pumpenregister
+gehören ausdrücklich **nicht** in diesen Produktivzweig,
+sondern nach `optolink-research`.
+Die Weboberfläche wird getrennt auf `optolink-web` entwickelt.
 
 ## Dokumentation
 
-Für einen neuen Maintainer ist diese Reihenfolge gedacht:
+Empfohlene Reihenfolge für Betrieb und Wartung:
 
-0. [Dokumentationsindex](docs/README.md) — Übersicht und Quellen der Wahrheit.
-1. [Architektur](docs/architecture.md) — Komponenten, Datenfluss, Sicherheitsgrenzen und Deployment-Kette.
-2. [Betrieb / Runbook](docs/operations.md) — Update, Statuschecks, Logs, Troubleshooting und Rollback.
-3. [Home Assistant](docs/home-assistant.md) — Poll-Profil, MQTT-Entities, Schreibpfade und Dashboard-Modell.
-4. [Entwicklungsleitfaden](docs/development.md) — Regeln für neue Reads/Writes, CI und Hardware-Verifikation.
-5. [Wartung](docs/optolink-maintenance.md) und [Wartungs-API](docs/optolink-maintenance-api.md).
-6. [WB2A-Zeitprogrammblöcke](docs/wb2a-schedule-blocks.md).
-7. [WB2A-Anlagenschema und Anlagenkonfiguration](docs/anlagenschema.md).
-8. [VControl-/Adress-Mapping](config/optolink-splitter/vcontrol-mapping.md).
+1. [Dokumentationsindex](docs/README.md) – alle Betriebsanleitungen und Quellen der Wahrheit.
+2. [Systemarchitektur](docs/architecture.md) – Komponenten, Datenflüsse und technische Sicherheitsgrenzen.
+3. [Betrieb und Fehlerdiagnose](docs/operations.md) – Update, Status, Logs und Wiederherstellung.
+4. [Home Assistant](docs/home-assistant.md) – MQTT-Entities, Zeitprogramme und Dashboard.
+5. [Optionaler VS1/P300-Protokollwechsel](docs/hybrid-protokollwechsel.md) – Bedienung, Voraussetzungen und Rückfallpfad.
+6. [Entwicklungsleitfaden](docs/development.md) – Regeln für Änderungen, Tests und Hardwareabnahme.
+7. [Wartungs-CLI](docs/optolink-maintenance.md) und [MQTT-Wartungs-API](docs/optolink-maintenance-api.md).
+8. [WB2A-Zeitprogrammblöcke](docs/wb2a-schedule-blocks.md).
+9. [WB2A-Anlagenschema und Anlagenkonfiguration](docs/anlagenschema.md).
+10. [VControl-/Adresszuordnung](config/optolink-splitter/vcontrol-mapping.md).
 
-Kurzfassung des Laufzeitpfads:
+Vereinfachter Laufzeitpfad:
 
 ```text
 Home Assistant
       |
       v
- MQTT Broker <---- Zusatzdienste (Schedule / Party / Maintenance / Clock)
+MQTT-Broker <---- Zusatzdienste: Zeitprogramm, Party, Wartung, Uhrzeit
       |
       v
-optolink-splitter
+Optolink-Splitter (einziger serieller Eigentümer)
       |
       v
-serieller Optolink-Adapter
+USB-/Optolink-Lesekopf
       |
       v
-Vitodens 200-W WB2A
+Viessmann Vitodens 200-W WB2A
 ```
 
-Der Splitter ist der einzige produktive Besitzer des seriellen Ports. Zusatzdienste kommunizieren über seine MQTT-Befehls-/Antwortschnittstelle.
+Zusatzdienste sprechen über MQTT mit dem Splitter.
+**Kein Zusatzdienst** darf neben ihm eigenständig den seriellen
+Optolink-Port öffnen.
 
 ## Systemübersicht
 
-![Optolink-Splitter Systemübersicht](docs/images/optolink-system-overview.svg)
+![Optolink-Systemübersicht](docs/images/optolink-system-overview.svg)
 
 ![Dienstekommunikation und Sicherheitsmodell](docs/images/service-communication-security.svg)
 
-Die Diagramme liegen als SVG im Repository und bleiben damit auch bei Zoom und in GitHub-Dokumentation scharf.
+### Optionaler VS1/P300-Protokollwechsel
 
-## Branch purpose
+![Überwachter VS1/P300-Protokollwechsel](docs/images/vs1-p300-wechsel.svg)
 
-Use this branch on the actual Optolink machine.
+Die Diagramme liegen als skalierbare SVG-Dateien vor.
+Der VS1-Betrieb bleibt Standard. `optolink-hybrid` ermöglicht
+ausschließlich ausdrücklich angeforderte, über Systemd
+überwachte P300-**Lese**fenster; kein permanenter
+Protokollwechsel und keine P300-Controller-Writes.
+Die Details stehen in
+[der Hybrid-Betriebsanleitung](docs/hybrid-protokollwechsel.md).
 
-Production scope:
+## Umfang des Produktivzweigs
 
-- upstream `philippoo66/optolink-splitter`;
-- validated VDensHO1 / 20C2 / WB2A Home Assistant poll profile;
-- MQTT discovery and dashboard configuration;
-- guarded maintenance API and CLI;
-- guarded weekly schedule manager;
-- Party-mode emulation;
-- guarded WB2A filling/venting service programs (coding address 2F / Optolink `0x572F`);
-- system-clock synchronization and diagnostics;
-- updater and Proxmox LXC installer;
-- only the runtime patchers needed by the validated profile.
+Enthalten sind:
 
-Out of scope:
+- der angepasste Upstream `philippoo66/optolink-splitter`;
+- das am Regler geprüfte WB2A-/VDensHO1-Home-Assistant-Profil;
+- MQTT-Discovery, gespeicherte Zustände und Dashboard-Konfiguration;
+- die abgesicherte Wartungs-CLI und Wartungs-MQTT-API;
+- Zeitprogrammverwaltung für die verifizierten WB2A-Tagesblöcke;
+- Party-Modus-Emulation mit Wiederherstellung;
+- geschützte Serviceprogramme zum Befüllen und Entlüften
+  über Codieradresse 2F (`0x572F`);
+- Zeitsynchronisierung und Diagnosedaten;
+- Proxmox-LXC-Neuinstallation und der produktive Updater;
+- geprüfte Laufzeit-Patches und eine **standardmäßig deaktivierte**
+  optionale Hybridbibliothek.
 
-- firmware readout/reverse engineering;
-- EEPROM, physical-memory and KBus experiments;
-- VitoTest archives;
-- temporary loggers and diagnostic research probes;
-- pump-minimum override experiments;
-- Optolink-Web.
+Nicht enthalten sind ungeprüfte Steuerregister,
+Firmwareabbilder, EEPROM-Dumps, Roh-RAM-Schreibprogramme,
+VitoTest-Archive, Forschungs-Logger, experimentelle
+Pumpen-Minimum-Overrides und die separate Weboberfläche.
 
-Those items are preserved on `optolink-research` or `optolink-web`.
+## Sicherheits- und Update-Modell
 
-## Safety model
+Der Profil-Installer fixiert den geprüften Upstream-Stand
+`c1ee204a1421447721603c5f21c6da7337fdac97`.
+Anschließend setzt er die validierte
+VS1-/GFA-Unterstützung und den mehrphasigen Poll-Scheduler
+ein. Die Patcher prüfen sich vor Änderungen selbst;
+der Installer legt datierte Sicherungen an und versucht
+bei fehlgeschlagener Aktivierung ein Rollback.
 
-The profile helper pins the upstream Optolink-Splitter source to the hardware-validated upstream commit `c1ee204a1421447721603c5f21c6da7337fdac97`. It applies only the two runtime integrations required by this deployment:
+Die optionale VS1/P300-Laufzeit wird **erst nach**
+dem regulären Profil-Schritt installiert.
+Sie ist nicht automatisch aktiviert und stellt einen
+eigenständigen, nach Prüfsummen gebundenen Laufzeitkandidaten
+bereit. Während einer aktiven Hybrid-Sitzung wird eine
+Aktualisierung abgewiesen.
 
-1. validated read-only VS1/GFA support;
-2. phased polling scheduler.
+**Wichtig für bereits veränderte LXC-Installationen:**
+Der Upstream-Teil des Profil-Installers führt vor dem erneuten
+Patchen einen `git reset --hard` auf die validierte Revision
+aus. Lokale Änderungen müssen zuvor überprüft und gesichert
+werden. Details zur Sicherung stehen unter
+[Betrieb und Updates](docs/operations.md).
 
-Before modifying the installed runtime, both patchers run their built-in self-tests. The profile helper creates timestamped backups and rolls back the profile/runtime files if validation fails.
+## Bestehende LXC-Installation: Update mit `update`
 
-The production updater does **not** deploy research probes or arbitrary-write tooling.
-
-## Existing machine: one-command migration and update
-
-Run this **as root inside the existing Optolink-Splitter LXC**:
+Die einmalige Einrichtung des Produktionskanals für
+den bisherigen `optolink-splitter-ha`-Zweig erfolgt
+als `root` im existierenden LXC:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SaulGoodman1337/optolink/optolink-splitter-ha/tools/optolink-splitter-ha-bootstrap.sh | bash
 ```
 
-The bootstrap verifies that an existing installation is present, downloads this branch through the branch-aware runner, executes the production updater and persists:
+Der Bootstrap kontrolliert die vorhandene Installation,
+holt die freigegebene Repository-Snapshot-Version,
+führt den Update-Prozess aus und speichert:
 
 ```text
 COMMUNITY_SCRIPTS_REPO=SaulGoodman1337/optolink
@@ -101,17 +133,39 @@ COMMUNITY_SCRIPTS_REF=optolink-splitter-ha
 COMMUNITY_SCRIPTS_TARGET=tools/optolink-splitter-update.sh
 ```
 
-After that, normal future updates are simply:
+Die gewöhnliche Folgeaktualisierung geschieht dann durch:
 
 ```bash
 update
 ```
 
-No GitHub token is required while the repository is public. Public downloads are attempted before any stored token, so an expired PAT cannot block normal updates. A token remains supported as a fallback if the repository becomes private.
+### Nach dem freigegebenen Merge: `update` aus `main`
 
-## Verification after update
+Sobald zuerst die Hybridintegration in
+`optolink-splitter-ha` **und danach** dieser
+Produktionsstand in `main` gemergt wurde,
+kann der lokale Kanal auf `main` umgestellt werden.
+Ein GitHub-Merge ändert die LXC-Konfiguration nicht von selbst.
 
-Run:
+```text
+COMMUNITY_SCRIPTS_REPO=SaulGoodman1337/optolink
+COMMUNITY_SCRIPTS_REF=main
+COMMUNITY_SCRIPTS_TARGET=tools/optolink-splitter-update.sh
+```
+
+Vor dem ersten Update muss die Kombination aus
+`main`-Release und lokalen Anpassungen gesichert
+und überprüft sein. Danach bleibt der Befehl
+`update` unverändert. Die Schritt-für-Schritt-Anleitung
+steht unter [Betrieb](docs/operations.md).
+
+Bei einem öffentlichen Repository wird zunächst der
+anonyme GitHub-Download versucht; ein alter oder
+abgelaufener privater Zugangstoken verursacht dadurch
+keine unnötigen HTTP-401-Fehler. Authentifizierung
+bleibt als Fallback für private Repositories möglich.
+
+## Zustandsprüfung nach Updates
 
 ```bash
 systemctl status optolink-splitter --no-pager
@@ -121,31 +175,20 @@ systemctl status optolink-maintenance-api --no-pager
 systemctl status optolink-clock-sync.timer --no-pager
 systemctl status optolink-service-programs --no-pager
 optolink-maintenance status
-```
-
-For the splitter log:
-
-```bash
+optolink-hybrid status
 journalctl -u optolink-splitter -n 100 --no-pager
 ```
 
-The active Home Assistant profile is:
+Das aktive Home-Assistant-Profil liegt unter
+`/opt/optolink/homeassistant_poll_list.py`.
+Die vom Profil-Installer erstellte Discovery-Trockenprüfung
+liegt unter `/root/optolink-ha-discovery-dry-run.txt`.
 
-```text
-/opt/optolink/homeassistant_poll_list.py
-```
+## WB2A-Systemzeit
 
-The discovery dry-run generated by the profile helper is:
-
-```text
-/root/optolink-ha-discovery-dry-run.txt
-```
-
-## WB2A system clock synchronization
-
-The controller system clock is read from Optolink datapoint `0x088E` as the native 8-byte Viessmann BCD date/time value.
-
-The production branch installs:
+Die Reglerzeit wird aus `0x088E` als
+Viessmann-Datum/Uhrzeit im 8-Byte-BCD-Format gelesen.
+Installierte Komponenten:
 
 ```text
 /usr/local/bin/optolink-clock-sync
@@ -153,9 +196,13 @@ The production branch installs:
 /etc/systemd/system/optolink-clock-sync.timer
 ```
 
-The timer checks the controller every 15 minutes against the local clock of the Optolink-Splitter machine. A write is performed only when the absolute drift exceeds 30 seconds or the controller weekday byte is inconsistent with its calendar date. Writes use the complete 8-byte `0x088E` payload and are followed by a fresh readback; the controller must be within 5 seconds of the host clock for the operation to be accepted as verified.
-
-Useful commands:
+Der Timer vergleicht alle 15 Minuten die Reglerzeit mit
+der Systemzeit des Hosts. Nur bei mehr als 30 Sekunden
+absoluter Abweichung oder einem zum Datum unpassenden
+Wochentagsbyte wird das vollständige 8-Byte-Register
+`0x088E` geschrieben und erneut gelesen.
+Für eine bestätigte Korrektur muss die Reglerzeit danach
+höchstens fünf Sekunden von der Hostzeit abweichen.
 
 ```bash
 optolink-clock-sync --check
@@ -164,118 +211,144 @@ systemctl status optolink-clock-sync.timer --no-pager
 journalctl -u optolink-clock-sync.service -n 50 --no-pager
 ```
 
-Home Assistant receives:
+Home Assistant erhält die Entities
+`sensor.vitodens_200_wb2a_systemzeit_anzeige`,
+`sensor.vitodens_200_wb2a_systemzeit_abweichung` und
+`sensor.vitodens_200_wb2a_systemzeit_sync_status`.
+Die Diagnoseansicht fasst sie unter **Systemzeit** zusammen.
 
-- `sensor.vitodens_200_wb2a_systemzeit_anzeige` — actual controller time;
-- `sensor.vitodens_200_wb2a_systemzeit_abweichung` — last measured drift in seconds;
-- `sensor.vitodens_200_wb2a_systemzeit_sync_status` — Synchron / Korrigiert / Fehler.
+## Home Assistant und Warmwasser
 
-The Diagnose view contains a dedicated **Systemzeit** block showing all three values.
+Das Produktionsprofil bildet die zwei nativen
+Warmwasser-Sollwerte ab und erhält aus
+Kompatibilitätsgründen die bestehenden MQTT-/Entity-IDs:
 
-## Home Assistant
+- **Warmwasser-Tagestemperatur:** `0x6300`,
+  `warmwasser_solltemperatur`;
+- **Warmwasser-Nachttemperatur beziehungsweise zweiter Sollwert:**
+  Codieradresse 58, `0x6758`,
+  `warmwasser_solltemperatur_reduziert`.
 
-The production profile exposes warm water as two native setpoints while preserving the existing MQTT/entity IDs for compatibility:
+Codieradresse 58 bedeutet: `0` = Zusatzfunktion aus;
+`10–60 °C` = zweiter Trinkwasser-Sollwert für die
+vierte Warmwasser-Zeitphase.
 
-- **Warmwasser Tagestemperatur** — normaler WW-Sollwert `0x6300` (`warmwasser_solltemperatur`)
-- **Warmwasser Nachttemperatur / 2. Sollwert** — WB2A-Codieradresse 58, Optolink `0x6758` (`warmwasser_solltemperatur_reduziert`)
+Das Produktionsdashboard liegt unter
+`config/optolink-splitter/homeassistant-dashboard.yaml`,
+die getrennte Entwicklungsansicht unter
+`config/optolink-splitter/homeassistant-dashboard-dev.yaml`.
 
-Codieradresse 58 has the WB2A semantics `0 = Zusatzfunktion aus`, `10..60 °C = zweiter Trinkwassertemperatur-Sollwert`. The controller uses this second setpoint for the fourth DHW time phase. The historical Home Assistant entity ID is preserved for compatibility.
+Seit dem 07.10.2026 verwendet die Produktion
+die responsive Layout-Card-Hauptansicht mit
+Tag-/Nacht-Bedienelementen, Thermostat-Sollwerten,
+aktiver WB2A-Störungsanzeige und geprüften Ansichtsregeln.
+Die DEV-Variante enthält darüber hinaus
+**Anlagenschema und Anlagenkonfiguration** mit
+bestätigungspflichtigen Reglerwerten
+`00`, `52`, `53`, `54` und `5B`.
+Codieradresse `65` und interne Adressen
+`0x7701` / `0x8851` bleiben nur lesbar.
+Siehe [Anlagenschema](docs/anlagenschema.md).
 
-The production dashboard is stored at:
-
-```text
-config/optolink-splitter/homeassistant-dashboard.yaml
-```
-
-A separate visual-development dashboard is available at:
-
-```text
-config/optolink-splitter/homeassistant-dashboard-dev.yaml
-```
-
-The previously tested DEV dashboard was promoted to
-`homeassistant-dashboard.yaml` on 2026-10-07. Production therefore now uses
-the responsive **Layout Card** main view, grouped day/night controls, native
-thermostat target-temperature controls, the live WB2A fault banner and the
-validated view-visibility policy.
-
-The separate DEV file remains the staging surface. It has diverged again with
-the new **Anlagenschema & Anlagenkonfiguration** diagnostics section. That
-section exposes documented WB2A topology controls for coding addresses
-`00`, `52`, `53`, `54` and `5B` with explicit confirmations; coding
-address `65` and the internal values `0x7701` / `0x8851` remain read-only.
-See [docs/anlagenschema.md](docs/anlagenschema.md).
-
-The schedule manager accepts only the 21 verified WB2A day blocks and validates complete 8-byte schedules before writing. Maintenance writes are similarly constrained by the shared guarded maintenance core and explicit confirmation semantics.
+Der Zeitprogramm-Manager akzeptiert nur die 21
+verifizierten WB2A-Tagesblöcke und prüft die
+vollständigen 8-Byte-Werte vor jedem Write.
+Wartungsänderungen sind auf die freigegebenen
+Aktionen des gemeinsamen Wartungskerns beschränkt.
 
 ## Befüllen und Entlüften
 
-Die WB2A-Servicefunktion **Codieradresse 2F** ist über einen eigenen Guarded Manager eingebunden:
+Die Servicefunktion **Codieradresse 2F** kennt:
 
-- `2F:0` / `0x572F = 0`: Serviceprogramm aus;
+- `2F:0` / `0x572F = 0`: aus;
 - `2F:1` / `0x572F = 1`: Entlüftungsprogramm;
 - `2F:2` / `0x572F = 2`: Befüllungsprogramm.
 
-Home Assistant erhält zwei getrennte Schalter, intern bleibt es aber ein gemeinsames Drei-Zustands-Register. `optolink-service-programs` liest vor jeder Änderung, schreibt nur 0/1/2, prüft den Controller-Readback und versucht bei einer fehlgeschlagenen Verifikation den vorherigen Modus wiederherzustellen. Der Dienst pollt den Modus außerdem, damit die automatische Abschaltung der Therme nach 20 Minuten in HA sichtbar wird.
+Home Assistant stellt zwei separate Schalter dar.
+Der Dienst `optolink-service-programs` behandelt
+sie als gemeinsames Drei-Zustands-Register.
+Er liest vor Änderungen, schreibt ausschließlich 0/1/2,
+bestätigt per neuem Controller-Readback und
+versucht bei einer fehlgeschlagenen Verifikation
+den Ausgangswert wiederherzustellen.
 
-**Hardwarestatus:** Befüllung und Entlüftung sind auf der produktiven VDensHO1 / 20C2 / SW03 / WB2A am **06.10.2026 live verifiziert**. Die Übergänge `0 → 1 → 0` und `0 → 2 → 0` wurden über `0x572F` erfolgreich ausgeführt und per Controller-Readback bestätigt.
+Die am 06.10.2026 durchgeführten Live-Tests
+`0 → 1 → 0` und `0 → 2 → 0` wurden
+erfolgreich über `0x572F` rückgelesen.
+Die automatische Reglerabschaltung nach circa
+20 Minuten wird durch regelmäßige Abfragen in HA sichtbar.
 
-Details und Sicherheitshinweise: [WB2A Befüllungs-/Entlüftungsprogramm](docs/service-programs.md).
+Siehe [Serviceprogramme](docs/service-programs.md).
+Die Serviceanleitung eines Drittherstellers
+wird nicht mitgeliefert; ihre Quellenangabe steht in
+[docs/manuals/README.md](docs/manuals/README.md).
+Ein lokaler Download-Helfer ist
+`tools/fetch-wb2a-service-manual.sh`.
 
-Die zugrunde liegende Viessmann-Serviceanleitung ist Drittmaterial. Das Repository enthält deshalb die Quellenreferenz unter [docs/manuals/README.md](docs/manuals/README.md) und einen Fetch-Helfer für eine lokale Arbeitskopie:
+## Neuinstallation
 
-```bash
-tools/fetch-wb2a-service-manual.sh
-```
-
-## Fresh installation
-
-The Proxmox LXC entrypoint remains:
+Für einen neuen Proxmox-LXC-Container gilt:
 
 ```bash
 csrun ct/optolink-splitter.sh
 ```
 
-When invoking the repository scripts directly, use this branch as `COMMUNITY_SCRIPTS_REF`.
+Bei direktem Aufruf der Repository-Skripte
+muss `COMMUNITY_SCRIPTS_REF` auf den vorgesehenen,
+freigegebenen Zweig gesetzt sein.
 
-## Rollback
+## Wiederherstellung
 
-The profile activation helper creates timestamped backups in `/opt/optolink`. If activation fails it attempts an automatic rollback before returning an error.
+Der Profil-Installer legt zeitgestempelte
+Sicherungen der geänderten Konfigurationen an und
+versucht bei fehlerhafter Aktivierung ein Rollback.
+Der Hybrid-Canary verwendet zusätzlich
+einen unabhängig von seinem Python-Supervisor
+ausgeführten Systemd-Rückfallpfad.
 
-For repository-level rollback, `main` remains the untouched pre-cleanup snapshot.
+Für den Rückweg auf eine frühere Repository-Version
+gilt die dokumentierte Git-Revisionsstrategie;
+`main` ist nach seiner Integration **kein**
+unveränderter Altstand mehr.
 
-## Branch layout
+## Repository-Struktur
 
-- `config/optolink-splitter/` — production profile, services, dashboard, maintenance core;
-- `tools/` — production updater, HA activator, schedule/maintenance/Party helpers and the two validated patchers;
-- `install/` and `ct/` — fresh-install paths;
-- `docs/` — Architektur, Betrieb, Home Assistant, Entwicklung, Wartung und Zeitprogramme;
-- `json/` — Community Scripts metadata.
+- `config/optolink-splitter/`: Produktionsprofil, Dienste, Dashboard, Wartungskern.
+- `tools/`: Installer, Update, Serviceprogramme, Runtime-Patcher,
+  optionale Hybridbibliothek und abgesicherte CLI.
+- `install/`, `ct/`: Neuinstallation.
+- `docs/`: deutsche Betriebs- und Entwicklerdokumentation.
+- `json/`: Metadaten für Community Scripts.
 
-Research belongs on `optolink-research`. Web UI work belongs on `optolink-web`.
+## Fehlerbehebung: HTTP 401 bei `update`
 
+Ältere Versionen verwendeten einen gespeicherten
+GitHub-Token bevorzugt gegenüber dem öffentlichen Download.
+Ein abgelaufener PAT konnte so `401 Unauthorized`
+erzeugen, obwohl das Repository öffentlich ist.
 
-## Troubleshooting: `update` returns HTTP 401
-
-Older revisions preferred a saved GitHub token over the public download URL. If `/etc/community-scripts-github-token` contained an expired or revoked PAT, GitHub returned `401 Unauthorized` even though this repository is public.
-
-The current branch uses public downloads first and only falls back to authentication for a private repository.
-
-On a machine that still has the old updater installed, either rerun the bootstrap:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/SaulGoodman1337/optolink/optolink-splitter-ha/tools/optolink-splitter-ha-bootstrap.sh | bash
-```
-
-or remove the stale saved token before retrying:
+Im aktuellen Updater haben öffentliche Downloads Vorrang.
+Bei einem noch alten Updater hilft die erneute Installation
+des Bootstraps oder das Entfernen des veralteten Tokens:
 
 ```bash
 update --clear-token
 update
 ```
 
-## Serial-device detection
+Den Bootstrap für den aktuellen Zweig findet man
+in `tools/optolink-splitter-ha-bootstrap.sh`.
 
-The production profile and fresh installer no longer assume `/dev/ttyUSB0`. They read `port_optolink` from `/opt/optolink/settings_ini.py` and validate that configured path. Stable `/dev/serial/by-id/...` paths are therefore supported correctly.
+## Erkennung der seriellen Schnittstelle
 
-The MQTT status message is also separated from the serial-device status: a missing serial device is no longer reported incorrectly as “MQTT is disabled”.
+Produktionsprofil und Neuinstallationsroutine
+nehmen nicht mehr pauschal `/dev/ttyUSB0` an,
+sondern prüfen den in `/opt/optolink/settings_ini.py`
+konfigurierten Wert `port_optolink`.
+Damit werden stabile Pfade unter `/dev/serial/by-id/...`
+unterstützt.
+
+Der MQTT-Status und die Verfügbarkeit des seriellen
+Optolink-Geräts werden getrennt behandelt.
+Ein fehlendes serielles Gerät wird nicht irrtümlich
+als „MQTT deaktiviert“ gemeldet.

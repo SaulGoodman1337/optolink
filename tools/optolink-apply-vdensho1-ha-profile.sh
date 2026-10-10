@@ -61,6 +61,38 @@ if [[ ! -d "$APP_DIR/.git" ]]; then
   exit 1
 fi
 
+# Existing machines carry intentional local, profile-generated tracked diffs.
+# A reset --hard without a pre-reset backup would silently destroy those.
+# Snapshot all tracked changes as both a patch and the original file contents.
+# The backup is root-only and kept separate from the application checkout.
+if systemctl is-active --quiet optolink-hybrid-continuous-canary.service; then
+  echo "Refusing upstream reset while a P300 canary is active." >&2
+  exit 1
+fi
+if ! runuser -u optolink -- git -C "$APP_DIR" diff --quiet --exit-code; then
+  install -d -m 0700 /var/backups/optolink-update
+  old_umask="$(umask)"
+  umask 077
+  backup="$(mktemp -d /var/backups/optolink-update/before-reset-XXXXXXXX)"
+  if ! runuser -u optolink -- git -C "$APP_DIR" diff --binary >"$backup/tracked-changes.patch"; then
+    echo "Failed to preserve local patch; refusing upstream reset." >&2
+    exit 1
+  fi
+  if ! runuser -u optolink -- git -C "$APP_DIR" diff --name-only -z |
+       tar -C "$APP_DIR" --null -T - -czf "$backup/tracked-files.tar.gz"; then
+    echo "Failed to preserve modified files; refusing upstream reset." >&2
+    exit 1
+  fi
+  for relative in settings_ini.py homeassistant_poll_list.py poll_list.py; do
+    if [[ -f "$APP_DIR/$relative" ]]; then
+      cp -a "$APP_DIR/$relative" "$backup/$relative"
+    fi
+  done
+  runuser -u optolink -- git -C "$APP_DIR" rev-parse HEAD >"$backup/original-commit.txt"
+  umask "$old_umask"
+  echo "Existing local tracked changes safely archived at $backup"
+fi
+
 current_upstream="$(runuser -u optolink -- git -C "$APP_DIR" rev-parse HEAD)"
 if [[ "$current_upstream" != "$VALIDATED_UPSTREAM_REF" ]]; then
   echo "Restoring hardware-validated upstream ref $VALIDATED_UPSTREAM_REF..."

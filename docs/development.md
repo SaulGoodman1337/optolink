@@ -202,9 +202,11 @@ Bei Writes zusätzlich:
 
 ## 13. Branch-Policy
 
-- `main`: unveränderter Ausgangssnapshot der Aufräumaktion;
-- `optolink-splitter-ha`: produktiv;
+- `optolink-splitter-ha`: Integrationszweig für geprüfte Produktionsänderungen;
+- `main`: freigegebener Releasezweig für den LXC-Befehl `update` (erst nach nachgewiesener Integration);
 - `optolink-research`: Forschung/Archiv;
 - `optolink-web`: Web-Anwendung.
 
 Keine kompletten Merges von Research nach Produktion. Einzelne Erkenntnisse gezielt und nachvollziehbar promoten.
+
+Die optionale Hybridfunktion ist auf den getesteten, **nur lesenden** Betrieb begrenzt. Änderungen an Writer-Leases, MQTT-/TCP-Eingangsbarrieren, P300/VS1-Handover oder Systemd-Rückfallpfad erfordern Offline-Regressionen und eine gesonderte überprüfbare Hardwareabnahme. Der produktive Updater darf keinen P300-Canary automatisch aktivieren. Messdumps, Experimente und Forensik gehören nach `optolink-research`.
