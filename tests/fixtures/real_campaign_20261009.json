@@ -1,0 +1,334 @@
+{
+  "provenance": "Selected fields from two operator LXC console pastes dated 2026-10-09; no independent raw hardware capture. The earlier P300 summary is transcribed from the chat; the later sweep/VS1 summaries are parsed from the attached terminal log.",
+  "summaries": {
+    "early_p300_start": {
+      "enq_trace": [
+        {
+          "enq_wait_ms": [
+            1744.381,
+            3981.958
+          ],
+          "eot_t_monotonic": 980360.727029851,
+          "name": "cold_vs1_setup"
+        },
+        {
+          "enq_wait_ms": [],
+          "eot_t_monotonic": 980364.988641246,
+          "name": "vs1_to_p300"
+        },
+        {
+          "enq_wait_ms": [
+            1621.454,
+            3859.414
+          ],
+          "eot_t_monotonic": 980365.364963936,
+          "name": "p300_to_vs1"
+        }
+      ],
+      "experiment": "early_p300_start",
+      "independent_recovery": {
+        "attempted": true,
+        "error": null,
+        "verified": true
+      },
+      "measurement_errors": [
+        "ProtocolError: RX deadline"
+      ],
+      "recovery_errors": [],
+      "result": "FAIL_OR_NOT_VERIFIED",
+      "services_restored": true
+    },
+    "early_vs1_identity": {
+      "enq_trace": [
+        {
+          "enq_wait_ms": [
+            1783.842,
+            4021.422
+          ],
+          "eot_t_monotonic": 981719.063078786,
+          "name": "cold_vs1_setup"
+        },
+        {
+          "enq_wait_ms": [
+            1996.651
+          ],
+          "eot_t_monotonic": 981723.440746158,
+          "name": "vs1_to_p300"
+        },
+        {
+          "enq_wait_ms": [],
+          "eot_t_monotonic": 981725.601019916,
+          "name": "p300_to_vs1"
+        },
+        {
+          "enq_wait_ms": [
+            1622.895,
+            3860.072
+          ],
+          "eot_t_monotonic": 981725.976808846,
+          "name": "recovery_or_unexpected"
+        }
+      ],
+      "experiment": "early_vs1_identity",
+      "independent_recovery": {
+        "attempted": false,
+        "error": null,
+        "verified": true
+      },
+      "measurement_errors": [
+        "ProtocolError: EARLY_VS1_NO_IDENTITY_WITHIN_350MS"
+      ],
+      "recovery_errors": [],
+      "result": "FAIL_OR_NOT_VERIFIED",
+      "services_restored": true
+    },
+    "phase_sweep": {
+      "enq_trace": [
+        {
+          "enq_wait_ms": [
+            1829.848,
+            4068.604
+          ],
+          "eot_t_monotonic": 981668.454968956,
+          "name": "cold_vs1_setup"
+        },
+        {
+          "enq_wait_ms": [
+            1998.187
+          ],
+          "eot_t_monotonic": 981672.833532283,
+          "name": "vs1_to_p300"
+        },
+        {
+          "enq_wait_ms": [
+            1997.371
+          ],
+          "eot_t_monotonic": 981675.006171384,
+          "name": "p300_to_vs1"
+        },
+        {
+          "enq_wait_ms": [
+            1997.233
+          ],
+          "eot_t_monotonic": 981677.912610855,
+          "name": "recovery_or_unexpected"
+        },
+        {
+          "enq_wait_ms": [
+            1997.419
+          ],
+          "eot_t_monotonic": 981680.072759648,
+          "name": "recovery_or_unexpected"
+        },
+        {
+          "enq_wait_ms": [
+            1873.021
+          ],
+          "eot_t_monotonic": 981683.693481856,
+          "name": "recovery_or_unexpected"
+        },
+        {
+          "enq_wait_ms": [
+            1997.37
+          ],
+          "eot_t_monotonic": 981685.734796045,
+          "name": "recovery_or_unexpected"
+        },
+        {
+          "enq_wait_ms": [
+            1997.828
+          ],
+          "eot_t_monotonic": 981688.193265094,
+          "name": "recovery_or_unexpected"
+        },
+        {
+          "enq_wait_ms": [
+            1997.718
+          ],
+          "eot_t_monotonic": 981690.751103792,
+          "name": "recovery_or_unexpected"
+        },
+        {
+          "enq_wait_ms": [
+            1997.821
+          ],
+          "eot_t_monotonic": 981693.262425802,
+          "name": "recovery_or_unexpected"
+        },
+        {
+          "enq_wait_ms": [
+            1998.104
+          ],
+          "eot_t_monotonic": 981696.525019911,
+          "name": "recovery_or_unexpected"
+        },
+        {
+          "enq_wait_ms": [
+            1997.149
+          ],
+          "eot_t_monotonic": 981699.686292871,
+          "name": "recovery_or_unexpected"
+        },
+        {
+          "enq_wait_ms": [
+            1997.35
+          ],
+          "eot_t_monotonic": 981702.549017373,
+          "name": "recovery_or_unexpected"
+        },
+        {
+          "enq_wait_ms": [
+            1997.31
+          ],
+          "eot_t_monotonic": 981705.019939527,
+          "name": "recovery_or_unexpected"
+        },
+        {
+          "enq_wait_ms": [
+            1996.43
+          ],
+          "eot_t_monotonic": 981707.184039766,
+          "name": "recovery_or_unexpected"
+        }
+      ],
+      "experiment": "phase_sweep",
+      "independent_recovery": {
+        "attempted": false,
+        "error": null,
+        "verified": true
+      },
+      "measurement_errors": [],
+      "recovery_errors": [],
+      "result": "PASS_VERIFIED_READ_ONLY_PHASE_SWEEP",
+      "services_restored": true,
+      "trials": [
+        {
+          "full_elapsed_after_vs1_idle_ms": 4678.912,
+          "gfa": {
+            "P06": "00",
+            "P09": "00",
+            "P80": "20",
+            "P87": "00"
+          },
+          "handover_and_gfa_ms": 4678.91,
+          "label": "control_a",
+          "p300_eot_enq_ms": 1998.187,
+          "p300_idle_ms": 0,
+          "to_p300_ms": 2172.64,
+          "to_vs1_ms": 2266.749,
+          "verified": true,
+          "vs1_eot_enq_ms": 1997.371,
+          "vs1_idle_ms": 0
+        },
+        {
+          "full_elapsed_after_vs1_idle_ms": 4680.76,
+          "gfa": {
+            "P06": "00",
+            "P09": "00",
+            "P80": "20",
+            "P87": "00"
+          },
+          "handover_and_gfa_ms": 4680.756,
+          "label": "vs1_idle_400",
+          "p300_eot_enq_ms": 1997.233,
+          "p300_idle_ms": 0,
+          "to_p300_ms": 2160.171,
+          "to_vs1_ms": 2319.449,
+          "verified": true,
+          "vs1_eot_enq_ms": 1997.419,
+          "vs1_idle_ms": 400
+        },
+        {
+          "full_elapsed_after_vs1_idle_ms": 4499.811,
+          "gfa": {
+            "P06": "00",
+            "P09": "00",
+            "P80": "20",
+            "P87": "00"
+          },
+          "handover_and_gfa_ms": 4499.808,
+          "label": "vs1_idle_1100",
+          "p300_eot_enq_ms": 1873.021,
+          "p300_idle_ms": 0,
+          "to_p300_ms": 2041.321,
+          "to_vs1_ms": 2269.343,
+          "verified": true,
+          "vs1_eot_enq_ms": 1997.37,
+          "vs1_idle_ms": 1100
+        },
+        {
+          "full_elapsed_after_vs1_idle_ms": 5069.098,
+          "gfa": {
+            "P06": "00",
+            "P09": "00",
+            "P80": "20",
+            "P87": "00"
+          },
+          "handover_and_gfa_ms": 4669.045,
+          "label": "p300_idle_400",
+          "p300_eot_enq_ms": 1997.828,
+          "p300_idle_ms": 400,
+          "to_p300_ms": 2157.742,
+          "to_vs1_ms": 2271.8,
+          "verified": true,
+          "vs1_eot_enq_ms": 1997.718,
+          "vs1_idle_ms": 0
+        },
+        {
+          "full_elapsed_after_vs1_idle_ms": 5723.713,
+          "gfa": {
+            "P06": "00",
+            "P09": "00",
+            "P80": "20",
+            "P87": "00"
+          },
+          "handover_and_gfa_ms": 4623.621,
+          "label": "p300_idle_1100",
+          "p300_eot_enq_ms": 1997.821,
+          "p300_idle_ms": 1100,
+          "to_p300_ms": 2162.464,
+          "to_vs1_ms": 2272.155,
+          "verified": true,
+          "vs1_eot_enq_ms": 1998.104,
+          "vs1_idle_ms": 0
+        },
+        {
+          "full_elapsed_after_vs1_idle_ms": 5333.63,
+          "gfa": {
+            "P06": "00",
+            "P09": "00",
+            "P80": "20",
+            "P87": "00"
+          },
+          "handover_and_gfa_ms": 4633.55,
+          "label": "both_idle_700",
+          "p300_eot_enq_ms": 1997.149,
+          "p300_idle_ms": 700,
+          "to_p300_ms": 2162.67,
+          "to_vs1_ms": 2282.222,
+          "verified": true,
+          "vs1_eot_enq_ms": 1997.35,
+          "vs1_idle_ms": 700
+        },
+        {
+          "full_elapsed_after_vs1_idle_ms": 4730.591,
+          "gfa": {
+            "P06": "00",
+            "P09": "00",
+            "P80": "20",
+            "P87": "00"
+          },
+          "handover_and_gfa_ms": 4730.588,
+          "label": "control_b",
+          "p300_eot_enq_ms": 1997.31,
+          "p300_idle_ms": 0,
+          "to_p300_ms": 2164.074,
+          "to_vs1_ms": 2377.971,
+          "verified": true,
+          "vs1_eot_enq_ms": 1996.43,
+          "vs1_idle_ms": 0
+        }
+      ]
+    }
+  }
+}
