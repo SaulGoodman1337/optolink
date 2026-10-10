@@ -28,18 +28,28 @@ class ReleaseStagingTests(unittest.TestCase):
             self.source_map[role]=p
         self.main=self.srcdir/"original.py"
         self.main.write_text(UPSTREAM_EXCERPT)
+        self.api=self.srcdir/"optolink-maintenance-api"
+        self.api.write_text(
+            "import sys\nAPP_DIR='/opt/optolink'\n"
+            "if APP_DIR not in sys.path:\n"
+            "    sys.path.insert(0, APP_DIR)\n"
+            "from optolink_maintenance_core import (get_status,)\n")
         self.target=self.root/"candidate"
 
     def stage(self):
         return stage(target=self.target,
                      source_map=self.source_map,
-                     original_main=self.main)
+                     original_main=self.main,
+                     maintenance_api=self.api)
 
     def test_staged_only_generates_exact_five_writers_and_proof_manifest(self):
         manifest=self.stage()
         self.assertEqual(manifest["state"],"STAGED_ONLY_NOT_DEPLOYED")
         self.assertFalse(manifest["prod_services_changed"])
         self.assertIn("main/optolinkvs2_switch.py",manifest["generated_files"])
+        self.assertIn("bin/optolink-maintenance-api",manifest["generated_files"])
+        self.assertIn("# HYBRID_MAINTENANCE_API_SHADOW_V1",
+                 (self.target/"bin/optolink-maintenance-api").read_text())
         self.assertGreaterEqual(len(manifest["generated_files"]),10)
         self.assertEqual(len(manifest["writer_sources"]),5)
         self.assertEqual((self.target/"stage-manifest.json").stat().st_mode & 0o077,0)

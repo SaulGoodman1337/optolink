@@ -25,6 +25,8 @@ UNITS = {
     "clock-sync": "optolink-clock-sync.service",
     "maintenance": "optolink-maintenance-api.service",
 }
+ORIGINAL_MAINTENANCE_API = Path("/usr/local/bin/optolink-maintenance-api")
+RELEASE_ROOT = Path("/var/lib/optolink-hybrid/releases")
 ORIGINAL_PATHS = {
     "party": Path("/usr/local/bin/optolink-party-emulator"),
     "schedule": Path("/usr/local/bin/optolink-schedule-manager"),
@@ -53,12 +55,28 @@ def _approved_path(role: str, name: str) -> Path:
     if path == ORIGINAL_PATHS[role]:
         return path
     # Release bundles may only live under an administrator-owned directory.
-    anchor = Path("/var/lib/optolink-hybrid/releases")
-    if (role == "maintenance" or not path.is_relative_to(anchor)
+    anchor = RELEASE_ROOT
+    if (not path.is_relative_to(anchor)
             or len(path.relative_to(anchor).parts) != 3
-            or path.relative_to(anchor).parts[-2] != "bin"
+            or path.relative_to(anchor).parts[-2]
+                != ("src" if role == "maintenance" else "bin")
             or path.name != ORIGINAL_PATHS[role].name):
         raise EnrollmentRejected("unapproved writer source location")
+    return path
+
+
+def _approved_api_path(name: str, core: Path) -> Path:
+    path=Path(name)
+    if path == ORIGINAL_MAINTENANCE_API and core == ORIGINAL_PATHS["maintenance"]:
+        return path
+    if (not path.is_absolute() or not path.is_relative_to(RELEASE_ROOT)
+            or not core.is_relative_to(RELEASE_ROOT)
+            or len(path.relative_to(RELEASE_ROOT).parts)!=3
+            or path.relative_to(RELEASE_ROOT).parts[-2:] !=
+                ("bin","optolink-maintenance-api")
+            or path.relative_to(RELEASE_ROOT).parts[0] !=
+                core.relative_to(RELEASE_ROOT).parts[0]):
+        raise EnrollmentRejected("maintenance API must use the exact matched release")
     return path
 
 
@@ -106,12 +124,7 @@ def _process_confirms(unit: str, path: Path, *, require_loaded_after: float) -> 
         if pid <= 0:
             return False
         args=Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
-        if path == ORIGINAL_PATHS["maintenance"]:
-            # Maintenance API imports optolink_maintenance_core from APP_DIR.
-            program=Path("/usr/local/bin/optolink-maintenance-api")
-            if str(program).encode() not in args:
-                return False
-        elif str(path).encode() not in args:
+        if str(path).encode() not in args:
             return False
         return _proc_start_epoch(pid) >= require_loaded_after
     except (OSError,ValueError,EnrollmentRejected,subprocess.TimeoutExpired):
@@ -144,6 +157,17 @@ def verify_enrollment(manifest: Path = MANIFEST_PATH) -> EnrollmentResult:
                     raise EnrollmentRejected("clock timer inactive")
                 if str(path) not in _show(unit,"ExecStart"):
                     raise EnrollmentRejected("clock unit points to old binary")
+            elif role=="maintenance":
+                api_path=_approved_api_path(declared.get("api_path",""),path)
+                api_marker=(api_path!=ORIGINAL_MAINTENANCE_API)
+                if not _pinned_file(api_path,declared.get("api_sha256",""),
+                                    marker=api_marker):
+                    raise EnrollmentRejected("maintenance API source not pinned")
+                if not _process_confirms(
+                        unit,api_path,
+                        require_loaded_after=max(path.stat().st_mtime,
+                                                 api_path.stat().st_mtime)):
+                    raise EnrollmentRejected("maintenance API not executing pinned core")
             elif not _process_confirms(unit,path,require_loaded_after=path.stat().st_mtime):
                 raise EnrollmentRejected("writer process not executing pinned source: "+role)
             checked.append(role)

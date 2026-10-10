@@ -28,13 +28,17 @@ class EnrollmentEvidenceTests(unittest.TestCase):
                       'sha256':'a'*64}
                 for role,unit in re.UNITS.items()
             }}
+        self.data["writers"]["maintenance"].update({
+            "api_path":str(re.ORIGINAL_MAINTENANCE_API),
+            "api_sha256":"a"*64})
         self.manifest.write_text(json.dumps(self.data))
         self.manifest.chmod(0o640)
         self.lease.chmod(0o600)
         self.original_stat=Path.stat
 
     def fake_stat(self,p,*args,**kwargs):
-        if str(p) in [str(f) for f in re.ORIGINAL_PATHS.values()]:
+        if str(p) in ([str(f) for f in re.ORIGINAL_PATHS.values()]
+                      + [str(re.ORIGINAL_MAINTENANCE_API)]):
             # GitHub CI must not need appliance-specific /usr/local scripts.
             # This mocks metadata ONLY; _pinned_file is mocked independently.
             return types.SimpleNamespace(

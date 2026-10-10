@@ -24,10 +24,12 @@ import tempfile
 try:
     from .dispatcher_patch import patch_dispatcher
     from .producer_boundary_patch import patch_producer
+    from .maintenance_api_patch import patch_maintenance_api
     from .hybrid_acceptance import _verify_original
 except ImportError:
     from dispatcher_patch import patch_dispatcher
     from producer_boundary_patch import patch_producer
+    from maintenance_api_patch import patch_maintenance_api
     from hybrid_acceptance import _verify_original
 
 SOURCE_MAP = {
@@ -37,6 +39,7 @@ SOURCE_MAP = {
     "clock-sync":Path("/usr/local/bin/optolink-clock-sync"),
     "maintenance":Path("/opt/optolink/optolink_maintenance_core.py"),
 }
+MAINTENANCE_API = Path("/usr/local/bin/optolink-maintenance-api")
 ORIGINAL_MAIN = Path("/opt/optolink/optolinkvs2_switch.py")
 TOOLS_DIR = Path(__file__).resolve().parent
 
@@ -50,7 +53,7 @@ def _digest(raw:bytes)->str:
 
 
 def stage(*, target:Path, source_map=SOURCE_MAP, original_main=ORIGINAL_MAIN,
-          tools_dir=TOOLS_DIR)->dict:
+          maintenance_api=MAINTENANCE_API,tools_dir=TOOLS_DIR)->dict:
     """Unprivileged staging is acceptable; production source remains readonly."""
     if not isinstance(target,Path) or not target.is_absolute():
         raise StageRejected("absolute stage directory required")
@@ -70,6 +73,10 @@ def stage(*, target:Path, source_map=SOURCE_MAP, original_main=ORIGINAL_MAIN,
         raise StageRejected("original dispatcher source absent")
     main_bytes=original_main.read_bytes()
     main_text=main_bytes.decode("utf-8").replace("\r\n","\n")
+    if maintenance_api.is_symlink() or not maintenance_api.is_file():
+        raise StageRejected("original maintenance API source absent")
+    maintenance_api_bytes=maintenance_api.read_bytes()
+    maintenance_api_shadow=patch_maintenance_api(maintenance_api_bytes.decode("utf-8"))
     generated_main=patch_dispatcher(main_text)
     generated_writers={
         role:patch_producer(source_bytes[role].decode("utf-8"),role)
@@ -78,6 +85,7 @@ def stage(*, target:Path, source_map=SOURCE_MAP, original_main=ORIGINAL_MAIN,
     # Validate every source compilation and exact expected wrapper marker
     # BEFORE creating a staging directory.
     compile(generated_main,"shadow-main","exec")
+    compile(maintenance_api_shadow,"shadow-maintenance-api","exec")
     for role,content in generated_writers.items():
         compile(content,"producer-"+role,"exec")
         if content.count("# HYBRID_PRODUCER_EPOCH_V1") != 1:
@@ -92,6 +100,7 @@ def stage(*, target:Path, source_map=SOURCE_MAP, original_main=ORIGINAL_MAIN,
         "schema":1,"state":"STAGED_ONLY_NOT_DEPLOYED",
         "normalized_main_sha256":_digest(main_text.encode()),
         "raw_main_sha256":_digest(main_bytes),
+        "maintenance_api_source_sha256":_digest(maintenance_api_bytes),
         "writer_sources":{r:{"raw_sha256":_digest(source_bytes[r]),
                              "source":str(source_map[r])}
                           for r in sorted(source_map)},
@@ -106,6 +115,7 @@ def stage(*, target:Path, source_map=SOURCE_MAP, original_main=ORIGINAL_MAIN,
         os.chmod(temp,0o700)
         staged={
             "main/optolinkvs2_switch.py":generated_main.encode(),
+            "bin/optolink-maintenance-api":maintenance_api_shadow.encode(),
             **{("src" if role=="maintenance" else "bin")+"/"+source_map[role].name:
                generated_writers[role].encode() for role in source_map},
         }
