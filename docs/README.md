@@ -9,6 +9,7 @@ Dieser Ordner enthält die Betriebs- und Entwicklerdokumentation für den produk
 | [architecture.md](architecture.md) | Als Erstes: Komponenten, Datenfluss, Dienste und Sicherheitsgrenzen |
 | [hybrid-protokollwechsel.md](hybrid-protokollwechsel.md) | Optionaler VS1/P300-Lesetest, Verifikation, Rückfallroutine und Sperrmechanismen |
 | [wb2a-root-on-demand-api-2026-10-10.md](wb2a-root-on-demand-api-2026-10-10.md) | Nur Root: authentifizierter lokaler On-Demand-P300-Request, Rückgabe, TTL, Berechtigungsgrenze und C3-Hardwarecanary |
+| [wb2a-vitotrol-rpm-next-phase-2026-10-10.md](wb2a-vitotrol-rpm-next-phase-2026-10-10.md) | Separater Entwicklungsbranch: Vitotrol-KM-Bus-Offline-Simulator, passive Vier-Tage-VS1-RPM-Messung und Beweisgrenzen |
 | [operations.md](operations.md) | Beim Betrieb: Update, Status, Logs, Clock-Sync, Fehlerdiagnose |
 | [home-assistant.md](home-assistant.md) | Bei HA-/MQTT-/Dashboard-Änderungen |
 | [anlagenschema.md](anlagenschema.md) | WB2A-Anlagenschema, Hydrauliktopologie und dokumentierte Schreibwerte 00/52/53/54/5B |
