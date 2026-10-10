@@ -65,6 +65,9 @@ def fullram_context(tar:tarfile.TarFile, *, count:int=79,
     mf=audit._manifest(tar,'p300-fullram')
     frames=Counter();meta=Counter();association=Counter()
     pointer_hits=Counter(); class11_hits=[]
+    # Literal low-16 address occurrences are NOT automatically real pointers.
+    # Compare both RX and independently proven TX buffer address matches.
+    literal_occurrences={"0x1642":Counter(),"0x161a":Counter()}
     special_samples=[]
     for i in range(1,count+1):
         name=f'snapshots/s{i:05d}'
@@ -82,6 +85,14 @@ def fullram_context(tar:tarfile.TarFile, *, count:int=79,
         frames[f]+=1;meta[m]+=1;association[(f,m)]+=1
         if b[POINTER_CANDIDATE-0x400:POINTER_CANDIDATE-0x400+2]==RX_MEM.to_bytes(2,'little'):
             pointer_hits[b[POINTER_CANDIDATE-0x400:POINTER_CANDIDATE-0x400+4].hex()]+=1
+        for label,target in (("0x1642",RX_MEM),("0x161a",TX_MEM)):
+            needle=target.to_bytes(2,'little')
+            pos=0
+            while True:
+                pos=b.find(needle,pos)
+                if pos<0:break
+                literal_occurrences[label][f'0x{pos+0x400:04x}']+=1
+                pos+=1
         class11_hits.extend((i,addr,fhex) for addr,fhex in frame_hits(b))
         if f!=audit.KNOWN_REPLY_HEX[0]:
             tx=b[TX_MEM-0x400:TX_MEM-0x400+22]
@@ -106,6 +117,9 @@ def fullram_context(tar:tarfile.TarFile, *, count:int=79,
           for i,addr,f in class11_hits[:8]],
       'class11_search_scope':'79_INDEPENDENT_NONATOMIC_20K_RAM_SCANS_NOT_ONWIRE_TRAFFIC',
       'possible_pointer_0b6d_to_1642':dict(sorted(pointer_hits.items())),
+      'literal_16bit_address_occurrences_by_ram_offset':{
+          k:dict(sorted(v.items())) for k,v in sorted(literal_occurrences.items())},
+      'literal_address_match_proves_pointer':False,
       'pointer_ownership_proven':False,
       'special_samples':special_samples,
       'physical_uart1_rx_verified':False,

@@ -180,6 +180,23 @@ Private Tar-/RAM-Rohdaten werden nicht in Git oder ins README übertragen.
 Das Repo erhält ausschließlich den Auditor, kleine synthetische
 Fixtures, aggregierte Fakten und Zeitstempel.
 
+## 6a. Querverweise auf 0x1642 und 0x161A: nicht eindeutig
+
+Der Kontext-Auditor wurde auf eine vollständige Suche aller
+Little-Endian-16-Bit-Adressmuster erweitert, anstatt nur einen
+festen Verweis zu prüfen. `0x1642` tritt bei `0x0B6D`
+**79/79**, aber ebenfalls bei `0x33A3` **79/79** und
+sporadisch bei `0x0B5C` (2), `0x0FB8` (1), `0x1199` (1) auf.
+Für den bereits belegten TX-Puffer `0x161A` gibt es u. a.
+`0x0ADE` (65/79) und `0x0B00` (64/79).
+
+Die beiden stabilen `0x1642`-Bytepaare beweisen für sich
+genommen weder, welches ein **Pointer** ist, noch, ob
+überhaupt ein Pointer zu UART1-RX existiert. Das Byte `0A`
+hinter dem konstanten `0x0B6D`-Treffer bleibt eine
+Längenhypothese. Einzelheiten und Originalprofil siehe
+[Optolink Emulator Profile](wb2a-vitotrol-optolink-emulator-profile-2026-10-10.md).
+
 ## 7. Konsequenz für die Optolink-only-Vitotrol-Emulation
 
 **Beweisstand:** Der Regler stellt Master-Discovery-Frames für die

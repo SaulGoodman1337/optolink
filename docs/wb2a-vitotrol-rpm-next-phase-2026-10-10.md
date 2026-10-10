@@ -279,3 +279,19 @@ fehlerhaften Drahtframe gleichgesetzt werden darf.
 **Fehlendes Gate:** lokal belegter INTB/Vektor20, UART1-RX-Handler
 und Übergang zum Vitotrol-State. Bis dahin keine physische Emulation,
 keine neue Optolink-/RAM-/Register-Schreibfunktion.
+
+## 8. Original-V300-Profil + stärkere RAM-Xref-Forschungsbasis
+
+Eigenständige [Emulatorprofil-Fortsetzung](wb2a-vitotrol-optolink-emulator-profile-2026-10-10.md):
+Eine originale Vitotrol 300 wird jetzt mit `11 38 01 0A`
+(anstatt des älteren Samplewerts `11 38 00 11`) und
+explizitem Register-00-Wert `12` in einer Slot-1-Offline-
+State-Machine modelliert. **420/448** echte Original-Slave-TX-
+Frames sind damit bytegenau darstellbar; 416 sind gleiche PONG.
+`BF/15` bleibt trotz 28/28 valider, unterschiedlicher Records
+semantisch und bezüglich Rolling-State unbewiesen.
+
+Die erweiterte Xref-Suche belegt `0x1642` als 16-Bit-
+Bytefolge bei `0x0B6D` und **auch** `0x33A3` in 79/79
+RAM-Snapshots. Daraus folgt kein eindeutiger UART1-RX-Pointer,
+kein ISR-Gate und kein Recht zu RAM-Writes.

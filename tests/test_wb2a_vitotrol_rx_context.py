@@ -121,6 +121,10 @@ class RxContextTests(unittest.TestCase):
         self.assertEqual(report['metadata_166a_166c_counts'],
                          {'060001':1,'0a0401':1})
         self.assertEqual(report['possible_pointer_0b6d_to_1642'],{'42160afe':2})
+        # Synthetic images contain one intentional little-endian RX literal.
+        self.assertEqual(report['literal_16bit_address_occurrences_by_ram_offset']
+                         ['0x1642'],{'0x0b6d':2})
+        self.assertFalse(report['literal_address_match_proves_pointer'])
         self.assertEqual(report['class11_slave_frames_found_in_readable_20k_ram'],0)
         self.assertEqual(report['special_samples'][0]['snapshot_id'],2)
         self.assertFalse(report['pointer_ownership_proven'])
