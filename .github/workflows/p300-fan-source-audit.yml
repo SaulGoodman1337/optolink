@@ -1,0 +1,50 @@
+name: Audit VDensHO1 Fan Actual Source
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - 'tools/audit-vdensho1-fan-source.py'
+      - 'tests/test_vdensho1_fan_source_audit.py'
+      - 'docs/evidence/p300-fan-actual-source-screen-2026-10-08.json'
+      - '.github/workflows/p300-fan-source-audit.yml'
+  pull_request:
+    paths:
+      - 'tools/audit-vdensho1-fan-source.py'
+      - 'tests/test_vdensho1_fan_source_audit.py'
+      - 'docs/evidence/p300-fan-actual-source-screen-2026-10-08.json'
+      - '.github/workflows/p300-fan-source-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run strictly offline source-audit regressions
+        run: |
+          python -m py_compile tools/audit-vdensho1-fan-source.py tests/test_vdensho1_fan_source_audit.py
+          python -m unittest discover -s tests -p test_vdensho1_fan_source_audit.py -v
+      - name: Verify evidence and no alias approval
+        run: |
+          python - <<'PY'
+          import json
+          p='docs/evidence/p300-fan-actual-source-screen-2026-10-08.json'
+          d=json.load(open(p))
+          assert d['samples']==180 and d['flame_samples']==24
+          assert len(d['fields'])==11
+          assert sum(d['stable_p06_nonzero_raw_counts'].values())==17
+          assert d['stable_p06_zero_samples']==154
+          assert d['changed_p06']==9 and d['stable_p09']==180
+          assert d['approved_p06_alias'] is False
+          assert d['approved_p300_production'] is False
+          assert d['approved_ram_write'] is False
+          assert d['live_access_performed'] is False
+          print('FAN_SOURCE_EVIDENCE_POLICY_PASS')
+          PY

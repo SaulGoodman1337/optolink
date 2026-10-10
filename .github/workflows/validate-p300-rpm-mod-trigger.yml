@@ -1,0 +1,64 @@
+name: Validate WB2A P300 Modulation P06 Crosscheck
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - 'tools/wb2a-p300-rpm-mod-trigger.py'
+      - 'tools/wb2a-p300-rpm-mod-trigger.sh'
+      - 'tests/test_p300_rpm_mod_trigger.py'
+      - 'docs/p300-rpm-mod-trigger-runbook-2026-10-09.md'
+      - '.github/workflows/validate-p300-rpm-mod-trigger.yml'
+  pull_request:
+    paths:
+      - 'tools/wb2a-p300-rpm-mod-trigger.py'
+      - 'tools/wb2a-p300-rpm-mod-trigger.sh'
+      - 'tests/test_p300_rpm_mod_trigger.py'
+      - '.github/workflows/validate-p300-rpm-mod-trigger.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  high-low-modulation-offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and inert plan
+        run: |
+          python -m py_compile tools/wb2a-p300-rpm-mod-trigger.py tests/test_p300_rpm_mod_trigger.py
+          bash -n tools/wb2a-p300-rpm-mod-trigger.sh
+          python tools/wb2a-p300-rpm-mod-trigger.py | grep -F 'PLAN ONLY:'
+      - name: Modulation plateau offline replay gates
+        run: python -m unittest discover -s tests -p test_p300_rpm_mod_trigger.py -v
+      - name: Original true P06 trigger/transport/recovery regression
+        run: |
+          python -m unittest discover -s tests -p test_p300_rpm_trigger.py -v
+          python -m unittest discover -s tests -p test_p300_temporal_logger.py -v
+          python -m unittest discover -s tests -p test_p300_p06_focus.py -v
+          python -m unittest discover -s tests -p test_p300_fullram_logger.py -v
+          python -m unittest discover -s tests -p test_p300_deep_logger.py -v
+          python -m unittest discover -s tests -p test_uart1_overnight.py -v
+      - name: Verify three read-only P300 forms and strict high-to-low sequencing
+        run: |
+          python - <<'PY'
+          import importlib.util
+          sp=importlib.util.spec_from_file_location('mod','tools/wb2a-p300-rpm-mod-trigger.py')
+          m=importlib.util.module_from_spec(sp)
+          sp.loader.exec_module(m)
+          assert m.ALLOWED_P300_SPECS == frozenset((
+              (1,0x55d3,11),(3,0x0f20,32),(3,0x1c60,32)))
+          assert m.HIGH_MODULATION_BYTE0==60 and m.LOW_MODULATION_BYTE0==42
+          assert m.CANDIDATE_RUNNING_RAW==0x54
+          assert m.MIN_HIGH_CYCLES==4 and m.MAX_TRIGGERS==2
+          for invalid in ((201,0x4006,1),(7,0x4006,1),(9,0x4006,1),
+                          (4,0x0f20,32),(1,0x7650,1),(3,0x03ae,1)):
+              try: m.frame(invalid)
+              except ValueError: pass
+              else: raise AssertionError('unknown command allowed')
+          print('MODULATION_P06_READ_ONLY_PASS')
+          PY

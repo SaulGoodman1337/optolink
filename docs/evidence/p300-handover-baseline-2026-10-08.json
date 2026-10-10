@@ -1,0 +1,22 @@
+{
+  "source": "User-pasted console, 2026-10-08; not downloaded measurement.json or recovery.json",
+  "test_commit": "d0e16a607b1b473fa1f5e921623b244b3e8b97b5",
+  "probe_version": "1.0.0",
+  "session": "run-20261008T092711Z-124106",
+  "session_start_utc_from_name": "2026-10-08T09:27:11Z",
+  "session_start_berlin_from_name": "2026-10-08T11:27:11+02:00",
+  "systemd_service_runtime_seconds": 34.241,
+  "result": "PASS_READ_ONLY_BASELINE",
+  "post_run_mqtt": ["1;0x4050;20", "1;0x4006;00"],
+  "raw_files_received": false,
+  "samples": [
+    {"gfa":{"P06":"00","P09":"00","P80":"20","P87":"00"},"gfa_block_ms":493.8124460168183,"index":1,"p300":{"device_id_ms":63.54288896545768,"enq_ms":1996.0486389463767,"software_ms":87.64064498245716,"start_ack_ms":14.138658065348864,"total_ms":2161.3708309596404},"roundtrip_to_vs1_id_ms":6428.9934859843925,"roundtrip_with_gfa_ms":6922.805932001211,"vs1":{"additional_enq_ms":2237.470232998021,"first_enq_ms":1997.4944849964231,"identity_ms":32.57103497162461,"total_ms":4267.535752966069}},
+    {"gfa":{"P06":"00","P09":"00","P80":"20","P87":"00"},"gfa_block_ms":393.9236080041155,"index":2,"p300":{"device_id_ms":63.29501199070364,"enq_ms":1997.6899260655046,"software_ms":88.6137280613184,"start_ack_ms":13.014575932174921,"total_ms":2162.6132420497015},"roundtrip_to_vs1_id_ms":6429.190122056752,"roundtrip_with_gfa_ms":6823.113730060868,"vs1":{"additional_enq_ms":2237.6668649958447,"first_enq_ms":1997.5355769274756,"identity_ms":31.253561028279364,"total_ms":4266.4560029516}},
+    {"gfa":{"P06":"00","P09":"00","P80":"20","P87":"00"},"gfa_block_ms":410.79243598505855,"index":3,"p300":{"device_id_ms":62.6892379950732,"enq_ms":1998.914267984219,"software_ms":87.63180393725634,"start_ack_ms":12.963119079358876,"total_ms":2162.1984289959073},"roundtrip_to_vs1_id_ms":6432.2270669508725,"roundtrip_with_gfa_ms":6843.019502935931,"vs1":{"additional_enq_ms":2237.8985040122643,"first_enq_ms":1998.776830965653,"identity_ms":33.277529990300536,"total_ms":4269.952864968218}}
+  ],
+  "counterfactual_only_not_measured": {
+    "method": "roundtrip_with_gfa_ms minus additional_enq_ms; all other phases assumed unchanged",
+    "per_round_ms": [4685.33569900319, 4585.446865065023, 4605.120998923667],
+    "mean_ms": 4625.30118766396
+  }
+}

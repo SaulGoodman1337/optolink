@@ -1,0 +1,60 @@
+name: Validate Manual-stop WB2A Overnight P300
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - 'tools/wb2a-uart1-overnight.py'
+      - 'tools/wb2a-overnight-batch.sh'
+      - 'tests/test_uart1_overnight.py'
+      - '.github/workflows/validate-uart1-overnight.yml'
+  pull_request:
+    paths:
+      - 'tools/wb2a-uart1-overnight.py'
+      - 'tools/wb2a-overnight-batch.sh'
+      - 'tests/test_uart1_overnight.py'
+      - '.github/workflows/validate-uart1-overnight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-wire-and-lifecycle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python and shell syntax
+        run: |
+          bash -n tools/wb2a-overnight-batch.sh
+          python -m py_compile tools/wb2a-uart1-overnight.py tests/test_uart1_overnight.py
+      - name: Entirely inert default
+        run: |
+          python tools/wb2a-uart1-overnight.py | grep 'PLAN ONLY'
+          python tools/wb2a-uart1-overnight.py | grep 'no duration cap'
+      - name: Overnight manual-stop, disk failsafe, streaming and allowlist tests
+        run: python -m unittest discover -s tests -p test_uart1_overnight.py -v
+      - name: Recheck original four-read P300 wire behavior
+        run: python -m unittest discover -s tests -p test_uart1_dma0_cycle.py -v
+      - name: Recheck conservative P300 restoration suite
+        run: python -m unittest discover -s tests -p test_p87_p300_check.py -v
+      - name: Confirm no runtime limit on detached service
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          src=Path('tools/wb2a-uart1-overnight.py').read_text()
+          a=src.index('def supervisor_command')
+          b=src.index('def post_restore_health',a)
+          supervisor=src[a:b]
+          assert '--no-block' in supervisor
+          assert '--wait' not in supervisor
+          assert 'RuntimeMaxSec' not in supervisor.split('return [',1)[1]
+          assert 'ExecStopPost' in supervisor
+          assert 'LOW_DISK_SPACE_FAILSAFE_VS1_RESTORE' in src
+          assert 'OPERATOR_STOP_SIGNAL_15' in src
+          assert '0x03ae' not in src.lower() or 'no U1RB' in src
+          print('OPERATOR_CONTROL_NO_FIXED_TIME_LIMIT_PASS')
+          PY

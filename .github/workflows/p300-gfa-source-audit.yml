@@ -1,0 +1,55 @@
+name: P300 GFA source audit
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - .github/workflows/p300-gfa-source-audit.yml
+      - tools/audit-p300-gfa-sources.py
+      - tests/test_p300_gfa_source_audit.py
+      - tools/wb2a-p87-mirror-check.py
+      - tests/test_p87_mirror_check.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: SaulGoodman1337/optolink
+          ref: 79f222c7f3a11b848a6a8ac8ece50e24deede823
+          path: .research-corpus
+          persist-credentials: false
+      - name: Preserve pinned public source fixture without git metadata
+        run: |
+          mkdir -p /tmp/gfa-source-fixture
+          git -C .research-corpus archive --format=tar HEAD | gzip > /tmp/gfa-source-fixture/research.tar.gz
+          git archive --format=tar HEAD | gzip > /tmp/gfa-source-fixture/project.tar.gz
+          printf '%s\n' "research=79f222c7f3a11b848a6a8ac8ece50e24deede823" "project=${GITHUB_SHA}" > /tmp/gfa-source-fixture/refs.txt
+          sha256sum /tmp/gfa-source-fixture/*.tar.gz > /tmp/gfa-source-fixture/sha256sums.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p300-gfa-public-source-fixture
+          path: /tmp/gfa-source-fixture/
+          retention-days: 7
+      - name: Test source audit and inert MQTT observer offline
+        run: |
+          python3 -m py_compile tools/audit-p300-gfa-sources.py tools/wb2a-p87-mirror-check.py
+          python3 -m unittest discover -s tests -p test_p300_gfa_source_audit.py -v
+          python3 -m unittest discover -s tests -p test_p87_mirror_check.py -v
+          python3 tools/wb2a-p87-mirror-check.py
+          python3 tools/audit-p300-gfa-sources.py --research-root .research-corpus --output /tmp/p300-gfa-source-audit.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p300-gfa-public-audit-report
+          path: /tmp/p300-gfa-source-audit.json
+          if-no-files-found: error
+          retention-days: 14

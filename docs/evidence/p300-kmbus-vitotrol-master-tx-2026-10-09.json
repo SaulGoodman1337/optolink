@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "title": "KM-Bus master TX: Vitotrol discovery poll evidence",
+  "capture": "WB2A VDensHO1 20C2, operator-stopped 2026-10-09",
+  "source_archive_sha256": "fc96b4bbfa60931cd36226bd8bcbd21299c436959164b085ccc47e9662fd5bed",
+  "source_archive_public": false,
+  "source_note": "Physical RAM 0x1600/32 + 0x1620/32, serialized P300 reads; frame begins at 0x161A, not a wire tap.",
+  "public_protocol": "https://github.com/openv/openv/wiki/KM-Bus",
+  "public_protocol_source_family": "V200KW2 (not WB2A); class/slot semantics are analogical unless confirmed on WB2A",
+  "local_protocol_reference": "optolink-research/config/optolink-splitter/research/vitotrol-kmbus-wire-protocol.md",
+  "integrity": {
+    "samples": 12938,
+    "crc16_kermit_valid_ram_snapshots": 12573,
+    "invalid_or_torn_ram_snapshots": 365,
+    "bytewise_p300_responses_previously_verified": 51752
+  },
+  "vmaster_tx_protocol": {
+    "buffer_start": "0x161A",
+    "crc": "CRC-16/Kermit over entire frame = 0",
+    "source_class": "0x00"
+  },
+  "vitotrol_identity_queries": [
+    {
+      "dest_class": "0x11",
+      "slot": "0x01",
+      "cmd": "0x33",
+      "register": "0xF8",
+      "register_count": 4,
+      "frame_hex": "1100330a0101f80449ef",
+      "ram_snapshots": 33,
+      "valid_crc_samples": 27,
+      "valid_contiguous_snapshot_episodes": 19,
+      "valid_during_lockout_samples": 23,
+      "valid_during_flame_samples": 1
+    },
+    {
+      "dest_class": "0x11",
+      "slot": "0x02",
+      "cmd": "0x33",
+      "register": "0xF8",
+      "register_count": 4,
+      "frame_hex": "1100330a0201f80484ca",
+      "ram_snapshots": 31,
+      "valid_crc_samples": 27,
+      "valid_contiguous_snapshot_episodes": 20,
+      "valid_during_lockout_samples": 22,
+      "valid_during_flame_samples": 1
+    }
+  ],
+  "other_source_matched_tx": [
+    {
+      "type": "class 0x04, slot 0x01, F8/04 identity query",
+      "crc_valid_samples": 25,
+      "distinct_valid_snapshot_episodes": 16,
+      "frame_hex": "0400330a0101f8045023"
+    },
+    {
+      "type": "class 0x20, slot 0xEE, write N registers via B3",
+      "crc_valid_samples": 1564,
+      "distinct_valid_snapshot_episodes": 551,
+      "example_hex": "2000b30cee0110c211f9e49b",
+      "warning": "Older V200KW2 documentation suspects 0x20/EE internally connected; not confirmed for local device."
+    },
+    {
+      "type": "master B3 time broadcast class 0xFF",
+      "crc_valid_samples": 513,
+      "example_hex": "ff00b316000101200226031004080522065007452112"
+    }
+  ],
+  "unknown_class01": {
+    "observed_class": "0x01",
+    "dominant_cmd": "0xB1",
+    "register": "0x01",
+    "value": "0x06",
+    "valid_samples_for_dominant_header": 10282,
+    "example_frame_hex": "0100b10a01010106c731",
+    "meaning": "Unknown; not a tachometer"
+  },
+  "next_gate": "Trace UART1 receiver/participant discovery state via static controller firmware or schematic before any narrowly bounded, reviewed read-only RAM experiment.",
+  "limitations": [
+    "These are sampled RAM TX buffer contents, not counts of complete physical bus transfers.",
+    "Two adjacent valid samples can be one retained frame; 39 nonconsecutive episodes are not 39 verified bus transmissions.",
+    "Source class 0x00 and CMD 0x33/F8/04 support controller master polling a Vitotrol-family identity; no receive frames collected.",
+    "Vitotrol class 0x11 TX poll does not prove a Vitotrol peripheral is connected or responding.",
+    "No separate GFA P06 blower actual-speed RX source has been identified."
+  ],
+  "recovery": {
+    "original_vs1_restored": true,
+    "gfa_p80_p06_readback_pass": true
+  },
+  "approvals": {
+    "installed_vitotrol": false,
+    "uart1_rx_verified": false,
+    "p06_rpm_alias": false,
+    "new_hardware_reads": false,
+    "device_writes": false,
+    "p300_production": false
+  }
+}

@@ -1,0 +1,40 @@
+name: Validate UART1 DMA0 Natural-cycle P300 Probe
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - 'tools/wb2a-uart1-dma0-cycle.py'
+      - 'tests/test_uart1_dma0_cycle.py'
+      - 'tests/test_uart1_dma0_cycle_archive.py'
+      - '.github/workflows/validate-uart1-dma0-cycle.yml'
+  pull_request:
+    paths:
+      - 'tools/wb2a-uart1-dma0-cycle.py'
+      - 'tests/test_uart1_dma0_cycle.py'
+      - '.github/workflows/validate-uart1-dma0-cycle.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-heater-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Ensure no syntax issues
+        run: python -m py_compile tools/wb2a-uart1-dma0-cycle.py tests/test_uart1_dma0_cycle.py tests/test_uart1_dma0_cycle_archive.py
+      - name: Inert default and exact read ranges
+        run: |
+          python tools/wb2a-uart1-dma0-cycle.py | grep 'PLAN ONLY: max 600s'
+          python tools/wb2a-uart1-dma0-cycle.py | grep 'No U1RB/03AE read'
+      - name: Run synthetic read-only and recovery coverage
+        run: python -m unittest discover -s tests -p test_uart1_dma0_cycle.py -v
+      - name: Verify private one-file archive and post-restoration GFA identity
+        run: python -m unittest discover -s tests -p test_uart1_dma0_cycle_archive.py -v
+      - name: Revalidate previous 60s UART1 probe
+        run: python -m unittest discover -s tests -p test_uart1_p300_focus.py -v

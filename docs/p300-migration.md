@@ -1,0 +1,259 @@
+# P300-Migration: isolierter Kandidat, noch keine Produktionsfreigabe
+
+### Naechste Stufe vorbereitet: kurzer P06-Fokuslogger (noch KEIN Live-Test)
+
+Nach dem [validierten Voll-RAM-Ergebnis](p300-fullram-result-2026-10-09.md) wurde im Forschungsbranch der [gezielte P06-Fokuslogger](../tools/wb2a-p300-p06-focus.py) mit [separatem deutschen Runbook](p300-p06-focus-runbook-2026-10-09.md) implementiert. Er erfasst nur sechs historisch erfolgreiche FC03/32-Bloecke um **0x0F20 und 0x1C76** samt Status-Negativkontrolle 0x0F29/55D3-Byte7. Jede Aufnahme hat echte VS1-P06/P09/P80/P87-Referenzen vor und nach einem kurzen P300-Fenster, zwei Roh-RAM-Runden und gepinnten Read-only-Systemd-Lifecycle mit Original-VS1-Restore. Ein fehlgeschlagener Return-Handshake wie bei Snapshot 80 erzeugt **PARTIAL**, nie einen fingierten RPM-Wert.
+
+**Kein P06-Sensorbeweis und keine Produktionsfreigabe.** Das naechste Datenziel sind mindestens **zwei verschiedene stabile positive echte P06-RPM-Niveaus**. Die Messung startet nicht automatisch; der Anwender fuehrt nach CI-PASS den separaten Startwrapper in der Optolink-LXC aus. Falls die Kandidaten bei geaenderten echten P06-Drehzahlen unveraendert bleiben, ist die direkte RPM-Alias-Hypothese zu verwerfen und die **Single-Owner P300+VS1-GFA-Hybridarchitektur** weiter zu untersuchen. Aufgabe 2/3 bleiben gesperrt; PR #46 nicht mergen.
+
+
+## Aktualisierung 9.10.2026 – Voll-RAM-Experiment BEGRENZT ABGESCHLOSSEN
+
+**Der 20-KiB-P06-geklammerte Logger wurde bereits real ausgefuehrt; den gleichen Vier-Stunden-Lauf NICHT erneut starten.**
+[Abschlussbericht und Integritaetsanalyse](p300-fullram-result-2026-10-09.md) ·
+[maschinenlesbare Evidenz](evidence/p300-fullram-p06-vs1-result-2026-10-09.json).
+
+- **79 COMPLETE, 1 PARTIAL** (Nr. 80 mit allen 640 RAM-Reads, jedoch ohne gueltige nachfolgende P06-Klammer), **51.200/51.200** FC03- und **1.600/1.600** FC01-Frames gueltig; alle 176 Manifestdateien korrekt. 48 stabile OFF-, elf stabile ON-Snapshots. Alle elf ON-Snapshots lagen jedoch nur bei **P06=0x53 / 2.490 U/min**.
+- Kein direkter 00→53-P06-Rohwert- oder 0→2490-U/min-16/32-Bit-Spiegel im 20-KiB-RAM. **0x0F20 und 0x1C76** zeigen 00→54, sind aber **nicht** als echte Drehzahl bewiesen. 0x0F29 spiegelt FC01-Statusbyte 7.
+- Ein Timeout beim **P300→VS1-Identitaetswechsel nach dem vollstaendigen RAM-Scan 80** beendete die Messung. Recovery stellte alle sechs zuvor aktiven Units und gueltige MQTT-GFA P80/P06 her. **HA-Entity-Frische nicht nachgewiesen.**
+- **Naechster Aufgabe-1-Schritt:** gezielte kurze P06-geklammerte, read-only RAM-Fokusmessungen bei nachgewiesenen **verschiedenen positiven RPM-Niveaus**. Bei weiterhin fehlendem unabhaengigem Sensor: gemeinsame serielle P300/VS1-Owner-Architektur mit echten VS1-GFA-P06-Abfragephasen und nachgewiesener Gesamtfunktionsparitaet.
+- PR #46 bleibt **Draft und ungemergt**, produktiver VS1-Betrieb unveraendert. Keine Vitotrol-/Pumpen-Nebenprojekte.
+
+
+**Aktualisierter Forschungsstand 9.10.2026 – Aufgaben- und Liveplan vor allen
+aelteren Statusmeldungen dieser Datei:**
+
+- **Aufgabe 1:** Vollstaendige VS1->P300-Migration mit allen realen
+  HA-/MQTT-/GFA-Funktionen, einschliesslich des gemessenen GFA-P06-Istwerts.
+  C9/P80 unter P300 ist weiterhin abgewiesen; kein Phantom-RPM-Alias.
+  Alle vorhandenen Funktionen muessen fuer den Produktionsbetrieb
+  vollstaendig nachgewiesen sein.
+- **Aufgabe 2:** Erst DANACH Vitotrol-Emulation in einem **separaten Branch**.
+  Die gespeicherten UART1-KM-Bus-Telegramme sind historische Evidenz,
+  aktuell keine Vitotrol-Entwicklung.
+- **Aufgabe 3:** Pumpenoverride erst danach.
+
+**Das P06-VS1/P300-Differentialexperiment vom 9.10. IST ABGESCHLOSSEN:**
+[Abschlussbericht, P300-Frametest und RPM-Speichervergleich](p300-deep-result-2026-10-09.md).
+2.680 VS1-Referenzrunden mit 5.360 echten P06-Proben und
+1.769 P300-Runden (8.256 bytegenau validierte FC01/FC03-Reads),
+zwei natuerliche Flammenbitfenster, 52 Wechsel.
+GFA-P06 und P09 differierten in 108 von 2.593
+stabilen Referenzklammern. In acht gezielten
+P300-Bloecken kein direkt 8-bit-/16-bit-kodierter
+P06-Istwertspiegel. Kein P06-Alias und keine
+Produktionsfreigabe. Ein SIGTERM im laufenden
+VS1-P10-Read verursachte ein falsches Worker-Restore-NOT_VERIFIED;
+ExecStopPost hat den Originalsplitter und alle sechs
+Aktivdienste restauriert und P80=20/P06=00 geprueft.
+Der Stop-Race wurde fuer kuenftige Tests im Branch
+behandelt und 32 Offline-Regressionen bestanden.
+**Keine identische Loggerwiederholung.**
+Die naechste Quellensuche ist ein durch echte
+VS1-P06-Vor-/Nachreferenzen geklammerter
+kompletter RAM-Scan des bereits historisch
+lesbaren internen 0x0400..0x53FF-Bereichs,
+nicht ein erneutes Lesen der gleichen acht Bloecke.
+
+**Alle bisherigen Ergebnisse und die verbindliche
+Funktionsparitaetsmatrix:**
+[Aufgabe-1-Masterbericht](p300-task1-evidence-and-parity-2026-10-09.md).
+Draft PR #46 bleibt ungemergt; kein Produktionscheckout-Update.
+
+Stand: 2026-10-08. Entwicklungsbranch: `optolink-p300-migration`.
+
+**Live-Sperrgrund (bewiesen 2026-10-08):** P300-Virtual_READ fuer 20C2/0103
+gelangt bis zum dritten Initialisierungsschritt. P300 `GFA_READ` FC `0xC9` an
+`0x4050` (P80) wird vom realen VDensHO1 mit Message-Type 3, Fehlerpayload
+`05` abgewiesen. Nach dem Versuch ist die Rueckkehr zu VS1 mit laufender
+Hauptschleife belegt; eine fruehere Rueckkehr pruefte GFA-P80=20 tatsaechlich.
+Damit ist ein unveraenderter C9-CANARY **nicht weiter sinnvoll** und ein
+permanenter P300-Wechsel unter Erhalt aller vier GFA-Entities **blockiert**.
+Die Rohbedeutung von `05` ist nicht herstellergesichert zugeordnet.
+[Hardwarebeleg / Entscheidungsmatrix](p300-gfa-c9-hardware-rejection-2026-10-08.md).
+
+## Ausgangspunkt und Ausfuehrungsgrenze
+
+Urspruengliche Basis war `optolink-splitter-ha` bei `7bc69c32788dd19c7a35e787d0b2aa26c9548ce6`.
+Die vier spaeteren HA-Commits bis `555528c5075315db0fd50fd17ee5dd3a806f67e0`
+wurden anschliessend per echtem Zwei-Eltern-Merge `42b120884035f28d6c9cd01ccd81cd691c42b74f`
+uebernommen. Fuer Testinstallation und Rollback siehe
+[p300-trial-install-rollback.md](p300-trial-install-rollback.md).
+Upstream bleibt `philippoo66/optolink-splitter` bei
+`c1ee204a1421447721603c5f21c6da7337fdac97`.
+
+Bei der **reinen Entwicklung und CI** wurden weder Therme noch serieller Adapter,
+installierte Produktionsdienste oder MQTT-Broker angesprochen. Der Ausgangsbranch
+bleibt unveraendert. Der Nutzer hat danach zwei separate, begrenzte CANARY-
+Versuche an seiner WB2A durchgefuehrt: beide hatten einen P300-Init-Reject,
+der zweite eindeutig bei C9/P80. Die Simulations-Tests behaupten weiterhin
+keine Funktionsparitaet der echten Firmware.
+
+## Warum ein Umschalten der Einstellung nicht reicht
+
+Der vorhandene Profil-Helper erzwingt VS1. Sein GFA-Adapter liefert unter VS2
+absichtlich `0xAF`. Nur `vs1protocol=False` zu setzen wuerde deshalb
+P80/P06/P09/P87 verlieren, einschliesslich des kanonischen Geblaesedrehzahlkanals.
+Das normale Update kann manuelle Laufzeitaenderungen ausserdem wieder ersetzen.
+
+GFA_READ hat unter P300 laut Vitosoft-Rekonstruktion den Funktionscode `0xC9`
+(201), nicht VS1 `0x6B`. Erfolgreiche VS1-GFA- und P300-Virtual_READ-Zugriffe
+beweisen nicht die lokale Unterstuetzung von C9. Der Kandidat verweigert den
+Start, solange 20C2, Regelungssoftware 01.03 und C9 P80=0x20 nicht gelesen sind.
+
+## Implementierter Umfang
+
+- `tools/optolink_p300.py`: begrenzte P300-Transaktionen auf genau dem Handle,
+  das bereits dem Splitter gehoert. Kein zweiter Portbesitzer, kein VS1-Wechsel
+  pro Anfrage und kein automatischer Rueckfall auf einen anderen Protokollpfad.
+- Pruefung von Pruefsumme, Laenge, Adresse und vollstaendigem Funktionsbyte;
+  Antwort-ACK, fragmentierte Reads, feste Fristen, Identitaetspruefung nach
+  Verbindungsverlust/Leerlauf. Keine automatische Wiederholung unsicherer Writes.
+- Virtual_READ/WRITE mit unveraendertem MQTT-Antwortformat. Die fachliche
+  Readback-Pruefung der vorhandenen Zusatzdienste bleibt bestehen.
+- C9-GFA-Pfad fuer die vier aktuellen Produktionsziele, P80-Pruefung, genau ein
+  FF-Wiederholversuch nach 150 ms, danach Quarantaene. Die Abstaende sind noch
+  nicht als produktives P300-Timing an dieser Anlage bestaetigt.
+- Optional `ramread;<Adresse>;<Laenge>` ueber denselben Dispatcher: hoechstens
+  32 Byte je Anfrage, ausschliesslich 0x0400..0x53FF, standardmaessig gesperrt.
+- Bibliotheksfunktion fuer RAM-Compare/Write/Readback mit exakten Adress- und
+  Werteregeln. Es gibt KEINE aktive mitgelieferte Schreibregel und KEINEN
+  MQTT-RAM-Schreibbefehl. Die Hostsperre ist kein atomarer MCU-Compare-and-Swap;
+  die Firmware kann das Feld jederzeit selbst wieder ueberschreiben.
+- Opaque Rohtelegramme und nicht freigegebene Funktionsfamilien sind im
+  Kandidaten gesperrt. `writeraw/wraw` bleibt normaler Virtual_WRITE und ist
+  ausdruecklich kein direkter RAM-Write.
+- `tools/optolink-stage-p300.py`: erstellt ein NEUES privates Verzeichnis aus
+  unveraendertem, gepinntem Upstream; uebernimmt beide vorhandenen Runtime-Patches,
+  die exakten produktiven Discovery-/Set-Readback-Patches und das HA-Profil.
+  Vorhandene Zielverzeichnisse und direktes In-place-Staging werden abgelehnt.
+- Offline-Regressionstests und eigene CI. Die CI fuehrt keine Heizungsversuche aus.
+
+## Bestand und Funktionsmatrix
+
+Das untersuchte Profil hat **362 deklarierte Eintraege**, davon **222 Poll-
+Eintraege**. Das sind nicht 362 unabhaengige Bustransaktionen. Maximale deklarierte
+Leselaenge: 29 Byte. Deklarationen nach Domaene: sensor 266, binary_sensor 23,
+number 21, switch 7, select 16, text 21, time 8. Diese Zahlen sind kein Inventar
+der tatsaechlichen HA-Registry oder separat publizierter Dienst-Entities.
+
+SHA256 des unveraendert uebernommenen Profils:
+`f6b48cde6b689d2a3d876783733dc0e283ca03d41fd942f47d5b8fd7d0a1015e`.
+
+| Bisherige Funktion | Behandlung im Kandidaten | Noch erforderlicher Geraetenachweis |
+|---|---|---|
+| Normale Messwerte, Vorzeichen, Bitfelder | Gleiches Profil und Decoder; P300 FC01 | Werte und Frische aller aktiven Kanaele |
+| Vier GFA-Werte | C9 statt 6B; gleiche Namen/Skalierungen | Erst P80, dann P06/P09/P87 in verschiedenen Betriebsphasen |
+| Entity-IDs, Topics, Discovery | Bytegleiches Profil; produktiver Publisher-Patch | Keine Neuanlage/Unavailable-Regression |
+| HA-Schreibfunktionen | FC02; im Kandidaten ausdruecklich freizugeben | Repraesentative Breiten/Typen und Controller-Readback |
+| 21 Zeitprogramm-Tagesbloecke | Unveraenderter Manager und 8-Byte-Format | Gewaehlten Block lesen/schreiben/pruefen/restaurieren |
+| Party-Emulation | Unveraenderter Dienst und Restore-State | Aktivierung, Ablauf, Neustart, Restaurierung |
+| Uhrensynchronisation | Unveraenderter 8-Byte-BCD-Dienst | FC02-Write und korrekter Zeit-Readback |
+| Wartung | Unveraenderter Core, Bestaetigungen und App-Sperre | Bewusst freigegebene Einzelablaeufe |
+| Befuellen/Entlueften | Unveraenderte 0/1/2-Abbildung und Manager | Gesonderter Serviceversuch; nie automatischer Paritaetstest |
+| Scheduler und Set-Readbacks | Vorhandene Produktivpatches bleiben | P95-Frische und Warteschlangenlatenz unter Last |
+| RAM lesen | Neuer optionaler FC03-Pfad | Bekannte begrenzte Fenster und Busbudget |
+| RAM schreiben | Nur exakte Bibliotheksregel; keine aktive Betriebspolitik | Feldfunktion, Werte, Lebensdauer, Abbruch und Wiederherstellung |
+
+Identische Discovery-Ausgabe und Fake-Peer-PASS beweisen keine reale
+Schreibannahme, Buslaufzeit, Service-Nebenwirkung oder C9-Firmwareunterstuetzung.
+
+## Offline erstellen und testen
+
+Voraussetzung: separater unveraenderter Upstream-Checkout beim genannten Commit.
+Diese Befehle installieren oder starten den Kandidaten nicht:
+
+```bash
+P300_UPSTREAM_ROOT=/path/to/pristine-upstream \
+  python3 tools/test-p300-migration.py --report /tmp/p300-tests.json
+
+python3 tools/optolink-stage-p300.py \
+  --upstream /path/to/pristine-upstream \
+  --output /tmp/optolink-p300-candidate
+```
+
+Ohne Zusatzoption ist kein serieller Port, Broker oder TCP-Listener konfiguriert.
+`p300_virtual_write=False` und `p300_ram_read=False`. Das Verzeichnis ist privat,
+Settings haben Modus 0600. Optional kopiert `--settings-from` bestehende lokale
+Settings nur in den Kandidaten; moegliche Zugangsdaten niemals committen/hochladen.
+
+Der volle Integrationstest benoetigt `pyserial` und `paho-mqtt`; in CI sind sie
+Pflicht. Ohne diese lokalen Abhaengigkeiten wird genau ein Integrationstest
+explizit uebersprungen. Die Suite startet ausserdem die vorhandenen GFA-,
+Scheduler-, Uhr- und Service-Selbsttests. Der Publisher laeuft nur mit `--console`.
+
+## Bewusst noch nicht implementiert
+
+Keine In-place-Aktivierung, Unit-Ersetzung, produktive Updatekanal-Umschaltung,
+automatische Zusammenfuehrung, RAM-Reparaturschleife, Firmwareaenderung,
+EEPROM-Schreibfunktion, GFA_WRITE, geratene Speicheradresse oder Firmware-Dump.
+Das normale Update bleibt der VS1-Produktivpfad. CI allein ist KEINE Begruendung,
+diesen Branch als produktiven Updatekanal zu verwenden.
+
+Fehlendes C9-P80 blockiert den Start statt die Geblaesedrehzahl still zu verlieren.
+Ein zweiter serieller Master/Vitoconnect wird im Kandidaten nicht unterstuetzt;
+das entspricht dem dokumentierten lokalen `port_vitoconnect=None`, aber nicht
+allen moeglichen Upstream-Anwendungen. Freie Rohtelegrammdurchleitung ist eine
+bewusste Einschraenkung gegenueber dem generischen Debug-Interface.
+
+## Vorteile und verbleibende Kosten
+
+P300 kann normale Datenpunkte und Physical_READ/WRITE in einer Sitzung vereinen.
+Damit entfaellt der gemessene VS1/P300-Rundwechsel von etwa sechs Sekunden fuer
+jeden RAM-Zugriff. Hinzu kommen strukturierte Antworten und Pruefsummen.
+
+Die Baudrate steigt NICHT: beide Pfade verwenden hier 4800 8E2. Das sind 12 Bit
+je UART-Byte beziehungsweise 2,5 ms. Ein synchronisierter VS1-Read von zwei Byte
+uebertraegt 4 Anfrage- plus 2 Antwortbytes: 15 ms reine Leitungszeit. P300 benoetigt
+8 Anfragebytes, ein ACK, 10 Antwortbytes und ein Abschluss-ACK: 50 ms, jeweils
+zuzueglich Verarbeitung und Pausen. Das ist eine Rechnung am Telegrammformat,
+keine Durchsatzmessung der Anlage. P300 ist hier nicht pauschal schneller.
+
+Pollgruppen sind Zykluszaehler, keine Zeitgarantien. RAM-Arbeit braucht ein
+begrenztes Budget und darf normale Messungen oder ausstehende App-Readbacks
+nicht verdraengen. Persistent gespeicherte Virtual_WRITEs bleiben auch unter
+P300 persistent; die Protokollumstellung beseitigt keinen E7-Schreibverschleiss.
+
+RAM ist keine komfortable Datenpunkt-API: gleiche Zahlenadressen im virtuellen
+und physischen Raum sind nicht austauschbar. Ein erfolgreicher Read beweist
+keinen sicheren Write. Der niedrige RAM-Bereich erschliesst nicht automatisch
+den hoch adressierten Programm-ROM des Controllers.
+
+## Freigabestufen - Schritt 2 negativ, weitere Stufen gesperrt
+
+Das folgende war die **urspruengliche** Freigabereihenfolge vor dem ersten
+Geraeteversuch. Ihr C9-Gate ist auf der realen WB2A am 8.10.2026
+fehlgeschlagen. Stufen 3-6 sind **nicht ausgefuehrt** und duerfen nicht
+durch das Entfernen der GFA-Pruefung vorgetaeuscht werden.
+Zuerst wird eine andere, belegte GFA-Lesequelle benoetigt; ansonsten VS1
+produktiv beibehalten.
+
+### Urspruenglicher Plan (nur Referenz)
+
+1. VS1-Ausgangszustand sichern: Settings/Runtime, Dienstzustaende, Fehlerhistorie,
+   Rohreferenzen, Entitybestand und gemessene Frische/Befehlslatenz.
+2. Kurze exklusive READ-ONLY-Sitzung mit unabhaengigem Wiederherstellungsplan:
+   20C2/0103 identifizieren, C9 P80=20 verlangen, andernfalls abbrechen und VS1
+   wiederherstellen. Kein paralleler zweiter serieller Prozess.
+3. Alle aktuellen Poll-Eintraege und echte GFA-Werte vergleichen; keine Ersatz-
+   oder Fakewerte fuer nicht erreichbare Kanaele verwenden.
+4. Normale Writes nur fuer bewusst freigegebene Paritaetsversuche aktivieren.
+   Bestehende App-Sperren, Read-before-write und Restore-Zustaende erhalten.
+5. Dauerlauf mit natuerlichen Heiz-/WW-Wechseln und Wiederverbindung: P95/maximales
+   Messwertalter, Fehler, Restarts, GFA-FF und Befehlslatenz protokollieren.
+6. Erst nach Paritaet transaktionalen Installer/Updater/Rollback entwickeln und
+   RAM-Experimente separat mit enger Freigabe in denselben Busbesitzer einbauen.
+
+Die Protokollwahl ersetzt keine Kesselfirmware; falsche Anfragen koennen trotzdem
+Daten veraendern oder den Betrieb stoeren. Laufender Prozess und retained MQTT-
+Wert beweisen keine frischen Messwerte. Hydraulik/M2 bleibt beim ersten P300-Test
+unveraendert, damit nicht zwei unabhaengige Aenderungen gleichzeitig getestet werden.
+
+## Quellen
+
+- [Basisarchitektur](architecture.md), [produktives HA-Profil](../config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py)
+- [Gepinnter Upstream](https://github.com/philippoo66/optolink-splitter/tree/c1ee204a1421447721603c5f21c6da7337fdac97)
+- [Vitosoft-Protokollrekonstruktion](https://github.com/sarnau/InsideViessmannVitosoft/blob/main/VitosoftCommunication.md)
+- [Lokaler VS1/P300-Lesevergleich](https://github.com/SaulGoodman1337/optolink/blob/optolink-research/docs/vs1-mixed-gfa-integration.md)
+- [RAM-E7 und Protokollwechselgrenze](https://github.com/SaulGoodman1337/optolink/blob/optolink-research/docs/pump-min-override.md)
+- [Hydraulikmatrix](wb2a-topology-hardware-matrix.md)

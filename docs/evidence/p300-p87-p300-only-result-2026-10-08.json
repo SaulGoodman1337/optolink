@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "source": {
+    "type": "user_console_transcript",
+    "filename": "Eingefügter Text(6).txt",
+    "sha256": "00fdeda84b1cd9caa036cd88d76e36314b8235ea96628ec04622df9b9a0d4d36",
+    "bytes": 14650,
+    "lines": 187,
+    "tested_commit": "e667c4084d3392e64be30ecd89a9c4425b3e464b",
+    "tool_version": "1.0.0",
+    "original_measurement_json_received": false,
+    "original_samples_jsonl_received": false,
+    "original_recovery_json_received": false,
+    "test_output_before_line_123_is_offline_only": true
+  },
+  "user_observation": {
+    "second_run_burner_phase": "reported_by_user_not_independently_timed",
+    "anti_cycling_lock": "suspected_by_user_not_proven_by_status_bytes"
+  },
+  "runs": [
+    {
+      "session": "run-20261008T134132Z-124665",
+      "requested_observation_seconds": 300,
+      "systemd_service_runtime_seconds": 316.074,
+      "summary_source_line": 135,
+      "source_lines": [123,155],
+      "console_summary": {"acquisition_latency_verified": false, "confirm_samples": 3, "confirmed_late_changes": [{"after": "20", "at_s": 17.971188395051286, "before": "00"}, {"after": "60", "at_s": 29.048314896062948, "before": "50"}, {"after": "62", "at_s": 39.04157213703729, "before": "60"}, {"after": "00", "at_s": 56.98558367101941, "before": "90"}], "late_changes": [{"after": "20", "at_s": 17.971188395051286, "before": "00"}, {"after": "40", "at_s": 26.78750040999148, "before": "20"}, {"after": "50", "at_s": 27.953918848070316, "before": "40"}, {"after": "60", "at_s": 29.048314896062948, "before": "50"}, {"after": "62", "at_s": 39.04157213703729, "before": "60"}, {"after": "90", "at_s": 55.89990940107964, "before": "62"}, {"after": "00", "at_s": 56.98558367101941, "before": "90"}], "late_sample_count": 260, "observed_states": ["00", "20", "40", "50", "60", "62", "90"], "outcome": "CHANGES_OBSERVED_WITHOUT_EXTERNAL_GFA", "p06_or_p09_replacement_verified": false, "p87_equivalence_verified": false, "production_approved": false, "sample_count": 269, "settle_seconds": 10.0},
+      "reported_link_and_service_restore": "PASS",
+      "gfa_after": {"P06":"00","P09":"00","P80":"20","P87":"00"},
+      "mqtt_postcheck": {"P80":"1;0x4050;20","P06":"1;0x4006;00"},
+      "original_service_postcheck": {"WorkingDirectory":"/opt/optolink","ActiveState":"active","SubState":"running"}
+    },
+    {
+      "session": "run-20261008T134745Z-125157",
+      "requested_observation_seconds": 600,
+      "systemd_service_runtime_seconds": 616.217,
+      "summary_source_line": 166,
+      "source_lines": [156,186],
+      "console_summary": {"acquisition_latency_verified": false, "confirm_samples": 3, "confirmed_late_changes": [{"after": "62", "at_s": 18.07036990392953, "before": "60"}, {"after": "00", "at_s": 35.8245344950119, "before": "72"}, {"after": "20", "at_s": 353.3326156339608, "before": "00"}, {"after": "60", "at_s": 363.2745455389377, "before": "50"}, {"after": "62", "at_s": 373.1413623719709, "before": "60"}, {"after": "00", "at_s": 391.15477199398447, "before": "72"}], "late_changes": [{"after": "62", "at_s": 18.07036990392953, "before": "60"}, {"after": "72", "at_s": 34.737760538002476, "before": "62"}, {"after": "00", "at_s": 35.8245344950119, "before": "72"}, {"after": "20", "at_s": 353.3326156339608, "before": "00"}, {"after": "30", "at_s": 361.0397851129528, "before": "20"}, {"after": "50", "at_s": 362.12684373394586, "before": "30"}, {"after": "60", "at_s": 363.2745455389377, "before": "50"}, {"after": "62", "at_s": 373.1413623719709, "before": "60"}, {"after": "72", "at_s": 389.88913675397635, "before": "62"}, {"after": "00", "at_s": 391.15477199398447, "before": "72"}], "late_sample_count": 529, "observed_states": ["00", "20", "30", "50", "60", "62", "72"], "outcome": "CHANGES_OBSERVED_WITHOUT_EXTERNAL_GFA", "p06_or_p09_replacement_verified": false, "p87_equivalence_verified": false, "production_approved": false, "sample_count": 538, "settle_seconds": 10.0},
+      "reported_link_and_service_restore": "PASS",
+      "gfa_after": {"P06":"00","P09":"00","P80":"20","P87":"00"},
+      "mqtt_postcheck": {"P80":"1;0x4050;20","P06":"1;0x4006;00"},
+      "original_service_postcheck": {"WorkingDirectory":"/opt/optolink","ActiveState":"active","SubState":"running"}
+    }
+  ],
+  "derived": {
+    "total_reported_status_samples":807,
+    "late_transitions":17,
+    "confirmed_late_transitions":10,
+    "union_hex_states":["00","20","30","40","50","60","62","72","90"],
+    "second_run_zero_to_next_nonzero_marker_gap_seconds":317.5080811389489,
+    "second_run_nonzero_sequence_marker_span_seconds":37.822156360023655,
+    "marker_spans_are_not_flame_or_lock_durations":true
+  },
+  "interpretation": {
+    "status_changes_without_external_gfa_observed":true,
+    "p87_exact_equivalence_verified":false,
+    "acquisition_latency_verified":false,
+    "p06_or_p09_replacement_verified":false,
+    "anti_cycling_lock_diagnosed":false,
+    "production_approved":false
+  }
+}

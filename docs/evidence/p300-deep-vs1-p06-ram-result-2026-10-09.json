@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "capture": "WB2A VDensHO1/20C2 SW0103 2026-10-09 operator stop, VS1/P300 deep logging",
+  "original_archive": {
+    "basename": "p300-deep-run-20261009T070505Z-130246-bundle.tar.gz",
+    "sha256": "f0f015032edb94459ff2259a81ef2b84bf23253570d91cc6ba658c8160f5c2af",
+    "size_bytes": 978463,
+    "members_total": 13,
+    "manifest_hashed_files": 12,
+    "all_member_digests_verified": true,
+    "raw_archive_published": false
+  },
+  "duration": {
+    "started_utc": "2026-10-09T07:05:05.537417+00:00",
+    "ended_utc": "2026-10-09T08:00:39.763631+00:00",
+    "seconds": 3334.226,
+    "operator_stopped": true
+  },
+  "complete_samples": {
+    "vs1_rounds": 2680,
+    "p300_rounds": 1769,
+    "protocol_switches": 52,
+    "all_raw_trace_records": 48257,
+    "p300_verified_fc01_fc03_responses": 8256,
+    "unexpected_transmitted_commands": 0,
+    "hardware_writes": 0
+  },
+  "gfa_vs1_real_fan": {
+    "p06_total_samples": 5360,
+    "p06_valid": 5345,
+    "p06_invalid_ff": 15,
+    "p06_valid_zero": 3509,
+    "p06_valid_nonzero": 1836,
+    "p06_valid_nonzero_raw_range": [
+      18,
+      153
+    ],
+    "p06_valid_nonzero_rpm_range": [
+      540,
+      4590
+    ],
+    "p06_raw_83_count": 1494,
+    "rpm_for_raw_83": 2490,
+    "p80_checks": 268,
+    "all_p80_value_0x20": true,
+    "p06_double_read_valid_stable_and_p09_valid": 2593,
+    "p06_and_p09_different": 108,
+    "p09_is_measured_fan_speed": false
+  },
+  "p300_native": {
+    "native_flame_samples": 633,
+    "native_lockout_samples": 0,
+    "natural_complete_flame_cycles": 2,
+    "observed_flame_windows_utc": [
+      {
+        "first": "2026-10-09T07:15:24.497777+00:00",
+        "last": "2026-10-09T07:26:11.275160+00:00",
+        "flame_samples": 352
+      },
+      {
+        "first": "2026-10-09T07:47:02.435491+00:00",
+        "last": "2026-10-09T07:55:39.413243+00:00",
+        "flame_samples": 281
+      }
+    ]
+  },
+  "phase_switches": {
+    "to_p300": 26,
+    "mean_seconds_to_p300": 2.169985,
+    "to_vs1": 26,
+    "mean_seconds_to_vs1": 4.327712,
+    "nominal_switch_roundtrip_seconds": 6.497697
+  },
+  "p300_ram_search": {
+    "addresses_and_samples": {
+      "0x55D3/11": 1769,
+      "0x0020/16": 1769,
+      "0x1600/32": 1769,
+      "0x1620/32": 1769,
+      "0x15E0/32": 295,
+      "0x1640/32": 295,
+      "0x18F8/32": 295,
+      "0x1A70/32": 295
+    },
+    "p06_bracketed_segments": {
+      "known_off_segments": 15,
+      "known_running_approx_raw_83_segments": 7,
+      "unknown_transition_segments": 4
+    },
+    "rapid_ram_comparisons": {
+      "known_off_samples": 1095,
+      "known_running_samples": 511
+    },
+    "slow_ram_comparisons": {
+      "known_off_samples": 182,
+      "known_running_samples": 86
+    },
+    "single_byte_exact_raw_alias_found": false,
+    "two_byte_little_endian_exact_raw_alias_found": false,
+    "two_byte_little_endian_actual_rpm_alias_found": false,
+    "screen_criteria": "on/off values match 0/83 raw +/-1 or 0/2490 rpm +/-60 across at least 75% of both classes",
+    "unknown_coding_or_unread_memory_excluded": false,
+    "genuine_p06_accessible_directly_through_p300": false
+  },
+  "stop_and_restore": {
+    "worker_exit_exception": "VS1_RECOVERY:unexpected control 00, expected 05",
+    "last_trace": [
+      "TX 6b400a01 (P10)",
+      "TX 04 (EOT during unfinished P10)",
+      "RX 00 (pending P10 result)"
+    ],
+    "immediate_worker_vs1_recovery_verified": false,
+    "execstoppost_original_services_restored": 6,
+    "services_restore_pass": true,
+    "main_service_active": true,
+    "fresh_mqtt_p80_0x20": true,
+    "fresh_mqtt_p06_0x00": true,
+    "ha_entity_freshness_verified": false,
+    "root_cause": "SIGTERM interrupted in-flight VS1 P10 and immediate EOT caused pending P10 answer 00 to be interpreted as control/ENQ"
+  },
+  "branch_fix": {
+    "defer_SIGTERM_SIGHUP_SIGINT_to_complete_frames": true,
+    "avoid_extra_EOT_when_already_in_verified_VS1": true,
+    "offline_regression_tests": 32,
+    "fix_applies_to_stored_branch_not_archived_logger": true,
+    "not_live_tested": true
+  },
+  "policy": {
+    "no_now_same_logger_repeat": true,
+    "p300_production_approved": false,
+    "p06_alias_approved": false,
+    "vitotrol_task2_deferred": true,
+    "pump_override_task3_deferred": true
+  },
+  "next_evidence_gate": "Read-only stable-state-matched physical RAM 0x0400..0x53FF snapshots (previously read on this 20C2) bracketed by genuine VS1 P06 under stable off and running conditions; exclude own Optolink buffers and dynamic pointers from tach inference. No RX SFR reads."
+}

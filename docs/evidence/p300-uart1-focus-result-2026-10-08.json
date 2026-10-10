@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "source": "Uploaded LXC transcript; full measurement.json with samples and serial trace printed by cat",
+  "source_filename": "Eingefuegter Text(7).txt",
+  "source_transcript_sha256": "181e65d53facd4d7e3b3c64a7470a20d0bc36e5952e47a490f506ca27e51d30d",
+  "session": "run-20261008T194615Z-126382",
+  "device": "VDensHO1 20C2 firmware 01.03",
+  "gfa_p80": "20",
+  "phase_seconds": 60,
+  "returned_samples": 25,
+  "first_sample_elapsed_s": 0.5223036999814212,
+  "last_sample_elapsed_s": 59.6766264969483,
+  "status_byte7_states": [
+    "00"
+  ],
+  "reference_gfa": {
+    "P06": "00",
+    "P09": "00",
+    "P80": "20",
+    "P87": "00"
+  },
+  "recovery_gfa": {
+    "P06": "00",
+    "P09": "00",
+    "P80": "20",
+    "P87": "00"
+  },
+  "measurement_errors": [],
+  "observation_complete": true,
+  "vs1_link_restored": true,
+  "service_restore_reported": true,
+  "reported_systemd_unit_result": "success",
+  "service_runtime_s": 75.826,
+  "ha_mqtt_freshness_separately_checked": false,
+  "physical_ram_reads_per_sample": {
+    "0x1600": 32,
+    "0x1620": 32
+  },
+  "unique_ram_64byte_states": 6,
+  "physical_changed_byte_count": 15,
+  "changing_addresses_counts": {
+    "0x160b": 1,
+    "0x160c": 1,
+    "0x160f": 5,
+    "0x1610": 5,
+    "0x1615": 4,
+    "0x1616": 4,
+    "0x1619": 4,
+    "0x161a": 2,
+    "0x161c": 3,
+    "0x161d": 3,
+    "0x161e": 2,
+    "0x1620": 2,
+    "0x1621": 3,
+    "0x1622": 3,
+    "0x1623": 3
+  },
+  "transition_events": [
+    {
+      "sample": 7,
+      "elapsed_s": 15.4,
+      "changed_addrs": [
+        "0x160b",
+        "0x160c",
+        "0x160f",
+        "0x1610",
+        "0x1615",
+        "0x1616",
+        "0x1619"
+      ]
+    },
+    {
+      "sample": 8,
+      "elapsed_s": 17.81,
+      "changed_addrs": [
+        "0x160f",
+        "0x1610",
+        "0x1619"
+      ]
+    },
+    {
+      "sample": 16,
+      "elapsed_s": 37.57,
+      "changed_addrs": [
+        "0x160f",
+        "0x1610",
+        "0x1615",
+        "0x1616",
+        "0x161a",
+        "0x161c",
+        "0x161d",
+        "0x161e",
+        "0x1620",
+        "0x1621",
+        "0x1622",
+        "0x1623"
+      ]
+    },
+    {
+      "sample": 19,
+      "elapsed_s": 44.87,
+      "changed_addrs": [
+        "0x160f",
+        "0x1610",
+        "0x1615",
+        "0x1616",
+        "0x1619",
+        "0x161a",
+        "0x161c",
+        "0x161d",
+        "0x161e",
+        "0x1620",
+        "0x1621",
+        "0x1622",
+        "0x1623"
+      ]
+    },
+    {
+      "sample": 20,
+      "elapsed_s": 47.32,
+      "changed_addrs": [
+        "0x160f",
+        "0x1610",
+        "0x1615",
+        "0x1616",
+        "0x1619",
+        "0x161c",
+        "0x161d",
+        "0x1621",
+        "0x1622",
+        "0x1623"
+      ]
+    }
+  ],
+  "observed_dma_source_address": "0x161b",
+  "observed_dma_source_change_count": 0,
+  "trace_transmissions": {
+    "vs1_gfa_read_p80": "2",
+    "vs1_gfa_read_p06": "2",
+    "p300_virtual_55d3": "25",
+    "p300_fc03_1600_32": "25",
+    "p300_fc03_1620_32": "25"
+  },
+  "trace_unapproved_tx_count": 0,
+  "live_write_performed": false,
+  "source_meaning_unknown": true,
+  "gfa_uart1_link_proven": false,
+  "p06_rpm_alias_proven": false,
+  "repeat_test_needed_for_same_question": false,
+  "notes": [
+    "Burner did not fire during this 60s window; all observed native status B7 00 and GFA P06 00 in before/after probes.",
+    "The source pointer SAR0=0x161B from prior snapshots does not itself change in this window; no evidence of fan rpm from this measurement.",
+    "Full text transcript includes copied program sources; only private telemetry and derived evidence are relevant to technical conclusions.",
+    "Automatic service restore was reported PASS, but separate current HA freshness still needs normal operational confirmation."
+  ],
+  "archive_verified": {
+    "archive_file": "uart1-run-20261008T194615Z-126382-bundle.tar.gz",
+    "archive_sha256": "a0e2809c5eeb1477ac7ff3bd012cbd30c247ddebe4c8d5b63ed5e2c283e5f3c2",
+    "contains": [
+      "measurement.json",
+      "samples.jsonl",
+      "recovery.json",
+      "state.json",
+      "batch-analysis.json",
+      "batch-health.json",
+      "offline-tests.txt"
+    ],
+    "verified_full_file_hashes": {
+      "measurement.json": "2232d44ba062e739f015be23876dd03e32371c13a9f4a3d55b9270d2f5dc6121",
+      "samples.jsonl": "01ee68505581f2fcc2cc96d67aa24b36903a938efcd3c01d0141fab410cd8e98",
+      "recovery.json": "8b9f14646c1522d8764eab427f913fd76e890cfe88d00281fce90470182f7308",
+      "state.json": "5fc7d78e614726dc27b30435f79ca29e6f75e17cc62b923a346f343dcd97434e"
+    },
+    "jsonl_exactly_equals_measurement_samples": true,
+    "trace_rx_tx_monotonic": true,
+    "trace_records_total": 2763,
+    "trace_tx_records": 170,
+    "trace_rx_records": 2593,
+    "trace_p300_replies_with_recomputed_crc_address_length_payload": 77,
+    "p300_reply_failures": 0,
+    "response_counts": {
+      "identity_0x00f8": 1,
+      "software_0x778c": 1,
+      "FC01_55d3_11": 25,
+      "FC03_1600_32": 25,
+      "FC03_1620_32": 25
+    },
+    "tx_frames_all_allowlisted": true,
+    "regression_tests_passed_by_profile": {
+      "test_uart1_p300_focus.py": 29,
+      "test_uart1_gfa_ram_audit.py": 17,
+      "test_p87_p300_check.py": 37,
+      "test_handover*.py": 60
+    },
+    "regression_tests_total": 143,
+    "restore_details": {
+      "services_restored": true,
+      "errors": [],
+      "systemd_service_result": "success"
+    },
+    "post_restore_operational_check": {
+      "service_active_running_correct_directory": true,
+      "P80_response": "1;0x4050;20",
+      "P06_response": "1;0x4006;00",
+      "MQTT_returncodes": [
+        0,
+        0
+      ],
+      "Home_Assistant_entity_freshness_verified": false
+    },
+    "source_raw_archives_not_published": true
+  },
+  "archive_verified_analysis": {
+    "unique_full_native_status_states": 2,
+    "full_status_changes": [
+      {
+        "first_sample": 17,
+        "elapsed_s": 39.986,
+        "byte_index_zero_based": 2,
+        "from": "b1",
+        "to": "b2"
+      }
+    ],
+    "status_byte7_all": "00",
+    "dma0_historical_source_pointer_address": "0x161b",
+    "source_pointer_RAM_value_all": "00",
+    "changes_at_source_pointer": 0,
+    "ram_full_64byte_states": 6,
+    "first_occurrence_of_each_state": [
+      {
+        "sample": 1,
+        "elapsed_s": 0.522
+      },
+      {
+        "sample": 7,
+        "elapsed_s": 15.4
+      },
+      {
+        "sample": 8,
+        "elapsed_s": 17.809
+      },
+      {
+        "sample": 16,
+        "elapsed_s": 37.574
+      },
+      {
+        "sample": 19,
+        "elapsed_s": 44.867
+      },
+      {
+        "sample": 20,
+        "elapsed_s": 47.323
+      }
+    ],
+    "fivetime_changes_are_not_evidence_of_P06_actual_RPM": true,
+    "sampling_overlap_and_sensor_latency_unknown": true
+  }
+}

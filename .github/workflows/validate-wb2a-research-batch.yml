@@ -1,0 +1,48 @@
+name: Validate One-command WB2A Research Batch
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - 'tools/wb2a-research-batch.py'
+      - 'tools/wb2a-research-batch.sh'
+      - 'tests/test_wb2a_research_batch.py'
+      - '.github/workflows/validate-wb2a-research-batch.yml'
+  pull_request:
+    paths:
+      - 'tools/wb2a-research-batch.py'
+      - 'tools/wb2a-research-batch.sh'
+      - 'tests/test_wb2a_research_batch.py'
+      - '.github/workflows/validate-wb2a-research-batch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check exact-shell entrypoint syntax
+        run: bash -n tools/wb2a-research-batch.sh
+      - name: Compile all new research batch Python files
+        run: python -m py_compile tools/wb2a-research-batch.py tests/test_wb2a_research_batch.py
+      - name: Execute synthetic negative-case regression suite
+        run: python -m unittest discover -s tests -p test_wb2a_research_batch.py -v
+      - name: Confirm inert default mode
+        run: python tools/wb2a-research-batch.py plan | grep 'PLAN ONLY'
+      - name: Require no file exporter write aliases
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('tools/wb2a-research-batch.py').read_text()
+          assert 'UART1_PROFILE_ALREADY_COMPLETED' in s
+          assert "'410500031600203e'" in s
+          assert "'410500031620205e'" in s
+          assert "'4105000155d30b39'" in s
+          print('BATCH_FAIL_CLOSED_PASS')
+          PY

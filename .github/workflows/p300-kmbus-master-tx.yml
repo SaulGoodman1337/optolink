@@ -1,0 +1,48 @@
+name: Audit P300 KM-Bus Vitotrol Master TX
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - 'tools/audit-kmbus-master-tx.py'
+      - 'tests/test_kmbus_master_tx.py'
+      - 'docs/evidence/p300-kmbus-vitotrol-master-tx-2026-10-09.json'
+      - '.github/workflows/p300-kmbus-master-tx.yml'
+  pull_request:
+    paths:
+      - 'tools/audit-kmbus-master-tx.py'
+      - 'tests/test_kmbus_master_tx.py'
+      - 'docs/evidence/p300-kmbus-vitotrol-master-tx-2026-10-09.json'
+      - '.github/workflows/p300-kmbus-master-tx.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Parse and regression-test KM-Bus TX classification without hardware
+        run: |
+          python -m py_compile tools/audit-kmbus-master-tx.py tests/test_kmbus_master_tx.py
+          python -m unittest discover -s tests -p test_kmbus_master_tx.py -v
+          python tools/audit-kmbus-master-tx.py | grep 'PLAN ONLY'
+      - name: Prohibit promoting TX polls to installed remotes or GFA tachometers
+        run: |
+          python - <<'PY'
+          import json
+          e=json.load(open('docs/evidence/p300-kmbus-vitotrol-master-tx-2026-10-09.json'))
+          polls=e['vitotrol_identity_queries']
+          assert len(polls)==2 and {p['slot'] for p in polls}=={'0x01','0x02'}
+          assert sum(p['valid_crc_samples'] for p in polls)==54
+          assert sum(p['valid_contiguous_snapshot_episodes'] for p in polls)==39
+          assert e['integrity']['samples']==12938
+          assert e['integrity']['crc16_kermit_valid_ram_snapshots']==12573
+          assert all(v is False for v in e['approvals'].values())
+          print('KMBUS_TX_EVIDENCE_POLICY_PASS')
+          PY

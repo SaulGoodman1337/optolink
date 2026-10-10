@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "research_commit": "79f222c7f3a11b848a6a8ac8ece50e24deede823",
+  "appliance_access": false,
+  "production_replacement_approved": false,
+  "ui_export_rows_not_complete_profile": 385,
+  "metadata": {
+    "event_rows": 11582,
+    "target_event_links": 581,
+    "target_address_count": 362,
+    "target_read_function_counts": {"<empty>": 2, "GFA_READ": 94, "Remote_Procedure_Call": 22, "Virtual_READ": 462, "undefined": 1},
+    "extracted_text_files_verified": 21,
+    "full_manufacturer_tables_exported": false,
+    "label_search": {"exact_target_matches": 0, "global_matches": 37, "method": "fan/blower/Geblaese/Ventilator plus speed/rpm/Drehzahl, non-GFA_READ; exact profile membership", "not_a_firmware_unavailability_proof": true},
+    "physical_ram_addresses_inferred_from_virtual_addresses": false,
+    "selected_events": [
+      {"address":"0x55D3","block_length":"9","byte_length":"9","byte_position":"0","conversion":"NoConversion","conversion_factor":"0","event_id":"600","exact_target_member":true,"fc_read":"Virtual_READ","name_de":"Brenner ","token":"GWG_Flamme~0x55D3","unit":""},
+      {"address":"0x55D3","block_length":"9","byte_length":"1","byte_position":"5","conversion":"NoConversion","conversion_factor":"0","event_id":"697","exact_target_member":true,"fc_read":"Virtual_READ","name_de":"Feuerungsautomat verriegelt ","token":"GWG_Verriegelung~0x55D3","unit":""},
+      {"address":"0x0B1E","block_length":"2","byte_length":"2","byte_position":"0","conversion":"NoConversion","conversion_factor":"0","event_id":"4722","exact_target_member":false,"fc_read":"Virtual_READ","name_de":"Drehzahl Gebläse Ist","other_profiles":["VBC550S","VBC550P","Ecotronic","Ecotronic_100"],"token":"SC100_DrehzahlIst~0x0B1E","unit":"ecnUnit.U pro min"},
+      {"address":"0x1A71","block_length":"1","byte_length":"1","byte_position":"0","conversion":"NoConversion","conversion_factor":"0","event_id":"7963","exact_target_member":false,"fc_read":"Virtual_READ","name_de":"(71) OFAN actual speed","other_profiles":["VBC702_S","CU401B_S"],"token":"WPR3_Split.K71_OFANactualspeed~0x1A71","unit":""},
+      {"address":"0x4006","block_length":"1","byte_length":"1","byte_position":"0","conversion":"MultOffset","conversion_factor":"30","event_id":"8175","exact_target_member":true,"fc_read":"GFA_READ","name_de":"(P06) Drehzahl-Istwert","token":"VSKO_Scot_CES_P6~0x4006","unit":"ecnUnit.U pro min"},
+      {"address":"0x4009","block_length":"1","byte_length":"1","byte_position":"0","conversion":"MultOffset","conversion_factor":"30","event_id":"8178","exact_target_member":true,"fc_read":"GFA_READ","name_de":"(P09) Drehzahl-Sollwert","token":"VSKO_Scot_CES_P9~0x4009","unit":"ecnUnit.U pro min"},
+      {"address":"0x4057","block_length":"1","byte_length":"1","byte_position":"0","conversion":"NoConversion","conversion_factor":"0","event_id":"8211","exact_target_member":true,"fc_read":"GFA_READ","name_de":"(P87) GFA Status 3","token":"VSKO_Scot_CES_P87~0x4057","unit":""},
+      {"address":"0x4006","block_length":"1","byte_length":"1","byte_position":"0","conversion":"MultOffset","conversion_factor":"30","event_id":"8230","exact_target_member":true,"fc_read":"GFA_READ","name_de":"(P06) Drehzahl-Istwert","token":"VSKO_Scot_P6~0x4006","unit":"ecnUnit.U pro min"},
+      {"address":"0x4009","block_length":"1","byte_length":"1","byte_position":"0","conversion":"MultOffset","conversion_factor":"30","event_id":"8233","exact_target_member":true,"fc_read":"GFA_READ","name_de":"(P09) Drehzahl-Sollwert","token":"0x4009","unit":"ecnUnit.U pro min"},
+      {"address":"0x4009","block_length":"1","byte_length":"1","byte_position":"0","conversion":"MultOffset","conversion_factor":"0.3922","event_id":"8259","exact_target_member":true,"fc_read":"GFA_READ","name_de":"(P09) Modulationssollwert","token":"VSKO_GFA_P9~0x4009","unit":"ecnUnit.Prozent"},
+      {"address":"0x7650","block_length":"1","byte_length":"1","byte_position":"0","conversion":"NoConversion","conversion_factor":"0","event_id":"8395","exact_target_member":true,"fc_read":"Virtual_READ","name_de":"Kennung Feuerungsautomat-Chip","token":"GFA_Kennung~0x7650","unit":""},
+      {"address":"0xCAE1","block_length":"2","byte_length":"2","byte_position":"0","conversion":"NoConversion","conversion_factor":"0","event_id":"11284","exact_target_member":false,"fc_read":"Virtual_READ","name_de":"Fortluftventilator Drehzahl (rpm)","other_profiles":["VScotHO1_200_01"],"token":"HO2B_Lueftung_Fortluftventlator_Drehzahl~0xCAE1","unit":"ecnUnit.U pro min"},
+      {"address":"0xCAD1","block_length":"2","byte_length":"2","byte_position":"0","conversion":"NoConversion","conversion_factor":"0","event_id":"11288","exact_target_member":false,"fc_read":"Virtual_READ","name_de":"Zuluftventilator Drehzahl (rpm)","other_profiles":["VScotHO1_200_01"],"token":"HO2B_Lueftung_Zuluftventilator_Drehzahl~0xCAD1","unit":"ecnUnit.U pro min"}
+    ],
+    "source_archive_sha256": "3d31380d6dfabf8ede9e305b115e847fb0670511e253a4ed4e59feef2f7adfee",
+    "source_files_sha256": {
+      "derived/all-devices/all-device-event-links.csv": "5debbd419346ef095bd59a7263173d305e5c1f96d73584e552eb990aaab06782",
+      "derived/all-devices/all-events.csv": "18d25979a70f7f9a9c021bfdf35ec7f2d6465efa8bedb0a436bf95d792d62563"
+    }
+  },
+  "p87_hypothesis": {
+    "gfa_observed_sequence_20260924": ["20","40","50","60","62"],
+    "gfa_request": {"address":"0x4057","command":"VS1/6B","length":1},
+    "independent_read_at_0x55DA_tested": false,
+    "native_observed_sequence_20260922": ["00","20","40","50","60","62"],
+    "nonzero_sequence_equal": true,
+    "same_session": false,
+    "verdict": "HYPOTHESIS_CROSS_SESSION_SEQUENCE_MATCH_ONLY",
+    "virtual_request": {"address":"0x55D3","length":11,"zero_based_byte":7}
+  },
+  "public_source_hashes": {
+    "config/optolink-splitter/research/device-vdensho1-20c2-wb2a.md":"1ac69b312252b3c37b040fc7b2d56a2c1bda0f1120e131b184ad73a42c95c9a8",
+    "config/optolink-splitter/research/physical-ram-optolink-map-2026-09-26.md":"edabd57e299042aaa8f0888da28db07e2d374e5508175b54e46e1e7010935463",
+    "config/optolink-splitter/research/vitosoft/gfa-triggered-startup-2026-09-24-evidence.json":"834a9c06c4765b5b01f0ce1a1d5572dc18adc4a3d0c85f802b5db14a0bd681e9",
+    "config/optolink-splitter/research/vitosoft/vdensho1-events.csv":"486f707dd0c2a73b8a173ee8a4bfc248559900d8d7ae48325519e54584aa20ed",
+    "docs/gfa-live-checkpoint.md":"9a2800579522e117a6bfb14ded9168744e87200c5af77dc23f192431ccea96f5"
+  },
+  "private_extraction_provenance": {
+    "artifact_id":11547222732,
+    "artifact_sha256":"fde104dd1f7c0d6e669f58042eaf452a257c189c0318cc4470da31d6962e2398",
+    "branch":"p300-gfa-metadata-audit-20261008",
+    "commit":"83d01b15a191220fc3b32eece5551690e2e306f9",
+    "full_archive_recollected":false,
+    "original_programs_executed":false,
+    "private_raw_files_published":false,
+    "repository":"SaulGoodman1337/Viessmann-Vitosoft-300-SID1",
+    "workflow_run":37769223322
+  },
+  "ram_source_boundary": {
+    "exclude_own_optolink_buffers_before_claiming_live_sensor":true,
+    "original_dynamic_ram_dumps_available_in_this_corpus":false,
+    "physical_read_range_documented":["0x0400","0x53FF"],
+    "second_uart_external_protocol_identified":false,
+    "bin_files_in_corpus":12,
+    "bin_files_are_coding_plug_dumps":true
+  }
+}

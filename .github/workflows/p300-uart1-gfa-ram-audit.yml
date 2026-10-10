@@ -1,0 +1,34 @@
+name: Audit WB2A UART1 RAM Source Offline
+
+on:
+  push:
+    branches: [optolink-p300-migration]
+    paths:
+      - 'tools/audit-uart1-gfa-ram.py'
+      - 'tests/test_uart1_gfa_ram_audit.py'
+      - '.github/workflows/p300-uart1-gfa-ram-audit.yml'
+  pull_request:
+    paths:
+      - 'tools/audit-uart1-gfa-ram.py'
+      - 'tests/test_uart1_gfa_ram_audit.py'
+      - '.github/workflows/p300-uart1-gfa-ram-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate audit syntax
+        run: python -m py_compile tools/audit-uart1-gfa-ram.py tests/test_uart1_gfa_ram_audit.py
+      - name: Run synthetic RAM source and fail-closed tests
+        run: python -m unittest discover -s tests -p test_uart1_gfa_ram_audit.py -v
+      - name: Verify default is entirely inert
+        run: |
+          python tools/audit-uart1-gfa-ram.py | grep 'PLAN ONLY'
