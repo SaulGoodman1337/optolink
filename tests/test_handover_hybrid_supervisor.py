@@ -196,6 +196,7 @@ class SupervisionTests(unittest.TestCase):
         self.assertIn('systemd-run --unit='+h.UNIT,argv)
         self.assertIn('--property=ExecStopPost=',argv)
         self.assertIn('--recover',argv)
+        self.assertIn('/hybrid_recovery.py --recover ',argv)
         self.assertIn('--worker',argv)
         self.assertNotIn('/dev/ttyUSB',argv)
         self.assertFalse(any(x[0]=='paused' for x in self.events))

@@ -71,7 +71,7 @@ class RecoveryPathRegression(unittest.TestCase):
             r = h.staged_preflight(self.session, self.base)
         self.assertEqual(r['session_version'], 'sample')
         self.assertEqual(r['staged_version'], 'v2')
-        self.assertTrue(r['recovery_entry'].endswith('/live_probe.py'))
+        self.assertTrue(r['recovery_entry'].endswith('/hybrid_recovery.py'))
 
     def test_staged_preflight_error_refuses_without_systemd(self):
         with patch.object(h, '_live', return_value=self.fake_live), \

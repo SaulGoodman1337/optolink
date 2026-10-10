@@ -67,6 +67,12 @@ class HybridAcceptanceTests(unittest.TestCase):
             'assert m.pump_lease.__module__ == "handover_acceleration.port_ownership"; '
             'from handover_acceleration.runtime_admission import RuntimeAdmissionGate; '
             'assert RuntimeAdmissionGate.__name__ == "RuntimeAdmissionGate"; '
+            'from handover_acceleration.producer_fence import p300_window; '
+            'assert callable(p300_window); '
+            'p2=pathlib.Path("hybrid_recovery.py"); '
+            's2=importlib.util.spec_from_file_location("staged_recovery",p2); '
+            'm2=importlib.util.module_from_spec(s2); s2.loader.exec_module(m2); '
+            'assert m2.pump_lease.__module__ == "handover_acceleration.port_ownership"; '
             'print("STAGED_DEPENDENCIES=PASS")'
         )
         env=dict(os.environ, PYTHONPATH=str(self.session))
@@ -81,6 +87,16 @@ class HybridAcceptanceTests(unittest.TestCase):
             h.stage(self.session,self.source)
             (self.session/'handover_acceleration/hybrid_boot.py').write_text('malicious\n')
             with self.assertRaisesRegex(h.AcceptanceRejected,'changed'):
+                h.verify_stage(self.session,self.source)
+
+    def test_staged_recovery_script_tamper_refused_by_manifest(self):
+        with patch.object(h,'_verify_original',return_value=self.source_stub):
+            h.stage(self.session,self.source)
+            recovery=self.session/'hybrid_recovery.py'
+            self.assertEqual(recovery.stat().st_mode & 0o077, 0)
+            self.assertTrue(recovery.read_text().startswith('"""Independent systemd'))
+            recovery.write_text(recovery.read_text() + '\n# changed-after-stage')
+            with self.assertRaisesRegex(h.AcceptanceRejected,'staged code changed'):
                 h.verify_stage(self.session,self.source)
 
     def test_changed_production_sha_refuses_stage(self):

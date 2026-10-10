@@ -103,6 +103,19 @@ publish new commands. Deployment is blocked until external producer fences
 and independent recovery arbitration are wired and hardware-accepted.
 Details: `docs/vs1-p300-runtime-admission-2026-10-10.md`.
 
+The **v3** independent `hybrid_recovery.py` now reacquires the pump-owner
+exclusion during systemd `ExecStopPost` BEFORE attempting any original VS1
+restore; failed competing-owner arbitration is never reported as a successful
+restore. The supervised worker uses a hash-verified staged copy of this
+recovery entrypoint. `producer_fence.py` additionally supplies a *separate*
+kernel `flock` shared by **entire** Party/schedule/maintenance/clock/MQTT/TCP
+writer transactions and a P300 read window. Offline tests prove isolation
+across actual OS processes. The existing production writers have **not** been
+modified to use that lock: recurring hybrid maintenance therefore remains
+disabled until complete trusted participant enrollment and HA timer accounting
+are implemented. Documentation:
+`docs/vs1-p300-producer-fence-and-recovery-v3-2026-10-10.md`.
+
 ## New offline main-loop bridge and physically documented FC03 read fixtures
 
 `dispatcher_bridge.py` now models a *single existing* serial owner with exact

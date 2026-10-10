@@ -40,7 +40,7 @@ except ImportError:
         from port_ownership import pump_lease, require_pump_inactive
 
 
-VERSION = 'inprocess-fc03-oneshot-v2-owner-gate'
+VERSION = 'inprocess-fc03-oneshot-v3-recovery-arbitration'
 UNIT = 'optolink-inprocess-readonly-acceptance.service'
 ROOT = Path('/opt/optolink')
 BASE = Path('/root/p300-trial-work/handover-acceleration-live-results')
@@ -49,12 +49,13 @@ BASE = Path('/root/p300-trial-work/handover-acceleration-live-results')
 PINNED_INSTALLED_SHA256 = 'e4be265db857d32486fd50aa7eee359e9a054b951e478d5847f17702a0ce7fac'
 COMPONENTS = (
     '__init__.py', 'coordinator.py', 'scheduler.py', 'phase_planner.py',
-    'port_ownership.py', 'runtime_admission.py',
+    'port_ownership.py', 'runtime_admission.py', 'producer_fence.py',
     'phase_executor.py', 'dispatcher_bridge.py', 'hybrid_boot.py',
     'dispatcher_patch.py', 'dispatcher_runtime_audit.py',
 )
 STAGE_FILES = tuple('handover_acceleration/' + p for p in COMPONENTS) + (
     'optolinkvs2_switch.py', 'hybrid_acceptance.py',
+    'hybrid_recovery.py',
 )
 
 
@@ -126,6 +127,9 @@ def stage(session: Path, root: Path, *, source_dir: Path | None = None) -> dict:
     script = session / 'hybrid_acceptance.py'
     shutil.copyfile(Path(__file__), script)
     script.chmod(0o600)
+    recovery = session / 'hybrid_recovery.py'
+    shutil.copyfile(Path(__file__).with_name('hybrid_recovery.py'), recovery)
+    recovery.chmod(0o600)
     digests = {name: _digest(session / name) for name in STAGE_FILES}
     record = {
         'version': VERSION, 'installed_main_sha256': audit['main_sha256'],
@@ -250,7 +254,7 @@ def staged_preflight(session: Path, root: Path) -> dict:
     manifest = verify_stage(session, root)
     return {'session_version': state['version'],
             'staged_version': manifest['version'],
-            'recovery_entry': str(session / 'live_probe.py'),
+            'recovery_entry': str(session / 'hybrid_recovery.py'),
             'source_files_verified': len(manifest['source_sha256'])}
 
 
@@ -308,7 +312,7 @@ def execute() -> int:
         '--property=Type=exec', '--property=RuntimeMaxSec=105',
         '--property=TimeoutStopSec=90', '--property=KillMode=control-group',
         '--property=UMask=0077',
-        f'--property=ExecStopPost={base.PYTHON} -u {session / "live_probe.py"} --recover {session}',
+        f'--property=ExecStopPost={base.PYTHON} -u {session / "hybrid_recovery.py"} --recover {session}',
         base.PYTHON, '-u', str(session / 'hybrid_acceptance.py'), '--worker', str(session),
     ]
     print('HYBRID_SESSION=' + str(session), flush=True)
