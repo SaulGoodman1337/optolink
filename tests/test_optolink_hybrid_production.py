@@ -100,7 +100,10 @@ class HybridProductionTests(unittest.TestCase):
         names=("README.md","docs/README.md","docs/architecture.md",
                "docs/operations.md","docs/hybrid-protokollwechsel.md",
                "docs/optolink-maintenance.md",
-               "docs/optolink-maintenance-api.md")
+               "docs/optolink-maintenance-api.md",
+               "docs/wb2a-on-demand-p300-design-2026-10-10.md",
+               "docs/wb2a-on-demand-canary-2026-10-10.md",
+               "docs/wb2a-root-on-demand-api-2026-10-10.md")
         for name in names:
             path=ROOT/name
             text=path.read_text()

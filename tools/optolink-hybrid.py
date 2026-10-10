@@ -11,8 +11,13 @@ import datetime as dt
 import json
 import os
 from pathlib import Path
+import pwd
 import re
+import secrets
 import shutil
+import socket
+import stat
+import struct
 import subprocess
 import sys
 
@@ -20,7 +25,7 @@ HERE = Path(__file__).resolve().parent
 LIB = HERE if (HERE / "handover_acceleration").is_dir() else Path("/usr/local/lib/optolink-hybrid")
 sys.path.insert(0, str(LIB))
 
-from handover_acceleration import continuous_canary, release_rollout, shadow_canary, stage_release
+from handover_acceleration import continuous_canary, continuous_runtime, release_rollout, shadow_canary, stage_release
 from handover_acceleration.producer_fence import LEASE_PATH
 
 ROOT = release_rollout.ROOT
@@ -165,6 +170,88 @@ def canary(identifier: str, *, acknowledged: bool) -> dict:
     }
 
 
+def _local_demand_rpc(payload: dict) -> dict:
+    """Authenticated root -> exact original serial-owner PID Unix control."""
+    _require_root()
+    path = continuous_runtime.DEMAND_SOCKET_PATH
+    try:
+        node = path.lstat()
+        parent = path.parent.lstat()
+        if (not stat.S_ISSOCK(node.st_mode) or
+                node.st_uid != pwd.getpwnam("optolink").pw_uid or
+                node.st_mode & 0o077 or
+                not stat.S_ISDIR(parent.st_mode) or
+                parent.st_uid != node.st_uid or parent.st_mode & 0o077 or
+                path.parent.resolve() != path.parent):
+            raise OperatorRejected("Unvertrauenswuerdiger P300-Unix-Socket.")
+        process = subprocess.check_output(
+            ["systemctl", "show", "optolink-splitter.service",
+             "--property=MainPID", "--value", "--no-pager"],
+            timeout=4, text=True).strip()
+        owner_pid = int(process)
+        if owner_pid <= 1:
+            raise OperatorRejected("Originaler Optolink-Hauptprozess nicht aktiv.")
+        with socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET) as conn:
+            conn.settimeout(3.0)
+            conn.connect(str(path))
+            peer = conn.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED,
+                                   struct.calcsize("3i"))
+            pid, uid, gid = struct.unpack("3i", peer)
+            identity = pwd.getpwnam("optolink")
+            if (pid != owner_pid or uid != identity.pw_uid or
+                    gid != identity.pw_gid):
+                raise OperatorRejected("Socket ist nicht der attestierte Hauptprozess.")
+            wire = json.dumps(payload, sort_keys=True,
+                              separators=(",", ":")).encode("utf-8")
+            if len(wire) > continuous_runtime.LocalDemandControl.MAX_PACKET:
+                raise OperatorRejected("Ungueltige uebergrosse P300-Anfrage.")
+            conn.sendall(wire)
+            raw = conn.recv(2048)
+            if not raw or len(raw) >= 2048:
+                raise OperatorRejected("Keine gueltige P300-Antwort.")
+            result = json.loads(raw.decode("utf-8"))
+    except (FileNotFoundError, ConnectionError, TimeoutError,
+            subprocess.SubprocessError, OSError, ValueError,
+            UnicodeError) as exc:
+        raise OperatorRejected(
+            "On-Demand-Socket nicht aktiv oder nicht verifizierbar."
+        ) from exc
+    if (not isinstance(result, dict) or result.get("v") != 1 or
+            type(result.get("ok")) is not bool):
+        raise OperatorRejected("Ungueltige Kontrollantwort des Hauptprozesses.")
+    return result
+
+
+def demand_request(kind: str, ttl: int, *, acknowledged: bool,
+                   request_id: str | None = None) -> dict:
+    _require_root()
+    if not acknowledged:
+        raise OperatorRejected(
+            "Explizites --lesefenster-bestaetigt fuer P300 erforderlich.")
+    if type(kind) is not str or kind not in continuous_runtime._DEMAND_KINDS:
+        raise OperatorRejected("Nur freigegebene P300-Read-only-Diagnosen.")
+    if type(ttl) is not int or not 5 <= ttl <= 120:
+        raise OperatorRejected("TTL muss zwischen 5 und 120 Sekunden liegen.")
+    request_id = request_id or secrets.token_hex(16)
+    if not continuous_runtime._DEMAND_ID.fullmatch(request_id):
+        raise OperatorRejected("Ungueltige Auftrags-ID (32 Kleinbuchstaben-Hex).")
+    return _local_demand_rpc({
+        "v": 1, "op": "submit", "request_id": request_id,
+        "kind": kind, "ttl_s": ttl})
+
+
+def demand_lookup(request_id: str, session: str, *, cancel: bool = False) -> dict:
+    _require_root()
+    if (type(request_id) is not str or
+            not continuous_runtime._DEMAND_ID.fullmatch(request_id) or
+            type(session) is not str or
+            not continuous_runtime._DEMAND_ID.fullmatch(session)):
+        raise OperatorRejected("Sitzung und Auftrag muessen 32-stellige Hex-IDs sein.")
+    return _local_demand_rpc({
+        "v": 1, "op": "cancel" if cancel else "status",
+        "request_id": request_id, "session": session})
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     actions = p.add_subparsers(dest="aktion", required=True)
@@ -176,6 +263,19 @@ def main(argv: list[str] | None = None) -> int:
     test = actions.add_parser("testen", help="Drei beaufsichtigte, schreibgeschuetzte P300-Fenster")
     test.add_argument("kennung")
     test.add_argument("--telemetriepause-bestaetigt", action="store_true")
+    demand = actions.add_parser(
+        "anfordern", help="Root-only lokale P300-Diagnose im expliziten Shadow-Fenster")
+    demand.add_argument("art", choices=sorted(continuous_runtime._DEMAND_KINDS))
+    demand.add_argument("--ttl", type=int, default=90)
+    demand.add_argument("--auftrag", default=None,
+                        help="Wiederverwendbare 32-hex Idempotenzkennung")
+    demand.add_argument("--lesefenster-bestaetigt", action="store_true")
+    for command, explanation in (
+        ("ergebnis", "Auftragsergebnis ohne Controller-I/O abfragen"),
+        ("abbrechen", "Nur noch wartende Auftraege abbrechen")):
+        q = actions.add_parser(command, help=explanation)
+        q.add_argument("auftrag")
+        q.add_argument("--sitzung", required=True)
     args = p.parse_args(argv)
     try:
         if args.aktion == "status":
@@ -184,8 +284,15 @@ def main(argv: list[str] | None = None) -> int:
             result = prepare(args.kennung)
         elif args.aktion == "pruefen":
             result = preflight(args.kennung)
-        else:
+        elif args.aktion == "testen":
             result = canary(args.kennung, acknowledged=args.telemetriepause_bestaetigt)
+        elif args.aktion == "anfordern":
+            result = demand_request(
+                args.art, args.ttl, acknowledged=args.lesefenster_bestaetigt,
+                request_id=args.auftrag)
+        else:
+            result = demand_lookup(
+                args.auftrag, args.sitzung, cancel=args.aktion == "abbrechen")
     except (OperatorRejected, stage_release.StageRejected,
             release_rollout.RolloutRejected, shadow_canary.CanaryRejected,
             continuous_canary.ContinuousCanaryRejected) as exc:
@@ -193,6 +300,8 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result, ensure_ascii=False, sort_keys=True), file=sys.stderr)
         return 2
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+    if "ok" in result:
+        return 0 if result["ok"] is True else 1
     return 0 if result["ergebnis"] in (
         "VS1_BETRIEB_OK", "VORBEREITET_NICHT_AKTIVIERT",
         "PRUEFUNG_OK_KEINE_AKTIVIERUNG", "BESTANDEN") else 1

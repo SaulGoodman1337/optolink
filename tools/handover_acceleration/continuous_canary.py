@@ -43,6 +43,12 @@ def profile_limits(profile: str) -> tuple[int, int, int, str]:
     if profile == "standard":
         return (TARGET_WINDOWS, WATCH_SECONDS, MAX_RUNTIME_SECONDS,
                 "PASS_THREE_VERIFIED_CONTINUOUS_WINDOWS")
+    if profile == "demand-one":
+        # One externally supervised, session-pinned read-only demand.
+        return (1, 105, 210, "PASS_ONE_VERIFIED_DEMAND_WINDOW")
+    if profile == "demand-manual":
+        # One authorized root-on-socket request; no startup self-test.
+        return (1, 135, 240, "PASS_ONE_VERIFIED_DEMAND_WINDOW")
     if profile == "soak-eight":
         return (SOAK_WINDOWS, SOAK_WATCH_SECONDS, SOAK_MAX_RUNTIME_SECONDS,
                 "PASS_EIGHT_VERIFIED_CONTINUOUS_WINDOWS")
@@ -53,12 +59,24 @@ def _extra_path() -> Path:
     return Path("/etc/systemd/system/optolink-splitter.service.d") / EXTRA_NAME
 
 
-def _extra_content(session: Path) -> str:
+def _extra_content(session: Path, *, demand_one: bool = False,
+                   demand_manual: bool = False) -> str:
     if not re.fullmatch(r"run-\d{8}T\d{6}Z-\d+", session.name):
         raise ContinuousCanaryRejected("unknown private session identifier")
+    if (type(demand_one) is not bool or type(demand_manual) is not bool
+            or (demand_one and demand_manual)):
+        raise ContinuousCanaryRejected("one explicit demand profile required")
+    is_demand = demand_one or demand_manual
     return ("[Service]\n"
-            "Environment=OPTO_HYBRID_RUNTIME_AUTO=fenced-readonly\n"
-            "Environment=OPTO_HYBRID_CANARY_SESSION=" + session.name + "\n")
+            "Environment=OPTO_HYBRID_RUNTIME_AUTO="
+            + ("fenced-ondemand" if is_demand else "fenced-readonly") + "\n"
+            + ("Environment=OPTO_HYBRID_DEMAND_SELFTEST=ram_0f20_32\n"
+               if demand_one else "")
+            + ("Environment=OPTO_HYBRID_DEMAND_SOCKET=/run/optolink-hybrid/p300-demand.sock\n"
+               "RuntimeDirectory=optolink-hybrid\n"
+               "RuntimeDirectoryMode=0700\n"
+               if is_demand else "")
+            + "Environment=OPTO_HYBRID_CANARY_SESSION=" + session.name + "\n")
 
 
 def _expected_manifest(release: Path) -> bytes:
@@ -83,7 +101,8 @@ def _write_enrollment(release: Path):
         os.close(fd)
 
 
-def _collect_events(session: Path, start_epoch: int) -> tuple[list[dict], list[str]]:
+def _collect_events(session: Path, start_epoch: int, *,
+                    profile: str = "standard") -> tuple[list[dict], list[str]]:
     # Journal evidence originates from the *real* original VS1 owner's
     # successfully completed P300 window after original GFA verification.
     args = ["journalctl", "-u", sh.MAIN, "--since", "@" + str(start_epoch),
@@ -120,13 +139,32 @@ def _collect_events(session: Path, start_epoch: int) -> tuple[list[dict], list[s
                 or not 0 < event["elapsed_ms"] <= 8000):
             raise ContinuousCanaryRejected("invalid VS1 readback after live P300")
         raw_reads = event.get("p300_fixed")
-        if (not isinstance(raw_reads, dict)
-                or set(raw_reads) != {"p300_device", "ram_0f20_32",
-                                     "ram_1c60_32"}
-                or not re.fullmatch(r"[0-9a-f]{4}", raw_reads["p300_device"])
-                or any(not re.fullmatch(r"[0-9a-f]{64}", raw_reads[name])
-                       for name in ("ram_0f20_32", "ram_1c60_32"))):
-            raise ContinuousCanaryRejected("live P300 fixed FC03 evidence absent")
+        if profile in ("demand-one", "demand-manual"):
+            expected_kind = "p300_ram_0f20_32"
+            replies = event.get("on_demand_raw")
+            if (not isinstance(raw_reads,dict)
+                    or set(raw_reads) != {expected_kind}
+                    or not isinstance(raw_reads[expected_kind],str)
+                    or not re.fullmatch(r"[0-9a-f]{64}",raw_reads[expected_kind])
+                    or not isinstance(replies,list) or len(replies) != 1
+                    or not isinstance(replies[0],dict)
+                    or type(replies[0].get("sequence")) is not int
+                    or replies[0]["sequence"] < 1
+                    or replies[0].get("kind") != expected_kind
+                    or replies[0].get("raw_hex") != raw_reads[expected_kind]
+                    or replies[0].get("origin") !=
+                       "P300_RAW_DIAGNOSTIC_NOT_ACTUAL_RPM"):
+                raise ContinuousCanaryRejected("live demand evidence absent or mismatched")
+        elif profile in ("standard","soak-eight"):
+            if (not isinstance(raw_reads, dict)
+                    or set(raw_reads) != {"p300_device", "ram_0f20_32",
+                                         "ram_1c60_32"}
+                    or not re.fullmatch(r"[0-9a-f]{4}", raw_reads["p300_device"])
+                    or any(not re.fullmatch(r"[0-9a-f]{64}", raw_reads[name])
+                           for name in ("ram_0f20_32", "ram_1c60_32"))):
+                raise ContinuousCanaryRejected("live P300 fixed FC03 evidence absent")
+        else:
+            raise ContinuousCanaryRejected("unreviewed profile in event collection")
         events.append(event)
     return events, refusals
 
@@ -187,7 +225,9 @@ def worker(session: Path) -> int:
     if not report.accepted:
         raise ContinuousCanaryRejected("live writer attestation refused: " + report.reason)
     path = _extra_path()
-    content = _extra_content(session)
+    content = _extra_content(
+        session,demand_one=data.get("canary_profile") == "demand-one",
+        demand_manual=data.get("canary_profile") == "demand-manual")
     if path.exists() or path.is_symlink():
         raise ContinuousCanaryRejected("unknown auto-activation override")
     path.write_text(content, encoding="utf-8")
@@ -220,13 +260,26 @@ def worker(session: Path) -> int:
             raise ContinuousCanaryRejected("pump owner activated during canary")
         marker_since = verify_live_canary_epoch(
             auto_main_pid, marker_since, time.monotonic())
-        events, refusals = _collect_events(session, since)
+        events, refusals = _collect_events(
+            session, since, profile=data.get("canary_profile","standard"))
         if len(events) >= target_windows:
             break
         time.sleep(3.0)
+    if data.get("canary_profile") == "demand-manual" and len(events) == 1:
+        # Short supervised response-collection grace: verified VS1 is back;
+        # the local operator can query the exact pinned result before rollback.
+        for _ in range(4):
+            if any(sh.status(unit) != "active" for unit in sh.ALL):
+                raise ContinuousCanaryRejected("productive service changed after demand")
+            marker_since = verify_live_canary_epoch(
+                auto_main_pid, marker_since, time.monotonic())
+            time.sleep(2.0)
     post = sh.gfa(wait=25)
+    verified_count = (len(events) == target_windows
+                      if data.get("canary_profile") == "demand-manual"
+                      else len(events) >= target_windows)
     measurement = {
-        "result": (expected_result if len(events) >= target_windows
+        "result": (expected_result if verified_count
                    else "NO_VERIFIED_CONTINUOUS_WINDOWS"),
         "event_count": len(events), "events": events,
         "last_refusals": refusals[-15:],
@@ -238,8 +291,8 @@ def worker(session: Path) -> int:
     print("HYBRID_CONTINUOUS_CANARY=" + json.dumps({
         "result":measurement["result"],"event_count":len(events),
         "last_refusals":refusals[-5:]}, sort_keys=True), flush=True)
-    if len(events) < target_windows:
-        raise ContinuousCanaryRejected("required verified hardware windows not observed")
+    if not verified_count:
+        raise ContinuousCanaryRejected("required exact verified hardware windows absent")
     return 0
 
 
@@ -253,7 +306,9 @@ def recover(session: Path) -> int:
     if extra.exists() or extra.is_symlink():
         try:
             if (extra.is_symlink() or not extra.is_file()
-                    or extra.read_text() != _extra_content(session)):
+                    or extra.read_text() != _extra_content(
+                        session,demand_one=data.get("canary_profile") == "demand-one",
+                        demand_manual=data.get("canary_profile") == "demand-manual")):
                 raise ContinuousCanaryRejected("auto override unexpectedly changed")
             extra.unlink()
         except Exception as exc:
@@ -308,7 +363,9 @@ def launch(release: Path, *, profile: str = "standard") -> int:
     except (OSError, ValueError): restored = {}
     success = (run.returncode == 0
                and measure.get("result") == expected_result
-               and measure.get("event_count", 0) >= target_windows
+               and (measure.get("event_count", 0) == target_windows
+                    if profile == "demand-manual"
+                    else measure.get("event_count", 0) >= target_windows)
                and restored.get("result") == "PASS_ORIGINAL_SERVICES_RESTORED")
     result = {"result":"PASS" if success else "FAIL_OR_NOT_VERIFIED",
               "profile":profile, "target_windows":target_windows,
@@ -328,15 +385,23 @@ def main(argv=None):
     choices.add_argument("--recover", type=Path)
     parser.add_argument("--accept-telemetry-pause", action="store_true")
     parser.add_argument("--soak-eight", action="store_true")
+    parser.add_argument("--demand-one", action="store_true")
+    parser.add_argument("--demand-manual", action="store_true")
     args = parser.parse_args(argv)
     if args.plan is not None:
+        if args.soak_eight or args.demand_one or args.demand_manual:
+            raise ContinuousCanaryRejected("profile selection requires root launch")
         return sh.main(["--plan",str(args.plan)])
     if args.launch is not None:
         if not args.accept_telemetry_pause:
             raise ContinuousCanaryRejected("explicit telemetry interruption approval required")
-        return launch(args.launch, profile=("soak-eight" if args.soak_eight
-                                            else "standard"))
-    if args.soak_eight:
+        if sum((args.soak_eight,args.demand_one,args.demand_manual)) > 1:
+            raise ContinuousCanaryRejected("only one immutable canary profile")
+        profile=("demand-manual" if args.demand_manual else
+                 ("demand-one" if args.demand_one else
+                 ("soak-eight" if args.soak_eight else "standard")))
+        return launch(args.launch, profile=profile)
+    if args.soak_eight or args.demand_one or args.demand_manual:
         raise ContinuousCanaryRejected("soak profile is chosen only by root launch")
     if os.geteuid() != 0 or not os.environ.get("INVOCATION_ID"):
         raise ContinuousCanaryRejected("only root systemd worker/recovery allowed")

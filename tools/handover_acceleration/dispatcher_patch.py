@@ -40,7 +40,8 @@ MQTT_EPOCH_PRECONNECT = """
                 if (settings.vs1protocol and settings.port_vitoconnect is None
                         and os.environ.get('OPTO_RESEARCH_DISPATCH_SHADOW') == '1'):
                     _auto_requested = (
-                        os.environ.get('OPTO_HYBRID_RUNTIME_AUTO') == 'fenced-readonly')
+                        os.environ.get('OPTO_HYBRID_RUNTIME_AUTO') in
+                        ('fenced-readonly', 'fenced-ondemand'))
                     if _auto_requested:
                         from handover_acceleration.ingress_epoch import IngressEpoch
                         from handover_acceleration.pending_refresh import install_before_mqtt_connect
@@ -60,6 +61,7 @@ _handover_dispatch_bridge = None
 _handover_runtime_gate = None  # passive unless strict auto enrollment
 _hybrid_ingress = None
 _hybrid_auto = None
+_hybrid_control = None  # optional root-only Unix socket, never serial IO
 
 def handover_legacy_or_shim(request, ser):
     if _handover_dispatch_bridge is None:
@@ -69,6 +71,8 @@ def handover_legacy_or_shim(request, ser):
     _result = _handover_dispatch_bridge.response_to_request(request, ser)
     if _handover_runtime_gate is not None:
         _handover_runtime_gate.observe_legacy_result(request, _result)
+    if _hybrid_auto is not None and hasattr(_hybrid_auto, 'observe_original_result'):
+        _hybrid_auto.observe_original_result(request, _result)
     return _result
 
 '''
@@ -116,20 +120,26 @@ SETUP = '''\n                # Optional transparent legacy-only diagnostic shim.
 
 
 AUTO_BOOT = '''
-                # Strict continuous READ-ONLY switch, disabled unless explicitly
-                # requested AND the five real external writers are enrolled.
-                if os.environ.get('OPTO_HYBRID_RUNTIME_AUTO') == 'fenced-readonly':
+                # Explicit shadow-only hybrid. A real demand is accepted only
+                # through this trusted owner API; arbitrary MQTT/TCP commands
+                # never become P300 FC03 or write operations.
+                _hybrid_mode = os.environ.get('OPTO_HYBRID_RUNTIME_AUTO')
+                if _hybrid_mode in ('fenced-readonly', 'fenced-ondemand'):
                     if not (settings.vs1protocol and settings.port_vitoconnect is None
                             and os.environ.get('OPTO_RESEARCH_DISPATCH_SHADOW') == '1'
                             and _hybrid_ingress is not None and mod_mqtt is not None):
                         raise SystemExit(76)
                     from handover_acceleration.runtime_enrollment import all_writers_attested
                     if not all_writers_attested():
-                        logger.error('hybrid AUTO refused: external writer enrollment absent')
+                        logger.error('hybrid runtime refused: writer enrollment absent')
                         raise SystemExit(76)
-                    from handover_acceleration.continuous_runtime import ContinuousReadonlyRuntime
+                    from handover_acceleration.continuous_runtime import (
+                        ContinuousReadonlyRuntime, OnDemandReadonlyRuntime)
                     global _hybrid_auto
-                    _hybrid_auto = ContinuousReadonlyRuntime(
+                    _hybrid_runtime_cls = (
+                        OnDemandReadonlyRuntime if _hybrid_mode == 'fenced-ondemand'
+                        else ContinuousReadonlyRuntime)
+                    _hybrid_auto = _hybrid_runtime_cls(
                         port=serOptolink,
                         legacy_dispatch=requests_util.response_to_request,
                         resume_vs1=vs12_adapter.reset_vs1sync,
@@ -144,7 +154,30 @@ AUTO_BOOT = '''
                             os.environ.get('INVOCATION_ID')
                             else 120.0))
                     _handover_runtime_gate = _hybrid_auto.gate
-                    logger.info('hybrid read-only automatic dispatcher admitted')
+                    if _hybrid_mode == 'fenced-ondemand':
+                        _selftest = os.environ.get('OPTO_HYBRID_DEMAND_SELFTEST')
+                        if _selftest is not None:
+                            if not (
+                                    _selftest == 'ram_0f20_32'
+                                    and os.environ.get('OPTO_HYBRID_CANARY_SESSION')
+                                    and os.environ.get('INVOCATION_ID')):
+                                logger.error('unreviewed on-demand selftest refused')
+                                raise SystemExit(76)
+                            from handover_acceleration.scheduler import ReadKind
+                            _hybrid_auto.submit_internal(
+                                ReadKind.P300_RAM_0F20_32, ttl_s=90.0)
+                    if _hybrid_mode == 'fenced-ondemand':
+                        _sock = os.environ.get('OPTO_HYBRID_DEMAND_SOCKET')
+                        if _sock is not None:
+                            from handover_acceleration.continuous_runtime import (
+                                DEMAND_SOCKET_PATH, LocalDemandControl)
+                            if _sock != str(DEMAND_SOCKET_PATH):
+                                logger.error('unapproved local demand socket path')
+                                raise SystemExit(76)
+                            global _hybrid_control
+                            _hybrid_control = LocalDemandControl(_hybrid_auto)
+                            _hybrid_control.start()
+                    logger.info('hybrid shadow runtime admitted ' + _hybrid_mode)
 '''
 
 LIVE_KEEPALIVE_ANCHOR = ('                        retcode,_,_ = vs12_adapter.'
@@ -152,17 +185,27 @@ LIVE_KEEPALIVE_ANCHOR = ('                        retcode,_,_ = vs12_adapter.'
 LIVE_KEEPALIVE_OBSERVE = (
     '\n                        if _hybrid_auto is not None:'
     '\n                            _hybrid_auto.note_keepalive(retcode)')
+CLEANUP_ANCHOR = '            close_everything()'
+CLEANUP_CONTROL = '''            if _hybrid_control is not None:
+                try:
+                    _hybrid_control.close()
+                except Exception:
+                    logger.exception('hybrid local control cleanup failed')
+'''
 AUTO_TICK_ANCHOR = '                # let cpu take a breath if there was nothing to do'
 AUTO_TICK = '''
                 # At most one finite read-only FC03 batch per cooldown.
                 # This runs on the same main serial thread BETWEEN VS1 frames.
+                if _hybrid_control is not None:
+                    _hybrid_control.poll()  # bounded local root-only RPC, no serial I/O
                 if _hybrid_auto is not None:
                     # Continuous normal polling updates last_vs1_comm and
                     # suppresses the separately scheduled KW keepalive.
                     # At each admission deadline explicitly query the REAL
                     # original VS1 identity instead of trusting a timer.
                     # One bounded read, same existing serial owner, no STX.
-                    if _hybrid_auto.clock() >= _hybrid_auto.next_due:
+                    if (_hybrid_auto.clock() >= _hybrid_auto.next_due and
+                            (not hasattr(_hybrid_auto, 'due') or _hybrid_auto.due())):
                         _id_rc, _id_addr, _id_data = vs12_adapter.read_datapoint_ext(
                             0xf8, 2, serOptolink)
                         _id_valid = (
@@ -173,6 +216,8 @@ AUTO_TICK = '''
                         if not _id_valid:
                             logger.warning('HYBRID_RUNTIME_VS1_IDENTITY_REJECTED')
                     _tick = _hybrid_auto.tick()
+                    if _hybrid_control is not None:
+                        _hybrid_control.note_outcome(_tick)
                     if (_tick.status == 'NOT_ADMITTED' and
                             os.environ.get('OPTO_HYBRID_CANARY_SESSION')):
                         logger.info('HYBRID_RUNTIME_REFUSAL ' + _tick.reason)
@@ -183,6 +228,11 @@ AUTO_TICK = '''
                                   'vs1_p06': _tick.result.p06_hex,
                                   'p300_fixed': _readings,
                                   'elapsed_ms': _tick.result.elapsed_ms}
+                        if getattr(_tick, 'replies', ()):
+                            _event['on_demand_raw'] = [
+                                {'sequence':r.sequence,'kind':r.kind,
+                                 'raw_hex':r.raw_hex,'origin':r.origin}
+                                for r in _tick.replies]
                         mod_mqtt.publish_smart(
                             settings.mqtt_topic + '/hybrid/readonly',
                             json.dumps(_event), retain=False)
@@ -213,7 +263,8 @@ def patch_dispatcher(source: str) -> str:
             or source.count(FORCED_READ_ANCHOR) != 1
             or source.count(TCP_SPECIAL_ANCHOR) != 1
             or source.count(LIVE_KEEPALIVE_ANCHOR) != 1
-            or source.count(AUTO_TICK_ANCHOR) != 1):
+            or source.count(AUTO_TICK_ANCHOR) != 1
+            or source.count(CLEANUP_ANCHOR) != 1):
         raise PatchRejected('upstream startup/import layout changed')
     # Keep direct Vitoconnect forwarding outside this scope.
     for mandatory in ('viconn_util.get_vicon_request()',
@@ -230,6 +281,7 @@ def patch_dispatcher(source: str) -> str:
     patched = patched.replace(LIVE_KEEPALIVE_ANCHOR,
                               LIVE_KEEPALIVE_ANCHOR+LIVE_KEEPALIVE_OBSERVE,1)
     patched = patched.replace(AUTO_TICK_ANCHOR,AUTO_TICK+AUTO_TICK_ANCHOR,1)
+    patched = patched.replace(CLEANUP_ANCHOR,CLEANUP_CONTROL+CLEANUP_ANCHOR,1)
     for old, _ in CALL_SITES:
         patched = patched.replace(old, old.replace('requests_util.response_to_request',
                                                     'handover_legacy_or_shim'))

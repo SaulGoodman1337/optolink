@@ -114,7 +114,9 @@ class InProcessDispatchBridge:
         self._legacy_since_bind = False
         self._ledger.invalidate_all()
 
-    def execute_maintenance(self, jobs: tuple[ReadJob, ...], budget: Budget) -> ExecutionResult:
+    def execute_maintenance(self, jobs: tuple[ReadJob, ...], budget: Budget, *,
+                            now_ms: float = 0.0,
+                            initial_p06_age_ms: float = 0.0) -> ExecutionResult:
         """One atomic preplanned phase; no MQTT or TCP maintenance entrypoint."""
         self._require_owner()
         if not self.allow_maintenance:
@@ -130,10 +132,13 @@ class InProcessDispatchBridge:
             raise BridgeRejected('typed, bounded phase plan required')
         # Validate all declared deadlines and GFA freshness BEFORE any EOT.
         # A rejected schedule must not disable the still-working VS1 service.
-        plan_phase_windows(jobs, budget)
+        plan_phase_windows(jobs, budget, now_ms=now_ms,
+                           initial_p06_age_ms=initial_p06_age_ms)
         self._active_call = True
         try:
-            result = execute_read_phases(manager, jobs, budget, ledger=self._ledger)
+            result = execute_read_phases(manager, jobs, budget, ledger=self._ledger,
+                                         now_ms=now_ms,
+                                         initial_p06_age_ms=initial_p06_age_ms)
             if manager.mode is not Mode.VS1_VERIFIED:
                 raise BridgeRejected('VS1 not verified at end of batch')
             # Adapter's legacy internal VS1 sync may be stale after an EOT.

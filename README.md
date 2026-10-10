@@ -66,6 +66,9 @@ ausschließlich ausdrücklich angeforderte, über Systemd
 Protokollwechsel und keine P300-Controller-Writes.
 Die Details stehen in
 [der Hybrid-Betriebsanleitung](docs/hybrid-protokollwechsel.md).
+Die gesonderte [Root-only-On-Demand-Diagnose](docs/wb2a-root-on-demand-api-2026-10-10.md)
+verwendet ausschließlich einen während des beaufsichtigten Shadow-Canarys
+vorhandenen lokalen Unix-Socket. Im regulären VS1-Betrieb bleibt sie deaktiviert.
 
 ## Umfang des Produktivzweigs
 
