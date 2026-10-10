@@ -83,6 +83,49 @@ class ManualCanaryTests(unittest.TestCase):
             with self.assertRaises(c.ContinuousCanaryRejected):
                 c._collect_events(self.session,33,profile="demand-manual")
 
+    def test_manual_canary_accepts_only_exact_fixed_single_read_kinds(self):
+        allowed={
+            'p300_identity':'20c2',
+            'p300_ram_0f20_32':'aa'*32,
+            'p300_ram_1c60_32':'bb'*32,
+            'p300_ram_1640_32':
+                '00000001b10a010110fe23d8fa01fb0122d10000000000000000000000000000',
+        }
+        for kind,raw in allowed.items():
+            case=json.loads(json.dumps(self.event))
+            case['p300_fixed']={kind:raw}
+            case['on_demand_raw'][0]['kind']=kind
+            case['on_demand_raw'][0]['raw_hex']=raw
+            line='HYBRID_RUNTIME_VERIFIED_SWITCH '+json.dumps(case)
+            with self.subTest(kind=kind),patch.object(c.subprocess,'run',
+                    return_value=subprocess.CompletedProcess([],0,line,'')):
+                events,_=c._collect_events(self.session,33,profile='demand-manual')
+                self.assertEqual(events,[case])
+                if kind != 'p300_ram_0f20_32':
+                    with self.assertRaises(c.ContinuousCanaryRejected):
+                        c._collect_events(self.session,33,profile='demand-one')
+
+    def test_manual_canary_rejects_fake_write_raw_length_and_multiple_reads(self):
+        variants=(
+            {'p300_fixed':{'p300_ram_1640_write':'aa'*32}},
+            {'p300_fixed':{'p300_ram_1640_32':'aa'*31}},
+            {'p300_fixed':{'p300_ram_1640_32':'aa'*33}},
+            {'p300_fixed':{'p300_ram_1640_32':'aa'*32,'p300_ram_0f20_32':'bb'*32}},
+            {'p300_fixed':{'p300_identity':'aa'*32}},
+        )
+        for change in variants:
+            case=json.loads(json.dumps(self.event))
+            case.update(change)
+            kind=next(iter(case['p300_fixed']))
+            case['on_demand_raw'][0]['kind']=kind
+            case['on_demand_raw'][0]['raw_hex']=case['p300_fixed'][kind]
+            line='HYBRID_RUNTIME_VERIFIED_SWITCH '+json.dumps(case)
+            with self.subTest(kind=kind,count=len(case['p300_fixed'])), \
+                    patch.object(c.subprocess,'run',
+                        return_value=subprocess.CompletedProcess([],0,line,'')):
+                with self.assertRaises(c.ContinuousCanaryRejected):
+                    c._collect_events(self.session,33,profile='demand-manual')
+
     def _worker(self, events):
         self.extra.unlink(missing_ok=True)
         def save(path,record):

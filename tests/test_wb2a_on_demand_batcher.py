@@ -24,7 +24,7 @@ class DemandBatchTests(unittest.TestCase):
                              max_queue_wait_ms=9000)
 
     def test_only_known_fixed_size_p300_reads_admitted(self):
-        self.assertEqual(len(P300_DEMAND_KINDS),3)
+        self.assertEqual(len(P300_DEMAND_KINDS),4)
         for kind in ReadKind:
             if kind in P300_DEMAND_KINDS:
                 self.assertEqual(self.q.submit(kind).state,TicketState.QUEUED)
@@ -34,6 +34,18 @@ class DemandBatchTests(unittest.TestCase):
         for invalid in ("w;0x20a5", "fc03;0x2000", None, True):
             with self.subTest(invalid=invalid),self.assertRaises(SchedulingError):
                 self.q.submit(invalid)
+
+    def test_rx_candidate_never_scheduled_unless_explicitly_submitted(self):
+        self.assertIsNone(self.q.select(self.budget,initial_p06_age_ms=0))
+        t=self.q.submit(ReadKind.P300_RAM_1640_32)
+        planned=self.q.select(self.budget,initial_p06_age_ms=0)
+        self.assertEqual(planned.tickets,(t,))
+        self.assertEqual([j.kind for j in planned.jobs],[ReadKind.P300_RAM_1640_32])
+        self.assertEqual(planned.phase_plan.p300_windows,1)
+        self.assertEqual(planned.phase_plan.handovers,2)
+        self.assertEqual(t.state,TicketState.QUEUED)
+        self.assertTrue(self.q.cancel(t))
+        self.assertEqual(self.q.pending_count(),0)
 
     def test_coalesces_duplicate_reads_in_one_simulated_roundtrip(self):
         a=self.q.submit(ReadKind.P300_RAM_0F20_32)

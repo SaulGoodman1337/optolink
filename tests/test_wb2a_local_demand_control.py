@@ -324,6 +324,19 @@ class LocalControlTests(unittest.TestCase):
         self.assertEqual(self.runtime.demands.pending_count(),2)
         self.assertEqual(self.fixture.port.writes,[])
 
+    def test_explicit_1640_rx_diagnostic_is_root_socket_queue_only(self):
+        req=self.request(self.payload(kind='p300_ram_1640_32'))
+        self.assertTrue(req['ok'])
+        self.assertEqual(req['kind'],'p300_ram_1640_32')
+        self.assertEqual(self.runtime.demands.pending_count(),1)
+        self.assertEqual(self.fixture.port.writes,[])
+        for bad_kind in ('p300_ram_1642_32','p300_fc04_1640_32',
+                         'p300_ram_1640_write'):
+            rejected=self.request(self.payload(kind=bad_kind,request_id=self.b))
+            self.assertFalse(rejected['ok'])
+            self.assertEqual(self.runtime.demands.pending_count(),1)
+        self.assertEqual(self.fixture.port.writes,[])
+
     def test_duplicate_socket_bind_must_not_unlink_original_owner(self):
         self.control.start()
         self.addCleanup(self.control.close)

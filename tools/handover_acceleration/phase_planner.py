@@ -1,8 +1,8 @@
 """Offline cost-aware, dependency-constrained VS1/P300 phase planner.
 
 This is NOT a serial executor. It never opens ports or changes a boiler.
-The only available P300 operations are verified identity and two previously
-researched, fixed-size FC03 diagnostic reads. Arbitrary RAM and writes are blocked.
+The only available P300 operations are verified identity and explicitly
+reviewed, fixed-size FC03 diagnostic reads. Arbitrary RAM and writes are blocked.
 
 All timings are caller-supplied engineering budgets, NOT guaranteed upper
 bounds, since the WB2A firmware response has no proven maximum latency.

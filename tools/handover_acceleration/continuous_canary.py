@@ -140,18 +140,25 @@ def _collect_events(session: Path, start_epoch: int, *,
             raise ContinuousCanaryRejected("invalid VS1 readback after live P300")
         raw_reads = event.get("p300_fixed")
         if profile in ("demand-one", "demand-manual"):
-            expected_kind = "p300_ram_0f20_32"
+            # Startup selftest stays pinned to 0F20. Only the explicitly
+            # operator-driven manual canary may accept other fixed reads.
+            allowed = ({"p300_ram_0f20_32": 64} if profile == "demand-one"
+                       else {"p300_identity": 4,
+                             "p300_ram_0f20_32": 64,
+                             "p300_ram_1c60_32": 64,
+                             "p300_ram_1640_32": 64})
             replies = event.get("on_demand_raw")
-            if (not isinstance(raw_reads,dict)
-                    or set(raw_reads) != {expected_kind}
-                    or not isinstance(raw_reads[expected_kind],str)
-                    or not re.fullmatch(r"[0-9a-f]{64}",raw_reads[expected_kind])
+            if not isinstance(raw_reads, dict) or len(raw_reads) != 1:
+                raise ContinuousCanaryRejected("live demand evidence absent or mismatched")
+            kind, value = next(iter(raw_reads.items()))
+            if (kind not in allowed or type(value) is not str
+                    or re.fullmatch(r"[0-9a-f]{"+str(allowed[kind])+r"}",value) is None
                     or not isinstance(replies,list) or len(replies) != 1
                     or not isinstance(replies[0],dict)
                     or type(replies[0].get("sequence")) is not int
                     or replies[0]["sequence"] < 1
-                    or replies[0].get("kind") != expected_kind
-                    or replies[0].get("raw_hex") != raw_reads[expected_kind]
+                    or replies[0].get("kind") != kind
+                    or replies[0].get("raw_hex") != value
                     or replies[0].get("origin") !=
                        "P300_RAW_DIAGNOSTIC_NOT_ACTUAL_RPM"):
                 raise ContinuousCanaryRejected("live demand evidence absent or mismatched")

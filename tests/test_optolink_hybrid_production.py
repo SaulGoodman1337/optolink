@@ -103,7 +103,8 @@ class HybridProductionTests(unittest.TestCase):
                "docs/optolink-maintenance-api.md",
                "docs/wb2a-on-demand-p300-design-2026-10-10.md",
                "docs/wb2a-on-demand-canary-2026-10-10.md",
-               "docs/wb2a-root-on-demand-api-2026-10-10.md")
+               "docs/wb2a-root-on-demand-api-2026-10-10.md",
+               "docs/wb2a-vitotrol-rpm-next-phase-2026-10-10.md")
         for name in names:
             path=ROOT/name
             text=path.read_text()

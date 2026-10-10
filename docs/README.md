@@ -9,6 +9,14 @@ Dieser Ordner enthält die Betriebs- und Entwicklerdokumentation für den produk
 | [architecture.md](architecture.md) | Als Erstes: Komponenten, Datenfluss, Dienste und Sicherheitsgrenzen |
 | [hybrid-protokollwechsel.md](hybrid-protokollwechsel.md) | Optionaler VS1/P300-Lesetest, Verifikation, Rückfallroutine und Sperrmechanismen |
 | [wb2a-root-on-demand-api-2026-10-10.md](wb2a-root-on-demand-api-2026-10-10.md) | Nur Root: authentifizierter lokaler On-Demand-P300-Request, Rückgabe, TTL, Berechtigungsgrenze und C3-Hardwarecanary |
+| [wb2a-vitotrol-rpm-next-phase-2026-10-10.md](wb2a-vitotrol-rpm-next-phase-2026-10-10.md) | Separater Entwicklungsbranch: Vitotrol-KM-Bus-Offline-Simulator, passive Vier-Tage-VS1-RPM-Messung und Beweisgrenzen |
+| [wb2a-vitotrol-original-reference-2026-10-10.md](wb2a-vitotrol-original-reference-2026-10-10.md) | Research: 448 CRC-gueltige Original-Vitotrol-300-TX-Frames, Quellvergleich und Offline-Audit |
+| [wb2a-vitotrol-optolink-rx-2026-10-10.md](wb2a-vitotrol-optolink-rx-2026-10-10.md) | Optolink-only RX-Forschung: 0x1642-Kandidatenpuffer aus 374 historischen P300-RAM-Samples, sicherer fester Read-only-Diagnosepfad |
+| [wb2a-vitotrol-optolink-rx-context-2026-10-10.md](wb2a-vitotrol-optolink-rx-context-2026-10-10.md) | Byte- und Zeitkontext des 0x1642-RX-Kandidaten, 79 Voll-RAM- und 295 Deep-Proben, nichtatomare Grenzen und 0 Klasse-11-Treffer |
+| [wb2a-vitotrol-optolink-emulator-profile-2026-10-10.md](wb2a-vitotrol-optolink-emulator-profile-2026-10-10.md) | Optolink-only Original-V300-Emulatorprofil: 420/448 Original-TX-Frames offline rekonstruierbar, 28 BF15 opaque und RAM-Xref-Audit |
+| [wb2a-vitotrol-acceptance-offline-2026-10-10.md](wb2a-vitotrol-acceptance-offline-2026-10-10.md) | Optolink-only Vitotrol-Hardwareabnahme: synthetische BC-/Rollback- und Temperatur-Regressionen, keine Freigabe fuer Live-Controller |
+| [wb2a-vitotrol-b0-real-canary-2026-10-10.md](wb2a-vitotrol-b0-real-canary-2026-10-10.md) | Echter, begrenzter Optolink-B0:3-Hardwarecanary mit zwei unabhängig bestätigten Rückfallwegen und unveränderter Fernbedienungskennung |
+| [wb2a-vitotrol-vitosoft-profile-audit-2026-10-10.md](wb2a-vitotrol-vitosoft-profile-audit-2026-10-10.md) | SHA-gepruefte statische VitoSoft-Auswertung: 581 exakte VDensHO1-Events, 22 RPCs, kein katalogisierter KM-Bus-RX-Inject-Dienst |
 | [operations.md](operations.md) | Beim Betrieb: Update, Status, Logs, Clock-Sync, Fehlerdiagnose |
 | [home-assistant.md](home-assistant.md) | Bei HA-/MQTT-/Dashboard-Änderungen |
 | [anlagenschema.md](anlagenschema.md) | WB2A-Anlagenschema, Hydrauliktopologie und dokumentierte Schreibwerte 00/52/53/54/5B |
