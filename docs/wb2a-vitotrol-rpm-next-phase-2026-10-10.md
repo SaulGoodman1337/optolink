@@ -312,3 +312,7 @@ passende `0x1642`-Zeichenkette im globalen Eventbestand gehoert
 zum fremden Alias `WPR_Heizwaerme03` und ist kein RX-Pufferbeweis.
 Die 20C2-Firmware selbst bleibt unvollstaendig verstanden; aus dem
 negativen Hostkatalogbefund folgt **kein** ROM-Ausschluss.
+
+## 10. Echter kurzer Optolink-B0:3-Canary am 10.10.2026
+
+Auf ausdrückliche Nutzerfreigabe wurde am produktiven Regler einmalig `0x27B0=03` gesetzt, gelesen, `0x0A5C=00000000` und `0x089C=03` beobachtet und innerhalb von rund 15 Sekunden auf die Baseline `0x27B0=00` zurückgestellt. Ein zuvor gestarteter eigenständiger systemd-Rückfall-Service bestätigte später zusätzlich `B0=00` (Exit 0). Es gab keine aktuelle BC-Störung, keinen neuen P300-Portowner und keine Unterbrechung von VS1 oder RPM-v2. **Die Vitotrol ist damit nicht emuliert**. Details unter [B0-Live-Canary](wb2a-vitotrol-b0-real-canary-2026-10-10.md). Weitere nächtliche Versuche bleiben offline.
