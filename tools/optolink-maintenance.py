@@ -1,5 +1,10 @@
 #!/opt/optolink/venv/bin/python
-"""Guarded CLI wrapper for the shared Optolink maintenance core."""
+"""Human-facing CLI for the shared guarded maintenance core.
+
+This file contains argument parsing and presentation only. Controller addresses,
+confirmation requirements, locking, verification and rollback live in
+optolink_maintenance_core.py so the CLI and MQTT API cannot drift apart.
+"""
 
 from __future__ import annotations
 

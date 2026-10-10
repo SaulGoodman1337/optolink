@@ -1,4 +1,13 @@
 #!/opt/optolink/venv/bin/python
+"""Small diagnostic client for the running Optolink-Splitter.
+
+The tool deliberately talks through MQTT instead of opening the serial adapter.
+It is useful for targeted reads and controlled troubleshooting, but it is not a
+replacement for the guarded production writers (schedule manager, maintenance
+core, Party emulator and clock sync). Raw/write commands issued here have no
+automatic rollback unless the selected subcommand implements one explicitly.
+"""
+
 import argparse
 import re
 import sys

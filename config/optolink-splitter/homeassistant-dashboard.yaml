@@ -1,3 +1,21 @@
+# Production Lovelace dashboard for the WB2A/VDensHO1 profile.
+#
+# This file is the promoted, tested dashboard baseline. UI experiments continue
+# in homeassistant-dashboard-dev.yaml and are only copied here after explicit
+# approval.
+#
+# Required HACS dependency:
+# - Layout Card (thomasloven/lovelace-layout-card)
+#
+
+# This file is presentation only. Controller addresses and the authoritative
+# Home Assistant entity definitions live in
+# vdensho1-20c2-wb2a-homeassistant.py. Complex write paths (schedules,
+# maintenance, Party and clock sync) are implemented by their guarded helper
+# services, not by JavaScript in this dashboard.
+#
+# See docs/home-assistant.md for entity conventions and required HACS cards.
+
 button_card_templates:
   diag_status:
     section_mode: true
@@ -694,6 +712,329 @@ button_card_templates:
 
 
 
+  thermostat_room_slider:
+    # Room thermostat presentation for the production dashboard.
+    #
+    # Homematic/HmIP uses 30.5 C as the special ON setpoint (full-open
+    # behavior). Keep that separate from the normal temperature slider and
+    # expose it as an explicit action so the semantics are visible to users.
+    #
+    # The temperature control itself deliberately uses Home Assistant's native
+    # target-temperature tile feature. Besides reducing custom dependencies,
+    # its touch handling prevents a horizontal slider drag from becoming a
+    # swipe to the neighbouring dashboard view on mobile.
+    #
+    # The dashboard repository does not know the user's climate entity IDs for
+    # every room. Instead of guessing them, resolve the climate entity from the
+    # Home Assistant entity registry: the valve-opening sensor and its climate
+    # entity normally belong to the same device. A normalized friendly-name
+    # lookup is only used as a fallback.
+    variables:
+      room_name: Raum
+      room_search: ""
+      valve_sensor: ""
+      current_sensor: ""
+      target_sensor: ""
+      climate_fallback: ""
+      climate_entity: |
+        [[[
+          const registry = hass.entities || {};
+          const source = variables.valve_sensor;
+          const deviceId = registry[source]?.device_id;
+
+          if (deviceId) {
+            const byDevice = Object.values(registry).find((entry) =>
+              entry?.entity_id?.startsWith('climate.') &&
+              entry.device_id === deviceId
+            );
+            if (byDevice?.entity_id) return byDevice.entity_id;
+          }
+
+          if (
+            variables.climate_fallback &&
+            states[variables.climate_fallback]
+          ) {
+            return variables.climate_fallback;
+          }
+
+          const normalize = (value) =>
+            String(value || '')
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, ' ')
+              .trim();
+
+          const needle = normalize(variables.room_search || variables.room_name);
+          if (needle) {
+            const byName = Object.keys(states).find((entityId) => {
+              if (!entityId.startsWith('climate.')) return false;
+              const friendly = normalize(
+                states[entityId]?.attributes?.friendly_name || entityId
+              );
+              return friendly.includes(needle);
+            });
+            if (byName) return byName;
+          }
+
+          // Deliberately non-existent and therefore non-dangerous. The parent
+          // card hides the slider and displays a diagnostic hint instead.
+          return 'climate.__optolink_missing__';
+        ]]]
+    entity: |
+      [[[
+        return variables.valve_sensor;
+      ]]]
+    name: |
+      [[[
+        return variables.room_name;
+      ]]]
+    icon: mdi:radiator
+    show_icon: true
+    show_name: true
+    show_state: false
+    show_label: false
+    show_ripple: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    styles:
+      card:
+        - border-radius: 16px
+        - border: 1px solid var(--divider-color)
+        - box-shadow: none
+        - padding: 10px 10px 8px
+        - background: var(--ha-card-background, var(--card-background-color))
+      grid:
+        - grid-template-areas: '"i n" "stats stats" "slider slider" "fullopen fullopen" "missing missing"'
+        - grid-template-columns: 36px minmax(0, 1fr)
+        - grid-template-rows: min-content min-content min-content min-content min-content
+        - column-gap: 8px
+        - row-gap: 7px
+      img_cell:
+        - width: 32px
+        - height: 32px
+        - justify-self: center
+        - align-self: center
+      icon:
+        - width: 25px
+        - color: |
+            [[[
+              const value = Number(states[variables.valve_sensor]?.state);
+              if (!Number.isFinite(value)) return 'var(--disabled-text-color)';
+              if (value >= 70) return 'var(--error-color)';
+              if (value >= 30) return 'var(--warning-color)';
+              if (value > 0) return 'var(--primary-color)';
+              return 'var(--state-inactive-color)';
+            ]]]
+      name:
+        - justify-self: start
+        - align-self: center
+        - color: var(--primary-text-color)
+        - font-size: 14px
+        - font-weight: 700
+      custom_fields:
+        stats:
+          - width: 100%
+        slider:
+          - width: 100%
+          - display: |
+              [[[
+                return variables.climate_entity === 'climate.__optolink_missing__'
+                  ? 'none'
+                  : 'block';
+              ]]]
+        fullopen:
+          - width: 100%
+          - display: |
+              [[[
+                return variables.climate_entity === 'climate.__optolink_missing__'
+                  ? 'none'
+                  : 'block';
+              ]]]
+        missing:
+          - display: |
+              [[[
+                return variables.climate_entity === 'climate.__optolink_missing__'
+                  ? 'block'
+                  : 'none';
+              ]]]
+          - color: var(--warning-color)
+          - font-size: 11px
+          - padding: 5px 3px 1px
+    custom_fields:
+      stats: |
+        [[[
+          const invalid = new Set(['', 'unknown', 'unavailable', 'none', 'null']);
+          const usable = (value) => {
+            if (value === undefined || value === null) return false;
+            return !invalid.has(String(value).trim().toLowerCase());
+          };
+          const numberText = (value, unit) => {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '—';
+            const digits = Math.abs(n % 1) > 0.001 ? 1 : 0;
+            return n.toLocaleString(undefined, {
+              minimumFractionDigits: digits,
+              maximumFractionDigits: 1,
+            }) + unit;
+          };
+
+          const valveState = states[variables.valve_sensor]?.state;
+          const climate = states[variables.climate_entity];
+
+          let current = variables.current_sensor
+            ? states[variables.current_sensor]?.state
+            : undefined;
+          if (!usable(current)) {
+            current = climate?.attributes?.current_temperature;
+          }
+
+          let target = variables.target_sensor
+            ? states[variables.target_sensor]?.state
+            : undefined;
+          if (!usable(target)) {
+            target = climate?.attributes?.temperature;
+          }
+
+          const valve = usable(valveState) ? numberText(valveState, ' %') : '—';
+          const currentText = usable(current) ? numberText(current, ' °C') : '—';
+          const targetNorm = String(target ?? '').trim().toLowerCase();
+          const targetNum = Number(target);
+          const targetText =
+            targetNorm === 'on' || (Number.isFinite(targetNum) && targetNum >= 30.5)
+              ? 'ON'
+              : usable(target)
+                ? numberText(target, ' °C')
+                : '—';
+
+          return html`
+            <div style="
+              display:grid;
+              grid-template-columns:repeat(3,minmax(0,1fr));
+              gap:6px;
+              width:100%;
+              padding:2px 0 1px;
+            ">
+              <div style="text-align:center">
+                <div style="font-size:9px;color:var(--secondary-text-color)">Ventil</div>
+                <div style="font-size:12px;font-weight:700;color:var(--primary-text-color)">${valve}</div>
+              </div>
+              <div style="text-align:center;border-left:1px solid var(--divider-color)">
+                <div style="font-size:9px;color:var(--secondary-text-color)">Ist</div>
+                <div style="font-size:12px;font-weight:700;color:var(--primary-text-color)">${currentText}</div>
+              </div>
+              <div style="text-align:center;border-left:1px solid var(--divider-color)">
+                <div style="font-size:9px;color:var(--secondary-text-color)">Soll</div>
+                <div style="font-size:12px;font-weight:700;color:var(--primary-text-color)">${targetText}</div>
+              </div>
+            </div>
+          `;
+        ]]]
+      slider:
+        card:
+          # Use Home Assistant's native target-temperature feature rather than
+          # a third-party horizontal slider. The native ha-control-slider owns
+          # the touch gesture (pan-y for a horizontal control), so dragging the
+          # thermostat should not propagate into dashboard view navigation.
+          type: tile
+          entity: |
+            [[[
+              return variables.climate_entity;
+            ]]]
+          name: Solltemperatur
+          icon: mdi:thermometer
+          hide_state: true
+          vertical: false
+          features_position: bottom
+          tap_action:
+            action: more-info
+          features:
+            - type: target-temperature
+          card_mod:
+            style: |
+              ha-card {
+                border: 0 !important;
+                box-shadow: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+                touch-action: pan-y;
+                overscroll-behavior-x: contain;
+              }
+      fullopen:
+        card:
+          type: custom:button-card
+          entity: |
+            [[[
+              return variables.climate_entity;
+            ]]]
+          icon: mdi:valve-open
+          name: |
+            [[[
+              const climate = states[variables.climate_entity];
+              const target = Number(climate?.attributes?.temperature);
+              return Number.isFinite(target) && target >= 30.5
+                ? 'ON · Voll geöffnet'
+                : 'ON · Voll auf (30,5 °C)';
+            ]]]
+          show_state: false
+          show_label: false
+          tap_action:
+            action: call-service
+            service: climate.set_temperature
+            service_data:
+              entity_id: |
+                [[[
+                  return variables.climate_entity;
+                ]]]
+              temperature: 30.5
+          hold_action:
+            action: more-info
+          styles:
+            card:
+              - border-radius: 12px
+              - border: 1px solid var(--divider-color)
+              - box-shadow: none
+              - min-height: 34px
+              - padding: 6px 10px
+              - background: |
+                  [[[
+                    const target = Number(
+                      states[variables.climate_entity]?.attributes?.temperature
+                    );
+                    return Number.isFinite(target) && target >= 30.5
+                      ? 'color-mix(in srgb, var(--success-color) 16%, var(--ha-card-background, var(--card-background-color)))'
+                      : 'color-mix(in srgb, var(--primary-color) 5%, var(--ha-card-background, var(--card-background-color)))';
+                  ]]]
+            grid:
+              - grid-template-areas: '"i n"'
+              - grid-template-columns: 24px minmax(0, 1fr)
+              - column-gap: 8px
+            img_cell:
+              - width: 24px
+              - height: 24px
+            icon:
+              - width: 20px
+              - color: |
+                  [[[
+                    const target = Number(
+                      states[variables.climate_entity]?.attributes?.temperature
+                    );
+                    return Number.isFinite(target) && target >= 30.5
+                      ? 'var(--success-color)'
+                      : 'var(--primary-color)';
+                  ]]]
+            name:
+              - justify-self: start
+              - font-size: 12px
+              - font-weight: 700
+              - color: var(--primary-text-color)
+      missing: |
+        [[[
+          return 'Keine Climate-Entity am Thermostatgerät gefunden';
+        ]]]
+
   schedule_axis:
     section_mode: true
     show_icon: false
@@ -1355,17 +1696,390 @@ views:
   - title: Heizung
     path: heizung
     icon: mdi:water-boiler
-    type: sections
-    max_columns: 4
-    sections:
-      - type: grid
-        column_span: 2
+    # Main view uses layout-card's CSS grid instead of Home Assistant Sections.
+    # The explicit breakpoints make the page deterministic across ultrawide,
+    # desktop/tablet and phone sizes. Content is capped at ~1800 px on very
+    # wide screens instead of stretching cards across the full viewport.
+    type: custom:grid-layout
+    layout:
+      margin: 8px 12px 18px
+      padding: 0
+      grid-gap: 12px
+      grid-template-columns: minmax(520px, 900px) minmax(520px, 900px)
+      grid-template-areas: |
+        "header header"
+        "status status"
+        "controls rooms"
+      place-content: start center
+      mediaquery:
+        "(max-width: 700px)":
+          margin: 4px 6px 12px
+          grid-gap: 8px
+          grid-template-columns: minmax(0, 1fr)
+          grid-template-areas: |
+            "header"
+            "status"
+            "controls"
+            "rooms"
+        "(max-width: 1200px)":
+          margin: 6px 10px 14px
+          grid-gap: 10px
+          grid-template-columns: minmax(0, 1fr)
+          grid-template-areas: |
+            "header"
+            "status"
+            "controls"
+            "rooms"
+    cards:
+      # ================================================================
+      # Header
+      # ================================================================
+      - type: vertical-stack
+        view_layout:
+          grid-area: header
         cards:
+          # Active WB2A fault banner.
+          # Deliberately triggered only by current/live diagnostics; the fault
+          # history must never keep this banner visible after a fault is gone.
+          - type: conditional
+            conditions:
+              - condition: or
+                conditions:
+                  - condition: state
+                    entity: sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode
+                    state_not:
+                      - "Kein Fehler"
+                      - "unbekannt"
+                      - "unknown"
+                      - "unavailable"
+                  - condition: state
+                    entity: sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus
+                    state_not:
+                      - "OK"
+                      - "unknown"
+                      - "unavailable"
+                  - condition: state
+                    entity: binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt
+                    state: "on"
+                  - condition: state
+                    entity: binary_sensor.vitodens_200_wb2a_cfdm_fehler
+                    state: "on"
+                  - condition: state
+                    entity: binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre
+                    state: "on"
+                  - condition: state
+                    entity: sensor.vitodens_200_wb2a_km_fehler_pumpe_a1
+                    state_not:
+                      - "OK"
+                      - "unknown"
+                      - "unavailable"
+                  - condition: state
+                    entity: sensor.vitodens_200_wb2a_km_fehler_interne_pumpe
+                    state_not:
+                      - "OK"
+                      - "unknown"
+                      - "unavailable"
+            card:
+              type: custom:mushroom-template-card
+              primary: >-
+                {% set raw = states('sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode') %}
+                {% set code = raw | replace('0x', '') | upper if raw.startswith('0x') else '' %}
+                {% if not code %}
+                  {% set gfa = states('sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus') %}
+                  {% if gfa.startswith('Code ') %}
+                    {% set gv = gfa.split(' ')[1] | int(-1) %}
+                    {% if gv >= 0 %}{% set code = '%02X' | format(gv) %}{% endif %}
+                  {% endif %}
+                {% endif %}
+                {% set m = {
+                  '0F':'Wartung fällig',
+                  '10':'Außentemperatursensor: Kurzschluss',
+                  '18':'Außentemperatursensor: Unterbrechung',
+                  '20':'Vorlauftemperatursensor hydraulische Weiche: Kurzschluss',
+                  '28':'Vorlauftemperatursensor hydraulische Weiche: Unterbrechung',
+                  '30':'Kesseltemperatursensor: Kurzschluss',
+                  '38':'Kesseltemperatursensor: Unterbrechung',
+                  '40':'Vorlauftemperatursensor Heizkreis M2: Kurzschluss',
+                  '48':'Vorlauftemperatursensor Heizkreis M2: Unterbrechung',
+                  '50':'Speicher-/Komfortsensor: Kurzschluss',
+                  '51':'Warmwasser-Auslauftemperatursensor: Kurzschluss',
+                  '58':'Speicher-/Komfortsensor: Unterbrechung',
+                  '59':'Warmwasser-Auslauftemperatursensor: Unterbrechung',
+                  '92':'Solarkollektorsensor S1: Kurzschluss',
+                  '93':'Solar-Speichersensor S2: Kurzschluss',
+                  '94':'Solarsensor S3: Kurzschluss',
+                  '9A':'Solarkollektorsensor S1: Unterbrechung',
+                  '9B':'Solar-Speichersensor S2: Unterbrechung',
+                  '9C':'Solarsensor S3: Unterbrechung',
+                  '9F':'Fehler der Solarregelung',
+                  'A7':'Bedienteil defekt',
+                  'B0':'Abgastemperatursensor: Kurzschluss',
+                  'B1':'Kommunikationsfehler internes Bedienteil',
+                  'B4':'Interner Regelungsfehler',
+                  'B5':'Interner Regelungsfehler',
+                  'B7':'Kesselcodierstecker fehlt, falsch oder defekt',
+                  'B8':'Abgastemperatursensor: Unterbrechung',
+                  'BA':'Kommunikationsfehler Erweiterung Heizkreis M2',
+                  'BC':'Kommunikationsfehler Vitotrol Heizkreis A1',
+                  'BD':'Kommunikationsfehler Vitotrol Heizkreis M2',
+                  'BE':'Fehlerhafte Vitotrol-Codierung',
+                  'BF':'Falsches LON-Kommunikationsmodul',
+                  'C2':'KM-BUS-Unterbrechung zur Solarregelung',
+                  'C6':'Kommunikationsfehler externe Heizkreispumpe M2',
+                  'C7':'Kommunikationsfehler externe Heizkreispumpe A1',
+                  'CD':'Kommunikationsfehler Vitocom 100',
+                  'CE':'Kommunikationsfehler externe Erweiterung',
+                  'CF':'Kommunikationsfehler LON-Modul',
+                  'DA':'Raumtemperatursensor A1: Kurzschluss',
+                  'DB':'Raumtemperatursensor M2: Kurzschluss',
+                  'DD':'Raumtemperatursensor A1: Unterbrechung',
+                  'DE':'Raumtemperatursensor M2: Unterbrechung',
+                  'E4':'Fehler der Versorgungsspannung',
+                  'E5':'Fehler des Flammenverstärkers',
+                  'E6':'Abgas-/Zuluftsystem blockiert',
+                  'F0':'Interner Regelungsfehler',
+                  'F1':'Abgastemperaturbegrenzer ausgelöst',
+                  'F2':'Temperaturbegrenzer ausgelöst',
+                  'F3':'Flammensignal bereits beim Brennerstart vorhanden',
+                  'F4':'Kein Flammensignal nach Brennerstart',
+                  'F5':'Luftdruckwächter öffnet beim Brennerstart nicht',
+                  'F7':'Luftdruckwächter fehlerhaft',
+                  'F8':'Brennstoffventil schließt verzögert',
+                  'F9':'Gebläsedrehzahl beim Brennerstart zu niedrig',
+                  'FA':'Gebläsestillstand wird nicht erreicht',
+                  'FD':'Fehler Gasfeuerungsautomat',
+                  'FE':'EMV-Störung oder Fehler der Grundplatine',
+                  'FF':'EMV-Störung oder interner Regelungsfehler'
+                } %}
+                {% if code %}
+                  {% if code == '0F' %}Wartung {{ code }} · {{ m.get(code, 'Hinweis') }}
+                  {% else %}Störung {{ code }} · {{ m.get(code, 'Unbekannter WB2A-Fehlercode') }}{% endif %}
+                {% elif is_state('binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt', 'on') %}
+                  Störung · Feuerungsautomat verriegelt
+                {% elif is_state('binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre', 'on') %}
+                  Störung · Regelung hart gesperrt
+                {% elif is_state('binary_sensor.vitodens_200_wb2a_cfdm_fehler', 'on') %}
+                  Störung · Interner Regelungsfehler
+                {% elif states('sensor.vitodens_200_wb2a_km_fehler_pumpe_a1') not in ['OK','unknown','unavailable'] %}
+                  Störung · Kommunikation Heizkreispumpe
+                {% elif states('sensor.vitodens_200_wb2a_km_fehler_interne_pumpe') not in ['OK','unknown','unavailable'] %}
+                  Störung · Kommunikation interne Pumpe
+                {% else %}
+                  Störung an der Vitodens
+                {% endif %}
+              secondary: >-
+                Aktive Störung erkannt · Tippen für Ursache und Handlungsempfehlung
+              icon: mdi:alert-octagon
+              icon_color: >-
+                {{ 'amber' if states('sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode') == '0x0F' else 'red' }}
+              multiline_secondary: true
+              fill_container: true
+              tap_action:
+                action: fire-dom-event
+                browser_mod:
+                  service: browser_mod.popup
+                  data:
+                    title: Vitodens 200-W WB2A · Störungsbehebung
+                    adaptive: true
+                    content:
+                      type: markdown
+                      content: |
+                        {% set raw = states('sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode') %}
+                        {% set code = raw | replace('0x', '') | upper if raw.startswith('0x') else '' %}
+                        {% if not code %}
+                          {% set gfa = states('sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus') %}
+                          {% if gfa.startswith('Code ') %}
+                            {% set gv = gfa.split(' ')[1] | int(-1) %}
+                            {% if gv >= 0 %}{% set code = '%02X' | format(gv) %}{% endif %}
+                          {% endif %}
+                        {% endif %}
+                        {% set title = {
+                          '0F':'Wartung fällig',
+                          '10':'Kurzschluss Außentemperatursensor',
+                          '18':'Unterbrechung Außentemperatursensor',
+                          '20':'Kurzschluss Vorlauftemperatursensor hydraulische Weiche',
+                          '28':'Unterbrechung Vorlauftemperatursensor hydraulische Weiche',
+                          '30':'Kurzschluss Kesseltemperatursensor',
+                          '38':'Unterbrechung Kesseltemperatursensor',
+                          '40':'Kurzschluss Vorlauftemperatursensor Heizkreis M2',
+                          '48':'Unterbrechung Vorlauftemperatursensor Heizkreis M2',
+                          '50':'Kurzschluss Speicher-/Komfortsensor',
+                          '51':'Kurzschluss Warmwasser-Auslauftemperatursensor',
+                          '58':'Unterbrechung Speicher-/Komfortsensor',
+                          '59':'Unterbrechung Warmwasser-Auslauftemperatursensor',
+                          '92':'Kurzschluss Solarkollektorsensor S1',
+                          '93':'Kurzschluss Solar-Speichersensor S2',
+                          '94':'Kurzschluss Solarsensor S3',
+                          '9A':'Unterbrechung Solarkollektorsensor S1',
+                          '9B':'Unterbrechung Solar-Speichersensor S2',
+                          '9C':'Unterbrechung Solarsensor S3',
+                          '9F':'Fehler Solarregelung',
+                          'A7':'Bedienteil defekt',
+                          'B0':'Kurzschluss Abgastemperatursensor',
+                          'B1':'Kommunikationsfehler internes Bedienteil',
+                          'B4':'Interner Regelungsfehler',
+                          'B5':'Interner Regelungsfehler',
+                          'B7':'Kesselcodierstecker fehlt, falsch oder defekt',
+                          'B8':'Unterbrechung Abgastemperatursensor',
+                          'BA':'Kommunikationsfehler Erweiterung Heizkreis M2',
+                          'BC':'Kommunikationsfehler Vitotrol Heizkreis A1',
+                          'BD':'Kommunikationsfehler Vitotrol Heizkreis M2',
+                          'BE':'Fehlerhafte Vitotrol-Codierung',
+                          'BF':'Falsches LON-Kommunikationsmodul',
+                          'C2':'KM-BUS-Unterbrechung zur Solarregelung',
+                          'C6':'Kommunikationsfehler externe Heizkreispumpe M2',
+                          'C7':'Kommunikationsfehler externe Heizkreispumpe A1',
+                          'CD':'Kommunikationsfehler Vitocom 100',
+                          'CE':'Kommunikationsfehler externe Erweiterung',
+                          'CF':'Kommunikationsfehler LON-Modul',
+                          'DA':'Kurzschluss Raumtemperatursensor A1',
+                          'DB':'Kurzschluss Raumtemperatursensor M2',
+                          'DD':'Unterbrechung Raumtemperatursensor A1',
+                          'DE':'Unterbrechung Raumtemperatursensor M2',
+                          'E4':'Fehler Versorgungsspannung',
+                          'E5':'Fehler Flammenverstärker',
+                          'E6':'Abgas-/Zuluftsystem blockiert',
+                          'F0':'Interner Regelungsfehler',
+                          'F1':'Abgastemperaturbegrenzer ausgelöst',
+                          'F2':'Temperaturbegrenzer ausgelöst',
+                          'F3':'Flammensignal bereits beim Brennerstart vorhanden',
+                          'F4':'Kein Flammensignal nach Brennerstart',
+                          'F5':'Luftdruckwächter öffnet beim Brennerstart nicht',
+                          'F7':'Luftdruckwächter fehlerhaft',
+                          'F8':'Brennstoffventil schließt verzögert',
+                          'F9':'Gebläsedrehzahl beim Brennerstart zu niedrig',
+                          'FA':'Gebläsestillstand wird nicht erreicht',
+                          'FD':'Fehler Gasfeuerungsautomat',
+                          'FE':'EMV-Störung oder Fehler der Grundplatine',
+                          'FF':'EMV-Störung oder interner Regelungsfehler'
+                        } %}
+                        {% set action = {
+                          '0F':'Wartung durch einen Fachbetrieb durchführen lassen. Nach abgeschlossener Wartung wird die Wartungsanzeige an der Regelung zurückgesetzt.',
+                          '10':'Außentemperatursensor und dessen Anschlussleitung durch einen Fachbetrieb prüfen lassen.',
+                          '18':'Außentemperatursensor und dessen Anschlussleitung durch einen Fachbetrieb auf Unterbrechung prüfen lassen.',
+                          '20':'Sensor an der hydraulischen Weiche und Verkabelung prüfen lassen.',
+                          '28':'Sensor an der hydraulischen Weiche und Verkabelung auf Unterbrechung prüfen lassen.',
+                          '30':'Kesseltemperatursensor und Verkabelung prüfen lassen. Der Brenner bleibt bei diesem Fehler blockiert.',
+                          '38':'Kesseltemperatursensor und Verkabelung auf Unterbrechung prüfen lassen. Der Brenner bleibt blockiert.',
+                          '40':'Vorlauftemperatursensor von Heizkreis M2 prüfen lassen.',
+                          '48':'Vorlauftemperatursensor von Heizkreis M2 und Verkabelung auf Unterbrechung prüfen lassen.',
+                          '50':'Speichertemperatur- bzw. Komfortsensor prüfen lassen. Warmwasserbereitung kann ausfallen.',
+                          '51':'Warmwasser-Auslauftemperatursensor prüfen lassen.',
+                          '58':'Speichertemperatur- bzw. Komfortsensor und Anschlussleitung auf Unterbrechung prüfen lassen.',
+                          '59':'Warmwasser-Auslauftemperatursensor und Anschlussleitung auf Unterbrechung prüfen lassen.',
+                          '92':'Kollektortemperatursensor S1 an der Solarregelung prüfen lassen.',
+                          '93':'Speichertemperatursensor S2 an der Solarregelung prüfen lassen.',
+                          '94':'Temperatursensor S3 an der Solarregelung prüfen lassen.',
+                          '9A':'Kollektortemperatursensor S1 und Leitung auf Unterbrechung prüfen lassen.',
+                          '9B':'Speichertemperatursensor S2 und Leitung auf Unterbrechung prüfen lassen.',
+                          '9C':'Temperatursensor S3 und Leitung auf Unterbrechung prüfen lassen.',
+                          '9F':'Solarregelung anhand ihrer eigenen Serviceunterlagen prüfen lassen.',
+                          'A7':'Bedienteil ist laut Serviceanleitung defekt und muss durch einen Fachbetrieb geprüft bzw. ersetzt werden.',
+                          'B0':'Abgastemperatursensor und Anschlussleitung prüfen lassen.',
+                          'B1':'Interne Bedieneinheit und Anschlüsse prüfen lassen; bei fortbestehendem Fehler Bedieneinheit prüfen/ersetzen lassen.',
+                          'B4':'Interner Regelungsfehler. Regelung durch einen Fachbetrieb prüfen lassen.',
+                          'B5':'Interner Regelungsfehler. Regelung durch einen Fachbetrieb prüfen lassen.',
+                          'B7':'Sitz und Typ des Kesselcodiersteckers durch einen Fachbetrieb prüfen lassen; bei Defekt ersetzen.',
+                          'B8':'Abgastemperatursensor und Anschlussleitung auf Unterbrechung prüfen lassen.',
+                          'BA':'Erweiterungssatz Heizkreis M2, dessen Anschlüsse und Codierung prüfen lassen.',
+                          'BC':'Vitotrol A1: Anschlüsse, Leitung, Codierung A0 und Codierschalter prüfen lassen.',
+                          'BD':'Vitotrol M2: Anschlüsse, Leitung, Codierung A0 und Codierschalter prüfen lassen.',
+                          'BE':'Codierschalter der Vitotrol-Fernbedienung prüfen lassen.',
+                          'BF':'LON-Kommunikationsmodul prüfen und gegebenenfalls austauschen lassen.',
+                          'C2':'KM-BUS-Verbindung zur Solarregelung sowie Codierung 54 prüfen lassen.',
+                          'C6':'Externe drehzahlgeregelte Pumpe M2, Codierung E5 und Pumpencodierschalter prüfen lassen.',
+                          'C7':'Externe drehzahlgeregelte Pumpe A1, Codierung E5 und Pumpencodierschalter prüfen lassen.',
+                          'CD':'Vitocom-100-Anschluss, Gerät und Codierung 95 prüfen lassen.',
+                          'CE':'Externe Erweiterung, Anschlüsse und Codierung 2E prüfen lassen.',
+                          'CF':'LON-Kommunikationsmodul prüfen bzw. austauschen lassen.',
+                          'DA':'Raumtemperatursensor Heizkreis A1 prüfen lassen.',
+                          'DB':'Raumtemperatursensor Heizkreis M2 prüfen lassen.',
+                          'DD':'Raumtemperatursensor A1 sowie Codierschalterstellung der Fernbedienung prüfen lassen.',
+                          'DE':'Raumtemperatursensor M2 sowie Codierschalterstellung der Fernbedienung prüfen lassen.',
+                          'E4':'Versorgung/Regelung durch einen Fachbetrieb prüfen lassen.',
+                          'E5':'Flammenverstärker bzw. Regelung durch einen Fachbetrieb prüfen lassen.',
+                          'E6':'Abgas-/Zuluftweg und Luftdruckwächter prüfen lassen. Nicht weiter betreiben, wenn Abgasgeruch wahrnehmbar ist.',
+                          'F0':'Interner Fehler der Regelung. Fachbetrieb erforderlich.',
+                          'F1':'Anlagendruck am Manometer prüfen. Nach Abkühlen Abgasanlage/Begrenzer durch einen Fachbetrieb prüfen lassen.',
+                          'F2':'Anlagendruck prüfen. Umwälzpumpe, Entlüftung und Temperaturbegrenzer durch einen Fachbetrieb prüfen lassen.',
+                          'F3':'Ionisationselektrode und deren Leitung durch einen Fachbetrieb prüfen lassen.',
+                          'F4':'Fachbetrieb: Ionisation, Gasdruck, Gaskombiregler, Zündung/Zündelektroden und Kondensatablauf prüfen.',
+                          'F5':'Fachbetrieb: Luftdruckwächter, Gebläse, Verkabelung, Versorgung und Gebläseansteuerung prüfen.',
+                          'F7':'Luftdruckwächter und Verbindungsleitung durch einen Fachbetrieb prüfen lassen.',
+                          'F8':'Gaskombiregler und dessen Ansteuerwege durch einen Fachbetrieb prüfen lassen.',
+                          'F9':'Fachbetrieb: Gebläse, Verbindungsleitungen, Spannungsversorgung und Gebläseansteuerung prüfen.',
+                          'FA':'Fachbetrieb: Gebläse, Leitungen und Gebläseansteuerung prüfen.',
+                          'FD':'Fachbetrieb: Zündelektroden/Leitungen und mögliche starke EMV-Störquellen prüfen; bei fortbestehendem Fehler Regelung prüfen.',
+                          'FE':'Gerät einmal neu starten lassen; bleibt die Störung bestehen, Regelung/Grundplatine durch einen Fachbetrieb prüfen lassen.',
+                          'FF':'Gerät einmal neu starten lassen; bleibt die Störung bestehen, Regelung durch einen Fachbetrieb prüfen lassen.'
+                        } %}
+
+                        **Funktion:** Zeigt ausschließlich aktuell aktive WB2A-Störungs- und Diagnosezustände an und ordnet einen vorhandenen Systemcode der dokumentierten Störungsursache zu.
+
+                        ## Aktive Meldung
+
+                        {% if code %}
+                        **Code:** `{{ code }}`  
+                        **Klartext:** {{ title.get(code, 'Unbekannter WB2A-Fehlercode') }}
+                        {% else %}
+                        **Kein eindeutiger System-Störungscode verfügbar.** Mindestens ein interner Live-Fehlerstatus ist aktiv.
+                        {% endif %}
+
+                        **GFA verriegelt:** {{ 'Ja' if is_state('binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt', 'on') else 'Nein' }}  
+                        **GFA-Status:** {{ states('sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus') }}  
+                        **CFDM Fehler:** {{ 'Ja' if is_state('binary_sensor.vitodens_200_wb2a_cfdm_fehler', 'on') else 'Nein' }}  
+                        **CFDM harte Sperre:** {{ 'Ja' if is_state('binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre', 'on') else 'Nein' }}  
+                        **KM Heizkreispumpe:** {{ states('sensor.vitodens_200_wb2a_km_fehler_pumpe_a1') }}  
+                        **KM interne Pumpe:** {{ states('sensor.vitodens_200_wb2a_km_fehler_interne_pumpe') }}
+
+                        ## Was ist zu tun?
+
+                        {% if code %}
+                        {{ action.get(code, 'Der Code ist in der hier hinterlegten WB2A-Tabelle nicht eindeutig beschrieben. Diagnosewerte sichern und einen Fachbetrieb mit dem angezeigten Code beauftragen.') }}
+                        {% elif is_state('binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt', 'on') %}
+                        Der Feuerungsautomat ist verriegelt. Nicht wiederholt entriegeln. Aktive Diagnosewerte und Fehlercode notieren; bei Gas- oder Abgasgeruch Anlage nicht weiter bedienen und den Fachbetrieb verständigen.
+                        {% elif is_state('binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre', 'on') %}
+                        Die interne Regelung meldet eine harte Sperre. Diagnosewerte sichern und die Anlage durch einen Fachbetrieb prüfen lassen.
+                        {% elif is_state('binary_sensor.vitodens_200_wb2a_cfdm_fehler', 'on') %}
+                        Die interne Regelung meldet einen Fehler ohne eindeutigen Systemcode. Diagnosewerte sichern und Fachbetrieb hinzuziehen.
+                        {% else %}
+                        Mindestens ein Pumpen-/Kommunikationsstatus meldet einen Fehler. Betroffene Verbindung bzw. Baugruppe anhand des oben genannten Live-Status durch einen Fachbetrieb prüfen lassen.
+                        {% endif %}
+
+                        ## Sicherheit
+
+                        Bei **Gasgeruch oder Abgasgeruch** keine Reset-Versuche durchführen. Gasabsperrhahn schließen, lüften, Zündquellen vermeiden und den zuständigen Fach-/Notdienst verständigen. Arbeiten an Gas-, Abgas- oder elektrischen Komponenten gehören in die Hände einer Fachkraft.
+
+                        **Codieradresse / Diagnoseobjekt:** keine einzelne Codieradresse; die Box kombiniert mehrere aktuelle Diagnoseobjekte.
+
+                        **Datenpunkte:** Alarmobjekt `0xA132`, GFA-Status `0x5738`, GFA-Verriegelung aus `0x55D3`, KM-Pumpenfehler `0x0A33` / `0x0A35`, CFDM-Status `0xA395`.
+
+                        **Quelle:** Viessmann Vitodens 200 Typ WB2A, Serviceanleitung 5681 573 (10/2006), Abschnitt *Störungsbehebung / Störungscodes*, Seiten 67–78.
+              card_mod:
+                style: |
+                  ha-card {
+                    border-radius: 16px;
+                    border: 1px solid color-mix(in srgb, var(--error-color) 65%, var(--divider-color));
+                    border-left: 6px solid var(--error-color);
+                    background: color-mix(in srgb, var(--error-color) 10%, var(--ha-card-background, var(--card-background-color)));
+                    box-shadow: 0 0 0 1px color-mix(in srgb, var(--error-color) 10%, transparent);
+                  }
+
           - type: heading
             heading: Vitodens 200-W WB2A
             heading_style: title
             icon: mdi:fire-circle
             badges:
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_systemzeit_anzeige
+                name: Therme
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_heizkreis_m1_betriebsart_aktuell
+                name: Betrieb
+                show_state: true
+                show_icon: false
               - type: entity
                 entity: binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt
                 name: Störung
@@ -1376,196 +2090,293 @@ views:
                   - condition: state
                     entity: binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt
                     state: "on"
-              - type: entity
-                entity: binary_sensor.vitodens_200_wb2a_brenner_flamme
-                name: Brenner
-                icon: mdi:gas-burner
-                show_state: true
-                show_icon: true
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_brenner_modulationsgrad
-                name: Leistung
-                icon: mdi:gauge
-                show_state: true
-                show_icon: true
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
-                name: Gebläse
-                icon: mdi:fan
-                show_state: true
-                show_icon: true
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_rkr_brennerzustand
-                name: RKR
-                icon: mdi:state-machine
-                show_state: true
-                show_icon: true
-              - type: entity
-                entity: binary_sensor.vitodens_200_wb2a_brenner_taktsperre_aktiv
-                name: Taktsperre
-                icon: mdi:timer-lock
-                show_state: true
-                show_icon: true
-                visibility:
-                  - condition: state
-                    entity: binary_sensor.vitodens_200_wb2a_brenner_taktsperre_aktiv
-                    state: "on"
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_aussentemperatur
-                name: Außen
-                icon: mdi:thermometer
-                show_state: true
-                show_icon: true
-          - type: heading
-            heading: Temperaturen
-            heading_style: subtitle
-            icon: mdi:thermometer-lines
-            badges:
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_kesseltemperatur
-                name: Kessel
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
-                name: Vorlauf
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlaufsolltemperatur
-                name: VL Soll
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_warmwasser_temperatur
-                name: WW
-                show_state: true
-                show_icon: false
-          - type: heading
-            heading: Anlagenstatus
-            heading_style: subtitle
-            icon: mdi:state-machine
-            badges:
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_heizkreis_m1_betriebsart_aktuell
-                name: Betrieb
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_heizkreis_m1_betriebsprogramm_aktuell
-                name: Programm
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
-                name: Ventil
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_warmwasser_ladestatus
-                name: WW-Ladung
-                show_state: true
-                show_icon: false
-          - type: heading
-            heading: Pumpen
-            heading_style: subtitle
-            icon: mdi:pump
-            badges:
-              - type: entity
-                entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_ausgang
-                name: Heizkreis
-                show_state: true
-                show_icon: true
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl
-                name: HK %
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: binary_sensor.vitodens_200_wb2a_interne_pumpe_status
-                name: Intern
-                show_state: true
-                show_icon: true
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
-                name: Intern %
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: binary_sensor.vitodens_200_wb2a_zirkulationspumpe_status
-                name: Zirkulation
-                show_state: true
-                show_icon: true
-          - type: heading
-            heading: Verbrauch & Zähler
-            heading_style: subtitle
-            icon: mdi:counter
-            badges:
-              - type: entity
-                entity: sensor.heizung_power
-                name: Strom
-                icon: mdi:lightning-bolt
-                show_state: true
-                show_icon: true
-              - type: entity
-                entity: sensor.heizung_power_durchschnitt
-                name: Ø Strom
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_brenner_starts
-                name: Starts
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.vitodens_200_wb2a_brenner_betriebsstunden
-                name: Stunden
-                show_state: true
-                show_icon: false
 
-      - type: grid
+
+      # ================================================================
+      # Responsive status tiles.
+      # auto-fit keeps them compact instead of stretching on ultrawide.
+      # ================================================================
+      - type: custom:layout-card
+        layout_type: custom:grid-layout
+        view_layout:
+          grid-area: status
+        layout:
+          margin: 0
+          padding: 0
+          grid-gap: 8px
+          grid-template-columns: repeat(auto-fit, minmax(170px, 1fr))
+        cards:
+          - type: custom:button-card
+            template: diag_group3_orange
+            name: Brenner / Feuerung
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: binary_sensor.vitodens_200_wb2a_brenner_flamme
+                  name: Flamme
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_brenner_modulationsgrad
+                  name: Modulation
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
+                  name: Gebläse
+
+          - type: custom:button-card
+            template: diag_group3_blue
+            name: Temperaturen
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_aussentemperatur
+                  name: Außen
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_kesseltemperatur
+                  name: Kessel
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
+                  name: Vorlauf
+
+          - type: custom:button-card
+            template: diag_group3_cyan
+            name: Warmwasser
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_warmwasser_temperatur
+                  name: Ist
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
+                  name: Tag
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
+                  name: Nacht
+
+          - type: custom:button-card
+            template: diag_group3_green
+            name: Hydraulik
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl
+                  name: HK-Pumpe
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
+                  name: Intern
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
+                  name: Ventil
+
+          - type: custom:button-card
+            template: diag_group3_purple
+            name: Betriebszustand
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_heizkreis_m1_betriebsart_aktuell
+                  name: Betrieb
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_heizkreis_m1_betriebsprogramm_aktuell
+                  name: Programm
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_warmwasser_ladestatus
+                  name: WW-Ladung
+
+          - type: custom:button-card
+            template: diag_group3_blue
+            name: Verbrauch / Zähler
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.heizung_power
+                  name: Strom
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_brenner_starts
+                  name: Starts
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_brenner_betriebsstunden
+                  name: Stunden
+
+      # ================================================================
+      # Left desktop column: controls.
+      # ================================================================
+      - type: vertical-stack
+        view_layout:
+          grid-area: controls
         cards:
           - type: heading
             heading: Steuerung
             heading_style: title
-            icon: mdi:remote
+            icon: mdi:tune-variant
+
           - type: custom:mushroom-select-card
             entity: select.vitodens_200_wb2a_heizkreis_m1_betriebsart
             name: Betriebsart
             icon: mdi:home-modern
-            grid_options:
-              columns: 12
-              rows: 2
+            fill_container: true
+
           - type: heading
             heading: Raumtemperatur
             heading_style: subtitle
             icon: mdi:home-thermometer-outline
-          - type: tile
-            entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
-            name: Tagestemperatur
-            icon: mdi:sun-thermometer
-            show_entity_picture: false
-            vertical: false
-            features:
-              - type: numeric-input
-                style: slider
-            features_position: bottom
-            grid_options:
-              columns: 12
-              rows: 2
-          - type: tile
-            entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
-            name: Nachttemperatur
-            icon: mdi:weather-night
-            show_entity_picture: false
-            vertical: false
-            features:
-              - type: numeric-input
-                style: slider
-            features_position: bottom
-            grid_options:
-              columns: 12
-              rows: 2
+            badges:
+              - type: entity
+                entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
+                name: Tag
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
+                name: Nacht
+                show_state: true
+                show_icon: false
+
+          # Desktop/tablet: compact side-by-side controls.
+          - type: conditional
+            conditions:
+              - condition: screen
+                media_query: "(min-width: 701px)"
+            card:
+              type: custom:layout-card
+              layout_type: custom:grid-layout
+              layout:
+                margin: 0
+                padding: 0
+                grid-gap: 8px
+                grid-template-columns: repeat(2, minmax(0, 1fr))
+              cards:
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
+                  name: Tag
+                  icon: mdi:white-balance-sunny
+                  icon_color: amber
+                  display_mode: slider
+                  layout: horizontal
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
+                      ha-card {
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #ffb300 40%, var(--divider-color));
+                        background: color-mix(in srgb, #ffb300 6%, var(--ha-card-background, var(--card-background-color)));
+                      }
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
+                  name: Nacht
+                  icon: mdi:weather-night
+                  icon_color: indigo
+                  display_mode: slider
+                  layout: horizontal
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
+                      ha-card {
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #5c6bc0 40%, var(--divider-color));
+                        background: color-mix(in srgb, #5c6bc0 6%, var(--ha-card-background, var(--card-background-color)));
+                      }
+
+          # Mobile: name/state above the slider. This avoids truncating
+          # "Nacht" and the temperature in Mushroom's horizontal layout.
+          - type: conditional
+            conditions:
+              - condition: screen
+                media_query: "(max-width: 700px)"
+            card:
+              type: custom:layout-card
+              layout_type: custom:grid-layout
+              layout:
+                margin: 0
+                padding: 0
+                grid-gap: 8px
+                grid-template-columns: minmax(0, 1fr)
+              cards:
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
+                  name: Tag
+                  icon: mdi:white-balance-sunny
+                  icon_color: amber
+                  display_mode: slider
+                  layout: vertical
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
+                      ha-card {
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #ffb300 40%, var(--divider-color));
+                        background: color-mix(in srgb, #ffb300 6%, var(--ha-card-background, var(--card-background-color)));
+                      }
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
+                  name: Nacht
+                  icon: mdi:weather-night
+                  icon_color: indigo
+                  display_mode: slider
+                  layout: vertical
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
+                      ha-card {
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #5c6bc0 40%, var(--divider-color));
+                        background: color-mix(in srgb, #5c6bc0 6%, var(--ha-card-background, var(--card-background-color)));
+                      }
+
           - type: heading
             heading: Warmwasser
             heading_style: subtitle
@@ -1576,36 +2387,127 @@ views:
                 name: Ist
                 show_state: true
                 show_icon: false
-          - type: tile
-            entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
-            name: Warmwasser Soll
-            icon: mdi:water-thermometer
-            show_entity_picture: false
-            vertical: false
-            features:
-              - type: numeric-input
-                style: slider
-            features_position: bottom
-            grid_options:
-              columns: 12
-              rows: 2
-          - type: tile
-            entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
-            name: Warmwasser Soll Nacht
-            icon: mdi:weather-night
-            show_entity_picture: false
-            vertical: false
-            features:
-              - type: numeric-input
-                style: slider
-            features_position: bottom
-            grid_options:
-              columns: 12
-              rows: 2
+              - type: entity
+                entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
+                name: Tag
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
+                name: Nacht
+                show_state: true
+                show_icon: false
+
+          # Desktop/tablet: compact side-by-side controls.
+          - type: conditional
+            conditions:
+              - condition: screen
+                media_query: "(min-width: 701px)"
+            card:
+              type: custom:layout-card
+              layout_type: custom:grid-layout
+              layout:
+                margin: 0
+                padding: 0
+                grid-gap: 8px
+                grid-template-columns: repeat(2, minmax(0, 1fr))
+              cards:
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
+                  name: Tag
+                  icon: mdi:white-balance-sunny
+                  icon_color: amber
+                  display_mode: slider
+                  layout: horizontal
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
+                      ha-card {
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
+                        background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
+                      }
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
+                  name: Nacht
+                  icon: mdi:weather-night
+                  icon_color: indigo
+                  display_mode: slider
+                  layout: horizontal
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
+                      ha-card {
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
+                        background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
+                      }
+
+          # Mobile: put the complete label/state block above a full-width
+          # slider. The controller entities remain exactly the same.
+          - type: conditional
+            conditions:
+              - condition: screen
+                media_query: "(max-width: 700px)"
+            card:
+              type: custom:layout-card
+              layout_type: custom:grid-layout
+              layout:
+                margin: 0
+                padding: 0
+                grid-gap: 8px
+                grid-template-columns: minmax(0, 1fr)
+              cards:
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
+                  name: Tag
+                  icon: mdi:white-balance-sunny
+                  icon_color: amber
+                  display_mode: slider
+                  layout: vertical
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
+                      ha-card {
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
+                        background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
+                      }
+                - type: custom:mushroom-number-card
+                  entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
+                  name: Nacht
+                  icon: mdi:weather-night
+                  icon_color: indigo
+                  display_mode: slider
+                  layout: vertical
+                  fill_container: true
+                  primary_info: name
+                  secondary_info: state
+                  card_mod:
+                    style: |
+                      ha-card {
+                        border-radius: 16px;
+                        border: 1px solid color-mix(in srgb, #00bcd4 40%, var(--divider-color));
+                        background: color-mix(in srgb, #00bcd4 6%, var(--ha-card-background, var(--card-background-color)));
+                      }
+
           - type: heading
             heading: Komfort
             heading_style: subtitle
             icon: mdi:party-popper
+            badges:
+              - type: entity
+                entity: switch.vitodens_200_wb2a_heizkreis_m1_partybetrieb
+                name: Party
+                show_state: true
+                show_icon: false
+
           - type: tile
             entity: switch.vitodens_200_wb2a_heizkreis_m1_partybetrieb
             name: Partybetrieb
@@ -1615,35 +2517,43 @@ views:
             features:
               - type: toggle
             features_position: bottom
-            grid_options:
-              columns: 12
-              rows: 2
-          - type: tile
+
+          - type: custom:mushroom-number-card
             entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_party
             name: Partytemperatur
             icon: mdi:thermometer-plus
-            show_entity_picture: false
-            vertical: false
-            features:
-              - type: numeric-input
-                style: slider
-            features_position: bottom
-            grid_options:
-              columns: 12
-              rows: 2
+            icon_color: purple
+            display_mode: slider
+            layout: horizontal
+            fill_container: true
+            primary_info: name
+            secondary_info: state
+            card_mod:
+              style: |
+                @media (max-width: 700px) {
+                  ha-card {
+                    --mush-card-primary-font-size: 12px;
+                    --mush-card-secondary-font-size: 10px;
+                    --mush-card-primary-line-height: 15px;
+                    --mush-card-secondary-line-height: 13px;
+                    --mush-icon-size: 30px;
+                    --mush-control-height: 34px;
+                    --mush-control-spacing: 6px;
+                    --mush-spacing: 8px;
+                  }
+                }
             visibility:
               - condition: state
                 entity: switch.vitodens_200_wb2a_heizkreis_m1_partybetrieb
                 state: "on"
-          - type: custom:mushroom-select-card
-            entity: select.vitodens_200_wb2a_zirkulation_intervall
-            name: Zirkulation
-            icon: mdi:pump
-            grid_options:
-              columns: 12
-              rows: 2
 
-      - type: grid
+      # ================================================================
+      # Right desktop column: room valves.
+      # Compact Mushroom cards avoid 2/3-column text wrapping in diag_mini.
+      # ================================================================
+      - type: vertical-stack
+        view_layout:
+          grid-area: rooms
         cards:
           - type: heading
             heading: Thermostatventile
@@ -1656,131 +2566,85 @@ views:
                 icon: mdi:percent
                 show_state: true
                 show_icon: true
-          - type: heading
-            heading: Büro
-            heading_style: subtitle
-            icon: mdi:briefcase
-            badges:
-              - type: entity
-                entity: sensor.buro_ventil_offnungsgrad
-                name: Ventil
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.temperaturzielburo
-                name: Soll
-                show_state: true
-                show_icon: false
-          - type: heading
-            heading: Dario
-            heading_style: subtitle
-            icon: mdi:baby-face-outline
-            badges:
-              - type: entity
-                entity: sensor.dario_ventil_offnungsgrad
-                name: Ventil
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.temperatur_wohnbereich_temperature
-                name: Ist
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.temperaturzieldario
-                name: Soll
-                show_state: true
-                show_icon: false
-          - type: heading
-            heading: Schlafzimmer
-            heading_style: subtitle
-            icon: mdi:bed
-            badges:
-              - type: entity
-                entity: sensor.schlafzimmer_ventil_offnungsgrad
-                name: Ventil
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.temperatur_schlafzimmer_temperature
-                name: Ist
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.temperaturzielschlafzimmer
-                name: Soll
-                show_state: true
-                show_icon: false
-          - type: heading
-            heading: Gäste-WC
-            heading_style: subtitle
-            icon: mdi:toilet
-            badges:
-              - type: entity
-                entity: sensor.gaste_wc_ventil_offnungsgrad
-                name: Ventil
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.temperaturzielgastewc
-                name: Soll
-                show_state: true
-                show_icon: false
-          - type: heading
-            heading: Badezimmer
-            heading_style: subtitle
-            icon: mdi:bathtub
-            badges:
-              - type: entity
-                entity: sensor.badezimmer_ventil_offnungsgrad
-                name: Ventil
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: climate.badezimmer
-                name: Klima
-                show_state: true
-                show_icon: true
-          - type: heading
-            heading: Wohnzimmer
-            heading_style: subtitle
-            icon: mdi:sofa
-            badges:
-              - type: entity
-                entity: sensor.wohnzimmer_links_ventil_offnungsgrad
-                name: Links
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.wohnzimmer_rechts_ventil_offnungsgrad
-                name: Rechts
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.temperatursensorwohnzimmer_temperatur
-                name: Ist
-                show_state: true
-                show_icon: false
-          - type: heading
-            heading: Flur
-            heading_style: subtitle
-            icon: mdi:door
-            badges:
-              - type: entity
-                entity: sensor.flur_ventil_offnungsgrad
-                name: Ventil
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.flurtemperatur_flur_temperature
-                name: Ist
-                show_state: true
-                show_icon: false
-              - type: entity
-                entity: sensor.temperaturzielflur
-                name: Soll
-                show_state: true
-                show_icon: false
+
+          - type: custom:layout-card
+            layout_type: custom:grid-layout
+            layout:
+              margin: 0
+              padding: 0
+              grid-gap: 8px
+              grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))
+            cards:
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Büro
+                  room_search: buro
+                  valve_sensor: sensor.buro_ventil_offnungsgrad
+                  target_sensor: sensor.temperaturzielburo
+
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Dario
+                  room_search: dario
+                  valve_sensor: sensor.dario_ventil_offnungsgrad
+                  current_sensor: sensor.temperatur_wohnbereich_temperature
+                  target_sensor: sensor.temperaturzieldario
+
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Schlafzimmer
+                  room_search: schlafzimmer
+                  valve_sensor: sensor.schlafzimmer_ventil_offnungsgrad
+                  current_sensor: sensor.temperatur_schlafzimmer_temperature
+                  target_sensor: sensor.temperaturzielschlafzimmer
+
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Gäste-WC
+                  room_search: gaste wc
+                  valve_sensor: sensor.gaste_wc_ventil_offnungsgrad
+                  target_sensor: sensor.temperaturzielgastewc
+
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Badezimmer
+                  room_search: badezimmer
+                  valve_sensor: sensor.badezimmer_ventil_offnungsgrad
+                  climate_fallback: climate.badezimmer
+
+              # Wohnzimmer has two physical radiator devices. Keep the shared
+              # room temperature, but expose each target independently so a
+              # slider never silently changes only one of two valves.
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Wohnzimmer links
+                  room_search: wohnzimmer links
+                  valve_sensor: sensor.wohnzimmer_links_ventil_offnungsgrad
+                  current_sensor: sensor.temperatursensorwohnzimmer_temperatur
+
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Wohnzimmer rechts
+                  room_search: wohnzimmer rechts
+                  valve_sensor: sensor.wohnzimmer_rechts_ventil_offnungsgrad
+                  current_sensor: sensor.temperatursensorwohnzimmer_temperatur
+
+              - type: custom:button-card
+                template: thermostat_room_slider
+                variables:
+                  room_name: Flur
+                  room_search: flur
+                  valve_sensor: sensor.flur_ventil_offnungsgrad
+                  current_sensor: sensor.flurtemperatur_flur_temperature
+                  target_sensor: sensor.temperaturzielflur
+
           - type: tile
             entity: script.climateboost
             name: Alle Ventile öffnen
@@ -1790,39 +2654,13 @@ views:
               action: perform-action
               perform_action: script.climateboost
               target: {}
-            grid_options:
-              columns: 12
-              rows: 1
 
-      - type: grid
-        column_span: 4
-        cards:
-          - type: heading
-            heading: Verlauf
-            heading_style: title
-            icon: mdi:chart-line
-          - type: history-graph
-            title: Heizung – 48 Stunden
-            hours_to_show: 48
-            entities:
-              - sensor.vitodens_200_wb2a_aussentemperatur_gedaempft
-              - sensor.vitodens_200_wb2a_heizkreis_m1_vorlaufsolltemperatur
-              - sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
-              - sensor.vitodens_200_wb2a_kesseltemperatur
-              - binary_sensor.vitodens_200_wb2a_brenner_flamme
-              - sensor.vitodens_200_wb2a_brenner_modulationsgrad
-              - sensor.ventilstellung_durchschnitt
-            grid_options:
-              columns: full
-    cards: []
-    header:
-      layout: responsive
-      badges_position: bottom
-      badges_wrap: wrap
 
   - title: Heizkurve
     path: heizkurve
     icon: mdi:chart-bell-curve
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
     type: sections
     max_columns: 4
     sections:
@@ -2560,7 +3398,7 @@ views:
             icon: mdi:tune
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_heizkennlinie_neigung_d3_einstellung
-            name: Neigung D3
+            name: Heizkennlinie – Neigung (D3)
             icon: mdi:chart-bell-curve
             show_entity_picture: false
             vertical: false
@@ -2580,7 +3418,7 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Neigung D3
+                  title: Heizkennlinie – Neigung (D3)
                   adaptive: true
                   content:
                     type: markdown
@@ -2595,7 +3433,11 @@ views:
                       
                       Ein zu hoher Wert führt vor allem bei kaltem Wetter zu unnötig hohen Vorlauftemperaturen. Ein zu niedriger Wert kann dazu führen, dass das Gebäude bei niedrigen Außentemperaturen nicht ausreichend warm wird.
                       
-                      Datenpunkt: `0x27D3`
+                      **Codieradresse:** `D3`
+
+                      **Datenpunkt:** `0x27D3`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
             hold_action:
               action: none
             grid_options:
@@ -2603,7 +3445,7 @@ views:
               rows: 2
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_heizkennlinie_niveau_d4_einstellung
-            name: Niveau D4
+            name: Heizkennlinie – Niveau (D4)
             icon: mdi:chart-areaspline-variant
             show_entity_picture: false
             vertical: false
@@ -2623,7 +3465,7 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Niveau D4
+                  title: Heizkennlinie – Niveau (D4)
                   adaptive: true
                   content:
                     type: markdown
@@ -2638,7 +3480,11 @@ views:
                       
                       D3 verändert primär die Steilheit; D4 verschiebt primär das Temperaturniveau.
                       
-                      Datenpunkt: `0x27D4`
+                      **Codieradresse:** `D4`
+
+                      **Datenpunkt:** `0x27D4`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
             hold_action:
               action: none
             grid_options:
@@ -2646,7 +3492,7 @@ views:
               rows: 2
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_vorlauf_min_c5_einstellung
-            name: Vorlauf Minimum C5
+            name: Vorlauf – Mindesttemperatur (C5)
             icon: mdi:thermometer-chevron-down
             show_entity_picture: false
             vertical: false
@@ -2666,7 +3512,7 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Vorlauf Minimum C5
+                  title: Vorlauf – Mindesttemperatur (C5)
                   adaptive: true
                   content:
                     type: markdown
@@ -2683,7 +3529,11 @@ views:
                       
                       Die tatsächlich wirksame Grenze kann zusätzlich durch den Kesselcodierstecker begrenzt sein.
                       
-                      Datenpunkt: `0x27C5`
+                      **Codieradresse:** `C5`
+
+                      **Datenpunkt:** `0x27C5`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
             hold_action:
               action: none
             grid_options:
@@ -2691,7 +3541,7 @@ views:
               rows: 2
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_vorlauf_max_c6_einstellung
-            name: Vorlauf Maximum C6
+            name: Vorlauf – Maximaltemperatur (C6)
             icon: mdi:thermometer-chevron-up
             show_entity_picture: false
             vertical: false
@@ -2711,7 +3561,7 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Vorlauf Maximum C6
+                  title: Vorlauf – Maximaltemperatur (C6)
                   adaptive: true
                   content:
                     type: markdown
@@ -2728,7 +3578,11 @@ views:
                       
                       Die tatsächlich wirksame Grenze kann zusätzlich durch den Kesselcodierstecker begrenzt sein.
                       
-                      Datenpunkt: `0x27C6`
+                      **Codieradresse:** `C6`
+
+                      **Datenpunkt:** `0x27C6`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
             hold_action:
               action: none
             grid_options:
@@ -2736,7 +3590,7 @@ views:
               rows: 2
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_frostgrenze_a3_einstellung
-            name: Frostgrenze A3
+            name: Frostschutz – Pumpenschaltgrenze (A3)
             icon: mdi:snowflake-alert
             show_entity_picture: false
             vertical: false
@@ -2756,7 +3610,7 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Frostgrenze A3
+                  title: Frostschutz – Pumpenschaltgrenze (A3)
                   adaptive: true
                   content:
                     type: markdown
@@ -2773,7 +3627,11 @@ views:
                       
                       **Hinweis:** A3 ist eine Schutzfunktion. Sehr niedrige Einstellungen nur verwenden, wenn die Leitungsführung und Frostsicherheit der Anlage bekannt sind.
                       
-                      Datenpunkt: `0x27A3`
+                      **Codieradresse:** `A3`
+
+                      **Datenpunkt:** `0x27A3`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
             hold_action:
               action: none
             grid_options:
@@ -2781,7 +3639,7 @@ views:
               rows: 2
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_sommerspar_schaltschwelle_a5_einstellung
-            name: Heizkreispumpenlogik A5
+            name: Heizkreispumpe – Abschaltgrenze (A5)
             icon: mdi:radiator-disabled
             show_entity_picture: false
             vertical: false
@@ -2801,12 +3659,12 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Heizkreispumpenlogik A5
+                  title: Heizkreispumpe – Abschaltgrenze (A5)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      ## Was macht A5?
+                      **Funktion:** Heizkreispumpenlogik / Sparschaltung in Abhängigkeit von Außentemperatur und wirksamem Raum-Sollwert.
                       
                       **Merksatz:** A5 ist kein Temperatur-Sollwert, sondern ein **Offset-Index für die Pumpen-Abschaltgrenze**. Der Wert 6 ist der rechnerische Nullpunkt; kleinere/größere A5-Werte verschieben die Grenze nach oben/unten.
                       
@@ -2859,7 +3717,11 @@ views:
                       
                       Frostschutz über A3 kann die Sparabschaltung übersteuern.
                       
-                      Datenpunkt: `0x27A5`
+                      **Codieradresse:** `A5`
+
+                      **Datenpunkt:** `0x27A5`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
             hold_action:
               action: none
             grid_options:
@@ -2867,7 +3729,7 @@ views:
               rows: 2
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_sommersparabschaltung_a6_einstellung
-            name: Sommersparabschaltung A6
+            name: Erweiterte Sparschaltung (A6)
             icon: mdi:weather-sunny-off
             show_entity_picture: false
             vertical: false
@@ -2887,12 +3749,12 @@ views:
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Sommersparabschaltung A6
+                  title: Erweiterte Sparschaltung (A6)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      ## Was macht A6?
+                      **Funktion:** Erweiterte Sparschaltung mit fester Heizgrenze auf Basis der gedämpften Außentemperatur.
                       
                       **Merksatz:** A6 ist die feste Heizgrenze für den gesamten Heizbetrieb; A5 entscheidet dagegen nur über die Heizkreispumpe anhand einer vom Raum-Soll abhängigen Grenze.
                       
@@ -2920,7 +3782,11 @@ views:
                       
                       Frostschutz über A3 kann die Sparabschaltung übersteuern.
                       
-                      Datenpunkt: `0x27A6`
+                      **Codieradresse:** `A6`
+
+                      **Datenpunkt:** `0x27A6`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
             hold_action:
               action: none
             grid_options:
@@ -2947,6 +3813,8 @@ views:
   - title: Pumpen
     path: pumpen
     icon: mdi:pump
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
     type: sections
     max_columns: 4
     sections:
@@ -2960,27 +3828,27 @@ views:
             badges:
               - type: entity
                 entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_ausgang
-                name: HK Ausgang
+                name: Heizkreispumpe
                 show_state: true
                 show_icon: true
               - type: entity
                 entity: sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_drehzahl
-                name: HK
+                name: HK-Drehzahl
                 show_state: true
                 show_icon: false
               - type: entity
                 entity: binary_sensor.vitodens_200_wb2a_interne_pumpe_status
-                name: Intern
+                name: Interne Pumpe
                 show_state: true
                 show_icon: true
               - type: entity
                 entity: sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
-                name: Intern
+                name: Int. Drehzahl
                 show_state: true
                 show_icon: false
               - type: entity
                 entity: sensor.vitodens_200_wb2a_umschaltventil_stellung
-                name: Ventil
+                name: Umschaltventil
                 show_state: true
                 show_icon: false
 
@@ -3081,7 +3949,7 @@ views:
           - type: custom:button-card
             template: diag_active
             entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_logisch
-            name: Anforderung
+            name: Heizanforderung
             icon: mdi:source-branch
             grid_options:
               columns: 4
@@ -3089,7 +3957,7 @@ views:
           - type: custom:button-card
             template: diag_active
             entity: binary_sensor.vitodens_200_wb2a_heizkreis_m1_pumpe_ausgang
-            name: A1 Ausgang
+            name: Heizkreispumpe Ausgang
             icon: mdi:electric-switch
             grid_options:
               columns: 4
@@ -3181,13 +4049,13 @@ views:
                 show_icon: false
 
           - type: heading
-            heading: Drehzahlgrenzen
+            heading: Drehzahlregelung Heizkreispumpe
             heading_style: subtitle
             icon: mdi:speedometer
 
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_pumpe_min_drehzahl_e7_einstellung
-            name: Minimum E7
+            name: Mindestdrehzahl Heizkreispumpe (E7)
             icon: mdi:speedometer-slow
             show_entity_picture: false
             vertical: false
@@ -3197,34 +4065,50 @@ views:
             features_position: bottom
             tap_action:
               action: more-info
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info E7
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Minimale Drehzahl E7
+                  title: Mindestdrehzahl Heizkreispumpe (E7)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Untere Drehzahlgrenze der geregelten Heizkreispumpe im normalen Heizbetrieb.
+                      **Funktion:** Untere Drehzahlgrenze der drehzahlgeregelten externen Heizkreispumpe im Normalbetrieb.
+
+                      **Wirkung:** Die Regelung darf die Pumpe oberhalb dieses Wertes betreiben, im normalen Heizbetrieb aber nicht darunter. E7 erzwingt daher keine konstante Drehzahl.
 
                       **Bereich:** 0–100 %
 
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_min_drehzahl_e7_einstellung') }} %
 
-                      Die Regelung darf oberhalb von E7 selbst eine höhere Drehzahl vorgeben.
+                      **Zusammenhang:** Bei `E8:0` gilt E7 auch als Mindestdrehzahl im reduzierten Betrieb. Bei `E8:1` wird dafür E9 verwendet.
 
-                      **Lokal gemessen:** E7 30 % → reale Drehzahl etwa 32–35 %, E7 60 % → etwa 62 %, E7 100 % → 100 %.
+                      **Lokal verifiziert:** E7 30 % → reale Drehzahl etwa 32–35 %, E7 60 % → etwa 62 %, E7 100 % → 100 %. Die angezeigte Ist-Drehzahl kann deshalb geringfügig vom Codierwert abweichen.
 
-                      Datenpunkt: `0x27E7`
+                      **Codieradresse:** `E7`
+
+                      **Datenpunkt:** `0x27E7`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_pumpe_max_drehzahl_e6_einstellung
-            name: Maximum E6
+            name: Maximaldrehzahl Heizkreispumpe (E6)
             icon: mdi:speedometer
             show_entity_picture: false
             vertical: false
@@ -3234,58 +4118,91 @@ views:
             features_position: bottom
             tap_action:
               action: more-info
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info E6
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Maximale Drehzahl E6
+                  title: Maximaldrehzahl Heizkreispumpe (E6)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Obere Drehzahlgrenze der geregelten Heizkreispumpe.
+                      **Funktion:** Obere Drehzahlgrenze der drehzahlgeregelten externen Heizkreispumpe im Normalbetrieb.
+
+                      **Wirkung:** Die Regelung kann die Pumpendrehzahl innerhalb ihrer Regelstrategie bis zu diesem Wert anheben. `E6 = 100 %` erlaubt 100 %, erzwingt aber keine dauerhaft maximale Drehzahl.
 
                       **Bereich:** 0–100 %
 
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_max_drehzahl_e6_einstellung') }} %
 
-                      E6 = 100 % erlaubt maximal 100 %. Es bedeutet **nicht**, dass die Pumpe beim Brennerstart automatisch auf 100 % geht.
+                      **Zusammenhang:** E7 definiert die untere und E6 die obere Grenze der geregelten Heizkreispumpe im Normalbetrieb.
 
-                      Datenpunkt: `0x27E6`
+                      **Codieradresse:** `E6`
+
+                      **Datenpunkt:** `0x27E6`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
           - type: custom:mushroom-select-card
             entity: select.vitodens_200_wb2a_heizkreis_m1_pumpe_nebenbetrieb_e8_einstellung
-            name: Reduzierter Betrieb E8
+            name: Drehzahlwahl reduzierter Betrieb (E8)
             icon: mdi:call-split
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info E8
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Pumpendrehzahl reduziert E8
+                  title: Drehzahlwahl reduzierter Betrieb (E8)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Wählt die Pumpendrehzahl im reduzierten Heizbetrieb.
+                      **Funktion:** Legt fest, welcher Codierwert die Mindestdrehzahl der Heizkreispumpe im Betrieb mit reduzierter Raumtemperatur bestimmt.
 
-                      - **Minimum nach E7:** Mindestdrehzahl aus E7.
-                      - **Reduziert nach E9:** separate Drehzahl E9.
+                      **Optionen:**
+                      - **Minimum nach E7:** `E8:0` → reduzierte Betriebsart verwendet die Mindestdrehzahl aus E7.
+                      - **Reduziert nach E9:** `E8:1` → reduzierte Betriebsart verwendet die separate Drehzahl aus E9.
 
-                      E8 ist kein Brennerstart- oder Pumpenboost-Parameter.
+                      **Aktuell:** {{ states('select.vitodens_200_wb2a_heizkreis_m1_pumpe_nebenbetrieb_e8_einstellung') }}
 
-                      Datenpunkt: `0x27E8`
+                      **Wichtig:** E8 ist ein Umschalter zwischen E7 und E9. Er ist kein Brennerstart-, Pumpenboost- oder Nachlaufparameter.
+
+                      **Codieradresse:** `E8`
+
+                      **Datenpunkt:** `0x27E8`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_e9_einstellung
-            name: Reduziert E9
+            name: Drehzahl reduzierter Betrieb (E9)
             icon: mdi:weather-night
             show_entity_picture: false
             vertical: false
@@ -3295,37 +4212,51 @@ views:
             features_position: bottom
             tap_action:
               action: more-info
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info E9
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Reduzierte Drehzahl E9
+                  title: Drehzahl reduzierter Betrieb (E9)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Separate Pumpendrehzahl für den reduzierten Heizbetrieb.
+                      **Funktion:** Separate Pumpendrehzahl der drehzahlgeregelten externen Heizkreispumpe für den Betrieb mit reduzierter Raumtemperatur.
+
+                      **Wirkung:** E9 wird nur wirksam, wenn E8 auf **„Reduziert nach E9“** bzw. `E8:1` steht.
 
                       **Bereich:** 0–100 %
 
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_e9_einstellung') }} %
 
-                      E9 wird verwendet, wenn E8 auf **„Reduziert nach E9“** steht.
+                      **Codieradresse:** `E9`
 
-                      Datenpunkt: `0x27E9`
+                      **Datenpunkt:** `0x27E9`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
           - type: heading
-            heading: Zeit / interne Pumpe
+            heading: Zeitverhalten / interne Pumpe
             heading_style: subtitle
             icon: mdi:timer-cog-outline
 
           - type: tile
             entity: number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_a9_einstellung
-            name: Stillstandzeit A9
+            name: Pumpenstillstand nach Sollwertwechsel (A9)
             icon: mdi:timer-pause-outline
             show_entity_picture: false
             vertical: false
@@ -3335,32 +4266,48 @@ views:
             features_position: bottom
             tap_action:
               action: more-info
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info A9
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Pumpenstillstandzeit A9
+                  title: Pumpenstillstand nach Sollwertwechsel (A9)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Pumpenstillstandzeit nach einer Sollwertänderung des Heizkreises durch Betriebsartwechsel oder Änderung der Raum-Solltemperatur.
+                      **Funktion:** Stillstandzeit der Heizkreispumpe nach einer Sollwertänderung durch Wechsel der Betriebsart oder Änderung des Raumtemperatur-Sollwerts.
 
-                      **Bereich:** 0–15 min
+                      **Wirkung:** Nach einem solchen Sollwertwechsel kann die Regelung die Heizkreispumpe für die eingestellte Zeit abschalten. Das ist **kein Pumpennachlauf**, sondern bewusst eine Stillstandsphase.
 
-                      **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_a9_einstellung') }} min
+                      **Bereich:** 0–15
 
-                      A9 = 0 deaktiviert die Stillstandzeit.
+                      **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_a9_einstellung') }}
 
-                      Datenpunkt: `0x27A9`
+                      **Besonderheit:** `A9:0` deaktiviert die Pumpenstillstandzeit. Die Serviceanleitung beschreibt A9 als Codierwert 0–15; sie weist diesen Werten an dieser Stelle keine Einheit in Minuten zu. Das Dashboard behandelt den Registerwert deshalb nicht mehr als gesicherte Minutenangabe.
+
+                      **Codieradresse:** `A9`
+
+                      **Datenpunkt:** `0x27A9`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
           - type: tile
             entity: number.vitodens_200_wb2a_interne_pumpe_solldrehzahl_31_einstellung
-            name: Interne Pumpe 31
+            name: Interne Pumpe – Codierwert Drehzahl (31)
             icon: mdi:pump
             show_entity_picture: false
             vertical: false
@@ -3370,27 +4317,43 @@ views:
             features_position: bottom
             tap_action:
               action: more-info
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info 31
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Interne Pumpe Solldrehzahl 31
+                  title: Interne Pumpe – Codierwert Drehzahl (31)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Konfigurationswert für die Drehzahl der internen Pumpe.
+                      **Funktion:** Anlagenabhängiger Konfigurationswert für die interne Pumpe.
 
-                      **Bereich:** 0–100 %
+                      **Bereich im aktuellen Profil:** 0–100 %
 
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_interne_pumpe_solldrehzahl_31_einstellung') }} %
 
-                      **Wichtig:** 31 = 100 % ist bei dieser Anlage nicht gleichbedeutend mit 100 % realer Pumpendrehzahl im Heizbetrieb. Der Wert ist daher nicht als direkter Laufzeit-Sollwert beschriftet.
+                      **Wichtig:** Auf dieser WB2A ist `31 = 100 %` lokal **nicht** gleichbedeutend mit 100 % realer Pumpendrehzahl im Heizbetrieb. Der Wert wird daher bewusst als **Codierwert** und nicht als unmittelbare Laufzeit-Solldrehzahl bezeichnet.
 
-                      Datenpunkt: `0x5731`
+                      **Quellenlage:** Die aktuelle Optolink-Zuordnung zum Register ist verifiziert. Die genaue Regelwirkung von Codieradresse 31 ist jedoch aus der vorliegenden WB2A-Serviceanleitung nicht eindeutig genug ableitbar, um weitergehende Wirkung zu behaupten.
+
+                      **Codieradresse:** `31`
+
+                      **Datenpunkt:** `0x5731`
+
+                      **Quelle:** Produktionsprofil `vdensho1-20c2-wb2a-homeassistant.py` und lokale Anlagenbeobachtung.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
       - type: grid
@@ -3418,7 +4381,7 @@ views:
           - type: custom:button-card
             template: diag_active
             entity: binary_sensor.vitodens_200_wb2a_zirkulationspumpe_status
-            name: Zirkulation
+            name: Zirkulationspumpe
             icon: mdi:pump
             grid_options:
               columns: 4
@@ -3426,7 +4389,7 @@ views:
           - type: custom:button-card
             template: diag_research
             entity: sensor.vitodens_200_wb2a_warmwasser_ladestatus
-            name: Ladestatus
+            name: Speicherladung
             icon: mdi:water-thermometer
             grid_options:
               columns: 4
@@ -3434,44 +4397,83 @@ views:
 
           - type: custom:mushroom-select-card
             entity: select.vitodens_200_wb2a_zirkulation_intervall
-            name: Zirkulationsmodus
+            name: Zirkulations-Schaltprogramm
             icon: mdi:clock-outline
             grid_options:
               columns: full
 
           - type: custom:button-card
             template: diag_group3_green
-            name: Warmwasser-Regelung
+            name: Warmwasser-Grundparameter
             custom_fields:
               v1:
                 card:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_warmwasser_sollbereich_56_anzeige
-                  name: Sollbereich
+                  name: Sollbereich (56)
               v2:
                 card:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_warmwasser_einschalt_offset_59_anzeige
-                  name: Einschaltpunkt
+                  name: Einschaltpunkt (59)
               v3:
                 card:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_umschaltventil_bauart_65_anzeige
-                  name: Ventil
+                  name: Ventiltyp (65)
             grid_options:
-              columns: full
+              columns: 10
+          - type: button
+            name: Info WW-Grundparameter
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Warmwasser-Grundparameter (56 / 59 / 65)
+                  adaptive: true
+                  content:
+                    type: markdown
+                    content: |
+                      **Funktion:** Diese drei Codierungen beschreiben grundlegende Eigenschaften der Warmwasserbereitung.
+
+                      **56 – Warmwasser-Sollbereich:** `56:0` erlaubt laut Serviceanleitung 10–60 °C. `56:1` erlaubt Werte über 60 °C; die tatsächliche Obergrenze hängt vom Codierstecker ab.
+
+                      **59 – Einschaltpunkt Speicherladung:** `59:0` verwendet den Standard-Einschaltpunkt 2,5 K unter Warmwasser-Soll. `59:1…10` legt den Einschaltpunkt 1…10 K unter Soll fest.
+
+                      **65 – Bauart Umschaltventil:** Reine Anlageninformation. `65:3` steht für Grundfos. Laut Serviceanleitung **nicht verstellen**.
+
+                      **Aktuell 56:** {{ states('sensor.vitodens_200_wb2a_warmwasser_sollbereich_56_anzeige') }}
+
+                      **Aktuell 59:** {{ states('sensor.vitodens_200_wb2a_warmwasser_einschalt_offset_59_anzeige') }}
+
+                      **Aktuell 65:** {{ states('sensor.vitodens_200_wb2a_umschaltventil_bauart_65_anzeige') }}
+
+                      **Codieradressen:** `56`, `59`, `65`
+
+                      **Datenpunkte:** `0x6756`, `0x6759`, `0x6765`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+            hold_action:
+              action: none
+            grid_options:
+              columns: 2
+              rows: 2
 
           - type: heading
-            heading: Speicherladung
+            heading: Warmwasser-Speicherladung
             heading_style: subtitle
             icon: mdi:water-boiler
 
           - type: tile
             entity: number.vitodens_200_wb2a_warmwasser_kessel_offset_60_einstellung
-            name: Kessel-Offset 60
+            name: Kessel-Sollwertüberhöhung bei WW-Ladung (60)
             icon: mdi:thermometer-plus
             show_entity_picture: false
             vertical: false
@@ -3481,30 +4483,48 @@ views:
             features_position: bottom
             tap_action:
               action: more-info
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info 60
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Kessel-Offset 60
+                  title: Kessel-Sollwertüberhöhung bei WW-Ladung (60)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Überhöhung der Kessel-/Vorlauf-Solltemperatur gegenüber Warmwasser-Soll während der Speicherladung.
+                      **Funktion:** Legt während der Trinkwassererwärmung fest, um wie viele Kelvin die Kesselwassertemperatur maximal über dem Trinkwasser-Sollwert liegen darf.
+
+                      **Wirkung:** Beispiel: Warmwasser-Soll 50 °C und `60:20` → die Regelung darf für die Speicherladung eine Kesselwassertemperatur bis etwa 70 °C anfordern. Andere Kessel- und Sicherheitsbegrenzungen gelten weiterhin.
+
+                      Ein höherer Wert stellt der Speicherladung eine größere Temperaturdifferenz zur Verfügung. Ein niedrigerer Wert begrenzt die Kesseltemperatur näher am Warmwasser-Soll. Die Codierung wirkt **nur im Zusammenhang mit der Trinkwassererwärmung** und ist kein allgemeiner Heizkreis-Offset.
 
                       **Bereich:** 5–25 K
 
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_warmwasser_kessel_offset_60_einstellung') }} K
 
-                      Datenpunkt: `0x6760`
+                      **Codieradresse:** `60`
+
+                      **Datenpunkt:** `0x6760`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2 und Funktionsbeschreibung Trinkwassererwärmung.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
           - type: tile
             entity: number.vitodens_200_wb2a_warmwasser_pumpennachlauf_62_einstellung
-            name: Pumpennachlauf 62
+            name: Speicherladepumpe – Nachlaufzeit (62)
             icon: mdi:timer-outline
             show_entity_picture: false
             vertical: false
@@ -3514,45 +4534,103 @@ views:
             features_position: bottom
             tap_action:
               action: more-info
-            hold_action:
+            grid_options:
+              columns: 5
+              rows: 2
+          - type: button
+            name: Info 62
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
               action: fire-dom-event
               browser_mod:
                 service: browser_mod.popup
                 data:
-                  title: Pumpennachlauf 62
+                  title: Speicherladepumpe – Nachlaufzeit (62)
                   adaptive: true
                   content:
                     type: markdown
                     content: |
-                      **Funktion:** Nachlaufzeit der Speicherladepumpe nach Ende der Warmwasser-Speicherladung.
+                      **Funktion:** Nachlaufzeit der Umwälz-/Speicherladepumpe nach dem Ende der Warmwasser-Speicherbeheizung.
+
+                      **Ablauf:** Während der Speicherladung laufen Brenner, Ladepumpe und Umschaltventil entsprechend der Regelung. Überschreitet die Speichertemperatur den Sollwert um die Abschalthysterese, wird der Brenner ausgeschaltet; anschließend wird der Pumpennachlauf aktiv.
+
+                      **Wirkung:** `62:0` bedeutet **kein Nachlauf**. `62:1…15` lässt die Speicherladepumpe nach der Beheizung entsprechend weiterlaufen. Damit wird nach Brenner-Aus noch Wärme aus dem Kesselkreis in Richtung Speicher transportiert; diese praktische Wirkung ergibt sich aus dem beschriebenen Ablauf, während die Serviceanleitung selbst primär die Nachlaufzeit definiert.
 
                       **Bereich:** 0–15 min
 
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_warmwasser_pumpennachlauf_62_einstellung') }} min
 
-                      Datenpunkt: `0x6762`
+                      **Codieradresse:** `62`
+
+                      **Datenpunkt:** `0x6762`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2 und Funktionsbeschreibung Trinkwassererwärmung.
+            hold_action:
+              action: none
             grid_options:
-              columns: 6
+              columns: 1
               rows: 2
 
           - type: custom:button-card
             template: diag_group2_blue
-            name: Zirkulation bei WW-Soll
+            name: Zirkulationspumpe bei WW-Ladung
             custom_fields:
               v1:
                 card:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_zirkulation_bei_ww_soll1_71_anzeige
-                  name: Soll 1
+                  name: 1. WW-Soll (71)
               v2:
                 card:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_zirkulation_bei_ww_soll2_72_anzeige
-                  name: Soll 2
+                  name: 2. WW-Soll (72)
             grid_options:
-              columns: full
+              columns: 10
+          - type: button
+            name: Info 71/72
+            icon: mdi:information-outline
+            show_name: false
+            show_icon: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Zirkulationspumpe während WW-Ladung (71 / 72)
+                  adaptive: true
+                  content:
+                    type: markdown
+                    content: |
+                      **Funktion:** Legt fest, wie sich die Trinkwasser-Zirkulationspumpe während einer Warmwasserbereitung verhält.
+
+                      **Codierung 71:** Verhalten während der Warmwasserbereitung auf den **1. Trinkwasser-Sollwert**.
+
+                      **Codierung 72:** Verhalten während der Warmwasserbereitung auf den **2. Trinkwasser-Sollwert**.
+
+                      **Werte laut Serviceanleitung:**
+                      - `0`: Zirkulationspumpe nach Zeitprogramm.
+                      - `1`: Zirkulationspumpe während der jeweiligen Warmwasserbereitung **Aus**.
+                      - `2`: Zirkulationspumpe während der jeweiligen Warmwasserbereitung **Ein**.
+
+                      **Aktuell 71:** {{ states('sensor.vitodens_200_wb2a_zirkulation_bei_ww_soll1_71_anzeige') }}
+
+                      **Aktuell 72:** {{ states('sensor.vitodens_200_wb2a_zirkulation_bei_ww_soll2_72_anzeige') }}
+
+                      **Codieradressen:** `71`, `72`
+
+                      **Datenpunkte:** `0x6771`, `0x6772`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Codierung 2.
+            hold_action:
+              action: none
+            grid_options:
+              columns: 2
+              rows: 2
 
       - type: grid
         column_span: 4
@@ -3600,6 +4678,8 @@ views:
   - title: Nachtabsenkung
     path: nachtabsenkung
     icon: mdi:weather-night
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
     type: sections
     max_columns: 4
     sections:
@@ -3613,12 +4693,12 @@ views:
             badges:
               - type: entity
                 entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
-                name: Normal
+                name: Regler Tag
                 show_state: true
                 show_icon: false
               - type: entity
                 entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
-                name: Reduziert
+                name: Regler Nacht
                 show_state: true
                 show_icon: false
               - type: entity
@@ -3626,25 +4706,19 @@ views:
                 name: Ventile Ø
                 show_state: true
                 show_icon: false
+
           - type: tile
             entity: automation.nachtabsenkungheizung
             name: Automatisierung
             icon: mdi:home-automation
             tap_action:
               action: toggle
+            features:
+              - type: toggle
+            features_position: bottom
             grid_options:
-              columns: 12
-              rows: 1
-          - type: tile
-            entity: input_boolean.nachtabsenkunghventilstellungnachtautomatierung
-            name: Nächtliche Heizanforderung
-            icon: mdi:radiator
-            tap_action:
-              action: toggle
-            visibility:
-              - condition: state
-                entity: automation.nachtabsenkungheizung
-                state: "on"
+              columns: full
+
           - type: custom:time-picker-card
             entity: input_datetime.nachtabsenkunghstart
             name: Start Normalbetrieb
@@ -3657,6 +4731,9 @@ views:
               - condition: state
                 entity: automation.nachtabsenkungheizung
                 state: "on"
+            grid_options:
+              columns: 6
+
           - type: custom:time-picker-card
             entity: input_datetime.nachtabsenkunghende
             name: Ende Normalbetrieb
@@ -3669,28 +4746,94 @@ views:
               - condition: state
                 entity: automation.nachtabsenkungheizung
                 state: "on"
-          - type: tile
+            grid_options:
+              columns: 6
+
+          - type: heading
+            heading: Automations-Sollwerte
+            heading_style: subtitle
+            icon: mdi:home-thermometer-outline
+            visibility:
+              - condition: state
+                entity: automation.nachtabsenkungheizung
+                state: "on"
+
+          - type: custom:mushroom-number-card
+            entity: input_number.nachtabsenkungtemperaturnormal
+            name: Tag
+            icon: mdi:white-balance-sunny
+            icon_color: amber
+            display_mode: slider
+            layout: horizontal
+            fill_container: true
+            card_mod:
+              style: |
+                @media (max-width: 700px) {
+                  ha-card {
+                    --mush-card-primary-font-size: 12px;
+                    --mush-card-secondary-font-size: 10px;
+                    --mush-card-primary-line-height: 15px;
+                    --mush-card-secondary-line-height: 13px;
+                    --mush-icon-size: 30px;
+                    --mush-control-height: 34px;
+                    --mush-control-spacing: 6px;
+                    --mush-spacing: 8px;
+                  }
+                }
+            visibility:
+              - condition: state
+                entity: automation.nachtabsenkungheizung
+                state: "on"
+            grid_options:
+              columns: 6
+              rows: 2
+
+          - type: custom:mushroom-number-card
             entity: input_number.nachtabsenkungtemperaturreduziert
             name: Nacht
             icon: mdi:weather-night
-            features:
-              - type: numeric-input
-                style: slider
+            icon_color: indigo
+            display_mode: slider
+            layout: horizontal
+            fill_container: true
+            card_mod:
+              style: |
+                @media (max-width: 700px) {
+                  ha-card {
+                    --mush-card-primary-font-size: 12px;
+                    --mush-card-secondary-font-size: 10px;
+                    --mush-card-primary-line-height: 15px;
+                    --mush-card-secondary-line-height: 13px;
+                    --mush-icon-size: 30px;
+                    --mush-control-height: 34px;
+                    --mush-control-spacing: 6px;
+                    --mush-spacing: 8px;
+                  }
+                }
             visibility:
               - condition: state
                 entity: automation.nachtabsenkungheizung
                 state: "on"
+            grid_options:
+              columns: 6
+              rows: 2
+
           - type: tile
-            entity: input_number.nachtabsenkungtemperaturnormal
-            name: Tag
-            icon: mdi:sun-thermometer
+            entity: input_boolean.nachtabsenkunghventilstellungnachtautomatierung
+            name: Nächtliche Heizanforderung
+            icon: mdi:radiator
+            tap_action:
+              action: toggle
             features:
-              - type: numeric-input
-                style: slider
+              - type: toggle
+            features_position: bottom
             visibility:
               - condition: state
                 entity: automation.nachtabsenkungheizung
                 state: "on"
+            grid_options:
+              columns: 6
+
           - type: tile
             entity: input_number.nachtabsenkunghventilstellung
             name: Ventil-Grenzwert
@@ -3702,6 +4845,9 @@ views:
               - condition: state
                 entity: automation.nachtabsenkungheizung
                 state: "on"
+            grid_options:
+              columns: 6
+
       - type: grid
         column_span: 2
         cards:
@@ -3711,27 +4857,36 @@ views:
             icon: mdi:water-thermometer
             badges:
               - type: entity
-                entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
-                name: Soll
-                show_state: true
-                show_icon: false
-              - type: entity
                 entity: sensor.vitodens_200_wb2a_warmwasser_temperatur
                 name: Ist
                 show_state: true
                 show_icon: false
+              - type: entity
+                entity: number.vitodens_200_wb2a_warmwasser_solltemperatur
+                name: Regler Tag
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert
+                name: Regler Nacht
+                show_state: true
+                show_icon: false
+
           - type: tile
             entity: automation.nachtabsenkungwarmwasser
             name: Automatisierung
             icon: mdi:home-automation
             tap_action:
               action: toggle
+            features:
+              - type: toggle
+            features_position: bottom
             grid_options:
-              columns: 12
-              rows: 1
+              columns: full
+
           - type: custom:time-picker-card
             entity: input_datetime.nachtabsenkungwwstart
-            name: Start
+            name: Start Normalbetrieb
             hour_mode: 24
             hour_step: 1
             minute_step: 5
@@ -3741,9 +4896,12 @@ views:
               - condition: state
                 entity: automation.nachtabsenkungwarmwasser
                 state: "on"
+            grid_options:
+              columns: 6
+
           - type: custom:time-picker-card
             entity: input_datetime.nachtabsenkungwwende
-            name: Ende
+            name: Ende Normalbetrieb
             hour_mode: 24
             hour_step: 1
             minute_step: 5
@@ -3753,28 +4911,78 @@ views:
               - condition: state
                 entity: automation.nachtabsenkungwarmwasser
                 state: "on"
-          - type: tile
+            grid_options:
+              columns: 6
+
+          - type: heading
+            heading: Automations-Sollwerte
+            heading_style: subtitle
+            icon: mdi:water-thermometer
+            visibility:
+              - condition: state
+                entity: automation.nachtabsenkungwarmwasser
+                state: "on"
+
+          - type: custom:mushroom-number-card
+            entity: input_number.nachtabsenkungwwtemperaturnormal
+            name: Tag
+            icon: mdi:white-balance-sunny
+            icon_color: amber
+            display_mode: slider
+            layout: horizontal
+            fill_container: true
+            card_mod:
+              style: |
+                @media (max-width: 700px) {
+                  ha-card {
+                    --mush-card-primary-font-size: 12px;
+                    --mush-card-secondary-font-size: 10px;
+                    --mush-card-primary-line-height: 15px;
+                    --mush-card-secondary-line-height: 13px;
+                    --mush-icon-size: 30px;
+                    --mush-control-height: 34px;
+                    --mush-control-spacing: 6px;
+                    --mush-spacing: 8px;
+                  }
+                }
+            visibility:
+              - condition: state
+                entity: automation.nachtabsenkungwarmwasser
+                state: "on"
+            grid_options:
+              columns: 6
+              rows: 2
+
+          - type: custom:mushroom-number-card
             entity: input_number.nachtabsenkungwwtemperaturreduziert
             name: Nacht
             icon: mdi:weather-night
-            features:
-              - type: numeric-input
-                style: slider
+            icon_color: indigo
+            display_mode: slider
+            layout: horizontal
+            fill_container: true
+            card_mod:
+              style: |
+                @media (max-width: 700px) {
+                  ha-card {
+                    --mush-card-primary-font-size: 12px;
+                    --mush-card-secondary-font-size: 10px;
+                    --mush-card-primary-line-height: 15px;
+                    --mush-card-secondary-line-height: 13px;
+                    --mush-icon-size: 30px;
+                    --mush-control-height: 34px;
+                    --mush-control-spacing: 6px;
+                    --mush-spacing: 8px;
+                  }
+                }
             visibility:
               - condition: state
                 entity: automation.nachtabsenkungwarmwasser
                 state: "on"
-          - type: tile
-            entity: input_number.nachtabsenkungwwtemperaturnormal
-            name: Tag
-            icon: mdi:sun-thermometer
-            features:
-              - type: numeric-input
-                style: slider
-            visibility:
-              - condition: state
-                entity: automation.nachtabsenkungwarmwasser
-                state: "on"
+            grid_options:
+              columns: 6
+              rows: 2
+
     cards: []
 
   # Diagnose: native Sections are the responsive layout units.
@@ -3786,6 +4994,8 @@ views:
   - title: Diagnose
     path: diagnose
     icon: mdi:stethoscope
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
     type: sections
     max_columns: 2
     sections:
@@ -4736,6 +5946,156 @@ views:
                   name: GFA
             grid_options:
               columns: full
+          - type: custom:button-card
+            template: diag_group3_blue
+            name: Systemzeit
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_systemzeit_anzeige
+                  name: Therme
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_systemzeit_abweichung
+                  name: Drift
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.vitodens_200_wb2a_systemzeit_sync_status
+                  name: Sync
+            grid_options:
+              columns: full
+          - type: heading
+            heading: Serviceprogramme
+            heading_style: subtitle
+            icon: mdi:tools
+            badges:
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_serviceprogramm_status
+                name: Modus
+                show_state: true
+                show_icon: false
+
+          - type: tile
+            entity: switch.vitodens_200_wb2a_entlueftungsprogramm
+            name: Entlüftungsprogramm
+            icon: mdi:air-filter
+            color: amber
+            tap_action:
+              action: toggle
+              confirmation:
+                text: >-
+                  Entlüftungsprogramm umschalten? Laut WB2A-Serviceanleitung
+                  ist dies eine Servicefunktion für Fachkräfte. Für die
+                  Entlüftung ist der Gasabsperrhahn zu schließen.
+            features:
+              - type: toggle
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+
+          - type: tile
+            entity: switch.vitodens_200_wb2a_befuellungsprogramm
+            name: Befüllungsprogramm
+            icon: mdi:water-pump
+            color: blue
+            tap_action:
+              action: toggle
+              confirmation:
+                text: >-
+                  Befüllungsprogramm umschalten? Laut WB2A-Serviceanleitung
+                  ist dies eine Servicefunktion für Fachkräfte. Anlagendruck,
+                  Füllwasserqualität und Absperrungen vorher prüfen.
+            features:
+              - type: toggle
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+
+          - type: button
+            name: Info Befüllen / Entlüften
+            icon: mdi:information-outline
+            show_name: true
+            show_icon: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Serviceprogramme Befüllen / Entlüften (2F)
+                  adaptive: true
+                  content:
+                    type: markdown
+                    content: |
+                      ## Befüllungs- und Entlüftungsprogramm
+
+                      **Funktion:** Serviceprogramme zum hydraulischen Befüllen bzw. zum automatisierten Entlüften der Anlage.
+
+                      **Quelle:** Viessmann Serviceanleitung Vitodens 200,
+                      Typ WB2A, Dokument **5681 573**, Ausgabe 10/2006.
+
+                      Die Therme verwendet dafür eine gemeinsame
+                      **Codieradresse 2F**, die über Optolink auf
+                      **`0x572F`** liegt:
+
+                      | Wert | Funktion |
+                      | --- | --- |
+                      | **2F:0** | Serviceprogramm aus |
+                      | **2F:1** | Entlüftungsprogramm |
+                      | **2F:2** | Befüllungsprogramm |
+
+                      ### Entlüftungsprogramm
+
+                      Das Programm läuft maximal **20 Minuten**. Dabei wird die
+                      Umwälzpumpe jeweils etwa **30 Sekunden ein- und
+                      ausgeschaltet**. Das Umschaltventil wird abwechselnd in
+                      Richtung Heizbetrieb und Trinkwassererwärmung gefahren.
+                      Der **Brenner bleibt ausgeschaltet**. Danach setzt die
+                      Regelung 2F automatisch wieder auf 0.
+
+                      Für den in der Serviceanleitung beschriebenen
+                      Entlüftungsablauf ist vor der Aktivierung der
+                      **Gasabsperrhahn zu schließen** und anschließend der
+                      Anlagendruck zu prüfen.
+
+                      ### Befüllungsprogramm
+
+                      Bei **2F:2** fährt das Umschaltventil in Mittelstellung,
+                      damit die Anlage vollständig befüllt werden kann. Bei
+                      eingeschalteter Regelung wird zusätzlich die Pumpe
+                      eingeschaltet; der Brenner geht außer Betrieb. Auch
+                      dieses Programm wird nach **20 Minuten automatisch
+                      beendet** und 2F auf 0 zurückgesetzt.
+
+                      ### Umsetzung in Optolink
+
+                      Die beiden HA-Schalter schreiben **nicht direkt** auf
+                      die Therme. `optolink-service-programs` liest zuerst
+                      den aktuellen Zustand, schreibt nur 0/1/2 auf
+                      `0x572F`, prüft den Readback und stellt bei einem
+                      fehlgeschlagenen Übergang den vorherigen Wert wieder her.
+
+                      **Wichtig:** Beide Schalter repräsentieren dasselbe
+                      3-Zustands-Register. Es kann immer nur *ein* Programm
+                      aktiv sein.
+
+                      **Codieradresse:** `2F`
+
+                      **Datenpunkt:** `0x572F`
+
+                      **Quelle:** Viessmann Vitodens 200 WB2A Serviceanleitung 5681 573, Ausgabe 10/2006.
+
+                      [Serviceanleitung beim Quellenanbieter öffnen](https://www.intec-heizung.de/media/pdf/c2/0c/64/Viessmann-Vitodens-200-WB2A-Serviceanleitung.pdf)
+            grid_options:
+              columns: full
+              rows: 1
 
 
       - type: grid
@@ -5325,6 +6685,8 @@ views:
   - title: Wartung
     path: wartung
     icon: mdi:wrench-clock
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
     type: sections
     max_columns: 2
     sections:
@@ -5576,6 +6938,8 @@ views:
   - title: Zeitprogramme
     path: zeitprogramme
     icon: mdi:calendar-clock
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
     type: sections
     max_columns: 2
     sections:
@@ -6161,6 +7525,8 @@ views:
   - title: Graphen
     path: graphen
     icon: mdi:chart-line
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
     type: sections
     max_columns: 4
     sections:

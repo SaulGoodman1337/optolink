@@ -1,48 +1,45 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Stable /usr/bin/update bootstrap.
+#
+# This tiny wrapper intentionally contains almost no application logic. It
+# reads the persisted repository/ref/target tuple, fetches private-run.sh from
+# that ref and lets private-run materialize the complete repository snapshot.
+# Keeping this layer small makes recovery possible even when application files
+# need a larger update.
+#
+# A GitHub token is optional while the repository is public and is never the
+# first download path; this avoids the historical "expired PAT causes 401"
+# failure mode.
+
 CONF="/etc/community-scripts-private.conf"
 TOKEN_FILE="/etc/community-scripts-github-token"
 
-if [[ ! -r "$CONF" ]]; then
-  echo "Missing $CONF" >&2
-  exit 2
-fi
-
+[[ -r "$CONF" ]] || { echo "Missing $CONF" >&2; exit 2; }
 # shellcheck disable=SC1090
 source "$CONF"
 
 : "${COMMUNITY_SCRIPTS_TARGET:?COMMUNITY_SCRIPTS_TARGET is missing in $CONF}"
 REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
-REF="${COMMUNITY_SCRIPTS_REF:-main}"
+REF="${COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha}"
 
 save_token() {
   local token
   printf 'GitHub token: ' >/dev/tty
   read -rs token </dev/tty
   printf '\n' >/dev/tty
-  if [[ -z "$token" ]]; then
-    echo "A GitHub token is required." >&2
-    exit 2
-  fi
+  [[ -n "$token" ]] || { echo "A GitHub token is required." >&2; exit 2; }
   umask 077
   printf '%s\n' "$token" >"$TOKEN_FILE"
   chmod 600 "$TOKEN_FILE"
   chown root:root "$TOKEN_FILE"
-  unset token
   echo "GitHub token saved in $TOKEN_FILE (root-only)."
 }
 
 case "${1:-}" in
-  --save-token)
-    save_token
-    exit 0
-    ;;
-  --forget-token|--clear-token)
-    rm -f "$TOKEN_FILE"
-    echo "Saved GitHub token removed."
-    exit 0
-    ;;
+  --save-token) save_token; exit 0 ;;
+  --forget-token|--clear-token) rm -f "$TOKEN_FILE"; echo "Saved GitHub token removed."; exit 0 ;;
 esac
 
 TOKEN="${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}"
@@ -50,26 +47,28 @@ if [[ -z "$TOKEN" && -r "$TOKEN_FILE" ]]; then
   IFS= read -r TOKEN <"$TOKEN_FILE" || true
 fi
 
-if [[ -z "$TOKEN" ]]; then
-  printf 'GitHub token: ' >/dev/tty
-  read -rs TOKEN </dev/tty
-  printf '\n' >/dev/tty
-fi
-
-if [[ -z "$TOKEN" ]]; then
-  echo "A GitHub token is required." >&2
-  exit 2
-fi
-
 bootstrap="$(mktemp)"
 trap 'rm -f "$bootstrap"' EXIT
 
-curl -fsSL \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Accept: application/vnd.github.raw+json" \
-  -H "X-GitHub-Api-Version: 2022-11-28" \
-  "https://api.github.com/repos/$REPO/contents/tools/private-run.sh?ref=$REF" \
-  -o "$bootstrap"
+# Prefer the unauthenticated raw URL. A stale/expired saved token must not
+# break updates while the repository is public. Authentication is only the
+# fallback for a private repository.
+if curl -fsSL \
+  "https://raw.githubusercontent.com/$REPO/$REF/tools/private-run.sh" \
+  -o "$bootstrap"; then
+  :
+elif [[ -n "$TOKEN" ]]; then
+  rm -f "$bootstrap"
+  curl -fsSL \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Accept: application/vnd.github.raw+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "https://api.github.com/repos/$REPO/contents/tools/private-run.sh?ref=$REF" \
+    -o "$bootstrap"
+else
+  echo "Could not download tools/private-run.sh from $REPO @ $REF." >&2
+  exit 3
+fi
 
 COMMUNITY_SCRIPTS_GITHUB_TOKEN="$TOKEN" \
 COMMUNITY_SCRIPTS_REPO="$REPO" \

@@ -371,6 +371,18 @@ def default_editor_interval(slots, slot):
 
 
 class ScheduleManager:
+    """Own the complete guarded schedule-editing state machine.
+
+    The manager serves two interfaces at once:
+    - direct per-day schedule topics used by simple HA text editors; and
+    - structured staging topics used by the richer dashboard editor.
+
+    MQTT callbacks only classify/enqueue events and collect splitter replies.
+    Actual controller reads/writes run serially in the manager loop. A write is
+    always a complete eight-byte day block followed by byte-exact readback; a
+    mismatch triggers restoration of the original block.
+    """
+
     def __init__(self):
         if not getattr(settings, "mqtt_broker", None):
             raise RuntimeError("MQTT ist in settings_ini.py deaktiviert")

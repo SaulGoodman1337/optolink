@@ -2,6 +2,8 @@
 
 This mapping was derived from the supplied vcontrold/vito configuration for device **20CB / VScotHO1** and the MQTT entities currently used in Home Assistant.
 
+> **Scope:** this is a migration/reference map from the legacy vcontrold setup, not the authoritative source for the current **20C2 / VDensHO1 / SW03** production profile. For current polling and writes, use `vdensho1-20c2-wb2a-homeassistant.py` and the guarded helper implementations. Conflicts from the old source are deliberately documented rather than silently corrected here.
+
 | Legacy vcontrol command | New MQTT topic | Address | Len | Unit |
 |---|---|---:|---:|---|
 | `getBetriebArtM1` | `openv/heizkreis_m1_betriebsart` | `0x2323` | 1 | `BA` |

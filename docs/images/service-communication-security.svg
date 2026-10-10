@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1448" height="1086" viewBox="0 0 1448 1086" role="img" aria-labelledby="title desc">
+<title id="title">Dienstekommunikation und Sicherheitsmodell</title>
+<desc id="desc">Clients kommunizieren über MQTT mit optolink-splitter; nur der Splitter besitzt den seriellen Port zur WB2A.</desc>
+<defs>
+  <linearGradient id="bluePanel" x1="0" x2="1"><stop stop-color="#eff8ff"/><stop offset="1" stop-color="#e7f4ff"/></linearGradient>
+  <linearGradient id="violetPanel" x1="0" x2="1"><stop stop-color="#f5f1ff"/><stop offset="1" stop-color="#eee8ff"/></linearGradient>
+  <linearGradient id="redPanel" x1="0" x2="1"><stop stop-color="#fff3f4"/><stop offset="1" stop-color="#ffe9ec"/></linearGradient>
+  <linearGradient id="yellowPanel" x1="0" x2="1"><stop stop-color="#fffaf0"/><stop offset="1" stop-color="#fff1d5"/></linearGradient>
+  <linearGradient id="greenPanel" x1="0" x2="1"><stop stop-color="#effdf3"/><stop offset="1" stop-color="#e2f9e9"/></linearGradient>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0f172a" flood-opacity=".12"/></filter>
+  <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity=".08"/></filter>
+  <marker id="blueArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#1477d4"/></marker>
+  <marker id="greenArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#16a05c"/></marker>
+  <marker id="orangeArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#f97316"/></marker>
+  <style>
+    .title{font:800 39px Inter,Segoe UI,Arial,sans-serif;fill:#0a1b3e;letter-spacing:-1px}
+    .subtitle{font:700 25px Inter,Segoe UI,Arial,sans-serif;fill:#394f75}
+    .h{font:800 25px Inter,Segoe UI,Arial,sans-serif;fill:#102958}
+    .h-red{font:800 25px Inter,Segoe UI,Arial,sans-serif;fill:#a81818}
+    .body{font:16px Inter,Segoe UI,Arial,sans-serif;fill:#314c70}
+    .label{font:800 17px Inter,Segoe UI,Arial,sans-serif;fill:#102958}
+    .small{font:14px Inter,Segoe UI,Arial,sans-serif;fill:#3f5978}
+    .tiny{font:12.5px Inter,Segoe UI,Arial,sans-serif;fill:#526783}
+    .step{font:800 25px Inter,Segoe UI,Arial,sans-serif;fill:#fff}
+    .client{fill:#fff;stroke:#71baf0;stroke-width:1.4;filter:url(#soft)}
+    .rule{fill:#fff;stroke:#bfdaef;stroke-width:1.2;filter:url(#soft)}
+  </style>
+</defs>
+<rect width="1448" height="1086" fill="#fff"/>
+<text x="724" y="47" text-anchor="middle" class="title">Dienstekommunikation und Sicherheitsmodell</text>
+<text x="724" y="81" text-anchor="middle" class="subtitle">Wie die Komponenten sicher miteinander sprechen</text>
+
+<!-- Columns -->
+<rect x="18" y="102" width="336" height="650" rx="22" fill="url(#bluePanel)" stroke="#7fc2ed"/>
+<circle cx="52" cy="138" r="24" fill="#1376c8"/><text x="52" y="147" text-anchor="middle" class="step">1</text>
+<text x="92" y="138" class="h">Clients / Bedienung</text>
+<text x="92" y="164" class="body">Sprechen über MQTT mit dem System</text>
+
+<rect x="362" y="102" width="300" height="650" rx="22" fill="url(#violetPanel)" stroke="#b49af2"/>
+<circle cx="396" cy="138" r="24" fill="#7c3aed"/><text x="396" y="147" text-anchor="middle" class="step">2</text>
+<text x="436" y="138" class="h">Nachrichtenbus</text>
+<text x="436" y="164" class="body">Gemeinsamer Befehls-</text><text x="436" y="186" class="body">und Antwortbus</text>
+
+<rect x="670" y="102" width="310" height="650" rx="22" fill="url(#redPanel)" stroke="#f09aa1"/>
+<circle cx="704" cy="138" r="24" fill="#ef3548"/><text x="704" y="147" text-anchor="middle" class="step">3</text>
+<text x="744" y="138" class="h-red">Gesicherte Laufzeit</text>
+<text x="744" y="164" class="body">Kontrollierte Schnittstelle</text><text x="744" y="186" class="body">zum Heizgerät</text>
+
+<rect x="988" y="102" width="442" height="650" rx="22" fill="url(#yellowPanel)" stroke="#f0c060"/>
+<circle cx="1022" cy="138" r="24" fill="#ed8b10"/><text x="1022" y="147" text-anchor="middle" class="step">4</text>
+<text x="1062" y="138" class="h">Physische Strecke</text>
+<text x="1062" y="164" class="body">Optolink-Verbindung zum Heizgerät</text>
+
+<!-- Clients -->
+<g>
+  <rect x="30" y="190" width="312" height="61" rx="13" class="client"/>
+  <circle cx="62" cy="220" r="19" fill="#199be6"/><path d="M51 229 L62 207 L73 229 Z" fill="#fff"/><circle cx="62" cy="220" r="4" fill="#199be6"/>
+  <text x="91" y="215" class="label">Home Assistant</text><text x="91" y="237" class="small">Dashboard, Discovery, Automationen</text>
+
+  <rect x="30" y="262" width="312" height="61" rx="13" class="client"/>
+  <circle cx="62" cy="292" r="19" fill="#16845e"/><path d="M53 283 L61 292 L53 301 M64 301 H73" stroke="#fff" stroke-width="3" fill="none"/>
+  <text x="91" y="287" class="label">optolink-maintenance</text><text x="91" y="309" class="small">CLI / manuelle Wartung</text>
+
+  <rect x="30" y="334" width="312" height="61" rx="13" class="client"/>
+  <circle cx="62" cy="364" r="19" fill="#f59e0b"/><path d="M48 367 q14 -18 28 0 z" fill="#fff"/>
+  <text x="91" y="359" class="label">optolink-maintenance-api</text><text x="91" y="381" class="small">Programmatischer Zugriff</text>
+
+  <rect x="30" y="406" width="312" height="61" rx="13" class="client"/>
+  <circle cx="62" cy="436" r="19" fill="#ef4444"/><rect x="51" y="426" width="22" height="20" rx="3" fill="#fff"/><path d="M51 432 H73" stroke="#ef4444" stroke-width="2"/>
+  <text x="91" y="431" class="label">optolink-schedule-manager</text><text x="91" y="453" class="small">Zeitprogramme</text>
+
+  <rect x="30" y="478" width="312" height="61" rx="13" class="client"/>
+  <circle cx="62" cy="508" r="19" fill="#8b5cf6"/><path d="M51 500 H73 L63 511 V522" stroke="#fff" stroke-width="3" fill="none"/>
+  <text x="91" y="503" class="label">optolink-party-emulator</text><text x="91" y="525" class="small">Party + Restore</text>
+
+  <rect x="30" y="550" width="312" height="61" rx="13" class="client"/>
+  <circle cx="62" cy="580" r="19" fill="#16a34a"/><circle cx="62" cy="580" r="10" fill="none" stroke="#fff" stroke-width="3"/><path d="M62 580 V573 M62 580 L68 585" stroke="#fff" stroke-width="2.5"/>
+  <text x="91" y="575" class="label">clock-sync</text><text x="91" y="597" class="small">Systemzeit</text>
+
+  <rect x="30" y="622" width="312" height="61" rx="13" class="client"/>
+  <circle cx="62" cy="652" r="19" fill="#94a3b8"/><circle cx="62" cy="652" r="7" fill="#fff"/><path d="M62 637 V644 M62 660 V667 M47 652 H54 M70 652 H77" stroke="#fff" stroke-width="3"/>
+  <text x="91" y="647" class="label">service-programs</text><text x="91" y="669" class="small">2F: Befüllen / Entlüften</text>
+
+  <rect x="30" y="694" width="312" height="43" rx="11" fill="#f8fafc" stroke="#64748b" stroke-width="1.4" stroke-dasharray="6 5"/>
+  <circle cx="55" cy="715" r="12" fill="none" stroke="#334155" stroke-width="3"/><path d="M64 724 L73 733" stroke="#334155" stroke-width="3"/>
+  <text x="83" y="720" class="small" font-weight="700">optolink-debug — Diagnose und Analyse</text>
+</g>
+
+<!-- client bus lines -->
+<path d="M342 220 H390 M342 292 H390 M342 364 H390 M342 436 H390 M342 508 H390 M342 580 H390 M342 652 H390 M342 715 H390" stroke="#1477d4" stroke-width="3" fill="none"/>
+<path d="M390 220 V715" stroke="#1477d4" stroke-width="3" fill="none"/>
+
+<!-- MQTT Broker -->
+<rect x="420" y="220" width="208" height="418" rx="20" fill="#fff" stroke="#8b5cf6" stroke-width="2" filter="url(#shadow)"/>
+<path d="M472 285 q35 -58 70 0 M484 285 q23 -38 46 0 M497 285 q10 -18 20 0" stroke="#7c3aed" stroke-width="8" fill="none" stroke-linecap="round"/>
+<text x="524" y="330" text-anchor="middle" class="h">MQTT Broker</text><text x="524" y="354" text-anchor="middle" class="body">z. B. Mosquitto</text>
+<rect x="444" y="386" width="160" height="65" rx="12" fill="#faf8ff" stroke="#d6c9f8"/><text x="524" y="410" text-anchor="middle" class="small">Themen (Topics)</text><text x="524" y="431" text-anchor="middle" class="small">für Befehle und Zustände</text>
+<rect x="444" y="463" width="160" height="58" rx="12" fill="#faf8ff" stroke="#d6c9f8"/><text x="524" y="487" text-anchor="middle" class="small">Gemeinsamer Bus</text><text x="524" y="508" text-anchor="middle" class="small">für alle Komponenten</text>
+<rect x="444" y="533" width="160" height="58" rx="12" fill="#faf8ff" stroke="#d6c9f8"/><text x="524" y="557" text-anchor="middle" class="small">Keine direkte</text><text x="524" y="578" text-anchor="middle" class="small">Gerätekommunikation</text>
+<rect x="444" y="603" width="160" height="58" rx="12" fill="#faf8ff" stroke="#d6c9f8"/><text x="524" y="627" text-anchor="middle" class="small">Sauber entkoppelt</text><text x="524" y="648" text-anchor="middle" class="small">und erweiterbar</text>
+<path d="M390 420 H418" stroke="#1477d4" stroke-width="4" marker-end="url(#blueArrow)"/>
+
+<!-- MQTT <-> splitter -->
+<path d="M628 345 H680" stroke="#1477d4" stroke-width="5" marker-end="url(#blueArrow)"/>
+<text x="653" y="322" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-size="14" font-weight="700" fill="#1477d4">Befehle</text><text x="653" y="339" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-size="14" font-weight="700" fill="#1477d4">(MQTT)</text>
+<path d="M680 395 H628" stroke="#16a05c" stroke-width="5" marker-end="url(#greenArrow)"/>
+<text x="653" y="418" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-size="14" font-weight="700" fill="#16a05c">Antworten (MQTT)</text>
+
+<!-- Guarded Runtime -->
+<rect x="700" y="220" width="250" height="420" rx="20" fill="#fff" stroke="#f14b5a" stroke-width="2" filter="url(#shadow)"/>
+<circle cx="825" cy="277" r="31" fill="#f1364b"/><circle cx="809" cy="277" r="8" fill="#fff"/><circle cx="841" cy="260" r="8" fill="#fff"/><circle cx="841" cy="294" r="8" fill="#fff"/><path d="M816 273 L834 264 M816 281 L834 290" stroke="#fff" stroke-width="5"/>
+<text x="825" y="337" text-anchor="middle" class="h">optolink-splitter</text>
+<rect x="722" y="354" width="206" height="56" rx="10" fill="#ef3347"/>
+<text x="825" y="378" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-size="16" font-weight="800" fill="#fff">Einziger Besitzer</text><text x="825" y="399" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-size="16" font-weight="800" fill="#fff">des seriellen Ports</text>
+<rect x="722" y="425" width="206" height="51" rx="10" fill="#fff7f8" stroke="#f6c1c7"/><text x="825" y="447" text-anchor="middle" class="small">Zentralisiert den seriellen</text><text x="825" y="466" text-anchor="middle" class="small">Zugriff auf das Optolink-Gerät</text>
+<rect x="722" y="488" width="206" height="51" rx="10" fill="#fff7f8" stroke="#f6c1c7"/><text x="825" y="510" text-anchor="middle" class="small">MQTT-Befehl/Antwort</text><text x="825" y="529" text-anchor="middle" class="small">Schnittstelle</text>
+<rect x="722" y="551" width="206" height="62" rx="10" fill="#fff7f8" stroke="#f6c1c7"/><text x="825" y="573" text-anchor="middle" class="small">Validiert Befehle und nutzt</text><text x="825" y="592" text-anchor="middle" class="small">Sicherheitsmechanismen</text><text x="825" y="609" text-anchor="middle" class="tiny">(Guard Rails)</text>
+
+<!-- Physical path -->
+<path d="M950 375 H1010" stroke="#1477d4" stroke-width="5" marker-end="url(#blueArrow)"/>
+<text x="980" y="350" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-size="14" font-weight="700" fill="#1477d4">Seriell</text><text x="980" y="368" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-size="14" font-weight="700" fill="#1477d4">(USB)</text>
+
+<rect x="1017" y="270" width="118" height="250" rx="15" fill="#fff" stroke="#eca83a" filter="url(#soft)"/>
+<circle cx="1076" cy="329" r="31" fill="#f4f1e7" stroke="#d9d1ba"/><path d="M1076 307 V351 M1062 321 L1076 307 L1090 321 M1062 338 H1090" stroke="#374151" stroke-width="4" fill="none"/>
+<text x="1076" y="397" text-anchor="middle" class="label">USB-Seriell-</text><text x="1076" y="418" text-anchor="middle" class="label">Adapter</text><text x="1076" y="446" text-anchor="middle" class="small">z. B. CP2102</text><text x="1076" y="466" text-anchor="middle" class="small">oder CH340</text>
+
+<rect x="1150" y="270" width="118" height="250" rx="15" fill="#fff" stroke="#eca83a" filter="url(#soft)"/>
+<rect x="1173" y="315" width="72" height="36" rx="14" fill="#30343a"/><path d="M1245 333 C1260 333 1261 346 1274 346" stroke="#22272c" stroke-width="5" fill="none"/>
+<text x="1209" y="397" text-anchor="middle" class="label">Optolink-Kopf</text><text x="1209" y="418" text-anchor="middle" class="label">/ VS1/P300</text><text x="1209" y="447" text-anchor="middle" class="small">Optische</text><text x="1209" y="467" text-anchor="middle" class="small">Schnittstelle</text>
+
+<rect x="1283" y="270" width="126" height="250" rx="15" fill="#fff" stroke="#eca83a" filter="url(#soft)"/>
+<rect x="1305" y="306" width="82" height="92" rx="5" fill="#edf2f6" stroke="#9aabb9"/><path d="M1305 306 L1320 314 L1320 398 L1305 390 Z" fill="#d9e1e8"/><text x="1346" y="356" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="#e74a1a">VIESSMANN</text>
+<text x="1346" y="423" text-anchor="middle" class="label">Viessmann</text><text x="1346" y="445" text-anchor="middle" class="label">Vitodens 200-W</text><text x="1346" y="467" text-anchor="middle" class="label">WB2A</text><text x="1346" y="493" text-anchor="middle" class="tiny">Heizungsanlage</text>
+
+<path d="M1135 375 H1148" stroke="#f97316" stroke-width="4" marker-end="url(#orangeArrow)"/>
+<path d="M1268 375 H1281" stroke="#f97316" stroke-width="4" marker-end="url(#orangeArrow)"/>
+
+<rect x="1010" y="565" width="385" height="133" rx="16" fill="#f3fbff" stroke="#55b9ee" filter="url(#soft)"/>
+<circle cx="1040" cy="596" r="17" fill="#1687d8"/><text x="1040" y="602" text-anchor="middle" font-family="Arial" font-size="19" font-weight="700" fill="#fff">i</text>
+<text x="1070" y="596" class="label">Wichtiger Hinweis</text>
+<text x="1040" y="625" class="small">Nur optolink-splitter hat direkten Zugriff auf den</text>
+<text x="1040" y="646" class="small">USB-Seriell-Adapter und das Heizgerät. Alle anderen</text>
+<text x="1040" y="667" class="small">Komponenten kommunizieren ausschließlich über MQTT.</text>
+
+<!-- Lower security section -->
+<rect x="18" y="770" width="1040" height="292" rx="20" fill="#f7fbff" stroke="#b8d7eb"/>
+<circle cx="54" cy="808" r="24" fill="#1477d4"/><path d="M45 805 L54 815 L66 795" stroke="#fff" stroke-width="4" fill="none"/>
+<text x="92" y="807" class="h">Sicherheitsregeln</text>
+<text x="92" y="833" class="body">Schützen vor unerwünschten Änderungen und sorgen für einen stabilen Betrieb</text>
+
+<!-- rule tiles -->
+<rect x="34" y="856" width="320" height="86" rx="13" class="rule"/>
+<circle cx="61" cy="885" r="20" fill="#1477d4"/><text x="61" y="893" text-anchor="middle" class="step" font-size="19">1</text>
+<text x="91" y="879" class="small" font-weight="700">Nur optolink-splitter spricht</text><text x="91" y="899" class="small" font-weight="700">direkt mit dem seriellen Port.</text><text x="91" y="922" class="tiny">Keine direkte Gerätekommunikation anderer Dienste.</text>
+
+<rect x="368" y="856" width="320" height="86" rx="13" class="rule"/>
+<circle cx="395" cy="885" r="20" fill="#22a45d"/><text x="395" y="893" text-anchor="middle" class="step" font-size="19">2</text>
+<text x="425" y="879" class="small" font-weight="700">Writes laufen über Guard Rails</text><text x="425" y="899" class="small" font-weight="700">und Controller-Readback.</text><text x="425" y="922" class="tiny">Jede Änderung wird am Controller verifiziert.</text>
+
+<rect x="702" y="856" width="338" height="86" rx="13" class="rule"/>
+<circle cx="729" cy="885" r="20" fill="#7c3aed"/><text x="729" y="893" text-anchor="middle" class="step" font-size="19">3</text>
+<text x="759" y="879" class="small" font-weight="700">Party-Emulation stellt den</text><text x="759" y="899" class="small" font-weight="700">Ursprungszustand wieder her.</text><text x="759" y="922" class="tiny">Restore-State bleibt persistent.</text>
+
+<rect x="34" y="954" width="320" height="86" rx="13" class="rule"/>
+<circle cx="61" cy="983" r="20" fill="#ed8b10"/><text x="61" y="991" text-anchor="middle" class="step" font-size="19">4</text>
+<text x="91" y="977" class="small" font-weight="700">Zeitprogramme werden vor</text><text x="91" y="997" class="small" font-weight="700">dem Schreiben validiert.</text><text x="91" y="1020" class="tiny">Kompletter 8-Byte-Block + Readback + Restore.</text>
+
+<rect x="368" y="954" width="320" height="86" rx="13" class="rule"/>
+<circle cx="395" cy="983" r="20" fill="#ef3548"/><text x="395" y="991" text-anchor="middle" class="step" font-size="19">5</text>
+<text x="425" y="977" class="small" font-weight="700">Serviceprogramme 2F erlauben</text><text x="425" y="997" class="small" font-weight="700">nur 0 / 1 / 2.</text><text x="425" y="1020" class="tiny">Befüllen und Entlüften sind live hardwareverifiziert.</text>
+
+<rect x="702" y="954" width="338" height="86" rx="13" class="rule"/>
+<circle cx="729" cy="983" r="20" fill="#0f9f8b"/><text x="729" y="991" text-anchor="middle" class="step" font-size="19">6</text>
+<text x="759" y="977" class="small" font-weight="700">Clock-Sync prüft Drift und</text><text x="759" y="997" class="small" font-weight="700">verifiziert 0x088E per Readback.</text><text x="759" y="1020" class="tiny">Transport-ACK allein gilt nicht als Erfolgsnachweis.</text>
+
+<!-- Write helper panel -->
+<rect x="1072" y="770" width="358" height="292" rx="20" fill="url(#greenPanel)" stroke="#87d9a0"/>
+<circle cx="1108" cy="810" r="24" fill="#13a04d"/><path d="M1099 807 L1108 817 L1120 797" stroke="#fff" stroke-width="4" fill="none"/>
+<text x="1142" y="807" class="h">Sichere Write-Helfer</text><text x="1142" y="832" class="body">Vordefinierte, geprüfte Befehle</text>
+
+<rect x="1090" y="858" width="322" height="78" rx="13" fill="#f7fff9" stroke="#9edfb0"/>
+<rect x="1110" y="876" width="39" height="43" rx="6" fill="#25b862"/><path d="M1120 887 H1139 M1120 895 H1139 M1120 903 H1134" stroke="#fff" stroke-width="3"/>
+<text x="1163" y="884" class="label">Beispiel: 0x572F</text><text x="1163" y="906" class="small">Nur 0 / 1 / 2 schreiben,</text><text x="1163" y="925" class="small">Controller-Readback verifizieren.</text>
+
+<rect x="1090" y="949" width="322" height="78" rx="13" fill="#f7fff9" stroke="#9edfb0"/>
+<rect x="1110" y="967" width="39" height="43" rx="6" fill="#39a6ea"/><path d="M1120 978 H1139 M1120 986 H1139 M1120 994 H1134" stroke="#fff" stroke-width="3"/>
+<text x="1163" y="975" class="label">Beispiel: 0x088E</text><text x="1163" y="997" class="small">Nur über Clock-Sync schreiben</text><text x="1163" y="1016" class="small">und anschließend erneut lesen.</text>
+</svg>

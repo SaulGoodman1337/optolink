@@ -34,7 +34,12 @@ Write verification on this exact appliance:
   synthetic Party end-to-end: verified with distinct setpoints (0x2306=21 C,
     0x2308=22 C): ON mirrored 22 C to 0x2306 and set 0x2323=4; OFF restored
     0x2306=21 C and 0x2323=2. Native physical Party still tracks through 0x2303.
-  0x6300 DHW target: R/W, current configured range 10..60 C
+  0x6300 DHW normal/day target: R/W, configured range 10..60 C
+  0x6758 coding address 58: second DHW target; 0 disables the additional
+    setpoint, 10..60 C selects the second target used by the fourth DHW time phase.
+  0x572F coding address 2F: service-program selector; 0=off, 1=venting,
+    2=filling. Production control is routed through optolink-service-programs
+    for read-before-write, readback verification and automatic HA state refresh.
   0x6773 circulation interval: R/W verified for values 0 and 7
   0x2000..0x2230 schedule blocks: complete 8-byte daily writes hardware-
     verified for 0/1/2/4 intervals, FF FF slot clearing and 24:00 end boundary.
@@ -45,6 +50,27 @@ Writable selects expose the complete VDensHO1 source-documented enums.
 Hardware write tests on this exact appliance have so far covered 0x2323
 values 2 and 4, and 0x6773 values 0 and 7.
 """
+
+# ---------------------------------------------------------------------------
+# How to read this file
+# ---------------------------------------------------------------------------
+# This is a declarative profile consumed by the optolink-splitter Home
+# Assistant adapter; it is not an executable daemon.
+#
+# "poll" entries are controller datapoints read by the splitter. The first
+# field selects a poll group, followed by the stable datapoint name, Optolink
+# address, byte length and decoder/scale information expected by the upstream
+# adapter.
+#
+# "nopoll" entries are Home Assistant entities whose state is produced by a
+# local helper service (maintenance, schedules, Party or clock sync) instead of
+# by the splitter poll loop.
+#
+# For writable entities, keep the write surface intentionally small. Complex
+# operations such as schedules and maintenance are routed through dedicated
+# managers rather than exposing an unrestricted raw write from Home Assistant.
+# Stable datapoint names matter because they become Home Assistant entity IDs.
+# See docs/home-assistant.md for the full model.
 
 poll_list = {
     "device": {
@@ -458,6 +484,79 @@ poll_list = {
         },
 
         # -----------------------------------------------------------------
+        # Filling / venting service programs (coding address 2F / 0x572F).
+        #
+        # Viessmann WB2A service manual, document 5681 573 (10/2006):
+        #   2F:0 = both service programs inactive
+        #   2F:1 = venting program active
+        #   2F:2 = filling program active
+        #
+        # The controller owns one three-state byte, while Home Assistant exposes
+        # two human-friendly switches. optolink-service-programs is the guarded
+        # translation layer: it reads before writes, verifies controller
+        # readback, restores the previous mode on a failed transition and polls
+        # the byte so the controller's automatic 20-minute reset is reflected
+        # immediately in HA.
+        # -----------------------------------------------------------------
+        {
+            "domain": "switch",
+            "entity_category": "config",
+            "icon": "mdi:air-filter",
+            "command_topic": "{mqtt_base}/service_programs/venting/set",
+            "state_topic": "{mqtt_base}/service_programs/venting/state",
+            "payload_on": "ON",
+            "payload_off": "OFF",
+            "state_on": "ON",
+            "state_off": "OFF",
+            "optimistic": False,
+            "availability_topic": "{mqtt_base}/service_programs/availability",
+            "payload_available": "online",
+            "payload_not_available": "offline",
+            "nopoll": [
+                {
+                    "name": "entlueftungsprogramm",
+                },
+            ],
+        },
+        {
+            "domain": "switch",
+            "entity_category": "config",
+            "icon": "mdi:water-pump",
+            "command_topic": "{mqtt_base}/service_programs/filling/set",
+            "state_topic": "{mqtt_base}/service_programs/filling/state",
+            "payload_on": "ON",
+            "payload_off": "OFF",
+            "state_on": "ON",
+            "state_off": "OFF",
+            "optimistic": False,
+            "availability_topic": "{mqtt_base}/service_programs/availability",
+            "payload_available": "online",
+            "payload_not_available": "offline",
+            "nopoll": [
+                {
+                    "name": "befuellungsprogramm",
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "icon": "mdi:tools",
+            "availability_topic": "{mqtt_base}/service_programs/availability",
+            "payload_available": "online",
+            "payload_not_available": "offline",
+            "nopoll": [
+                {
+                    "name": "serviceprogramm_status",
+                    "state_topic": "{mqtt_base}/service_programs/status",
+                    "value_template": "{{ value_json.text | default('Unbekannt') }}",
+                    "json_attributes_topic": "{mqtt_base}/service_programs/status",
+                },
+            ],
+        },
+
+        # -----------------------------------------------------------------
         # Party mode: persistent synthetic control for VDensHO1 / 20C2 / SW03.
         #
         # Native 0x2303=1 is not a reliable remote activation path on this
@@ -527,13 +626,25 @@ poll_list = {
                     ],
                 },
                 {
-                    # 0x6756=0 configures the user range to 10..60 C.
+                    # 0x6756=0 configures the normal user range to 10..60 C.
                     # Coding-plug capability at 0x1050 is 10..63 C.
                     "min": 10,
                     "max": 60,
                     "poll": [
-                        ("NORMAL", "warmwasser_solltemperatur",         0x6300, 1, 1, False),
-                        ("NORMAL", "warmwasser_solltemperatur_reduziert", 0x6301, 1, 1, False),
+                        ("NORMAL", "warmwasser_solltemperatur", 0x6300, 1, 1, False),
+                    ],
+                },
+                {
+                    # WB2A service coding address 58. Optolink coding mapping:
+                    # 58 -> 0x6758. Value 0 disables the additional DHW target;
+                    # 10..60 C selects the second target used by DHW time phase 4.
+                    #
+                    # Keep the historical "..._reduziert" datapoint name so an
+                    # existing Home Assistant entity registry keeps the same ID.
+                    "min": 0,
+                    "max": 60,
+                    "poll": [
+                        ("NORMAL", "warmwasser_solltemperatur_reduziert", 0x6758, 1, 1, False),
                     ],
                 },
             ],
@@ -718,16 +829,30 @@ poll_list = {
                     ],
                 },
                 {
+                    # WB2A coding address A9 is a dimensionless pump-idle
+                    # parameter (0 = disabled, 1..15 = increasing idle-time
+                    # effect). The service manual does not define A9:n as
+                    # n minutes. Keep the HA number unitless so the dashboard
+                    # does not present a false time unit.
                     "min": 0,
                     "max": 15,
                     "step": 1,
-                    "unit_of_measurement": "min",
                     "nopoll": [
                         {
                             "name": "heizkreis_m1_pumpe_reduziert_a9_einstellung",
                             "state_topic": "{mqtt_base}/heizkreis_m1_pumpe_reduziert_a9",
                             "command_topic": "{mqtt_base}/heizkreis_m1_pumpe_reduziert_a9/set",
                         },
+                    ],
+                },
+                {
+                    # Coding address 62 is explicitly minutes in the WB2A
+                    # service manual: 0 = no after-run, 1..15 = minutes.
+                    "min": 0,
+                    "max": 15,
+                    "step": 1,
+                    "unit_of_measurement": "min",
+                    "nopoll": [
                         {
                             "name": "warmwasser_pumpennachlauf_62_einstellung",
                             "state_topic": "{mqtt_base}/warmwasser_pumpennachlauf_62",
@@ -768,6 +893,112 @@ poll_list = {
             ],
         },
         # -----------------------------------------------------------------
+        # Installation topology / coding controls.
+        #
+        # Source: Viessmann Vitodens 200 WB2A service manual 5681 573,
+        # coding level 2. These addresses describe the installed hydraulic
+        # topology and attached modules. They are intentionally represented as
+        # enumerated selects so only documented values can be written.
+        #
+        # NOTE: the read addresses below are established production datapoints.
+        # Remote writes are source-documented but have not all been live-tested
+        # on this exact appliance. The DEV dashboard therefore adds explicit
+        # warnings/confirmations for topology changes.
+        # -----------------------------------------------------------------
+        {
+            "domain": "select",
+            "entity_category": "config",
+            "options": [
+                "00:1 · A1 ohne Warmwasser",
+                "00:2 · A1 mit Warmwasser",
+                "00:3 · M2 ohne Warmwasser",
+                "00:4 · M2 mit Warmwasser",
+                "00:5 · A1 + M2 ohne Warmwasser",
+                "00:6 · A1 + M2 mit Warmwasser",
+            ],
+            "command_template": "{% set m = {'00:1 · A1 ohne Warmwasser':1,'00:2 · A1 mit Warmwasser':2,'00:3 · M2 ohne Warmwasser':3,'00:4 · M2 mit Warmwasser':4,'00:5 · A1 + M2 ohne Warmwasser':5,'00:6 · A1 + M2 mit Warmwasser':6} %}{{ m.get(value, '') }}",
+            "value_template": "{% set v = value | int(-1) %}{% set m = {1:'00:1 · A1 ohne Warmwasser',2:'00:2 · A1 mit Warmwasser',3:'00:3 · M2 ohne Warmwasser',4:'00:4 · M2 mit Warmwasser',5:'00:5 · A1 + M2 ohne Warmwasser',6:'00:6 · A1 + M2 mit Warmwasser'} %}{{ m.get(v, 'Unbekannt (' ~ v ~ ')') }}",
+            "nopoll": [
+                {
+                    "name": "anlagenschema_00_einstellung",
+                    "state_topic": "{mqtt_base}/anlagenschema",
+                    "command_topic": "{mqtt_base}/anlagenschema/set",
+                },
+            ],
+        },
+        {
+            "domain": "select",
+            "entity_category": "config",
+            "options": [
+                "52:0 · Ohne Weichensensor",
+                "52:1 · Mit Weichensensor",
+            ],
+            "command_template": "{% if value.startswith('52:0') %}0{% elif value.startswith('52:1') %}1{% endif %}",
+            "value_template": "{% set v = value | int(-1) %}{% if v == 0 %}52:0 · Ohne Weichensensor{% elif v == 1 %}52:1 · Mit Weichensensor{% else %}Unbekannt ({{ v }}){% endif %}",
+            "nopoll": [
+                {
+                    "name": "hydraulische_weiche_sensor_52_einstellung",
+                    "state_topic": "{mqtt_base}/hydraulische_weiche_vorhanden",
+                    "command_topic": "{mqtt_base}/hydraulische_weiche_vorhanden/set",
+                },
+            ],
+        },
+        {
+            "domain": "select",
+            "entity_category": "config",
+            "options": [
+                "53:0 · Sammelstörung",
+                "53:1 · Zirkulationspumpe",
+                "53:2 · Heizkreispumpe A1",
+                "53:3 · Speicherladepumpe extern",
+            ],
+            "command_template": "{% set m = {'53:0 · Sammelstörung':0,'53:1 · Zirkulationspumpe':1,'53:2 · Heizkreispumpe A1':2,'53:3 · Speicherladepumpe extern':3} %}{{ m.get(value, '') }}",
+            "value_template": "{% set v = value | int(-1) %}{% set m = {0:'53:0 · Sammelstörung',1:'53:1 · Zirkulationspumpe',2:'53:2 · Heizkreispumpe A1',3:'53:3 · Speicherladepumpe extern'} %}{{ m.get(v, 'Unbekannt (' ~ v ~ ')') }}",
+            "nopoll": [
+                {
+                    "name": "relais_funktion_53_einstellung",
+                    "state_topic": "{mqtt_base}/relais_k12_funktion_53",
+                    "command_topic": "{mqtt_base}/relais_k12_funktion_53/set",
+                },
+            ],
+        },
+        {
+            "domain": "select",
+            "entity_category": "config",
+            "options": [
+                "54:0 · Ohne Solarregelung",
+                "54:1 · Vitosolic 100",
+                "54:2 · Vitosolic 200",
+            ],
+            "command_template": "{% set m = {'54:0 · Ohne Solarregelung':0,'54:1 · Vitosolic 100':1,'54:2 · Vitosolic 200':2} %}{{ m.get(value, '') }}",
+            "value_template": "{% set v = value | int(-1) %}{% set m = {0:'54:0 · Ohne Solarregelung',1:'54:1 · Vitosolic 100',2:'54:2 · Vitosolic 200'} %}{{ m.get(v, 'Unbekannt (' ~ v ~ ')') }}",
+            "nopoll": [
+                {
+                    "name": "solarregelung_54_einstellung",
+                    "state_topic": "{mqtt_base}/solar_typ",
+                    "command_topic": "{mqtt_base}/solar_typ/set",
+                },
+            ],
+        },
+        {
+            "domain": "select",
+            "entity_category": "config",
+            "options": [
+                "5B:0 · Speicher direkt am Kessel",
+                "5B:1 · Speicher hinter hydraulischer Weiche",
+            ],
+            "command_template": "{% if value.startswith('5B:0') %}0{% elif value.startswith('5B:1') %}1{% endif %}",
+            "value_template": "{% set v = value | int(-1) %}{% if v == 0 %}5B:0 · Speicher direkt am Kessel{% elif v == 1 %}5B:1 · Speicher hinter hydraulischer Weiche{% else %}Unbekannt ({{ v }}){% endif %}",
+            "nopoll": [
+                {
+                    "name": "warmwasser_speicher_anbindung_5b_einstellung",
+                    "state_topic": "{mqtt_base}/warmwasser_speicher_anbindung_5b",
+                    "command_topic": "{mqtt_base}/warmwasser_speicher_anbindung_5b/set",
+                },
+            ],
+        },
+
+        # -----------------------------------------------------------------
         # Dashboard aliases for service values.
         # These use new unique_ids so existing HA registry entries that were
         # previously disabled do not suppress the dashboard values.
@@ -794,7 +1025,7 @@ poll_list = {
                 {
                     "name": "umschaltventil_bauart_65_anzeige",
                     "state_topic": "{mqtt_base}/umschaltventil_bauart_65",
-                    "value_template": "{% set v = value | int(-1) %}{% if v == 3 %}Grundfos Ventil{% else %}Wert {{ v }}{% endif %}",
+                    "value_template": "{% set v = value | int(-1) %}{% set m = {0:'65:0 · kein Umschaltventil',1:'65:1 · Viessmann',2:'65:2 · Wilo',3:'65:3 · Grundfos'} %}{{ m.get(v, 'Wert ' ~ v) }}",
                 },
                 {
                     "name": "zirkulation_bei_ww_soll1_71_anzeige",
@@ -1542,6 +1773,7 @@ poll_list = {
                 {
                     "name": "anlagenschema_anzeige",
                     "state_topic": "{mqtt_base}/anlagenschema",
+                    "value_template": "{% set v = value | int(-1) %}{% set m = {1:'00:1 · A1 ohne WW',2:'00:2 · A1 + WW',3:'00:3 · M2 ohne WW',4:'00:4 · M2 + WW',5:'00:5 · A1 + M2 ohne WW',6:'00:6 · A1 + M2 + WW'} %}{{ m.get(v, 'Wert ' ~ v) }}",
                 },
                 {
                     "name": "anlagentyp_anzeige",
@@ -1550,6 +1782,26 @@ poll_list = {
                 {
                     "name": "bauart_warmwasser_anzeige",
                     "state_topic": "{mqtt_base}/bauart_warmwasser",
+                },
+                {
+                    "name": "hydraulische_weiche_52_anzeige",
+                    "state_topic": "{mqtt_base}/hydraulische_weiche_vorhanden",
+                    "value_template": "{% set v = value | int(-1) %}{% if v == 0 %}52:0 · ohne Vorlaufsensor{% elif v == 1 %}52:1 · mit Vorlaufsensor{% else %}Wert {{ v }}{% endif %}",
+                },
+                {
+                    "name": "solarregelung_54_anzeige",
+                    "state_topic": "{mqtt_base}/solar_typ",
+                    "value_template": "{% set v = value | int(-1) %}{% if v == 0 %}54:0 · keine Solarregelung{% elif v == 1 %}54:1 · Vitosolic 100{% elif v == 2 %}54:2 · Vitosolic 200{% else %}Wert {{ v }}{% endif %}",
+                },
+                {
+                    "name": "warmwasser_speicher_anbindung_5b_anzeige",
+                    "state_topic": "{mqtt_base}/warmwasser_speicher_anbindung_5b",
+                    "value_template": "{% set v = value | int(-1) %}{% if v == 0 %}5B:0 · direkt am Kessel{% elif v == 1 %}5B:1 · hinter hydraulischer Weiche{% else %}Wert {{ v }}{% endif %}",
+                },
+                {
+                    "name": "relais_funktion_53_anzeige",
+                    "state_topic": "{mqtt_base}/relais_k12_funktion_53",
+                    "value_template": "{% set v = value | int(-1) %}{% set m = {0:'53:0 · Sammelstörung',1:'53:1 · Zirkulationspumpe',2:'53:2 · Heizkreispumpe A1',3:'53:3 · Speicherladepumpe extern'} %}{{ m.get(v, 'Wert ' ~ v) }}",
                 },
                 {
                     "name": "systemzeit_anzeige",
@@ -1724,6 +1976,12 @@ poll_list = {
 
         # -----------------------------------------------------------------
         # System clock
+        #
+        # 0x088E is the controller's 8-byte BCD system time. The normal poll
+        # remains the controller source of truth. optolink-clock-sync checks it
+        # every 15 minutes, writes only when drift exceeds 30 seconds (or the
+        # weekday byte is inconsistent), verifies the readback and publishes
+        # diagnostic status on <mqtt_base>/clock_sync/status.
         # -----------------------------------------------------------------
         {
             "domain": "sensor",
@@ -1732,6 +1990,36 @@ poll_list = {
             "icon": "mdi:clock-outline",
             "poll": [
                 ("RARE", "systemzeit", 0x088E, 8, "vdatetime"),
+            ],
+        },
+        {
+            "domain": "sensor",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "icon": "mdi:clock-check-outline",
+            "nopoll": [
+                {
+                    "name": "systemzeit_sync_status",
+                    "state_topic": "{mqtt_base}/clock_sync/status",
+                    "json_attributes_topic": "{mqtt_base}/clock_sync/status",
+                    "value_template": "{% set s = value_json.state | default('unknown') %}{% if s == 'ok' %}Synchron{% elif s == 'synced' %}Korrigiert{% elif s == 'check' %}Nur geprüft{% elif s == 'error' %}Fehler{% else %}{{ s }}{% endif %}",
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "unit_of_measurement": "s",
+            "state_class": "measurement",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "icon": "mdi:clock-alert-outline",
+            "suggested_display_precision": 0,
+            "nopoll": [
+                {
+                    "name": "systemzeit_abweichung",
+                    "state_topic": "{mqtt_base}/clock_sync/status",
+                    "value_template": "{{ value_json.drift_seconds | default(0) | float(0) | round(0) }}",
+                },
             ],
         },
 

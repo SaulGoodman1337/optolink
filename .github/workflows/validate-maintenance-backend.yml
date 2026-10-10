@@ -1,69 +1,564 @@
-name: Validate maintenance backend
+name: Validate Optolink Splitter HA
 
 on:
   push:
-    paths:
-      - "config/optolink-splitter/optolink_maintenance_core.py"
-      - "config/optolink-splitter/optolink-maintenance-api.service"
-      - "config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py"
-      - "config/optolink-splitter/homeassistant-dashboard.yaml"
-      - "tools/optolink-maintenance.py"
-      - "tools/optolink-maintenance-api.py"
-      - "tools/optolink-splitter-update.sh"
-      - "install/optolink-splitter-install.sh"
-      - "ct/optolink-splitter.sh"
-      - ".github/workflows/validate-maintenance-backend.yml"
+    branches:
+      - optolink-splitter-ha
   pull_request:
     paths:
-      - "config/optolink-splitter/optolink_maintenance_core.py"
-      - "config/optolink-splitter/optolink-maintenance-api.service"
-      - "config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py"
-      - "config/optolink-splitter/homeassistant-dashboard.yaml"
-      - "tools/optolink-maintenance.py"
-      - "tools/optolink-maintenance-api.py"
-      - "tools/optolink-splitter-update.sh"
+      - "config/optolink-splitter/**"
+      - "tools/**"
       - "install/optolink-splitter-install.sh"
       - "ct/optolink-splitter.sh"
       - ".github/workflows/validate-maintenance-backend.yml"
 
 jobs:
-  syntax:
+  production-validation:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Compile Python
+      - name: Compile production Python
         run: |
           python3 -m py_compile \
             config/optolink-splitter/optolink_maintenance_core.py \
             config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py \
             tools/optolink-maintenance.py \
-            tools/optolink-maintenance-api.py
+            tools/optolink-maintenance-api.py \
+            tools/optolink-party-emulator.py \
+            tools/optolink-clock-sync.py \
+            tools/optolink-service-programs.py \
+            tools/optolink-schedule-manager.py \
+            tools/wb2a-schedule-probe.py \
+            tools/optolink-debug.py \
+            tools/optolink-apply-vs1-gfa-readonly-patch.py \
+            tools/optolink-apply-phased-poll-scheduler-patch.py
 
       - name: Validate dashboard YAML
         run: |
           python3 -m pip install --disable-pip-version-check pyyaml
           python3 - <<'PY'
-          import yaml
           from pathlib import Path
-          path = Path("config/optolink-splitter/homeassistant-dashboard.yaml")
-          with path.open(encoding="utf-8") as handle:
-              yaml.safe_load(handle)
-          print("dashboard YAML OK")
+          import yaml
+          paths = [
+              Path("config/optolink-splitter/homeassistant-dashboard.yaml"),
+              Path("config/optolink-splitter/homeassistant-dashboard-dev.yaml"),
+          ]
+          for path in paths:
+              with path.open(encoding="utf-8") as handle:
+                  yaml.safe_load(handle)
+              print(f"{path.name}: YAML OK")
           PY
 
-      - name: Validate shell syntax
+      - name: Validate production shell scripts
         run: |
           bash -n tools/optolink-splitter-update.sh
+          bash -n tools/optolink-splitter-ha-bootstrap.sh
+          bash -n tools/optolink-apply-vdensho1-ha-profile.sh
+          bash -n tools/optolink-party-test.sh
+          bash -n tools/private-run.sh
+          bash -n tools/private-update.sh
+          bash -n tools/fetch-wb2a-service-manual.sh
           bash -n install/optolink-splitter-install.sh
           bash -n ct/optolink-splitter.sh
 
-      - name: Validate maintenance service shape
+      - name: Test retained MQTT states
+        run: python3 -m unittest discover -s tests -p "test_mqtt_retain_profile.py" -v
+
+      - name: Validate clock codec
         run: |
-          grep -q '^User=optolink$' config/optolink-splitter/optolink-maintenance-api.service
-          grep -q '^Group=optolink$' config/optolink-splitter/optolink-maintenance-api.service
-          grep -q '^ExecStart=/usr/local/bin/optolink-maintenance-api config/optolink-splitter/optolink-maintenance-api.service
-          grep -q '^Wants=network-online.target optolink-splitter.service config/optolink-splitter/optolink-maintenance-api.service
-          grep -q '^Restart=always config/optolink-splitter/optolink-maintenance-api.service
-          ! grep -q '^PartOf=' config/optolink-splitter/optolink-maintenance-api.service
-          ! grep -q '^Requires=optolink-splitter.service config/optolink-splitter/optolink-maintenance-api.service
+          python3 tools/optolink-clock-sync.py --self-test
+
+      - name: Validate service-program mapping
+        run: |
+          python3 tools/optolink-service-programs.py --self-test
+
+      - name: Verify DEV dashboard isolation
+        run: |
+          test -f config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q '^# DEVELOPMENT Lovelace dashboard' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'title: Heizung DEV' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          ! grep -q '^  control_pair:' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'type: custom:grid-layout' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q '"(max-width: 700px)"' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q '"(max-width: 1200px)"' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'grid-template-columns: minmax(520px, 900px) minmax(520px, 900px)' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'type: custom:layout-card' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'type: custom:mushroom-number-card' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'display_mode: slider' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q '^  thermostat_room_slider:' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          ! grep -q 'type: custom:slider-button-card' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'type: target-temperature' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'touch-action: pan-y' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'hass.entities || {}' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'entry.device_id === deviceId' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'room_name: Büro' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'room_name: Wohnzimmer links' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'room_name: Wohnzimmer rechts' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'entity: script.climateboost' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'fullopen fullopen' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q "temperature: 30.5" config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q "ON · Voll auf (30,5 °C)" config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q "targetNum >= 30.5" config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q '"(min-width: 701px)"' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          test "$(grep -c 'layout: vertical' config/optolink-splitter/homeassistant-dashboard-dev.yaml)" -ge 4
+          grep -q 'Mobile: name/state above the slider' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'Mobile: put the complete label/state block above a full-width' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          ! grep -q 'title: Heizung DEV' config/optolink-splitter/homeassistant-dashboard.yaml
+
+      - name: Verify DEV live fault banner
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          path = Path("config/optolink-splitter/homeassistant-dashboard-dev.yaml")
+          text = path.read_text(encoding="utf-8")
+          dashboard = yaml.safe_load(text)
+
+          views = dashboard.get("views", [])
+          main = next((view for view in views if view.get("title") == "Heizung DEV"), None)
+          if main is None:
+              raise SystemExit("Heizung DEV view missing")
+
+          cards = main.get("cards", [])
+          header = next(
+              (
+                  card for card in cards
+                  if card.get("type") == "vertical-stack"
+                  and card.get("view_layout", {}).get("grid-area") == "header"
+              ),
+              None,
+          )
+          if header is None:
+              raise SystemExit("Heizung DEV header stack missing")
+
+          header_cards = header.get("cards", [])
+          if not header_cards or header_cards[0].get("type") != "conditional":
+              raise SystemExit("live fault banner must be first card in the main header")
+
+          fault = header_cards[0]
+          conditions = fault.get("conditions", [])
+          if len(conditions) != 1 or conditions[0].get("condition") != "or":
+              raise SystemExit("fault banner must use one OR condition group")
+
+          live_entities = {
+              cond.get("entity")
+              for cond in conditions[0].get("conditions", [])
+              if isinstance(cond, dict)
+          }
+          required = {
+              "sensor.vitodens_200_wb2a_aktueller_alarm_fehlercode",
+              "sensor.vitodens_200_wb2a_aktueller_gfa_fehlerstatus",
+              "binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt",
+              "binary_sensor.vitodens_200_wb2a_cfdm_fehler",
+              "binary_sensor.vitodens_200_wb2a_cfdm_harte_sperre",
+              "sensor.vitodens_200_wb2a_km_fehler_pumpe_a1",
+              "sensor.vitodens_200_wb2a_km_fehler_interne_pumpe",
+          }
+          missing = sorted(required - live_entities)
+          if missing:
+              raise SystemExit("fault banner missing live entities: " + ", ".join(missing))
+
+          fault_dump = yaml.safe_dump(fault, allow_unicode=True)
+          if "fehlerhistorie_" in fault_dump or "gfa_fehlerhistorie_" in fault_dump:
+              raise SystemExit("fault banner must not be driven by historical fault entries")
+
+          required_text = [
+              "Aktive Störung erkannt",
+              "Störungsbehebung",
+              "Unbekannter WB2A-Fehlercode",
+              "'B7':'Kesselcodierstecker fehlt, falsch oder defekt'",
+              "'F4':'Kein Flammensignal nach Brennerstart'",
+              "'F9':'Gebläsedrehzahl beim Brennerstart zu niedrig'",
+              "Serviceanleitung 5681 573",
+              "0xA132",
+              "0x5738",
+              "0x0A33",
+              "0x0A35",
+              "0xA395",
+          ]
+          absent = [needle for needle in required_text if needle not in text]
+          if absent:
+              raise SystemExit("fault banner documentation incomplete: " + ", ".join(absent))
+
+          print("DEV live fault banner OK")
+          PY
+
+      - name: Verify DEV view visibility
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          path = Path("config/optolink-splitter/homeassistant-dashboard-dev.yaml")
+          with path.open(encoding="utf-8") as handle:
+              dashboard = yaml.safe_load(handle)
+
+          views = dashboard.get("views", [])
+          if not views:
+              raise SystemExit("DEV dashboard has no views")
+
+          public = views[0]
+          if public.get("title") != "Heizung DEV":
+              raise SystemExit(
+                  f"first DEV view must be Heizung DEV, got {public.get('title')!r}"
+              )
+          if "visible" in public:
+              raise SystemExit("Heizung DEV must remain visible to all users")
+
+          allowed_user = "59b20b82894748e3af2445e75255dc07"
+          expected_visibility = [{"user": allowed_user}]
+
+          errors = []
+          for index, view in enumerate(views[1:], start=2):
+              if view.get("visible") != expected_visibility:
+                  errors.append(
+                      f"view #{index} {view.get('title')!r}: "
+                      f"expected visible={expected_visibility!r}, "
+                      f"got {view.get('visible')!r}"
+                  )
+
+          if errors:
+              raise SystemExit(
+                  "DEV secondary-view visibility mismatch:\n" + "\n".join(errors)
+              )
+
+          print(
+              f"DEV view visibility OK: 1 public + {len(views) - 1} Daniel-only views"
+          )
+          PY
+
+      - name: Verify dashboard info documentation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("config/optolink-splitter/homeassistant-dashboard-dev.yaml")
+          lines = path.read_text(encoding="utf-8").splitlines()
+
+          boxes = []
+          for index, line in enumerate(lines):
+              normalized = line.strip()
+              if normalized not in ("type: markdown", "- type: markdown"):
+                  continue
+
+              content_index = None
+              for cursor in range(index + 1, min(len(lines), index + 8)):
+                  if lines[cursor].strip() == "content: |":
+                      content_index = cursor
+                      break
+              if content_index is None:
+                  continue
+
+              content_indent = len(lines[content_index]) - len(lines[content_index].lstrip())
+              body = []
+              for cursor in range(content_index + 1, len(lines)):
+                  raw = lines[cursor]
+                  if not raw.strip():
+                      body.append(raw)
+                      continue
+                  indent = len(raw) - len(raw.lstrip())
+                  if indent <= content_indent:
+                      break
+                  body.append(raw)
+
+              text = "\n".join(body)
+              # History tables and the maintenance introduction are regular
+              # Markdown cards, not technical parameter info boxes. A
+              # technical box is identified by its register/datapoint footer.
+              if "**Codieradresse" in text or "**Datenpunkt" in text:
+                  boxes.append((index + 1, text))
+
+          expected = 25
+          if len(boxes) != expected:
+              raise SystemExit(f"expected {expected} technical markdown info boxes, found {len(boxes)}")
+
+          required = ("**Funktion:**", "**Codieradresse", "**Datenpunkt", "**Quelle:")
+          errors = []
+          for line_no, body in boxes:
+              missing = [token for token in required if token not in body]
+              if missing:
+                  errors.append(f"line {line_no}: missing {', '.join(missing)}")
+
+          if errors:
+              raise SystemExit("Incomplete dashboard info boxes:\n" + "\n".join(errors))
+
+          print(f"dashboard info boxes OK: {len(boxes)}")
+          PY
+
+          grep -q 'name: Info E6' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Info E7' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Info E8' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Info E9' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Info A9' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Info 31' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Info 60' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+          grep -q 'name: Info 62' config/optolink-splitter/homeassistant-dashboard-dev.yaml
+
+      - name: Verify WB2A topology controls
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          profile_path = Path("config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py")
+          profile = profile_path.read_text(encoding="utf-8")
+          dev_path = Path("config/optolink-splitter/homeassistant-dashboard-dev.yaml")
+          dev_text = dev_path.read_text(encoding="utf-8")
+          prod_path = Path("config/optolink-splitter/homeassistant-dashboard.yaml")
+          prod_text = prod_path.read_text(encoding="utf-8")
+
+          required_profile = {
+              "anlagenschema_00_einstellung": ("0x7700", "/anlagenschema/set"),
+              "hydraulische_weiche_sensor_52_einstellung": ("0x7752", "/hydraulische_weiche_vorhanden/set"),
+              "relais_funktion_53_einstellung": ("0x7753", "/relais_k12_funktion_53/set"),
+              "solarregelung_54_einstellung": ("0x7754", "/solar_typ/set"),
+              "warmwasser_speicher_anbindung_5b_einstellung": ("0x675B", "/warmwasser_speicher_anbindung_5b/set"),
+          }
+
+          errors = []
+          for entity, (address, command_suffix) in required_profile.items():
+              if f'"name": "{entity}"' not in profile:
+                  errors.append(f"missing profile select {entity}")
+              if address not in profile:
+                  errors.append(f"missing datapoint {address}")
+              if command_suffix not in profile:
+                  errors.append(f"missing command topic suffix {command_suffix}")
+
+          schema_options = [
+              "00:1 · A1 ohne Warmwasser",
+              "00:2 · A1 mit Warmwasser",
+              "00:3 · M2 ohne Warmwasser",
+              "00:4 · M2 mit Warmwasser",
+              "00:5 · A1 + M2 ohne Warmwasser",
+              "00:6 · A1 + M2 mit Warmwasser",
+          ]
+          for option in schema_options:
+              if option not in profile or option not in dev_text:
+                  errors.append(f"missing schema option {option!r}")
+
+          for token in (
+              "52:0 · Ohne Weichensensor",
+              "52:1 · Mit Weichensensor",
+              "53:0 · Sammelstörung",
+              "53:3 · Speicherladepumpe extern",
+              "54:0 · Ohne Solarregelung",
+              "54:1 · Vitosolic 100",
+              "54:2 · Vitosolic 200",
+              "5B:0 · Speicher direkt am Kessel",
+              "5B:1 · Speicher hinter hydraulischer Weiche",
+          ):
+              if token not in profile:
+                  errors.append(f"missing documented topology value {token!r}")
+
+          if "umschaltventil_bauart_65_einstellung" in profile:
+              errors.append("coding address 65 must remain read-only")
+          if "/umschaltventil_bauart_65/set" in profile:
+              errors.append("coding address 65 must not expose a command topic")
+
+          required_dev = [
+              "heading: Anlagenschema & Anlagenkonfiguration",
+              "Info / Anlagenschema ändern",
+              "Info / Weichensensor ändern",
+              "Info / Speicheranbindung ändern",
+              "Info / Relaisfunktion ändern",
+              "Info / Solarregelung ändern",
+              "Info zu den read-only Anlagenwerten",
+              "select.vitodens_200_wb2a_anlagenschema_00_einstellung",
+              "select.vitodens_200_wb2a_hydraulische_weiche_sensor_52_einstellung",
+              "select.vitodens_200_wb2a_relais_funktion_53_einstellung",
+              "select.vitodens_200_wb2a_solarregelung_54_einstellung",
+              "select.vitodens_200_wb2a_warmwasser_speicher_anbindung_5b_einstellung",
+              "confirmation:",
+              "Datenpunkt:** `0x7700`",
+              "Datenpunkt:** `0x7752`",
+              "Datenpunkt:** `0x7753`",
+              "Datenpunkt:** `0x7754`",
+              "Datenpunkt:** `0x675B`",
+              "nicht verstellen",
+          ]
+          for token in required_dev:
+              if token not in dev_text:
+                  errors.append(f"DEV topology documentation missing {token!r}")
+
+          if "heading: Anlagenschema & Anlagenkonfiguration" in prod_text:
+              errors.append("new topology editor must remain DEV-only until promoted")
+
+          if not prod_text.startswith("# Production Lovelace dashboard"):
+              errors.append("production dashboard header is not the promoted baseline")
+          if "  - title: Heizung\n" not in prod_text:
+              errors.append("production dashboard must expose the promoted Heizung view")
+          if "  - title: Heizung DEV\n" in prod_text:
+              errors.append("production dashboard must not contain Heizung DEV")
+
+          with dev_path.open(encoding="utf-8") as handle:
+              yaml.safe_load(handle)
+          with prod_path.open(encoding="utf-8") as handle:
+              yaml.safe_load(handle)
+
+          if errors:
+              raise SystemExit("WB2A topology validation failed:\n" + "\n".join(errors))
+
+          print("WB2A topology controls OK")
+          PY
+
+      - name: Verify A9 and 62 unit semantics
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          text = Path("config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py").read_text(encoding="utf-8")
+
+          a9_pos = text.index('"name": "heizkreis_m1_pumpe_reduziert_a9_einstellung"')
+          a9_window = text[max(0, a9_pos - 450):a9_pos + 300]
+          if '"unit_of_measurement": "min"' in a9_window:
+              raise SystemExit("A9 must remain unitless; it is a coding value, not direct minutes")
+
+          ww_pos = text.index('"name": "warmwasser_pumpennachlauf_62_einstellung"')
+          ww_window = text[max(0, ww_pos - 450):ww_pos + 300]
+          if '"unit_of_measurement": "min"' not in ww_window:
+              raise SystemExit("coding address 62 must retain minute unit")
+
+          print("A9/62 unit semantics OK")
+          PY
+
+      - name: Verify production dependencies exist
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          scripts = [
+              Path("tools/optolink-splitter-update.sh"),
+              Path("tools/optolink-apply-vdensho1-ha-profile.sh"),
+              Path("install/optolink-splitter-install.sh"),
+              Path("ct/optolink-splitter.sh"),
+          ]
+          pattern = re.compile(r'(?:install_repo_file|cs_repo_fetch)\s+([^\s"\']+)')
+
+          missing = []
+          for script in scripts:
+              text = script.read_text(encoding="utf-8")
+              for match in pattern.finditer(text):
+                  rel = match.group(1)
+                  if rel.startswith("$"):
+                      continue
+                  if not Path(rel).exists():
+                      missing.append(f"{script}: {rel}")
+
+          if missing:
+              raise SystemExit("Missing repository dependencies:\n" + "\n".join(missing))
+          print("repository dependencies OK")
+          PY
+
+      - name: Enforce production boundary
+        run: |
+          test ! -d config/optolink-splitter/research
+          test ! -d research
+          test ! -d apps/optolink-web
+          test ! -e tools/optolink-pump-override.py
+          test ! -e config/optolink-splitter/optolink-pump-override.service
+          ! grep -R -n -E \
+            'wb2a-(kmbus|xram|physical|e7)-.*probe|single-session-logger|pump-override' \
+            tools/optolink-splitter-update.sh \
+            install/optolink-splitter-install.sh \
+            ct/optolink-splitter.sh
+
+      - name: Verify production branch defaults
+        run: |
+          grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' tools/optolink-splitter-update.sh
+          grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' tools/private-run.sh
+          grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' tools/private-update.sh
+          grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' tools/optolink-apply-vdensho1-ha-profile.sh
+          grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' install/optolink-splitter-install.sh
+          grep -q 'COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha' ct/optolink-splitter.sh
+
+      - name: Verify public-first update path
+        run: |
+          grep -q 'raw.githubusercontent.com/$REPO/$REF/tools/private-run.sh' tools/private-update.sh
+          grep -q 'codeload.github.com/$REPO/tar.gz/$REF' tools/private-run.sh
+          grep -q 'raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel' tools/optolink-apply-vdensho1-ha-profile.sh
+          grep -q 'raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel' install/optolink-splitter-install.sh
+
+      - name: Verify DHW day and night controls
+        run: |
+          grep -q '"warmwasser_solltemperatur".*0x6300' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q '"warmwasser_solltemperatur_reduziert".*0x6758' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q 'entity: number.vitodens_200_wb2a_warmwasser_solltemperatur' config/optolink-splitter/homeassistant-dashboard.yaml
+          grep -q 'entity: number.vitodens_200_wb2a_warmwasser_solltemperatur_reduziert' config/optolink-splitter/homeassistant-dashboard.yaml
+
+      - name: Verify configured serial-device detection
+        run: |
+          grep -q 'port_optolink' tools/optolink-apply-vdensho1-ha-profile.sh
+          grep -q 'port_optolink' install/optolink-splitter-install.sh
+          ! grep -q '\[\[ -c /dev/ttyUSB0 \]\]' tools/optolink-apply-vdensho1-ha-profile.sh
+          ! grep -q '\[\[ -c /dev/ttyUSB0 \]\]' install/optolink-splitter-install.sh
+
+      - name: Verify WB2A filling and venting surface
+        run: |
+          grep -q 'ADDR_SERVICE_PROGRAM = 0x572F' tools/optolink-service-programs.py
+          grep -q 'MODE_VENTING = 1' tools/optolink-service-programs.py
+          grep -q 'MODE_FILLING = 2' tools/optolink-service-programs.py
+          grep -q '"name": "entlueftungsprogramm"' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q '"name": "befuellungsprogramm"' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q '"name": "serviceprogramm_status"' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q 'entity: switch.vitodens_200_wb2a_entlueftungsprogramm' config/optolink-splitter/homeassistant-dashboard.yaml
+          grep -q 'entity: switch.vitodens_200_wb2a_befuellungsprogramm' config/optolink-splitter/homeassistant-dashboard.yaml
+          grep -q '2F:1' docs/service-programs.md
+          grep -q '2F:2' docs/service-programs.md
+          grep -q 'Hardware-Verifikation' docs/service-programs.md
+          grep -q '06.10.2026' docs/service-programs.md
+          grep -q '0 → 1 → 0' README.md
+          grep -q '0 → 2 → 0' README.md
+
+      - name: Verify WB2A clock synchronization surface
+        run: |
+          grep -q 'ADDR_SYSTEM_TIME = 0x088E' tools/optolink-clock-sync.py
+          grep -q 'DRIFT_THRESHOLD_SECONDS = 30' tools/optolink-clock-sync.py
+          grep -q '"systemzeit", 0x088E, 8, "vdatetime"' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q '"name": "systemzeit_sync_status"' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q '"name": "systemzeit_abweichung"' config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py
+          grep -q 'entity: sensor.vitodens_200_wb2a_systemzeit_anzeige' config/optolink-splitter/homeassistant-dashboard.yaml
+          grep -q 'entity: sensor.vitodens_200_wb2a_systemzeit_sync_status' config/optolink-splitter/homeassistant-dashboard.yaml
+
+      - name: Verify maintainer documentation
+        run: |
+          test -f docs/README.md
+          test -f docs/architecture.md
+          test -f docs/operations.md
+          test -f docs/home-assistant.md
+          test -f docs/development.md
+          test -f docs/service-programs.md
+          test -f docs/manuals/README.md
+          test -f docs/images/optolink-system-overview.svg
+          test -f docs/images/service-communication-security.svg
+          test -f docs/images/vs1-p300-wechsel.svg
+          test -f docs/hybrid-protokollwechsel.md
+          grep -Fq '[Dokumentationsindex](docs/README.md)' README.md
+          grep -Fq '[Systemarchitektur](docs/architecture.md)' README.md
+          grep -Fq '[Betrieb und Fehlerdiagnose](docs/operations.md)' README.md
+          grep -Fq '[Home Assistant](docs/home-assistant.md)' README.md
+          grep -Fq '[Entwicklungsleitfaden](docs/development.md)' README.md
+          grep -Fq '![Optolink-Systemübersicht](docs/images/optolink-system-overview.svg)' README.md
+          grep -Fq '![Dienstekommunikation und Sicherheitsmodell](docs/images/service-communication-security.svg)' README.md
+          grep -Fq '![Überwachter VS1/P300-Protokollwechsel](docs/images/vs1-p300-wechsel.svg)' README.md
+          grep -Fq '[Serviceprogramme](docs/service-programs.md)' README.md
+          grep -Fq '[Optionaler VS1/P300-Protokollwechsel](docs/hybrid-protokollwechsel.md)' README.md
+          grep -Fq '0x088E' docs/architecture.md
+          grep -Fq '0x6758' docs/home-assistant.md
+          grep -Fq '0x572F' docs/home-assistant.md
+
+      - name: Validate systemd service contracts
+        run: |
+          grep -Fxq 'User=optolink' config/optolink-splitter/optolink-splitter.service
+          grep -Fxq 'ExecStart=/opt/optolink/venv/bin/python /opt/optolink/optolinkvs2_switch.py' config/optolink-splitter/optolink-splitter.service
+          grep -Fxq 'User=optolink' config/optolink-splitter/optolink-maintenance-api.service
+          grep -Fxq 'ExecStart=/usr/local/bin/optolink-maintenance-api' config/optolink-splitter/optolink-maintenance-api.service
+          grep -Fxq 'ExecStart=/usr/local/bin/optolink-schedule-manager' config/optolink-splitter/optolink-schedule-manager.service
+          grep -Fxq 'ExecStart=/usr/local/bin/optolink-party-emulator' config/optolink-splitter/optolink-party-emulator.service
+          grep -Fxq 'ExecStart=/usr/local/bin/optolink-clock-sync' config/optolink-splitter/optolink-clock-sync.service
+          grep -Fxq 'User=optolink' config/optolink-splitter/optolink-clock-sync.service
+          grep -Fxq 'OnUnitActiveSec=15min' config/optolink-splitter/optolink-clock-sync.timer
+          grep -Fxq 'ExecStart=/usr/local/bin/optolink-service-programs' config/optolink-splitter/optolink-service-programs.service
+          grep -Fxq 'User=optolink' config/optolink-splitter/optolink-service-programs.service

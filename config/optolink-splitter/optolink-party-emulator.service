@@ -1,3 +1,6 @@
+# Keeps synthetic Party restore state in /var/lib/optolink-party via StateDirectory.
+# Requires the splitter because it performs all controller traffic through MQTT.
+
 [Unit]
 Description=Optolink VDensHO1 Party emulation
 After=network-online.target optolink-splitter.service

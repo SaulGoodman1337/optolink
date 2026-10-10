@@ -1,0 +1,58 @@
+# Dokumentationsindex
+
+Dieser Ordner enthält die Betriebs- und Entwicklerdokumentation für den produktiven Branch `optolink-splitter-ha`.
+
+## Einstieg
+
+| Dokument | Wann lesen? |
+| --- | --- |
+| [architecture.md](architecture.md) | Als Erstes: Komponenten, Datenfluss, Dienste und Sicherheitsgrenzen |
+| [hybrid-protokollwechsel.md](hybrid-protokollwechsel.md) | Optionaler VS1/P300-Lesetest, Verifikation, Rückfallroutine und Sperrmechanismen |
+| [operations.md](operations.md) | Beim Betrieb: Update, Status, Logs, Clock-Sync, Fehlerdiagnose |
+| [home-assistant.md](home-assistant.md) | Bei HA-/MQTT-/Dashboard-Änderungen |
+| [anlagenschema.md](anlagenschema.md) | WB2A-Anlagenschema, Hydrauliktopologie und dokumentierte Schreibwerte 00/52/53/54/5B |
+| [development.md](development.md) | Vor Änderungen an Reads, Writes, Services oder Deployment |
+| [optolink-maintenance.md](optolink-maintenance.md) | Wartungswerte und CLI |
+| [optolink-maintenance-api.md](optolink-maintenance-api.md) | MQTT-Wartungs-API und HA-Integration |
+| [wb2a-schedule-blocks.md](wb2a-schedule-blocks.md) | Zeitprogrammformat und verifizierte WB2A-Blöcke |
+| [service-programs.md](service-programs.md) | Befüllungs-/Entlüftungsprogramm, Codieradresse 2F / 0x572F |
+| [manuals/README.md](manuals/README.md) | Servicehandbuch-Quelle und lokaler Download-Helfer |
+
+Zusätzliche technische Referenz:
+
+- [../config/optolink-splitter/vcontrol-mapping.md](../config/optolink-splitter/vcontrol-mapping.md) — Legacy-vcontrold-Migrationsmapping; nicht die aktuelle 20C2-Quelle der Wahrheit.
+
+## Quellen der Wahrheit
+
+Für unterschiedliche Fragestellungen gelten bewusst unterschiedliche Dateien als maßgeblich:
+
+| Frage | Quelle |
+| --- | --- |
+| Welche Entities/Datenpunkte pollt Produktion? | `config/optolink-splitter/vdensho1-20c2-wb2a-homeassistant.py` |
+| Wie sind Anlagenschema/Topologie und deren zulässige Schreibwerte dokumentiert? | `docs/anlagenschema.md` |
+| Welche Werte darf Wartung schreiben? | `config/optolink-splitter/optolink_maintenance_core.py` |
+| Welche Zeitprogrammblöcke sind erlaubt? | `tools/optolink-schedule-manager.py` |
+| Wie wird Party technisch umgesetzt? | `tools/optolink-party-emulator.py` |
+| Wie wird die Gerätezeit synchronisiert? | `tools/optolink-clock-sync.py` |
+| Wie werden Befüllung/Entlüftung gesteuert? | `tools/optolink-service-programs.py` |
+| Wie wird ein bestehendes System aktualisiert? | `tools/optolink-splitter-update.sh` |
+| Wie wird das Profil sicher aktiviert? | `tools/optolink-apply-vdensho1-ha-profile.sh` |
+| Wo sind die zulässigen Hybridfenster und deren Sperren implementiert? | `tools/optolink-hybrid.py`, `tools/handover_acceleration/` |
+| Wie wird einmalig auf den Update-Zweig `main` umgestellt? | `tools/optolink-update-main-umstellen.sh` |
+| Wie wird eine neue LXC-Installation aufgebaut? | `install/optolink-splitter-install.sh` |
+| Wie sieht die HA-Oberfläche aus? | `config/optolink-splitter/homeassistant-dashboard.yaml` |
+
+## Dokumentationsregel
+
+Dokumentation soll den **aktuellen produktiven Zustand** beschreiben. Hypothesen, nicht verifizierte Register und Reverse-Engineering-Zwischenstände gehören nach `optolink-research`.
+
+Wenn Codeverhalten geändert wird, sollten im selben Änderungssatz mindestens die direkt betroffene Dokumentation und — bei einer wichtigen Invariante — der CI-Guard angepasst werden.
+
+
+## Architekturdiagramme
+
+- [Systemübersicht](images/optolink-system-overview.svg)
+- [Dienstekommunikation und Sicherheitsmodell](images/service-communication-security.svg)
+- [Überwachter VS1/P300-Protokollwechsel](images/vs1-p300-wechsel.svg)
+
+Die Root-README rendert beide Diagramme direkt.

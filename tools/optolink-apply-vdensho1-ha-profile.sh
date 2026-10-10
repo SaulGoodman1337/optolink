@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Transactional activation of the production WB2A/VDensHO1 profile.
+#
+# This script is intentionally more conservative than a normal "copy config"
+# helper. It pins the known-good upstream splitter revision, self-tests the two
+# local runtime patchers before touching installed files, snapshots every file
+# it may modify, validates the HA discovery output and rolls back if activation
+# fails. Keep new deployment steps inside that transaction model.
+#
+# Local helper services never replace the splitter as serial-port owner; they
+# communicate through the splitter's configured MQTT command/response topics.
+
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
-CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
-HELPER_REV="2026-09-25-r10-failsoft-poll"
+CS_REF="${COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha}"
+HELPER_REV="2026-10-08-r13-mqtt-retain"
 APP_DIR="/opt/optolink"
 VALIDATED_UPSTREAM_REF="c1ee204a1421447721603c5f21c6da7337fdac97"
 
@@ -21,10 +32,16 @@ cs_repo_fetch() {
     return 0
   fi
 
-  local token="${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}"
-  if [[ -n "$token" ]]; then
+  # Prefer the public raw endpoint. This deliberately ignores stale saved
+  # credentials when the repository is public.
+  if curl -fsSL "https://raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel" -o "$dest"; then
+    return 0
+  fi
+
+  rm -f "$dest"
+  if [[ -n "${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}" ]]; then
     curl -fsSL \
-      -H "Authorization: Bearer $token" \
+      -H "Authorization: Bearer $COMMUNITY_SCRIPTS_GITHUB_TOKEN" \
       -H "Accept: application/vnd.github.raw+json" \
       -H "X-GitHub-Api-Version: 2022-11-28" \
       "https://api.github.com/repos/$CS_REPO/contents/$rel?ref=$CS_REF" \
@@ -32,11 +49,8 @@ cs_repo_fetch() {
     return 0
   fi
 
-  # Public-repository fallback. Do not block non-interactive image updates
-  # waiting for a token on /dev/tty.
-  curl -fsSL "https://raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel" -o "$dest"
+  return 1
 }
-
 if [[ ! -d "$APP_DIR" || ! -f "$APP_DIR/settings_ini.py" ]]; then
   echo "Optolink-Splitter installation not found in $APP_DIR" >&2
   exit 1
@@ -45,6 +59,38 @@ fi
 if [[ ! -d "$APP_DIR/.git" ]]; then
   echo "Optolink-Splitter checkout has no .git metadata; refusing validated profile activation." >&2
   exit 1
+fi
+
+# Existing machines carry intentional local, profile-generated tracked diffs.
+# A reset --hard without a pre-reset backup would silently destroy those.
+# Snapshot all tracked changes as both a patch and the original file contents.
+# The backup is root-only and kept separate from the application checkout.
+if systemctl is-active --quiet optolink-hybrid-continuous-canary.service; then
+  echo "Refusing upstream reset while a P300 canary is active." >&2
+  exit 1
+fi
+if ! runuser -u optolink -- git -C "$APP_DIR" diff --quiet --exit-code; then
+  install -d -m 0700 /var/backups/optolink-update
+  old_umask="$(umask)"
+  umask 077
+  backup="$(mktemp -d /var/backups/optolink-update/before-reset-XXXXXXXX)"
+  if ! runuser -u optolink -- git -C "$APP_DIR" diff --binary >"$backup/tracked-changes.patch"; then
+    echo "Failed to preserve local patch; refusing upstream reset." >&2
+    exit 1
+  fi
+  if ! runuser -u optolink -- git -C "$APP_DIR" diff --name-only -z |
+       tar -C "$APP_DIR" --null -T - -czf "$backup/tracked-files.tar.gz"; then
+    echo "Failed to preserve modified files; refusing upstream reset." >&2
+    exit 1
+  fi
+  for relative in settings_ini.py homeassistant_poll_list.py poll_list.py; do
+    if [[ -f "$APP_DIR/$relative" ]]; then
+      cp -a "$APP_DIR/$relative" "$backup/$relative"
+    fi
+  done
+  runuser -u optolink -- git -C "$APP_DIR" rev-parse HEAD >"$backup/original-commit.txt"
+  umask "$old_umask"
+  echo "Existing local tracked changes safely archived at $backup"
 fi
 
 current_upstream="$(runuser -u optolink -- git -C "$APP_DIR" rev-parse HEAD)"
@@ -214,8 +260,8 @@ if ! "$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --apply; then
   exit 1
 fi
 
-echo "Enabling permanent VS1 timing (global 25 ms; GFA retry 150 ms)..."
-python3 - "$APP_DIR/settings_ini.py" <<'PY'
+echo "Enabling permanent VS1 timing and retained MQTT states..."
+if ! python3 - "$APP_DIR/settings_ini.py" <<'PY'
 import ast
 from pathlib import Path
 import sys
@@ -237,16 +283,16 @@ for node in tree.body:
         values[name] = ast.literal_eval(node.value)
     except Exception:
         pass
-    if name in {"vs1protocol", "olbreath"}:
+    if name in {"vs1protocol", "olbreath", "mqtt_retain"}:
         nodes[name] = node
 
 if values.get("port_vitoconnect") is not None:
     raise SystemExit("Permanent VS1 requires port_vitoconnect=None; refusing profile activation.")
-if set(nodes) != {"vs1protocol", "olbreath"}:
-    raise SystemExit("Could not uniquely locate vs1protocol and olbreath settings.")
+if set(nodes) != {"vs1protocol", "olbreath", "mqtt_retain"}:
+    raise SystemExit("Could not uniquely locate vs1protocol, olbreath and mqtt_retain settings.")
 
 lines = src.splitlines(keepends=True)
-for name, value in (("vs1protocol", True), ("olbreath", 0.025)):
+for name, value in (("vs1protocol", True), ("olbreath", 0.025), ("mqtt_retain", True)):
     node = nodes[name]
     if node.lineno != getattr(node, "end_lineno", node.lineno):
         raise SystemExit(f"{name} must be a one-line top-level assignment.")
@@ -256,8 +302,23 @@ for name, value in (("vs1protocol", True), ("olbreath", 0.025)):
 
 out = "".join(lines)
 ast.parse(out)
+retain_assignments = [
+    node for node in ast.parse(out).body
+    if isinstance(node, ast.Assign)
+    and len(node.targets) == 1
+    and isinstance(node.targets[0], ast.Name)
+    and node.targets[0].id == "mqtt_retain"
+]
+if len(retain_assignments) != 1 or ast.literal_eval(retain_assignments[0].value) is not True:
+    raise SystemExit("mqtt_retain=True verification failed.")
 path.write_text(out)
+print("MQTT state retention verified: mqtt_retain = True")
 PY
+then
+  echo "Could not validate VS1 and MQTT-retain settings; rolling back." >&2
+  rollback_profile
+  exit 1
+fi
 
 # c_polllist.py gives poll_list.py precedence. Remove it after creating a
 # timestamped backup so the Home Assistant adapter becomes the active source.
@@ -393,7 +454,21 @@ fi
 echo "Discovery dry-run OK."
 systemctl daemon-reload
 
-if [[ -c /dev/ttyUSB0 ]]; then
+optolink_port="$(runuser -u optolink -- "$APP_DIR/venv/bin/python" - <<'PY'
+import sys
+sys.path.insert(0, "/opt/optolink")
+import settings_ini
+print(getattr(settings_ini, "port_optolink", None) or "")
+PY
+)"
+
+serial_ready=0
+if [[ -n "$optolink_port" && -c "$optolink_port" ]]; then
+  serial_ready=1
+fi
+
+if [[ "$serial_ready" == "1" ]]; then
+  echo "Configured Optolink serial device: $optolink_port"
   echo "Restarting Optolink-Splitter with VDensHO1 profile..."
   systemctl restart optolink-splitter.service
   sleep 3
@@ -407,7 +482,12 @@ if [[ -c /dev/ttyUSB0 ]]; then
   fi
 else
   systemctl stop optolink-splitter.service 2>/dev/null || true
-  echo "No /dev/ttyUSB0 present; profile installed but service left stopped."
+  if [[ -z "$optolink_port" ]]; then
+    echo "No port_optolink is configured; profile installed but service left stopped."
+  else
+    echo "Configured Optolink serial device is not available: $optolink_port"
+    echo "Profile installed but service left stopped."
+  fi
 fi
 
 mqtt_enabled="$(runuser -u optolink -- "$APP_DIR/venv/bin/python" - <<'PY'
@@ -418,7 +498,7 @@ print("1" if getattr(settings_ini, "mqtt_broker", None) else "0")
 PY
 )"
 
-if [[ "$mqtt_enabled" == "1" && -c /dev/ttyUSB0 ]]; then
+if [[ "$mqtt_enabled" == "1" && "$serial_ready" == "1" ]]; then
   if systemctl cat optolink-party-emulator.service >/dev/null 2>&1; then
     echo "Starting persistent Party emulation service..."
     systemctl enable optolink-party-emulator.service >/dev/null 2>&1 || true
@@ -442,6 +522,19 @@ if [[ "$mqtt_enabled" == "1" && -c /dev/ttyUSB0 ]]; then
     else
       echo "WARNING: Schedule manager did not stay active." >&2
       journalctl -u optolink-schedule-manager.service -n 30 --no-pager >&2 || true
+    fi
+  fi
+
+  if systemctl cat optolink-service-programs.service >/dev/null 2>&1; then
+    echo "Starting guarded filling/venting service-program manager..."
+    systemctl enable optolink-service-programs.service >/dev/null 2>&1 || true
+    systemctl restart optolink-service-programs.service
+    sleep 2
+    if systemctl is-active --quiet optolink-service-programs.service; then
+      echo "Filling/venting service-program manager is active."
+    else
+      echo "WARNING: Filling/venting service-program manager did not stay active." >&2
+      journalctl -u optolink-service-programs.service -n 30 --no-pager >&2 || true
     fi
   fi
 
@@ -512,8 +605,11 @@ PY
     echo "Optolink remains active. Retry later with:" >&2
     echo "  cd /opt/optolink && ./venv/bin/python homeassistant_publish.py" >&2
   fi
+elif [[ "$mqtt_enabled" != "1" ]]; then
+  echo "MQTT is disabled in settings_ini.py; discovery was validated but not published."
 else
-  echo "MQTT is disabled; discovery was validated but not published."
+  echo "MQTT is configured, but the Optolink serial device is unavailable: ${optolink_port:-<not configured>}"
+  echo "Discovery was validated but not published because the splitter is not running."
 fi
 
 echo "VDensHO1/20C2 Home Assistant profile is active."

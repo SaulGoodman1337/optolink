@@ -3,6 +3,14 @@
 This module is the single implementation used by both the root-operated CLI
 and the MQTT maintenance API. It intentionally exposes only the controller
 operations that were verified on the local WB2A appliance.
+
+Safety contract:
+- controller traffic goes through the running splitter via MQTT;
+- writes are limited to the explicit addresses below;
+- high-impact operations require exact confirmation phrases;
+- the process lock prevents CLI/API maintenance writes from overlapping;
+- writes are followed by controller readback;
+- restore paths prefer the observed controller state over transport ACKs.
 """
 
 from __future__ import annotations
@@ -24,6 +32,9 @@ if APP_DIR not in sys.path:
 from c_settings_adapter import settings  # type: ignore  # noqa: E402
 from homeassistant_publish import connect_mqtt  # type: ignore  # noqa: E402
 
+# Keep the maintenance write/read surface explicit. Adding an address here is
+# a production-safety decision and should be backed by a documented hardware
+# read/write/readback test on this exact controller profile.
 ADDR_HOURS_THRESHOLD = 0x5721
 ADDR_INTERVAL_MONTHS = 0x5723
 ADDR_MAINTENANCE_STATE = 0x5724
@@ -115,6 +126,8 @@ def request(
     verbose: bool,
     label: str | None = None,
 ) -> str:
+    # mqtt_respond is shared with other local helpers. Never accept an
+    # unrelated response merely because it arrived next; correlate by address.
     session.responses.clear()
     expected_addr = _command_addr(command)
     prefix = label or command

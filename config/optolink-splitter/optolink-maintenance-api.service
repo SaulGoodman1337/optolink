@@ -1,3 +1,6 @@
+# MQTT facade for the guarded maintenance core. Controller safety rules live in
+# /opt/optolink/optolink_maintenance_core.py and are shared with the CLI.
+
 [Unit]
 Description=Optolink guarded maintenance MQTT API
 After=network-online.target optolink-splitter.service

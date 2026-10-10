@@ -1,0 +1,25 @@
+# Guarded controller for coding address 2F / Optolink 0x572F.
+# It exposes separate HA switches but writes only the shared controller mode byte.
+[Unit]
+Description=Optolink WB2A filling and venting service-program manager
+After=network-online.target optolink-splitter.service
+Wants=network-online.target
+Requires=optolink-splitter.service
+PartOf=optolink-splitter.service
+
+[Service]
+Type=simple
+User=optolink
+Group=optolink
+WorkingDirectory=/opt/optolink
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/local/bin/optolink-service-programs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target

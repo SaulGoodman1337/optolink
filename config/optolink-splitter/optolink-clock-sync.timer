@@ -1,0 +1,13 @@
+# Check every 15 minutes; the service itself writes only when drift exceeds its threshold.
+
+[Unit]
+Description=Periodic Viessmann WB2A clock synchronization
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=15min
+AccuracySec=30s
+Unit=optolink-clock-sync.service
+
+[Install]
+WantedBy=timers.target

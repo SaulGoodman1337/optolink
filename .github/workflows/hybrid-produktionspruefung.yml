@@ -1,0 +1,49 @@
+name: Hybrid-Produktionspruefung (offline)
+
+on:
+  push:
+    branches:
+      - main
+      - optolink-splitter-ha
+    paths:
+      - "tools/handover_acceleration/**"
+      - "tools/optolink-hybrid.py"
+      - "tools/optolink-hybrid-modules.txt"
+      - "tools/optolink-update-main-umstellen.sh"
+      - "tools/optolink-splitter-update.sh"
+      - "tools/optolink-apply-vdensho1-ha-profile.sh"
+      - "tests/test_handover*.py"
+      - "tests/test_optolink_hybrid_production.py"
+      - "docs/**"
+      - "README.md"
+      - ".github/workflows/hybrid-produktionspruefung.yml"
+  pull_request:
+    branches:
+      - main
+      - optolink-splitter-ha
+
+jobs:
+  offline-pruefung:
+    name: "Laufzeitsperren und Dokumentation – Python ${{ matrix.python }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - name: Repository abrufen
+        uses: actions/checkout@v4
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Reine Offline-Tests zum Protokollwechsel
+        run: python -m unittest discover -s tests -p "test_handover*.py" -q
+      - name: Produktiv-CLI, lokalisierte Dokumentation und drei SVGs
+        run: python -m unittest discover -s tests -p "test_optolink_hybrid_production.py" -q
+      - name: Skriptsyntax und verbotene automatische P300-Freigabe
+        run: |
+          bash -n tools/optolink-splitter-update.sh
+          bash -n tools/optolink-apply-vdensho1-ha-profile.sh
+          bash -n tools/optolink-update-main-umstellen.sh
+          ! grep -q "OPTO_HYBRID_RUNTIME_AUTO=fenced-readonly" tools/optolink-splitter-update.sh

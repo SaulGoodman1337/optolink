@@ -1,3 +1,6 @@
+# Main runtime. This is the only production process that opens the serial Optolink device.
+# Helper services communicate with it through MQTT instead of competing for the port.
+
 [Unit]
 Description=Optolink Switch/Splitter
 Documentation=https://github.com/philippoo66/optolink-splitter

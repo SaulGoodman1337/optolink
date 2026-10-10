@@ -3,29 +3,47 @@
 # Copyright (c) 2026
 # License: MIT
 # Source: https://github.com/philippoo66/optolink-splitter
+#
+# Runs inside a newly created LXC. This script builds the initial upstream
+# splitter installation, lays down the local production helpers/units and then
+# uses the same profile-activation helper as normal updates. Machine-specific
+# values remain in /opt/optolink/settings_ini.py and are not stored in Git.
+#
+# Fresh installs intentionally start with mqtt_broker=None. MQTT-backed helper
+# services are therefore installed but left inactive until the operator
+# configures MQTT and runs the normal production updater.
 
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
-CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
+CS_REF="${COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha}"
 
 cs_repo_fetch() {
   local rel="${1:?repo-relative path}"
   local dest="${2:?destination}"
+
   if [[ -n "${COMMUNITY_SCRIPTS_ROOT:-}" && -f "${COMMUNITY_SCRIPTS_ROOT}/$rel" ]]; then
     cp "${COMMUNITY_SCRIPTS_ROOT}/$rel" "$dest"
     return 0
   fi
-  if [[ -z "${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}" ]]; then
-    echo "Missing COMMUNITY_SCRIPTS_GITHUB_TOKEN for private repository access." >&2
-    return 1
-  fi
-  curl -fsSL \
-    -H "Authorization: Bearer $COMMUNITY_SCRIPTS_GITHUB_TOKEN" \
-    -H "Accept: application/vnd.github.raw+json" \
-    -H "X-GitHub-Api-Version: 2022-11-28" \
-    "https://api.github.com/repos/$CS_REPO/contents/$rel?ref=$CS_REF" \
-    -o "$dest"
-}
 
+  # Prefer the public raw endpoint. This deliberately ignores stale saved
+  # credentials when the repository is public.
+  if curl -fsSL "https://raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel" -o "$dest"; then
+    return 0
+  fi
+
+  rm -f "$dest"
+  if [[ -n "${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}" ]]; then
+    curl -fsSL \
+      -H "Authorization: Bearer $COMMUNITY_SCRIPTS_GITHUB_TOKEN" \
+      -H "Accept: application/vnd.github.raw+json" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      "https://api.github.com/repos/$CS_REPO/contents/$rel?ref=$CS_REF" \
+      -o "$dest"
+    return 0
+  fi
+
+  return 1
+}
 install_private_update() {
   local target="${1:?ct script path}"
   install -d -m 0755 /usr/local/lib/community-scripts
@@ -51,6 +69,7 @@ update_os
 msg_info "Installing dependencies"
 $STD apt-get install -y \
   ca-certificates \
+  curl \
   git \
   python3 \
   python3-venv
@@ -90,9 +109,6 @@ sed -i \
 cs_repo_fetch tools/optolink-apply-vdensho1-ha-profile.sh /usr/local/bin/optolink-apply-vdensho1-ha-profile
 chmod 755 /usr/local/bin/optolink-apply-vdensho1-ha-profile
 
-# Keep the previous profile helper as an explicit rollback option.
-cs_repo_fetch tools/optolink-apply-vscotho1-profile.sh /usr/local/bin/optolink-apply-vscotho1-profile
-chmod 755 /usr/local/bin/optolink-apply-vscotho1-profile
 
 # Shared maintenance core plus guarded CLI/API frontends.
 cs_repo_fetch config/optolink-splitter/optolink_maintenance_core.py /opt/optolink/optolink_maintenance_core.py
@@ -121,15 +137,17 @@ cs_repo_fetch tools/optolink-party-emulator.py /usr/local/bin/optolink-party-emu
 chmod 755 /usr/local/bin/optolink-party-emulator
 chown root:root /usr/local/bin/optolink-party-emulator
 
-cs_repo_fetch config/optolink-splitter/wb2a-single-session-logger.py /usr/local/bin/wb2a-single-session-logger
-chmod 755 /usr/local/bin/wb2a-single-session-logger
-chown root:root /usr/local/bin/wb2a-single-session-logger
-ln -sf /usr/local/bin/wb2a-single-session-logger /usr/bin/wb2a-single-session-logger
+cs_repo_fetch tools/optolink-clock-sync.py /usr/local/bin/optolink-clock-sync
+chmod 755 /usr/local/bin/optolink-clock-sync
+chown root:root /usr/local/bin/optolink-clock-sync
+/usr/local/bin/optolink-clock-sync --self-test
 
-cs_repo_fetch config/optolink-splitter/wb2a-e7-persistence-probe.py /usr/local/bin/wb2a-e7-persistence-probe
-chmod 755 /usr/local/bin/wb2a-e7-persistence-probe
-chown root:root /usr/local/bin/wb2a-e7-persistence-probe
-ln -sf /usr/local/bin/wb2a-e7-persistence-probe /usr/bin/wb2a-e7-persistence-probe
+cs_repo_fetch tools/optolink-service-programs.py /usr/local/bin/optolink-service-programs
+chmod 755 /usr/local/bin/optolink-service-programs
+chown root:root /usr/local/bin/optolink-service-programs
+/usr/local/bin/optolink-service-programs --self-test
+
+
 
 cs_repo_fetch config/optolink-splitter/optolink-party-emulator.service /etc/systemd/system/optolink-party-emulator.service
 chmod 644 /etc/systemd/system/optolink-party-emulator.service
@@ -142,6 +160,18 @@ chown root:root /etc/systemd/system/optolink-schedule-manager.service
 cs_repo_fetch config/optolink-splitter/optolink-maintenance-api.service /etc/systemd/system/optolink-maintenance-api.service
 chmod 644 /etc/systemd/system/optolink-maintenance-api.service
 chown root:root /etc/systemd/system/optolink-maintenance-api.service
+
+cs_repo_fetch config/optolink-splitter/optolink-clock-sync.service /etc/systemd/system/optolink-clock-sync.service
+chmod 644 /etc/systemd/system/optolink-clock-sync.service
+chown root:root /etc/systemd/system/optolink-clock-sync.service
+
+cs_repo_fetch config/optolink-splitter/optolink-clock-sync.timer /etc/systemd/system/optolink-clock-sync.timer
+chmod 644 /etc/systemd/system/optolink-clock-sync.timer
+chown root:root /etc/systemd/system/optolink-clock-sync.timer
+
+cs_repo_fetch config/optolink-splitter/optolink-service-programs.service /etc/systemd/system/optolink-service-programs.service
+chmod 644 /etc/systemd/system/optolink-service-programs.service
+chown root:root /etc/systemd/system/optolink-service-programs.service
 
 cs_repo_fetch config/optolink-splitter/vcontrol-mapping.md /root/optolink-vcontrol-mapping.md
 
@@ -173,6 +203,8 @@ systemctl enable optolink-splitter.service
 # Fresh installs intentionally start with mqtt_broker=None. Install the API
 # unit now but leave it disabled until MQTT is configured and the updater runs.
 systemctl disable --now optolink-maintenance-api.service >/dev/null 2>&1 || true
+systemctl disable --now optolink-clock-sync.timer >/dev/null 2>&1 || true
+systemctl disable --now optolink-service-programs.service >/dev/null 2>&1 || true
 
 msg_info "Activating validated VDensHO1 permanent-VS1 profile"
 if COMMUNITY_SCRIPTS_REPO="$CS_REPO" \
@@ -190,26 +222,34 @@ fi
 # mqtt_broker defaults to None.
 msg_ok "Created systemd service"
 
-msg_info "Checking serial adapter"
-if [[ -c /dev/ttyUSB0 ]]; then
-  if ! runuser -u optolink -- test -r /dev/ttyUSB0 || ! runuser -u optolink -- test -w /dev/ttyUSB0; then
-    msg_warn "/dev/ttyUSB0 is present but the optolink service user cannot read/write it"
-    stat -c 'Device permissions: %A owner=%U group=%G uid=%u gid=%g' /dev/ttyUSB0 || true
+msg_info "Checking configured serial adapter"
+optolink_port="$(runuser -u optolink -- /opt/optolink/venv/bin/python - <<'PY_PORT'
+import sys
+sys.path.insert(0, "/opt/optolink")
+import settings_ini
+print(getattr(settings_ini, "port_optolink", None) or "")
+PY_PORT
+)"
+
+if [[ -n "$optolink_port" && -c "$optolink_port" ]]; then
+  if ! runuser -u optolink -- test -r "$optolink_port" || ! runuser -u optolink -- test -w "$optolink_port"; then
+    msg_warn "$optolink_port is present but the optolink service user cannot read/write it"
+    stat -Lc 'Device permissions: %A owner=%U group=%G uid=%u gid=%g' "$optolink_port" || true
     id optolink || true
-    msg_warn "Fix the USB serial device permissions on the Proxmox host, then restart the container/service"
+    msg_warn "Fix the serial-device permissions on the Proxmox host, then restart the container/service"
   fi
 
   systemctl start optolink-splitter.service
   sleep 2
   if systemctl is-active --quiet optolink-splitter.service; then
-    msg_ok "Optolink-Splitter is running"
+    msg_ok "Optolink-Splitter is running on $optolink_port"
   else
     msg_warn "Service was started but did not stay active; check serial-device permissions and configuration"
     journalctl -u optolink-splitter.service -n 20 --no-pager || true
   fi
 else
-  msg_warn "No real character device found at /dev/ttyUSB0. The service is enabled but was not started."
-  msg_warn "Connect/pass through the Optolink USB adapter, then run: systemctl start optolink-splitter"
+  msg_warn "Configured Optolink serial device is unavailable: ${optolink_port:-<not configured>}"
+  msg_warn "Pass through the configured adapter, then run: systemctl start optolink-splitter"
 fi
 
 motd_ssh

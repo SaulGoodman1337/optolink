@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
-_CS_DEFAULT_URL="https://raw.githubusercontent.com/SaulGoodman1337/optolink/main"
+# Proxmox Community Scripts entrypoint for the production Optolink LXC.
+#
+# This outer script owns container lifecycle/UI integration. The actual
+# in-container installation is delegated to install/optolink-splitter-install.sh
+# so the same application layout can be understood independently of Proxmox.
+# Its update_script() is retained for Community Scripts compatibility; the
+# installed /usr/bin/update path is pinned to optolink-splitter-ha.
+_CS_DEFAULT_URL="https://raw.githubusercontent.com/SaulGoodman1337/optolink/optolink-splitter-ha"
 _cs_boot="${COMMUNITY_SCRIPTS_CORE_DIR:-$(dirname "${BASH_SOURCE[0]}")/../../core}/core/build.func"
 source "$_cs_boot" 2>/dev/null || source <(curl -fsSL "${COMMUNITY_SCRIPTS_CORE_URL:-https://raw.githubusercontent.com/community-scripts/core/main}/core/build.func")
 
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
-CS_REF="${COMMUNITY_SCRIPTS_REF:-main}"
+CS_REF="${COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha}"
 
 cs_repo_fetch() {
   local rel="${1:?repo-relative path}"
@@ -15,6 +22,13 @@ cs_repo_fetch() {
     return 0
   fi
 
+  # Prefer the public raw endpoint. This deliberately ignores stale saved
+  # credentials when the repository is public.
+  if curl -fsSL "https://raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel" -o "$dest"; then
+    return 0
+  fi
+
+  rm -f "$dest"
   if [[ -n "${COMMUNITY_SCRIPTS_GITHUB_TOKEN:-}" ]]; then
     curl -fsSL \
       -H "Authorization: Bearer $COMMUNITY_SCRIPTS_GITHUB_TOKEN" \
@@ -25,10 +39,8 @@ cs_repo_fetch() {
     return 0
   fi
 
-  # Transitional fallback: this works only while the repository is public.
-  curl -fsSL "https://raw.githubusercontent.com/$CS_REPO/$CS_REF/$rel" -o "$dest"
+  return 1
 }
-
 configure_private_update() {
   local target="${1:?ct script path}"
   local update_dir="/usr/local/lib/community-scripts"
@@ -113,10 +125,6 @@ function update_script() {
   chmod 755 /usr/local/bin/optolink-apply-vdensho1-ha-profile
   grep -E '^HELPER_REV=' /usr/local/bin/optolink-apply-vdensho1-ha-profile || true
 
-  # Keep the previous VScotHO1 helper as an explicit rollback option.
-  cs_repo_fetch tools/optolink-apply-vscotho1-profile.sh /usr/local/bin/optolink-apply-vscotho1-profile
-  chmod 755 /usr/local/bin/optolink-apply-vscotho1-profile
-
   cs_repo_fetch tools/optolink-party-test.sh /usr/local/bin/optolink-party-test
   chmod 755 /usr/local/bin/optolink-party-test
   ln -sf /usr/local/bin/optolink-party-test /usr/bin/optolink-party-test
@@ -147,14 +155,19 @@ function update_script() {
   chmod 755 /usr/local/bin/optolink-schedule-manager
   chown root:root /usr/local/bin/optolink-schedule-manager
 
-  cs_repo_fetch config/optolink-splitter/wb2a-single-session-logger.py /usr/local/bin/wb2a-single-session-logger
-  chmod 755 /usr/local/bin/wb2a-single-session-logger
-  chown root:root /usr/local/bin/wb2a-single-session-logger
-  ln -sf /usr/local/bin/wb2a-single-session-logger /usr/bin/wb2a-single-session-logger
-
   cs_repo_fetch tools/optolink-party-emulator.py /usr/local/bin/optolink-party-emulator
   chmod 755 /usr/local/bin/optolink-party-emulator
   chown root:root /usr/local/bin/optolink-party-emulator
+
+  cs_repo_fetch tools/optolink-clock-sync.py /usr/local/bin/optolink-clock-sync
+  chmod 755 /usr/local/bin/optolink-clock-sync
+  chown root:root /usr/local/bin/optolink-clock-sync
+  /usr/local/bin/optolink-clock-sync --self-test
+
+  cs_repo_fetch tools/optolink-service-programs.py /usr/local/bin/optolink-service-programs
+  chmod 755 /usr/local/bin/optolink-service-programs
+  chown root:root /usr/local/bin/optolink-service-programs
+  /usr/local/bin/optolink-service-programs --self-test
 
   cs_repo_fetch config/optolink-splitter/optolink-party-emulator.service /etc/systemd/system/optolink-party-emulator.service
   chmod 644 /etc/systemd/system/optolink-party-emulator.service
@@ -167,6 +180,18 @@ function update_script() {
   cs_repo_fetch config/optolink-splitter/optolink-maintenance-api.service /etc/systemd/system/optolink-maintenance-api.service
   chmod 644 /etc/systemd/system/optolink-maintenance-api.service
   chown root:root /etc/systemd/system/optolink-maintenance-api.service
+
+  cs_repo_fetch config/optolink-splitter/optolink-clock-sync.service /etc/systemd/system/optolink-clock-sync.service
+  chmod 644 /etc/systemd/system/optolink-clock-sync.service
+  chown root:root /etc/systemd/system/optolink-clock-sync.service
+
+  cs_repo_fetch config/optolink-splitter/optolink-clock-sync.timer /etc/systemd/system/optolink-clock-sync.timer
+  chmod 644 /etc/systemd/system/optolink-clock-sync.timer
+  chown root:root /etc/systemd/system/optolink-clock-sync.timer
+
+  cs_repo_fetch config/optolink-splitter/optolink-service-programs.service /etc/systemd/system/optolink-service-programs.service
+  chmod 644 /etc/systemd/system/optolink-service-programs.service
+  chown root:root /etc/systemd/system/optolink-service-programs.service
 
   systemctl daemon-reload
   systemctl enable optolink-party-emulator.service
@@ -202,6 +227,28 @@ PY_MAINT_API
     msg_warn "Maintenance MQTT API disabled because mqtt_broker is not configured"
   fi
 
+  msg_info "Configuring WB2A system clock synchronization"
+  if runuser -u optolink -- /opt/optolink/venv/bin/python - <<'PY_CLOCK'
+import sys
+sys.path.insert(0, "/opt/optolink")
+from c_settings_adapter import settings
+raise SystemExit(0 if getattr(settings, "mqtt_broker", None) else 1)
+PY_CLOCK
+  then
+    systemctl enable --now optolink-clock-sync.timer >/dev/null 2>&1 || true
+    if systemctl is-active --quiet optolink-splitter.service; then
+      if systemctl start optolink-clock-sync.service; then
+        msg_ok "WB2A system clock checked/synchronized"
+      else
+        msg_warn "Clock sync check failed; timer remains active"
+        journalctl -u optolink-clock-sync.service -n 20 --no-pager || true
+      fi
+    fi
+  else
+    systemctl disable --now optolink-clock-sync.timer >/dev/null 2>&1 || true
+    msg_warn "Clock sync disabled because mqtt_broker is not configured"
+  fi
+
   configure_private_update tools/optolink-splitter-update.sh
 
   msg_ok "Updated successfully!"
@@ -222,7 +269,8 @@ echo -e "${INFO}${YW}Party emulation:${CL} ${GN}systemctl status optolink-party-
 echo -e "${INFO}${YW}Schedule manager:${CL} ${GN}systemctl status optolink-schedule-manager${CL}"
 echo -e "${INFO}${YW}Serial devices:${CL} ${GN}optolink-ports${CL}"
 echo -e "${INFO}${YW}VDensHO1 HA profile:${CL} ${GN}optolink-apply-vdensho1-ha-profile${CL}"
-echo -e "${INFO}${YW}Legacy rollback profile:${CL} ${GN}optolink-apply-vscotho1-profile${CL}"
 echo -e "${INFO}${YW}Maintenance API:${CL} ${GN}systemctl status optolink-maintenance-api${CL}"
+echo -e "${INFO}${YW}Clock sync:${CL} ${GN}systemctl status optolink-clock-sync.timer${CL}"
+echo -e "${INFO}${YW}Service programs:${CL} ${GN}systemctl status optolink-service-programs${CL}"
 echo -e "${INFO}${YW}Maintenance CLI:${CL} ${GN}optolink-maintenance status${CL}"
 echo -e "${INFO}${YW}Inside the container, run '${GN}update${YW}' to update Optolink-Splitter.${CL}"
