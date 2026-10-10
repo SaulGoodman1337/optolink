@@ -224,3 +224,17 @@ physischer Antwortpfad aktiviert.
 **Freigabeentscheidung:** Draft-PR behalten; keine Controllercodierung,
 keinen RAM-Write, keinen KM-Bus-Busanschluss, keinen Produktivmerge.
 Die mehrtaegige passive P06/P09/Flammen-Aufzeichnung bleibt unberuehrt.
+
+## 5. Originale Vitotrol-300-TX-Aufzeichnung (10.10.2026)
+
+Ein von `boblegal31` direkt an einer originalen Vitotrol 300
+abgegriffenes 3.858-Byte-UART-TX-Archiv ist jetzt quellverifiziert
+und offline ausgelesen: **448 CRC-gueltige Komplettframes**, darunter
+416 PONG, 28 `BF/15`, 2 `BF/20` (20,0 und 20,6 Grad C), 1
+`B3/F8..FB` (Identitaet `11 38 01 0A`) und 1 `B1/reg00=12`;
+vier abgeschnittene EOF-Bytes. Die Daten stammen *nicht* von unserer
+WB2A. Die simulatorischen B1-/BF-Decoder und die kompletten
+Audit-/Quellbelege stehen im
+[Original-Vitotrol-Referenzbericht](wb2a-vitotrol-original-reference-2026-10-10.md).
+
+Die UART1-RX-/P300-Injektionssperre bleibt bestehen.

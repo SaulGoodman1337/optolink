@@ -104,6 +104,24 @@ def decode_candidate_slave_reply(frame: bytes):
     }
 
 
+def decode_master_register_00_query(frame: bytes) -> int:
+    """External Vitotrol 0x31 follow-up; NOT observed locally on WB2A TX."""
+    frame=validate_frame(frame)
+    if (len(frame)!=9 or frame[0]!=CLASS_VITOTROL
+            or frame[1]!=SRC_CONTROLLER or frame[2]!=0x31
+            or frame[4] not in (1,2) or frame[5]!=1 or frame[6]!=0):
+        raise FrameRejected("not a documented register-00 read")
+    return frame[4]
+
+
+def model_register_00_reply(query: bytes, *, value: int) -> bytes:
+    """Explicit external-fixture model; register 00 differs by device/revision."""
+    slot=decode_master_register_00_query(query)
+    if type(value) is not int or not 0 <= value <= 255:
+        raise FrameRejected("explicit byte value required, no guessed default")
+    return append_crc(bytes([0,CLASS_VITOTROL,0xB1,10,slot,1,0,value]))
+
+
 def decode_master_ping(frame: bytes) -> int:
     frame=validate_frame(frame)
     if (len(frame)!=8 or frame[0]!=CLASS_VITOTROL or
@@ -131,6 +149,35 @@ def model_room_temp_record(slot: int, tenths_c: int, *,
     return append_crc(body)
 
 
+def decode_candidate_slave_room_temp(frame: bytes) -> dict:
+    """Decode external 0xBF 0x20..0x22 fixture, not WB2A RX evidence."""
+    frame=validate_frame(frame)
+    if (len(frame)!=12 or frame[0]!=SRC_CONTROLLER
+            or frame[1]!=CLASS_VITOTROL or frame[2]!=0xBF
+            or frame[4] not in (1,2) or frame[5]!=1
+            or frame[6] not in (0x20,0x21,0x22) or frame[9]!=0xAA):
+        raise FrameRejected("not a source-backed slave room-temperature shape")
+    temperature=(frame[7]^0xAA) | ((frame[8]^0xAA)<<8)
+    if not 50 <= temperature <= 350:
+        raise FrameRejected("room temperature outside bounded offline profile")
+    return {"slot":frame[4],"record":frame[6],
+            "temperature_tenths_c":temperature,
+            "physical_uart1_rx_verified":False}
+
+
+def decode_candidate_slave_record_15(frame: bytes) -> dict:
+    """Classify original Vitotrol-300 command frames WITHOUT applying writes."""
+    frame=validate_frame(frame)
+    if (len(frame)!=17 or frame[0]!=SRC_CONTROLLER
+            or frame[1]!=CLASS_VITOTROL or frame[2]!=0xBF
+            or frame[4] not in (1,2) or frame[5]!=1 or frame[6]!=0x15):
+        raise FrameRejected("not a documented external 0x15 record")
+    return {"slot":frame[4],"record":frame[6],
+            "xor_decoded_payload_hex":bytes(v^0xAA for v in frame[7:-2]).hex(),
+            "command_semantics_verified_for_wb2a":False,
+            "controller_write_authorized":False}
+
+
 def decode_master_status(frame: bytes) -> dict:
     """Recognize controller status-record envelopes; payload semantics unknown.
 
@@ -156,13 +203,18 @@ class OfflineVitotrolState:
 
     def __init__(self, *, slot: int = 1,
                  identity: bytes = IDENTITY_V200,
-                 stale_after_s: float = 90.0):
+                 stale_after_s: float = 90.0,
+                 register_00: int | None = None):
         if slot not in (1,2) or type(slot) is not int:
             raise FrameRejected("known slot required")
         if type(stale_after_s) not in (int,float) or not 30 <= stale_after_s <= 300:
             raise FrameRejected("bounded source freshness interval required")
         if type(identity) is not bytes or len(identity)!=4 or identity[0]!=0x11:
             raise FrameRejected("explicit class 0x11 identity required")
+        if register_00 is not None and (type(register_00) is not int
+                or not 0 <= register_00 <= 255):
+            raise FrameRejected("register-00 response requires explicit byte")
+        self.register_00=register_00
         self.slot=slot
         self.identity=identity
         self.stale_after_s=float(stale_after_s)
@@ -204,6 +256,12 @@ class OfflineVitotrolState:
             self.discovered=True
             self.last_seen_at=float(at_s)
             return model_identity_reply(frame,identity=self.identity)
+        if frame[2]==0x31:
+            decode_master_register_00_query(frame)
+            if not self.discovered or self.register_00 is None:
+                return None
+            self.last_seen_at=float(at_s)
+            return model_register_00_reply(frame,value=self.register_00)
         if frame[2]!=0x00:
             return None
         decode_master_ping(frame)

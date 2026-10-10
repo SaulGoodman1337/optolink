@@ -207,5 +207,79 @@ class VitotrolOfflineTests(unittest.TestCase):
                 state.respond(bytes.fromhex(sim.KNOWN_MASTER_HEX[0]),at_s=t)
 
 
+class OriginalVitotrol300Fixtures(unittest.TestCase):
+    """Real Vitotrol 300 UART-TX samples: openv/openv#387, 2018 log.zip.
+
+    These are EXTERNAL captures, not local VDensHO1 RX proof.
+    https://github.com/openv/openv/issues/387#issuecomment-435796559
+    """
+
+    def test_real_identity_differs_from_earlier_emulator_sample(self):
+        query=bytes.fromhex(sim.KNOWN_MASTER_HEX[0])
+        original=bytes.fromhex("0011b3100101f811f938fa01fb0a1db1")
+        self.assertEqual(sim.validate_frame(original),original)
+        self.assertEqual(sim.model_identity_reply(query,identity=bytes.fromhex("1138010a")),original)
+        self.assertNotEqual(bytes.fromhex("1138010a"),sim.IDENTITY_V300_SAMPLE)
+
+    def test_real_register_00_12_followup_not_global_constant(self):
+        # Query from openv/openv#387 comment 694468842, reply from real log.bin.
+        query=bytes.fromhex("11003109010100ee4f")
+        original=bytes.fromhex("0011b10a0101001219d5")
+        self.assertEqual(sim.decode_master_register_00_query(query),1)
+        self.assertEqual(sim.model_register_00_reply(query,value=0x12),original)
+        state=sim.OfflineVitotrolState(slot=1)
+        state.respond(bytes.fromhex(sim.KNOWN_MASTER_HEX[0]),at_s=0)
+        self.assertIsNone(state.respond(query,at_s=1))
+        configured=sim.OfflineVitotrolState(slot=1,register_00=0x12)
+        self.assertIsNone(configured.respond(query,at_s=1))  # no identity yet
+        configured.respond(bytes.fromhex(sim.KNOWN_MASTER_HEX[0]),at_s=2)
+        self.assertEqual(configured.respond(query,at_s=3),original)
+        for bad in (None, True, -1,256,3.14):
+            with self.subTest(bad=bad):
+                if bad is None:
+                    continue
+                with self.assertRaises(sim.FrameRejected):
+                    sim.model_register_00_reply(query,value=bad)
+
+    def test_real_temperature_frames_reconstruct_exact_values(self):
+        cases=(
+            ("0011bf0c01012062aaaa3dfc",200),
+            ("0011bf0c01012064aaaae42a",206),
+            ("0011bf0c01012078aaaad20a",210),
+        )
+        for hx,actual in cases:
+            with self.subTest(frame=hx):
+                frame=bytes.fromhex(hx)
+                self.assertEqual(sim.decode_candidate_slave_room_temp(frame)["temperature_tenths_c"],actual)
+                self.assertEqual(sim.model_room_temp_record(1,actual),frame)
+        broken=bytearray.fromhex(cases[0][0])
+        broken[9]=0xAB
+        with self.assertRaises(sim.FrameRejected):
+            sim.decode_candidate_slave_room_temp(sim.append_crc(bytes(broken[:-2])))
+
+    def test_real_record_15_is_valid_but_not_a_safe_command_api(self):
+        # Original Vitotrol 300 observed during local setpoint/party changes.
+        for hx in (
+            "0011bf11010115a6ab67bcaaaa92aa9bb3",
+            "0011bf11010115a7ab67beaaaa92aaac24",
+            "0011bf11010115a3ab61bbaaaa92aadc0c",
+        ):
+            with self.subTest(frame=hx):
+                decoded=sim.decode_candidate_slave_record_15(bytes.fromhex(hx))
+                self.assertEqual(decoded["record"],0x15)
+                self.assertFalse(decoded["controller_write_authorized"])
+                self.assertFalse(decoded["command_semantics_verified_for_wb2a"])
+
+    def test_wrong_register_or_corrupt_crc_cannot_reply(self):
+        request=bytes.fromhex("11003109010100ee4f")
+        changed=bytearray(request[:-2]);changed[6]=1
+        with self.assertRaises(sim.FrameRejected):
+            sim.decode_master_register_00_query(sim.append_crc(bytes(changed)))
+        corrupted=bytearray(request);corrupted[-1]^=1
+        with self.assertRaises(sim.FrameRejected):
+            sim.model_register_00_reply(bytes(corrupted),value=0x12)
+
+
+
 if __name__=="__main__":
     unittest.main()
