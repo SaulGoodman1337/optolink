@@ -15,6 +15,7 @@ the test copy: it exits after the pinned read-only batch and GFA crosscheck.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime as dt
 import hashlib
 import json
@@ -27,16 +28,19 @@ import sys
 try:
     from .dispatcher_patch import patch_dispatcher
     from .dispatcher_runtime_audit import audit_directory, _source
+    from .port_ownership import pump_lease, require_pump_inactive
 except ImportError:
     try:
         from handover_acceleration.dispatcher_patch import patch_dispatcher
         from handover_acceleration.dispatcher_runtime_audit import audit_directory, _source
+        from handover_acceleration.port_ownership import pump_lease, require_pump_inactive
     except ImportError:
         from dispatcher_patch import patch_dispatcher
         from dispatcher_runtime_audit import audit_directory, _source
+        from port_ownership import pump_lease, require_pump_inactive
 
 
-VERSION = 'inprocess-fc03-oneshot-v1'
+VERSION = 'inprocess-fc03-oneshot-v2-owner-gate'
 UNIT = 'optolink-inprocess-readonly-acceptance.service'
 ROOT = Path('/opt/optolink')
 BASE = Path('/root/p300-trial-work/handover-acceleration-live-results')
@@ -45,6 +49,7 @@ BASE = Path('/root/p300-trial-work/handover-acceleration-live-results')
 PINNED_INSTALLED_SHA256 = 'e4be265db857d32486fd50aa7eee359e9a054b951e478d5847f17702a0ce7fac'
 COMPONENTS = (
     '__init__.py', 'coordinator.py', 'scheduler.py', 'phase_planner.py',
+    'port_ownership.py', 'runtime_admission.py',
     'phase_executor.py', 'dispatcher_bridge.py', 'hybrid_boot.py',
     'dispatcher_patch.py', 'dispatcher_runtime_audit.py',
 )
@@ -190,7 +195,10 @@ def worker(session: Path) -> int:
         verify_stage(session, ROOT)
         outcome['source_sha256'] = state['source_sha256']
         base = live.base
-        with base.locks():
+        with contextlib.ExitStack() as critical:
+            critical.enter_context(pump_lease())
+            require_pump_inactive(base.unit_state)
+            critical.enter_context(base.locks())
             live.guard_other_research()
             if base.read_settings(base.SETTINGS.read_text())['port_optolink'] != state['port']:
                 raise AcceptanceRejected('serial port changed since preflight')
@@ -281,7 +289,10 @@ def execute() -> int:
     base = live.base
     if base.unit_state(UNIT).get('ActiveState') not in ('inactive', 'failed', 'not-found'):
         raise AcceptanceRejected('in-process acceptance unit already running')
-    with base.locks():
+    with contextlib.ExitStack() as critical:
+        critical.enter_context(pump_lease())
+        require_pump_inactive(base.unit_state)
+        critical.enter_context(base.locks())
         BASE.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(BASE, 0o700)
         stamp = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')

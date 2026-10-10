@@ -28,10 +28,13 @@ IMPORT_ANCHOR = 'import requests_util\n'
 
 SHIM = '''\n# RESEARCH_SHIM_V1: separate in-process request boundary, disabled by default.
 _handover_dispatch_bridge = None
+_handover_runtime_gate = None  # observer only; cannot schedule P300
 
 def handover_legacy_or_shim(request, ser):
     if _handover_dispatch_bridge is None:
         return requests_util.response_to_request(request, ser)
+    if _handover_runtime_gate is not None:
+        _handover_runtime_gate.observe_legacy(request)
     return _handover_dispatch_bridge.response_to_request(request, ser)
 
 '''
@@ -70,6 +73,11 @@ SETUP = '''\n                # Optional transparent legacy-only diagnostic shim.
                         serOptolink, requests_util.response_to_request,
                         vs1protocol=True, vitoconnect_port=None,
                         allow_maintenance=False)
+                    # Passive ownership/write-intent telemetry only. This is
+                    # NOT an automatic scheduler and never opens another port.
+                    from handover_acceleration.runtime_admission import RuntimeAdmissionGate
+                    global _handover_runtime_gate
+                    _handover_runtime_gate = RuntimeAdmissionGate()
 '''
 
 

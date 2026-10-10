@@ -21,6 +21,10 @@ class SupervisionTests(unittest.TestCase):
         self.session=Path(self.temp.name)
         self.work=Path('/opt/optolink')
         self.events=[]
+        # Unit tests never take root-owned global locks or stop real services.
+        lease_patch=patch.object(h,'pump_lease',lambda:contextlib.nullcontext())
+        lease_patch.start()
+        self.addCleanup(lease_patch.stop)
         self.state={'port':'/dev/fake_opto',
                     'services':{'optolink-splitter.service':True,'opto-maint.service':False},
                     'source_sha256':{}}
@@ -67,6 +71,34 @@ class SupervisionTests(unittest.TestCase):
         worker_cmd=next(x[1] for x in self.events if x[0]=='subprocess')
         self.assertTrue(worker_cmd[2].endswith('optolinkvs2_switch.py'))
         self.assertIn(('no_owner','/dev/fake_opto'),self.events)
+
+    def test_active_pump_daemon_refused_before_any_service_pause(self):
+        original = self.base.unit_state
+        self.base.unit_state = lambda unit: (
+            {'ActiveState': 'active'} if unit == 'optolink-pump-override.service'
+            else original(unit))
+        with patch.object(h, '_live', return_value=self.live), \
+             patch.object(h, 'verify_stage', return_value={}):
+            self.assertEqual(h.worker(self.session), 1)
+        report=json.loads((self.session/'measurement.json').read_text())
+        self.assertIn('pump override must be stopped', report['errors'][0])
+        self.assertFalse(any(row[0] == 'paused' for row in self.events))
+
+    def test_active_pump_blocks_supervisor_before_staging_or_systemd(self):
+        original = self.base.unit_state
+        self.base.unit_state = lambda unit: (
+            {'ActiveState': 'active'} if unit == 'optolink-pump-override.service'
+            else original(unit))
+        with patch.object(h, '_live', return_value=self.live), \
+             patch.object(h, '_verify_original', return_value={}), \
+             patch.object(h, 'stage', side_effect=AssertionError('no stage')), \
+             patch.object(h.subprocess, 'run',
+                          side_effect=AssertionError('no systemd')), \
+             patch.object(h.os, 'geteuid', return_value=0), \
+             patch.object(h, 'BASE', self.session):
+            with self.assertRaisesRegex(Exception, 'pump override must be stopped'):
+                h.execute()
+        self.assertFalse(self.events)
 
     def test_worker_bad_result_exits_with_failure_and_writes_evidence(self):
         def invalid_run(*args,**kwargs):

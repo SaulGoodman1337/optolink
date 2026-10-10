@@ -56,6 +56,26 @@ class HybridAcceptanceTests(unittest.TestCase):
         self.assertIn('supervised systemd unit',completed.stderr)
         self.assertNotIn('ImportError',completed.stderr)
 
+    def test_separate_staged_python_really_imports_new_lock_and_runtime_modules(self):
+        with patch.object(h, '_verify_original', return_value=self.source_stub):
+            h.stage(self.session, self.source)
+        program = (
+            'import importlib.util, pathlib; '
+            'p=pathlib.Path("hybrid_acceptance.py"); '
+            's=importlib.util.spec_from_file_location("staged_worker",p); '
+            'm=importlib.util.module_from_spec(s); s.loader.exec_module(m); '
+            'assert m.pump_lease.__module__ == "handover_acceleration.port_ownership"; '
+            'from handover_acceleration.runtime_admission import RuntimeAdmissionGate; '
+            'assert RuntimeAdmissionGate.__name__ == "RuntimeAdmissionGate"; '
+            'print("STAGED_DEPENDENCIES=PASS")'
+        )
+        env=dict(os.environ, PYTHONPATH=str(self.session))
+        completed=subprocess.run([sys.executable, '-c', program],
+                                 cwd=str(self.session), env=env,
+                                 capture_output=True, text=True, timeout=10)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn('STAGED_DEPENDENCIES=PASS', completed.stdout)
+
     def test_staged_tamper_is_rejected(self):
         with patch.object(h,'_verify_original',return_value=self.source_stub):
             h.stage(self.session,self.source)

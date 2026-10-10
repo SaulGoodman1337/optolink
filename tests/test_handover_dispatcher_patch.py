@@ -50,6 +50,37 @@ class PatchTests(unittest.TestCase):
         self.assertEqual(ns['handover_legacy_or_shim']('w;0x2303;1;1','serial'),
                          ('delegated',('w;0x2303;1;1','serial')))
 
+    def test_shadow_seam_tracks_write_without_changing_legacy_result(self):
+        from handover_acceleration.runtime_admission import (
+            RuntimeAdmissionGate, DispatcherSnapshot,
+        )
+        from handover_acceleration.phase_planner import Budget
+        from unittest.mock import patch
+        import types
+        original = []
+        serial = object()
+        expected = (1, bytearray(b'\\x01'), 1, '1;0x2303;1')
+        stub = types.ModuleType('requests_util')
+        stub.response_to_request = lambda *a: (original.append(a), expected)[1]
+        ns = {}
+        with patch.dict(sys.modules, {'requests_util': stub}):
+            exec(patch_dispatcher(UPSTREAM_EXCERPT), ns)
+        ns['_handover_dispatch_bridge'] = types.SimpleNamespace(
+            response_to_request=stub.response_to_request)
+        ns['_handover_runtime_gate'] = RuntimeAdmissionGate()
+        self.assertIs(ns['handover_legacy_or_shim']('w;0x2303;1;1', serial),
+                      expected)
+        self.assertEqual(original, [('w;0x2303;1;1', serial)])
+        gate = ns['_handover_runtime_gate']
+        self.assertTrue(gate.unacknowledged_write)
+        safe = DispatcherSnapshot(
+            mqtt_pending=0, tcp_pending=0, forced_polls_pending=0,
+            pending_readbacks=0, frame_idle=True, external_writers_quiesced=True,
+            queue_admission_paused=True, legacy_vs1_verified=True,
+            nearest_writer_deadline_ms=12000.0)
+        self.assertEqual(gate.decide(safe, Budget()).reason,
+                         'WRITE_READBACK_NOT_ACKNOWLEDGED')
+
     def test_refuse_second_patch(self):
         with self.assertRaises(PatchRejected):patch_dispatcher(patch_dispatcher(UPSTREAM_EXCERPT))
 

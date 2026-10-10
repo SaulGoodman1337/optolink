@@ -83,6 +83,26 @@ P300 session for multiple **identity** reads. It is **not** a production
 adapter, a physical RAM interface or a substitute for real GFA P06.
 The unmodified production splitter and P300 logger remain entirely separate.
 
+## 2026-10-10: Single-owner arbitration and admission safety (offline only)
+
+The installed legacy pump service was explicitly stopped/disabled by the
+operator; the active splitter remains unchanged. The v2 one-shot supervisor
+takes its exact shared `physical-ram-snapshot.lock` and refuses an active
+or transitioning pump owner before suspending any service. The staged-copy
+manifest includes new dependencies and the actual subprocess import graph is
+regression-tested.
+
+`runtime_admission.py` adds a strict opt-in transaction-level gate in which
+MQTT/TCP, scheduled HA readbacks, external writers and VS1 identity must all
+prove an idle epoch. A write/opaque request remains fenced until an **explicit**
+external producer acknowledgement and a >=5-second HA settlement interval.
+An eligible, bounded batch can reuse the **same** injected port and verify
+the original GFA P80/P06 after fixed FC03 reads. The patched shadow dispatcher
+only **observes** write intent: it does not enable recurring handovers or
+publish new commands. Deployment is blocked until external producer fences
+and independent recovery arbitration are wired and hardware-accepted.
+Details: `docs/vs1-p300-runtime-admission-2026-10-10.md`.
+
 ## New offline main-loop bridge and physically documented FC03 read fixtures
 
 `dispatcher_bridge.py` now models a *single existing* serial owner with exact
