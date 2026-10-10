@@ -145,3 +145,82 @@ Nichtverwechslung von VS1- und P300-RPM.
 **Keine** reale Vitotrol wurde durch diese Arbeiten emuliert.
 Keine RAM-Writes und kein blinder SFR-/UART1-RX-Leseversuch.
 Der produktive `main` bleibt gegenüber diesem Research-Branch unverändert.
+
+## 4. Vertiefung am 10.10.2026: RX-ISR-Firmwaregate und Offline-Statusrecords
+
+**Tatsaechlich erneut geprueft:** die beiden historischen P300-UART1-Auswertungen
+unter `/root/p300-trial-work/project/docs/`,
+`config/optolink-splitter/research/vitotrol-kmbus-wire-protocol.md`,
+`vitotrol-software-emulation-deep-dive-2026-09-25.md`,
+`vitotrol-software-emulation-pause-checkpoint-2026-09-26.md`,
+`firmware-20bit-bridge-static-2026-09-26.md`,
+`vitosoft/kbus-write-function-analysis.md` und GitHub-Issue #25.
+
+### Belegt versus offen
+
+- **Lokaler Nachweis:** UART1-DMA0-TX an `U1TB=0x03AA` und 54
+  CRC-gueltige TX-Pufferansichten fuer Vitotrol-Discovery Slot 1/2 aus
+  12.938 Archivmessrunden. Diese 54 sind RAM-Samples, keine 54
+  unabhaengig belegten physikalischen Telegramme.
+- **MCU-Familienhypothese:** M16C/62P, `S1RIC=0x0054`, UART1 RX
+  `U1RB=0x03AE..0x03AF`, RX-Vektor 20, Vektortabellen-Offset `INTB+0x50`.
+  Weder lokale MCU-Kennzeichnung, `INTB`, RX-ISR-Adresse noch RX-Puffer
+  sind verifiziert. Kein Zugriff auf U1RB oder andere SFRs erfolgt.
+- **Artefakt-Luecke:** In den gezielt durchsuchten Firmware-Dateipfaden
+  unter `/root/p300-trial-work` und dem lokalen Research-Checkout wurde
+  kein geeignetes Regler-ROM-/ELF-/SREC-Firmwareimage gefunden. Die
+  historische VitoSoft-Analyse enthaelt nur Host-/RPC-Metadaten, keinen
+  Controller-ISR-Dump. Diese negative Dateisuche ist keine Behauptung
+  ueber saemtliche jemals existierenden Archive.
+- **Optolink-Grenze:** `0x41 KMBUS_RAM_READ` spiegelt nach lokalen
+  Vergleichstests virtuelle Objekte; fuer `0x32 XRAM_WRITE` ist kein
+  gueltiges profilspezifisches Format bekannt, die 22 VDensHO1-RPCs
+  enthalten keinen RX-Inject-Handler. Aus der reinen Existenz eines
+  generischen Write-Function-Codes folgt keine Freigabe.
+
+### Konkrete zu testende RX-Hypothese
+
+Auf dem angenommenen M16C/62P verarbeitet eine UART1-RX-ISR an Vektor 20
+Byteeingaben, uebergibt sie an einen KM-Bus-Frameparser und dieser
+aktualisiert nach erfolgreicher CRC-/Slot-/Klassenpruefung die
+Vitotrol-Teilnehmer-/Sensorzustaende. Der unbekannte SRAM-Ringpuffer,
+ISR-Einsprung und Parser sind **nicht belegt**. Geraetegenau zugeordneter
+Firmwaredump oder gesicherter vorhandener Vektortabellensnapshot ist
+zwingende Voraussetzung fuer die naechste statische Zuordnung.
+
+Empfohlene Offline-Kette nach Beschaffung eines echten Images:
+MCU/Memory-Map verifizieren -> tatsaechliches INTB und Vektor 20
+lokalisieren -> ISR-U1RB-Zugriffe und RAM-Buffer-XREF identifizieren
+-> Parser-CRC/Slot verknuepfen -> Status/Room-Commit nachverfolgen
+-> Read-only-Fixturetests. Insbesondere darf `INTB+0x50` **nicht** als
+fixe physische Adresse benutzt werden.
+
+### Neu abgesicherte Protokollteile
+
+Der Offline-Simulator erkennt nun masterseitige `0xBF`-Statusrecord-
+**Rahmen** `0x1C..0x1F` nach Slot-/Header-/Laengen-/CRC-Pruefung.
+Die Nutzdaten bleiben absichtlich opak und `decoded_status_verified=false`:
+Die historischen lokalen UART1-Belege umfassen keine bestaetigte
+Vitotrol-RX-Gegenstellenantwort und keine WB2A-Status-Record-Nutzlast.
+Weitere Offline-Tests pruefen unbekannte Recordnummern, CRC-Fehler
+und rueckwaerts laufende Uhr-/Sensortimestamps. Es wurde **kein**
+physischer Antwortpfad aktiviert.
+
+### Variantenentscheidung (Stand dieses Commits)
+
+1. **Physischer KM-Bus-Slave am geprueften Businterface:**
+   beste praktische Realisierungsaussicht, weil 1200 8E1,
+   Master-Discovery, CRC, Antworten und elektrische M-Bus/KM-Bus-
+   Gegenstelle in externen Emulatoren belegt sind. Vor einem
+   Anschluss benoetigt die lokale WB2A eine elektrische und
+   galvanische Interfacepruefung sowie eine passive Busabnahme.
+2. **Optolink-only/P300:** wartungsfreundliches Wunschziel, jedoch
+   blockiert, bis eine exakte RX-/Monitor-Service-Funktion nachgewiesen
+   wird. Bestehende Hybrid-P300-Fenster erlauben nur freigegebene
+   Read-only-Diagnosen.
+3. **Direkter RAM-/Puffer-Write:** derzeit nicht vertretbar, da
+   Empfangspuffer, ISR-Ownership, Atomizitaet und Rollback unklar sind.
+
+**Freigabeentscheidung:** Draft-PR behalten; keine Controllercodierung,
+keinen RAM-Write, keinen KM-Bus-Busanschluss, keinen Produktivmerge.
+Die mehrtaegige passive P06/P09/Flammen-Aufzeichnung bleibt unberuehrt.

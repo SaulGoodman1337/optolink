@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 import json
+import math
 
 SRC_CONTROLLER = 0x00
 CLASS_VITOTROL = 0x11
@@ -130,6 +131,21 @@ def model_room_temp_record(slot: int, tenths_c: int, *,
     return append_crc(body)
 
 
+def decode_master_status(frame: bytes) -> dict:
+    """Recognize controller status-record envelopes; payload semantics unknown.
+
+    No state is inferred from opaque bytes; this is not a hardware RX proof.
+    """
+    frame=validate_frame(frame)
+    if (frame[0]!=CLASS_VITOTROL or frame[1]!=SRC_CONTROLLER
+            or frame[2]!=0xBF or frame[4] not in (1,2)
+            or frame[5]!=1 or len(frame)<9 or frame[6] not in (0x1c,0x1d,0x1e,0x1f)):
+        raise FrameRejected("not a known controller status-record envelope")
+    return {"slot":frame[4],"record":frame[6],
+            "opaque_payload_hex":frame[7:-2].hex(),
+            "decoded_status_verified":False}
+
+
 class OfflineVitotrolState:
     """Model-only discovery->PING/PONG->periodic temperature, no transport.
 
@@ -154,31 +170,44 @@ class OfflineVitotrolState:
         self.temperature=None
         self.updated_at=None
         self.last_temp_sent_at=None
+        self.last_seen_at=None
+        self.last_status_record=None
 
     def update_temperature(self, tenths_c: int, *, at_s: float):
-        if type(at_s) not in (int,float) or not 0 <= at_s < float("inf"):
+        if type(at_s) not in (int,float) or not math.isfinite(at_s) or at_s < 0:
             raise FrameRejected("finite timestamp required")
+        if self.updated_at is not None and at_s < self.updated_at:
+            raise FrameRejected("temperature timestamp moved backwards")
         # Validate bounds via the audited offline formatter.
         model_room_temp_record(self.slot,tenths_c)
         self.temperature=tenths_c
         self.updated_at=float(at_s)
 
     def respond(self, frame: bytes, *, at_s: float) -> bytes | None:
-        if type(at_s) not in (int,float) or not 0 <= at_s < float("inf"):
+        if type(at_s) not in (int,float) or not math.isfinite(at_s) or at_s < 0:
             raise FrameRejected("finite timestamp required")
+        if self.last_seen_at is not None and at_s < self.last_seen_at:
+            raise FrameRejected("master clock moved backwards")
         frame=validate_frame(frame)
         if (frame[0]!=CLASS_VITOTROL or frame[1]!=SRC_CONTROLLER
                 or frame[4]!=self.slot):
+            return None
+        if frame[2]==0xBF:
+            decoded=decode_master_status(frame)
+            self.last_seen_at=float(at_s)
+            self.last_status_record=decoded
             return None
         if frame[2]==READ_MULTIPLE:
             discovery=decode_master_identity_query(frame)
             if discovery.slot!=self.slot:
                 return None
             self.discovered=True
+            self.last_seen_at=float(at_s)
             return model_identity_reply(frame,identity=self.identity)
         if frame[2]!=0x00:
             return None
         decode_master_ping(frame)
+        self.last_seen_at=float(at_s)
         if (not self.discovered or self.temperature is None
                 or self.updated_at is None
                 or not 0 <= at_s-self.updated_at <= self.stale_after_s):

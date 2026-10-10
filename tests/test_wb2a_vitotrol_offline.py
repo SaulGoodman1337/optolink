@@ -164,6 +164,39 @@ class VitotrolOfflineTests(unittest.TestCase):
         with self.assertRaises(sim.FrameRejected):
             state.respond(bytes(broken),at_s=1)
 
+    def test_controller_status_record_accepted_but_never_inferred(self):
+        state=sim.OfflineVitotrolState(slot=1)
+        record=sim.append_crc(bytes.fromhex("1100bf0a01011d00"))
+        self.assertIsNone(state.respond(record,at_s=2))
+        self.assertFalse(state.discovered)
+        self.assertEqual(state.last_status_record["record"],0x1d)
+        self.assertFalse(state.last_status_record["decoded_status_verified"])
+        self.assertIsNone(state.respond(bytes.fromhex("1100000801010888"),at_s=3))
+
+    def test_status_rejects_invalid_record_or_crc(self):
+        state=sim.OfflineVitotrolState()
+        for record in (0x19,0x20):
+            frame=sim.append_crc(bytes([0x11,0,0xbf,10,1,1,record,0]))
+            with self.assertRaises(sim.FrameRejected):
+                state.respond(frame,at_s=1)
+        good=bytearray(sim.append_crc(bytes.fromhex("1100bf0a01011c00")))
+        good[-1]^=1
+        with self.assertRaises(sim.FrameRejected):
+            state.respond(bytes(good),at_s=1)
+
+    def test_clock_rewind_does_not_refresh_temperature_or_state(self):
+        state=sim.OfflineVitotrolState()
+        query=bytes.fromhex(sim.KNOWN_MASTER_HEX[0])
+        state.respond(query,at_s=10)
+        state.update_temperature(215,at_s=10)
+        for clock in (9,):
+            with self.assertRaises(sim.FrameRejected):
+                state.respond(query,at_s=clock)
+            with self.assertRaises(sim.FrameRejected):
+                state.update_temperature(220,at_s=clock)
+        self.assertEqual(state.temperature,215)
+        self.assertEqual(state.updated_at,10)
+
     def test_bounded_temp_and_monotonic_age(self):
         state=sim.OfflineVitotrolState(slot=1)
         for value in (None,True,49,351,21.5):
