@@ -177,7 +177,14 @@ Einzelanfrage-TTL/Idempotenz und veröffentlichte Rohbytes
 
 **Wichtig:** Die neu typisierte Leseart wird weder der automatischen
 `READONLY_PRESET`-Dreierliste (Identität + 0F20 + 1C60)
-noch dem Boot-/Continuous-Canary-Ablauf hinzugefügt.
+noch dem Boot-/Continuous-Canary-Ablauf hinzugefügt. Der bestehende
+**manuelle** `demand-manual`-Canary-Nachweis wurde offline so erweitert,
+dass er genau einen Auftrag mit geprüftem Typ/Längen-Schema akzeptiert:
+`p300_identity` (2 Bytes) oder einen der drei fest erlaubten
+FC03/32-RAM-Reads (`0F20`, `1C60`, `1640`). Die automatische
+`demand-one`-Selbstprüfung bleibt strikt auf `0F20/32` beschränkt.
+Unbekannte Operationen, mehrere Reads, falsche Paketlänge oder nicht
+identische Journal-/RPC-Rohbytes verhindern die Canary-Freigabe.
 Die normale Produktivinstallation `/opt/optolink`, `main`,
 die laufenden Systemd-Dienste und der passive RPM-Logger
 bleiben unverändert. Es erfolgte **keine** Hardwareabnahme

@@ -220,3 +220,15 @@ RPM-v2-Dienstes. Sie ist niemals eine Erlaubnis fuer einen
 RAM-Write, KM-Bus-Injektionsversuch oder direkter UART1-U1RB-Zugriff.
 
 Siehe [vollstaendiger Quellen-/Offline-Audit](wb2a-vitotrol-optolink-rx-2026-10-10.md).
+
+### Manuelle Canary-Abnahmegrenze auf dem Draft-Branch
+
+Der unabhaengige Supervisor validiert einen manuellen, realen
+`p300_ram_1640_32`-Read in der vorhandenen Profilart `demand-manual`
+ausschliesslich mit exakter fester Art, **64 Hexzeichen** aus der
+32-Byte-P300-Antwort, genau einem demand-Ticket, gleicher Journal-
+und RPC-Provenienz, und verifizierter VS1-P80/P06-Rueckkehr.
+`demand-one` bleibt unveraendert ausschliesslich fuer den bekannten
+`0F20`-Selbsttest freigegeben. Jede neue Canary-Verifikation ist bisher
+**nur offline mit Fake-Port/Journal-Fixtures getestet**; keine produktive
+Hardwareabnahme waehrend der RPM-v2-Beobachtung.
