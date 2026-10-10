@@ -533,14 +533,18 @@ jobs:
           test -f docs/manuals/README.md
           test -f docs/images/optolink-system-overview.svg
           test -f docs/images/service-communication-security.svg
+          test -f docs/images/vs1-p300-wechsel.svg
+          test -f docs/hybrid-protokollwechsel.md
           grep -Fq '[Dokumentationsindex](docs/README.md)' README.md
-          grep -Fq '[Architektur](docs/architecture.md)' README.md
-          grep -Fq '[Betrieb / Runbook](docs/operations.md)' README.md
+          grep -Fq '[Systemarchitektur](docs/architecture.md)' README.md
+          grep -Fq '[Betrieb und Fehlerdiagnose](docs/operations.md)' README.md
           grep -Fq '[Home Assistant](docs/home-assistant.md)' README.md
           grep -Fq '[Entwicklungsleitfaden](docs/development.md)' README.md
-          grep -Fq '![Optolink-Splitter Systemübersicht](docs/images/optolink-system-overview.svg)' README.md
+          grep -Fq '![Optolink-Systemübersicht](docs/images/optolink-system-overview.svg)' README.md
           grep -Fq '![Dienstekommunikation und Sicherheitsmodell](docs/images/service-communication-security.svg)' README.md
-          grep -Fq '[WB2A Befüllungs-/Entlüftungsprogramm](docs/service-programs.md)' README.md
+          grep -Fq '![Überwachter VS1/P300-Protokollwechsel](docs/images/vs1-p300-wechsel.svg)' README.md
+          grep -Fq '[Serviceprogramme](docs/service-programs.md)' README.md
+          grep -Fq '[Optionaler VS1/P300-Protokollwechsel](docs/hybrid-protokollwechsel.md)' README.md
           grep -Fq '0x088E' docs/architecture.md
           grep -Fq '0x6758' docs/home-assistant.md
           grep -Fq '0x572F' docs/home-assistant.md
