@@ -66,6 +66,29 @@ class ProducerFenceTests(unittest.TestCase):
                 pass
         hard.unlink()
 
+    def test_p300_crash_marker_blocks_new_controller_writers(self):
+        with self.assertRaisesRegex(RuntimeError, 'artificial abort'):
+            with p300_window(path=self.path) as proof:
+                proof.begin()
+                self.assertEqual(self.path.read_bytes(),b'P300_ACTIVE')
+                raise RuntimeError('artificial abort')
+        self.assertEqual(self.path.read_bytes(),b'P300_FAILED')
+        with self.assertRaisesRegex(ProducerFenceRejected,'P300 was interrupted'):
+            with writer_transaction('party',path=self.path):
+                self.fail('cannot write during unresolved P300 session')
+        with self.assertRaisesRegex(ProducerFenceRejected,'unverified or interrupted'):
+            with p300_window(path=self.path):
+                pass
+
+    def test_successfully_verified_p300_window_clears_persistent_marker(self):
+        with p300_window(path=self.path) as proof:
+            proof.begin()
+            self.assertEqual(self.path.read_bytes(),b'P300_ACTIVE')
+            proof.confirm_verified_vs1()
+        self.assertEqual(self.path.read_bytes(),b'')
+        with writer_transaction('party',path=self.path):
+            pass
+
     def test_one_party_transaction_blocks_entire_p300_window(self):
         with writer_transaction('party',path=self.path):
             with self.assertRaisesRegex(ProducerFenceRejected, 'external writer'):
@@ -86,10 +109,31 @@ class ProducerFenceTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'controller rollback failed'):
             with writer_transaction('maintenance',path=self.path):
                 raise RuntimeError('controller rollback failed')
-        # This is NOT an automatic rollback proof. RuntimeAdmissionGate still
-        # latches the observed write until trusted external ack.
-        with p300_window(path=self.path):
-            pass
+        # An exception persists FAILED on disk even after flock was freed.
+        with self.assertRaisesRegex(ProducerFenceRejected, 'unverified or interrupted'):
+            with p300_window(path=self.path):
+                self.fail('ambiguous previous write must not permit P300')
+
+    def test_nested_transaction_uses_one_exclusive_flop_and_clears_marker(self):
+        with writer_transaction('schedule',path=self.path):
+            self.assertNotEqual(self.path.read_bytes(), b'')
+            with writer_transaction('schedule',path=self.path):
+                with self.assertRaises(ProducerFenceRejected):
+                    with p300_window(path=self.path): pass
+            self.assertTrue(self.path.read_bytes())
+        self.assertEqual(self.path.read_bytes(), b'')
+        with p300_window(path=self.path): pass
+
+    def test_failed_inner_transaction_latches_even_when_outer_swallows(self):
+        with writer_transaction('schedule',path=self.path):
+            try:
+                with writer_transaction('schedule',path=self.path):
+                    raise ValueError('readback failed')
+            except ValueError:
+                pass
+        self.assertTrue(self.path.read_bytes().startswith(b'FAILED:'))
+        with self.assertRaises(ProducerFenceRejected):
+            with p300_window(path=self.path): pass
 
     def test_real_separate_process_owns_exclusive_writer_lock(self):
         script = (
@@ -118,8 +162,11 @@ class ProducerFenceTests(unittest.TestCase):
         finally:
             child.terminate()
             child.communicate(timeout=3)
-        with p300_window(path=self.path):
-            pass
+        # SIGTERM may kill the writer mid-readback. The OS releases flock,
+        # but its durable ACTIVE marker must bar a new P300 window.
+        with self.assertRaisesRegex(ProducerFenceRejected, 'unverified or interrupted'):
+            with p300_window(path=self.path):
+                pass
 
     def test_fenced_batch_refuses_writer_before_any_fake_serial_tx(self):
         class FailPort:

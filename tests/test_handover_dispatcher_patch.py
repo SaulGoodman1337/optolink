@@ -8,6 +8,9 @@ from handover_acceleration.dispatcher_patch import patch_dispatcher, PatchReject
 
 UPSTREAM_EXCERPT='''import requests_util
 
+def tcp_connection_loop():
+        tcp_server.command_callback = do_special_command        # type: ignore
+
 def do_poll_item(item, ser):
     retcode, data, val, _ = requests_util.response_to_request(item, ser)
     return retcode
@@ -19,10 +22,15 @@ def main():
     result = vs12_adapter.receive_telegr(True, True, serOptolink, serVitoConnnect, vicon_publ_callback)
     if True:
         if True:
+                mod_mqtt.connect_mqtt()
                 logger.info(f"{spr} protocol initialized")
+                if False:
+                                retcode = do_poll_item(poll_data, serOptolink, item_index=force_refresh_index)      # type: ignore
                 a,b,c,d = requests_util.response_to_request(msg, serOptolink)
                 a,b,c,d = requests_util.response_to_request(msg, serOptolink)
-                retcode,_,_ = vs12_adapter.read_datapoint_ext(0xf8, 2, serOptolink)
+                if False:
+                        retcode,_,_ = vs12_adapter.read_datapoint_ext(0xf8, 2, serOptolink)     # type: ignore
+                # let cpu take a breath if there was nothing to do
 '''
 
 
@@ -36,6 +44,9 @@ class PatchTests(unittest.TestCase):
         self.assertEqual(result.count('vs12_adapter.read_datapoint_ext(0xf8, 2, serOptolink)'),1)
         self.assertIn('allow_maintenance=False',result)
         self.assertIn('OPTO_RESEARCH_DISPATCH_SHADOW',result)
+        self.assertIn('OPTO_HYBRID_RUNTIME_DIAGNOSTIC', result)
+        self.assertLess(result.index('install_before_mqtt_connect(mod_mqtt)'),
+                        result.index('mod_mqtt.connect_mqtt()'))
         compile(result,'<mock-upstream>','exec')
 
     def test_feature_off_uses_unmodified_legacy_call(self):

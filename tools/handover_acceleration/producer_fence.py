@@ -23,7 +23,7 @@ import time
 from typing import Callable
 
 
-LEASE_PATH = Path('/run/lock/optolink-hybrid-producer-epoch.lock')
+LEASE_PATH = Path('/var/lib/optolink-hybrid/producer-epoch.lock')
 COOPERATIVE_SERVICES = frozenset({
     'party', 'schedule', 'maintenance', 'service-programs', 'clock-sync',
     'mqtt-direct', 'tcp-direct',
@@ -64,6 +64,21 @@ def _open_reviewed_lock(path: Path) -> int:
         raise
 
 
+_thread_lease = __import__('threading').local()
+
+
+def _marker(fd: int, data: bytes) -> None:
+    """Persist intent while still holding flock; a crash leaves P300 blocked."""
+    if len(data) > 240:
+        raise ProducerFenceRejected('lease marker too long')
+    os.lseek(fd, 0, os.SEEK_SET)
+    os.ftruncate(fd, 0)
+    if data:
+        if os.write(fd, data) != len(data):
+            raise ProducerFenceRejected('producer marker short write')
+    os.fsync(fd)
+
+
 @contextmanager
 def writer_transaction(producer: str, *, path: Path = LEASE_PATH,
                        max_wait_s: float = 10.0,
@@ -80,6 +95,17 @@ def writer_transaction(producer: str, *, path: Path = LEASE_PATH,
     if (type(max_wait_s) not in (int, float)
             or not 0 < max_wait_s <= 60):
         raise ProducerFenceRejected('bounded wait required')
+    active = getattr(_thread_lease, 'active', None)
+    if active is not None:
+        if active['path'] != path:
+            raise ProducerFenceRejected('nested writers may not change lock path')
+        try:
+            yield
+        except BaseException:
+            _latch_failed(active, producer)
+            raise
+        return  # nested write/readback stays inside the outer kernel flock
+
     fd = _open_reviewed_lock(path)
     acquired = False
     try:
@@ -93,11 +119,63 @@ def writer_transaction(producer: str, *, path: Path = LEASE_PATH,
                 if clock() >= deadline:
                     raise ProducerFenceRejected('writer timeout waiting for P300 barrier') from exc
                 sleep(min(0.025, max(0, deadline - clock())))
-        yield
+        prior = os.pread(fd, 241, 0)
+        if len(prior) > 240:
+            raise ProducerFenceRejected('untrusted oversized lease marker')
+        if prior.startswith(b'P300_'):
+            raise ProducerFenceRejected('P300 was interrupted; VS1 recovery not proven')
+        active = {'path': path, 'fd': fd, 'prior': prior, 'failed': False}
+        _marker(fd, ('ACTIVE:' + producer).encode('ascii'))
+        _thread_lease.active = active
+        try:
+            yield
+        except BaseException:
+            _latch_failed(active, producer)
+            raise
+        else:
+            if not active['failed']:
+                _marker(fd, prior)
     finally:
+        _thread_lease.active = None
         if acquired:
             fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
+
+
+def _latch_failed(active: dict, producer: str) -> None:
+    active['failed'] = True
+    _marker(active['fd'], ('FAILED:' + producer).encode('ascii'))
+
+
+def mark_unverified_write(producer: str) -> None:
+    """A wrapped producer can latch a swallowed error/False return in-band."""
+    active = getattr(_thread_lease, 'active', None)
+    if active is None or producer not in COOPERATIVE_SERVICES:
+        raise ProducerFenceRejected('cannot latch write without owned transaction')
+    _latch_failed(active, producer)
+
+
+class P300WindowProof:
+    """One scoped P300 window; persistent marker until verified return.
+
+    The producer lease stays locked during mark/clear to prevent even a
+    millisecond of unverified VS1 transport admission after a crash.
+    """
+    def __init__(self, fd: int):
+        self.fd = fd
+        self.started = False
+        self.verified = False
+
+    def begin(self) -> None:
+        if self.started:
+            raise ProducerFenceRejected('P300 window already marked active')
+        _marker(self.fd, b'P300_ACTIVE')
+        self.started = True
+
+    def confirm_verified_vs1(self) -> None:
+        if not self.started:
+            raise ProducerFenceRejected('no P300 transfer to confirm')
+        self.verified = True
 
 
 @contextmanager
@@ -115,7 +193,19 @@ def p300_window(*, path: Path = LEASE_PATH):
             acquired = True
         except BlockingIOError as exc:
             raise ProducerFenceRejected('an external writer transaction is active') from exc
-        yield
+        # A killed writer leaves ACTIVE; a failed/ambiguous readback leaves
+        # FAILED. Both persist after the process releases its kernel lock.
+        if os.fstat(fd).st_size != 0:
+            raise ProducerFenceRejected('unverified or interrupted producer transaction')
+        proof = P300WindowProof(fd)
+        try:
+            yield proof
+        finally:
+            if proof.started:
+                # Fatal crash leaves P300_ACTIVE. Python-level failure
+                # leaves P300_FAILED. Only complete original GFA verification
+                # can clear the marker before allowing another writer.
+                _marker(fd, b'' if proof.verified else b'P300_FAILED')
     finally:
         if acquired:
             fcntl.flock(fd, fcntl.LOCK_UN)
@@ -124,8 +214,10 @@ def p300_window(*, path: Path = LEASE_PATH):
 
 def provision_command() -> str:
     """Describe root-only future provisioning; this function does NOT execute."""
-    return ('install -o root -g optolink -m 0660 /dev/null '
-            + str(LEASE_PATH))
+    return ("install -d -o root -g optolink -m 0750 /var/lib/optolink-hybrid; "
+            "test -e /var/lib/optolink-hybrid/producer-epoch.lock || "
+            "install -o root -g optolink -m 0660 /dev/null "
+            "/var/lib/optolink-hybrid/producer-epoch.lock")
 
 
 def fenced_readonly_batch(gate, snapshot_provider, budget, *, lock_path: Path,

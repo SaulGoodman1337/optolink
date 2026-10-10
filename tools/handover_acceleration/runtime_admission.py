@@ -81,6 +81,68 @@ READONLY_PRESET = (
 )
 
 
+def _write_intent(request) -> tuple[int, bytes] | None:
+    """Only exact, known VS1 virtual writes can be proven by raw readback.
+
+    A transport ACK is never proof that the controller has applied the value.
+    Arbitrary P300 commands, raw serial frames and malformed writes remain
+    permanently opaque until an explicit trusted completion.
+    """
+    if not isinstance(request,str):
+        return None
+    fields=request.split(";")
+    if len(fields)<3 or fields[0].lower() not in (
+            "w","write","writeraw","wraw"):
+        return None
+    try:
+        addr=int(fields[1],0)
+        if not 0 <= addr <= 0xffff:
+            return None
+        if fields[0].lower() in ("w","write"):
+            if len(fields)!=4:
+                return None
+            n=int(fields[2],0)
+            value=int(fields[3],0)
+            if not 1<=n<=32:
+                return None
+            raw=value.to_bytes(n,"little",signed=value<0)
+        else:
+            if len(fields)!=3:
+                return None
+            raw=bytes.fromhex(fields[2].removeprefix("0x"))
+            if not 1<=len(raw)<=32:
+                return None
+        return addr,raw
+    except (ValueError, OverflowError):
+        return None
+
+
+def _read_evidence(request, result) -> tuple[int,bytes] | None:
+    """Exact successful original VS1 response, not formatted/scaled MQTT."""
+    if isinstance(request,str):
+        fields=request.split(";")
+        if len(fields)<3 or fields[0].lower() not in ("read","r"):
+            return None
+    elif isinstance(request,(list,tuple)) and len(request)>=3:
+        # Already-stripped original poll item (Name, Addr, Len, ...).
+        # The MQTT /set forced-refresh machinery uses these very tuples.
+        fields=request
+    else:
+        return None
+    try:
+        addr = int(fields[1],0) if isinstance(fields[1],str) else fields[1]
+        size = int(fields[2],0) if isinstance(fields[2],str) else fields[2]
+    except (ValueError,TypeError):
+        return None
+    if (not 0<=addr<=0xffff or not 1<=size<=32 or
+            not isinstance(result,tuple) or len(result)!=4 or
+            type(result[0]) is not int or result[0]!=1 or
+            not isinstance(result[1],(bytes,bytearray)) or
+            len(result[1])!=size):
+        return None
+    return addr,bytes(result[1])
+
+
 def _requires_write_fence(request) -> bool:
     """Never interpret arbitrary raw/request traffic as a harmless read."""
     if not isinstance(request, str):
@@ -119,6 +181,8 @@ class RuntimeAdmissionGate:
         self.last_completed_at: float | None = None
         self.last_write_at: float | None = None
         self.unacknowledged_write = False
+        self._readback_pending: list[tuple[int,bytes]] = []
+        self._opaque_write_pending = False
         self.in_window = False
         self.failed_closed = False
         self.completed_windows = 0
@@ -135,12 +199,38 @@ class RuntimeAdmissionGate:
         if _requires_write_fence(request):
             self.last_write_at = self.clock()
             self.unacknowledged_write = True
+            intent = _write_intent(request)
+            if intent is None:
+                self._opaque_write_pending = True
+            else:
+                self._readback_pending.append(intent)
+
+    def observe_legacy_result(self, request, result) -> None:
+        """Recognize ONLY a real, matching post-write read of original bytes.
+
+        A write acknowledgement by itself never clears a fence. An unknown
+        frame remains opaque. Multiple writes require multiple matching
+        response reads, preventing an unrelated read from ending a group.
+        """
+        self._require_owner()
+        if self.in_window or self.failed_closed:
+            raise AdmissionRejected('no result acknowledgements during P300')
+        evidence = _read_evidence(request,result)
+        if evidence is not None:
+            for i,pending in enumerate(self._readback_pending):
+                if pending == evidence:
+                    self._readback_pending.pop(i)
+                    break
+        self.unacknowledged_write = bool(
+            self._opaque_write_pending or self._readback_pending)
 
     def acknowledge_external_transaction(self, *, producer_confirmed: bool) -> None:
         self._require_owner()
         if producer_confirmed is not True or self.in_window or self.failed_closed:
             raise AdmissionRejected('explicit trusted write/readback completion required')
         self.unacknowledged_write = False
+        self._readback_pending.clear()
+        self._opaque_write_pending = False
 
     def decide(self, snapshot: DispatcherSnapshot, budget: Budget) -> AdmissionDecision:
         self._require_owner()

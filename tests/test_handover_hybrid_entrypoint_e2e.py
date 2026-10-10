@@ -40,6 +40,8 @@ class EntryPointEndToEndTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             scope={
                 'ORIGINAL_SERIAL':port,
+                'mod_mqtt':types.SimpleNamespace(connect_mqtt=lambda:None,
+                                                   _hybrid_readback_ledger=None),
                 'settings':types.SimpleNamespace(vs1protocol=True,port_vitoconnect=None),
                 'viconn_util':types.SimpleNamespace(get_vicon_request=lambda:None),
                 'vs12_adapter':adapter,

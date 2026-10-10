@@ -100,6 +100,81 @@ class RuntimeAdmissionTests(unittest.TestCase):
             self.gate.observe_legacy(cmd)
         self.assertTrue(self.gate.decide(self.safe, self.budget).admitted)
 
+    def test_known_direct_write_requires_real_exact_original_readback(self):
+        self.gate.observe_legacy('w;0x2306;1;25')
+        self.assertTrue(self.gate.unacknowledged_write)
+        self.gate.observe_legacy_result('w;0x2306;1;25',
+                                        (1,bytearray(b'\x19'),25,'ACK'))
+        self.assertTrue(self.gate.unacknowledged_write)
+        self.gate.observe_legacy_result('r;0x2306;1;raw;False',
+                                        (1,bytearray(b'\x18'),24,'old'))
+        self.assertTrue(self.gate.unacknowledged_write)
+        self.gate.observe_legacy_result('r;0x2306;1;raw;False',
+                                        (1,bytearray(b'\x19'),25,'new'))
+        self.assertFalse(self.gate.unacknowledged_write)
+        self.assertEqual(self.gate.decide(self.safe,self.budget).reason,
+                         'DELAYED_HA_READBACK_SETTLE')
+        self.clock.sleep(5.25)
+        self.assertTrue(self.gate.decide(self.safe,self.budget).admitted)
+
+    def test_ha_forced_poll_tuple_can_verify_real_write_readback(self):
+        self.gate.observe_legacy('write;0x2306;1;25')
+        poll=('heizkreis_m1_raumsolltemperatur_normal',0x2306,1,1.0,False)
+        self.gate.observe_legacy_result(
+            poll,(1,bytearray.fromhex('19'),'25','1;0x2306;25'))
+        self.assertFalse(self.gate.unacknowledged_write)
+        self.clock.sleep(5.25)
+        self.assertTrue(self.gate.decide(self.safe,self.budget).admitted)
+
+    def test_wrong_ha_poll_tuple_and_short_read_keep_writer_fenced(self):
+        self.gate.observe_legacy('write;0x2306;1;25')
+        for poll,response in (
+            (('name',0x2307,1), (1,bytearray.fromhex('19'),25,'')),
+            (('name',0x2306,2), (1,bytearray.fromhex('19'),25,'')),
+            (('name',0x2306,1), (0xff,bytearray.fromhex('19'),25,''))):
+            self.gate.observe_legacy_result(poll,response)
+            self.assertTrue(self.gate.unacknowledged_write)
+
+    def test_multiwrite_requires_each_matching_readback(self):
+        for command in ('w;0x2323;1;4','writeraw;0x2306;0x19'):
+            self.gate.observe_legacy(command)
+        self.gate.observe_legacy_result('r;0x2323;1;raw;False',
+                                        (1,bytearray(b'\x04'),4,''))
+        self.assertTrue(self.gate.unacknowledged_write)
+        self.gate.observe_legacy_result('r;0x2306;1;raw;False',
+                                        (1,bytearray(b'\x19'),25,''))
+        self.assertFalse(self.gate.unacknowledged_write)
+        self.clock.sleep(5.25)
+        self.assertTrue(self.gate.decide(self.safe,self.budget).admitted)
+
+    def test_unverified_raw_or_failed_readback_fences_permanently(self):
+        self.gate.observe_legacy('raw;4105000100f80200')
+        self.gate.observe_legacy_result('r;0x00f8;2;raw;False',
+                                        (1,bytearray(b'\x20\\xc2'),'20c2',''))
+        self.clock.sleep(100)
+        self.assertTrue(self.gate.unacknowledged_write)
+        self.assertFalse(self.gate.decide(self.safe,self.budget).admitted)
+
+    def test_short_mismatched_or_nonsuccess_read_does_not_count(self):
+        self.gate.observe_legacy('writeraw;0x2200;aabbccdd')
+        for response in ((0xff,bytearray.fromhex('aabbccdd'),None,''),
+                         (1,bytearray.fromhex('aabb'),None,''),
+                         (1,bytearray.fromhex('00000000'),None,'')):
+            self.gate.observe_legacy_result('r;0x2200;4;raw;False',response)
+            self.assertTrue(self.gate.unacknowledged_write)
+        self.gate.observe_legacy_result('r;0x2200;4;raw;False',
+                            (1,bytearray.fromhex('aabbccdd'),None,''))
+        self.assertFalse(self.gate.unacknowledged_write)
+
+    def test_write_intent_rejected_if_unrecognized_or_overlong(self):
+        for command in ('w;0x2306;0;10','w;0x2306;1;9999999999',
+                        'request;0x1;0x2306;1','raw;deadbeef'):
+            gate=RuntimeAdmissionGate(clock=self.clock.monotonic)
+            gate.observe_legacy(command)
+            gate.observe_legacy_result('r;0x2306;1;raw;False',
+                                 (1,bytearray(b'\x0a'),10,''))
+            self.assertTrue(gate.unacknowledged_write,command)
+
     def test_wrong_thread_never_admits_or_calls_legacy(self):
         errors = []
         def invoke():

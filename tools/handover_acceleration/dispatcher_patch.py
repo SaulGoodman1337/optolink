@@ -25,17 +25,51 @@ CALL_SITES = (
 )
 ANCHOR = '                logger.info(f"{spr} protocol initialized")'
 IMPORT_ANCHOR = 'import requests_util\n'
+MQTT_CONNECT_ANCHOR = '                mod_mqtt.connect_mqtt()'
+FORCED_READ_ANCHOR = ('                                retcode = do_poll_item('
+                      'poll_data, serOptolink, item_index=force_refresh_index)'
+                      '      # type: ignore')
+FORCED_READ_COMPLETE = (
+    '\n                                if getattr(mod_mqtt, "_hybrid_readback_ledger", None) is not None:'
+    '\n                                    mod_mqtt._hybrid_complete_forced(retcode)'
+)
+MQTT_EPOCH_PRECONNECT = """
+                # The automatic variant freezes BOTH asynchronous ingress paths
+                # before any new write or delayed HA readback can be queued.
+                # Explicit opt-in and enrollment are independently required.
+                if (settings.vs1protocol and settings.port_vitoconnect is None
+                        and os.environ.get('OPTO_RESEARCH_DISPATCH_SHADOW') == '1'):
+                    _auto_requested = (
+                        os.environ.get('OPTO_HYBRID_RUNTIME_AUTO') == 'fenced-readonly')
+                    if _auto_requested:
+                        from handover_acceleration.ingress_epoch import IngressEpoch
+                        from handover_acceleration.pending_refresh import install_before_mqtt_connect
+                        global _hybrid_ingress
+                        _hybrid_ingress = IngressEpoch()
+                        mod_mqtt.on_message = _hybrid_ingress.wrap_mqtt_callback(mod_mqtt.on_message)
+                        install_before_mqtt_connect(mod_mqtt)
+                        c_tcpserver.TcpServer = _hybrid_ingress.tcp_class(c_tcpserver.TcpServer)
+                    elif os.environ.get('OPTO_HYBRID_RUNTIME_DIAGNOSTIC') == '1':
+                        from handover_acceleration.pending_refresh import install_before_mqtt_connect
+                        install_before_mqtt_connect(mod_mqtt)
+"""
+
 
 SHIM = '''\n# RESEARCH_SHIM_V1: separate in-process request boundary, disabled by default.
 _handover_dispatch_bridge = None
-_handover_runtime_gate = None  # observer only; cannot schedule P300
+_handover_runtime_gate = None  # passive unless strict auto enrollment
+_hybrid_ingress = None
+_hybrid_auto = None
 
 def handover_legacy_or_shim(request, ser):
     if _handover_dispatch_bridge is None:
         return requests_util.response_to_request(request, ser)
     if _handover_runtime_gate is not None:
         _handover_runtime_gate.observe_legacy(request)
-    return _handover_dispatch_bridge.response_to_request(request, ser)
+    _result = _handover_dispatch_bridge.response_to_request(request, ser)
+    if _handover_runtime_gate is not None:
+        _handover_runtime_gate.observe_legacy_result(request, _result)
+    return _result
 
 '''
 
@@ -81,13 +115,76 @@ SETUP = '''\n                # Optional transparent legacy-only diagnostic shim.
 '''
 
 
+AUTO_BOOT = '''
+                # Strict continuous READ-ONLY switch, disabled unless explicitly
+                # requested AND the five real external writers are enrolled.
+                if os.environ.get('OPTO_HYBRID_RUNTIME_AUTO') == 'fenced-readonly':
+                    if not (settings.vs1protocol and settings.port_vitoconnect is None
+                            and os.environ.get('OPTO_RESEARCH_DISPATCH_SHADOW') == '1'
+                            and _hybrid_ingress is not None and mod_mqtt is not None):
+                        raise SystemExit(76)
+                    from handover_acceleration.runtime_enrollment import all_writers_attested
+                    if not all_writers_attested():
+                        logger.error('hybrid AUTO refused: external writer enrollment absent')
+                        raise SystemExit(76)
+                    from handover_acceleration.continuous_runtime import ContinuousReadonlyRuntime
+                    global _hybrid_auto
+                    _hybrid_auto = ContinuousReadonlyRuntime(
+                        port=serOptolink,
+                        legacy_dispatch=requests_util.response_to_request,
+                        resume_vs1=vs12_adapter.reset_vs1sync,
+                        mqtt=mod_mqtt,
+                        tcp_state=lambda: (
+                            tcp_server.pending_count() if tcp_server is not None
+                            else (0 if settings.tcpip_port is None else 9999)),
+                        ingress=_hybrid_ingress,
+                        all_writers_attested=all_writers_attested)
+                    _handover_runtime_gate = _hybrid_auto.gate
+                    logger.info('hybrid read-only automatic dispatcher admitted')
+'''
+
+LIVE_KEEPALIVE_ANCHOR = ('                        retcode,_,_ = vs12_adapter.'
+                         'read_datapoint_ext(0xf8, 2, serOptolink)     # type: ignore')
+LIVE_KEEPALIVE_OBSERVE = (
+    '\n                        if _hybrid_auto is not None:'
+    '\n                            _hybrid_auto.note_keepalive(retcode)')
+AUTO_TICK_ANCHOR = '                # let cpu take a breath if there was nothing to do'
+AUTO_TICK = '''
+                # At most one finite read-only FC03 batch per cooldown.
+                # This runs on the same main serial thread BETWEEN VS1 frames.
+                if _hybrid_auto is not None:
+                    _tick = _hybrid_auto.tick()
+                    if _tick.status == 'VERIFIED_SWITCH':
+                        _readings = {key: value for key, value in _tick.result.reads}
+                        _event = {'status': _tick.status,
+                                  'vs1_p80': _tick.result.p80_hex,
+                                  'vs1_p06': _tick.result.p06_hex,
+                                  'p300_fixed': _readings,
+                                  'elapsed_ms': _tick.result.elapsed_ms}
+                        mod_mqtt.publish_smart(
+                            settings.mqtt_topic + '/hybrid/readonly',
+                            json.dumps(_event), retain=False)
+'''
+TCP_SPECIAL_ANCHOR = (
+    '        tcp_server.command_callback = do_special_command        # type: ignore')
+TCP_SPECIAL_FENCED = (
+    '        tcp_server.command_callback = ('
+    '_hybrid_ingress.wrap_tcp_command(do_special_command)'
+    ' if _hybrid_ingress is not None else do_special_command)        # type: ignore')
+
+
 def patch_dispatcher(source: str) -> str:
     if not isinstance(source, str) or 'RESEARCH_SHIM_V1' in source:
         raise PatchRejected('invalid or previously patched dispatcher')
     for needle, count in CALL_SITES:
         if source.count(needle) != count:
             raise PatchRejected('unexpected original call count: ' + needle)
-    if source.count(ANCHOR) != 1 or source.count(IMPORT_ANCHOR) != 1:
+    if (source.count(ANCHOR) != 1 or source.count(IMPORT_ANCHOR) != 1
+            or source.count(MQTT_CONNECT_ANCHOR) != 1
+            or source.count(FORCED_READ_ANCHOR) != 1
+            or source.count(TCP_SPECIAL_ANCHOR) != 1
+            or source.count(LIVE_KEEPALIVE_ANCHOR) != 1
+            or source.count(AUTO_TICK_ANCHOR) != 1):
         raise PatchRejected('upstream startup/import layout changed')
     # Keep direct Vitoconnect forwarding outside this scope.
     for mandatory in ('viconn_util.get_vicon_request()',
@@ -96,10 +193,18 @@ def patch_dispatcher(source: str) -> str:
         if source.count(mandatory) != 1:
             raise PatchRejected('direct/keepalive serial topology changed')
     patched = source.replace(IMPORT_ANCHOR, IMPORT_ANCHOR + 'import os\n' + SHIM, 1)
+    patched = patched.replace(MQTT_CONNECT_ANCHOR,
+                              MQTT_EPOCH_PRECONNECT + MQTT_CONNECT_ANCHOR, 1)
+    patched = patched.replace(FORCED_READ_ANCHOR,
+                              FORCED_READ_ANCHOR + FORCED_READ_COMPLETE, 1)
+    patched = patched.replace(TCP_SPECIAL_ANCHOR,TCP_SPECIAL_FENCED,1)
+    patched = patched.replace(LIVE_KEEPALIVE_ANCHOR,
+                              LIVE_KEEPALIVE_ANCHOR+LIVE_KEEPALIVE_OBSERVE,1)
+    patched = patched.replace(AUTO_TICK_ANCHOR,AUTO_TICK+AUTO_TICK_ANCHOR,1)
     for old, _ in CALL_SITES:
         patched = patched.replace(old, old.replace('requests_util.response_to_request',
                                                     'handover_legacy_or_shim'))
-    patched = patched.replace(ANCHOR, ANCHOR + SETUP + BOOT, 1)
+    patched = patched.replace(ANCHOR, ANCHOR + SETUP + BOOT + AUTO_BOOT, 1)
     if patched.count('handover_legacy_or_shim(item, ser)') != 1:
         raise PatchRejected('poll seam not installed')
     if patched.count('handover_legacy_or_shim(msg, serOptolink)') != 2:

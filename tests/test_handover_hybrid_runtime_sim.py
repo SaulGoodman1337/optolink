@@ -32,9 +32,11 @@ class OriginalMainloopIntegrationTests(unittest.TestCase):
             'serVitoConnnect':None,
             'vicon_publ_callback':None,
             'msg':'read;0x4006;1;raw;False',
+            'mod_mqtt':types.SimpleNamespace(connect_mqtt=lambda:None,
+                                              _hybrid_readback_ledger=None),
             'viconn_util':types.SimpleNamespace(get_vicon_request=lambda:None),
             'vs12_adapter':self.adapter,
-            'logger':types.SimpleNamespace(info=lambda *_:None,exception=lambda *_:None),
+            'logger':types.SimpleNamespace(info=lambda *_:None,error=lambda *_:None,exception=lambda *_:None),
         }
         self.program=patch_dispatcher(UPSTREAM_EXCERPT)
 
@@ -89,6 +91,70 @@ class OriginalMainloopIntegrationTests(unittest.TestCase):
             with self.assertRaises(SystemExit) as exc:self.runtime['main']()
         self.assertEqual(exc.exception.code,78)
         self.assertEqual(self.legacy_calls,[])
+
+    def test_auto_never_starts_without_actual_enrolment(self):
+        from handover_acceleration import runtime_enrollment
+        from handover_acceleration.ingress_epoch import IngressEpoch
+        import types
+        fake_mqtt=types.SimpleNamespace(
+            mqtt_client=None,cmnd_queue=[],lst_force_refresh=[],
+            on_message=lambda *a:None,
+            connect_mqtt=lambda:None,
+            is_forced=lambda:None,force_delayed=lambda *a:None)
+        class FakeTcp:
+            def __init__(self,*a,**kw):self.received_data=''
+            def _listen(self):pass
+            def get_request(self):return ''
+            def send(self,*a):pass
+            def stop(self):pass
+        self.runtime['mod_mqtt']=fake_mqtt
+        self.runtime['c_tcpserver']=types.SimpleNamespace(TcpServer=FakeTcp)
+        self.settings.mqtt_topic='research'
+        self.settings.tcpip_port=None
+        env={'OPTO_RESEARCH_DISPATCH_SHADOW':'1',
+             'OPTO_HYBRID_RUNTIME_AUTO':'fenced-readonly'}
+        with patch.dict(sys.modules,{'requests_util':self.requests}), \
+             patch.dict(os.environ,env,clear=True), \
+             patch.object(runtime_enrollment,'all_writers_attested',
+                          return_value=False):
+            exec(self.program,self.runtime)
+            with self.assertRaises(SystemExit) as caught:
+                self.runtime['main']()
+        self.assertEqual(caught.exception.code,76)
+        self.assertEqual(self.legacy_calls,[])
+        self.assertTrue(callable(fake_mqtt._hybrid_complete_forced))
+        self.assertIsInstance(self.runtime['_hybrid_ingress'],IngressEpoch)
+
+    def test_auto_enrolled_shadow_sets_runtime_without_serial_io(self):
+        from handover_acceleration import runtime_enrollment
+        fake_mqtt=types.SimpleNamespace(
+            mqtt_client=None,cmnd_queue=[],lst_force_refresh=[],
+            on_message=lambda *a:None,
+            connect_mqtt=lambda:None,
+            is_forced=lambda:None,force_delayed=lambda *a:None)
+        class FakeTcp:
+            def __init__(self,*a,**kw):self.received_data=''
+            def _listen(self):pass
+            def get_request(self):return ''
+            def send(self,*a):pass
+            def stop(self):pass
+        self.runtime['mod_mqtt']=fake_mqtt
+        self.runtime['c_tcpserver']=types.SimpleNamespace(TcpServer=FakeTcp)
+        self.settings.mqtt_topic='research'
+        self.settings.tcpip_port=None
+        env={'OPTO_RESEARCH_DISPATCH_SHADOW':'1',
+             'OPTO_HYBRID_RUNTIME_AUTO':'fenced-readonly'}
+        with patch.dict(sys.modules,{'requests_util':self.requests}), \
+             patch.dict(os.environ,env,clear=True), \
+             patch.object(runtime_enrollment,'all_writers_attested',
+                          return_value=True):
+            exec(self.program,self.runtime)
+            self.runtime['main']()
+        self.assertIsNotNone(self.runtime['_hybrid_auto'])
+        self.assertIs(self.runtime['_hybrid_auto'].gate,
+                      self.runtime['_handover_runtime_gate'])
+        self.assertEqual(len(self.legacy_calls),2)
+        self.assertEqual(self.ser_calls,[])
 
     def test_without_optin_original_mqtt_tcp_and_poll_seams_remain_legacy(self):
         # The feature may be deployed disabled without changing any request.
