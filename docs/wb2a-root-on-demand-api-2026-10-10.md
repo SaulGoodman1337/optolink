@@ -64,6 +64,7 @@ Raw-Frame-Operationen werden verworfen. Nur folgende feste Arten:
 | `p300_identity` | Freigegebene FC01 | Geräte-ID; nicht Gebläsedrehzahl |
 | `p300_ram_0f20_32` | Freigegebene FC03 | 32 diagnostische Rohbytes |
 | `p300_ram_1c60_32` | Freigegebene FC03 | 32 diagnostische Rohbytes |
+| `p300_ram_1640_32` | Historisch belegte FC03 (nur Draft-Entwicklungsbranch) | 32 Rohbytes ab 0x1640, einschließlich UART1-RX-Pufferkandidat 0x1642; **kein** RX-/Write-Nachweis |
 
 Request/Response-Beispiel (IDs illustrativ):
 
@@ -200,3 +201,22 @@ berechtigter Broker, zusätzliche automatisierte Authentisierungstests
 dieser separaten Brokergrenze sowie die HA-Entity-Validierung. Weder
 eine solche HA-Freigabe noch eine unbeaufsichtigte Protokollwechsel-
 Automatik wird durch die vorliegende Root-CLI-Abnahme beansprucht.
+
+## 10.10.2026: zusaetzlicher Optolink-only RX-Diagnoseentwurf (Draft)
+
+Der Entwicklungsbranch kennt nun den zusaetzlichen **festen**
+Root-On-Demand-Read `p300_ram_1640_32`, Request
+`41 05 00 03 16 40 20 7E`. Die Adresse stammt aus
+**295 erfolgreich archivierten P300-Physical_READs** und
+wird fuer die Untersuchung des bei `0x1642` gefundenen
+CRC-gueltigen, empfangsgerichteten KM-Bus-RAM-Frames genutzt.
+
+Alle bestehenden Authentisierungs-, Admission-, Writer-, Recovery-
+und VS1-Readback-Gates bleiben erhalten. Die neue Leseart ist
+**nicht** in den periodischen/automatischen Canarys und **nicht**
+im derzeit installierten Main-Release enthalten. Ihre eigene
+Hardwareabnahme ist noch offen; kein Lauf waehrend des passiven
+RPM-v2-Dienstes. Sie ist niemals eine Erlaubnis fuer einen
+RAM-Write, KM-Bus-Injektionsversuch oder direkter UART1-U1RB-Zugriff.
+
+Siehe [vollstaendiger Quellen-/Offline-Audit](wb2a-vitotrol-optolink-rx-2026-10-10.md).

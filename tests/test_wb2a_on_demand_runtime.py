@@ -113,6 +113,25 @@ class DemandRuntimeTests(unittest.TestCase):
             self.runtime.provenance.require_age_ms(max_age_ms=9000),0.0)
         self.assertFalse(self.runtime.due())
 
+    def test_rx_candidate_read_verified_vs1_before_result_exposure(self):
+        raw=bytes.fromhex('00000001b10a010110fe23d8fa01fb0122d1').ljust(32,b'\x00')
+        self.port=FakePort(expect_attached_vs1()+expect_p300()
+                           +response('ram_1640_32',raw=raw)
+                           +expect_vs1(1,p06=b'\x53'))
+        self.runtime.port=self.port
+        ticket=self.submit(ReadKind.P300_RAM_1640_32)
+        self.valid_gfa()
+        outcome=self.runtime.tick()
+        self.assertEqual(outcome.status,'VERIFIED_SWITCH')
+        self.assertEqual(ticket.state,TicketState.COMPLETED)
+        self.assertEqual([r.kind for r in outcome.replies],['p300_ram_1640_32'])
+        self.assertEqual(bytes.fromhex(outcome.replies[0].raw_hex),raw)
+        self.assertTrue(outcome.result.verified_vs1)
+        self.assertEqual(outcome.result.p80_hex,'20')
+        self.assertEqual(outcome.result.p06_hex,'53')
+        self.assertEqual(self.port.script,[])
+        self.assertFalse(self.port.closed)
+
     def test_large_real_monotonic_epoch_uses_consistent_absolute_deadlines(self):
         # Regression for 2026-10-10 first live canary: bridge used now_ms=0
         # while demand jobs had real absolute monotonic queued timestamps.

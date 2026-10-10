@@ -4,7 +4,7 @@ Use ONLY after a caller has obtained an injected verified coordinator by
 `with HandoverCoordinator(fake_open_port, fake_lease) as coordinator`.
 This module never imports pySerial, opens a port or controls services.
 
-P300 operations: exact identity (00F8) and two explicitly allowlisted,
+P300 operations: exact identity (00F8) and explicitly allowlisted,
 previously hardware-researched FC03/32 RAM READ blocks. The P300 RAM values
 are never GFA equivalents. Production deployment is NOT implemented.
 """
@@ -108,11 +108,15 @@ def execute_read_phases(coordinator: HandoverCoordinator,
                 if job is None or job.kind.mode!=step.mode:
                     raise ExecutionRejected('plan does not map to typed request')
                 if job.kind in (ReadKind.P300_RAM_0F20_32,
-                                ReadKind.P300_RAM_1C60_32):
+                                ReadKind.P300_RAM_1C60_32,
+                                ReadKind.P300_RAM_1640_32):
                     if coordinator.mode is not Mode.P300_VERIFIED:
                         raise ExecutionRejected('FC03 read outside verified P300')
-                    key = ('ram_0f20_32' if job.kind is ReadKind.P300_RAM_0F20_32
-                           else 'ram_1c60_32')
+                    key = {
+                        ReadKind.P300_RAM_0F20_32: 'ram_0f20_32',
+                        ReadKind.P300_RAM_1C60_32: 'ram_1c60_32',
+                        ReadKind.P300_RAM_1640_32: 'ram_1640_32',
+                    }[job.kind]
                     raw = coordinator.p300_ram_read(key)
                     if len(raw) != 32:
                         raise ProtocolError('incorrect FC03 block length')

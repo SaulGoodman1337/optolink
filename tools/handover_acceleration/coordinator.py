@@ -3,7 +3,7 @@
 The only serial object is injected by the caller *after* taking the advisory
 lease. This is deliberately not a ready-to-run heating-controller client.
 No arbitrary address, write, RPC, arbitrary RAM or GFA-alias interfaces are exposed.
-Only two previously verified FC03/32 read blocks are admitted offline.
+Only explicitly reviewed FC03/32 blocks are admitted. No RAM writes.
 """
 from __future__ import annotations
 
@@ -39,6 +39,9 @@ def _fixed_p300_request(fc: int, addr: int, length: int) -> bytes:
 P300_RAM_READS = {
     "ram_0f20_32": (0x03, 0x0f20, 32, _fixed_p300_request(3, 0x0f20, 32)),
     "ram_1c60_32": (0x03, 0x1c60, 32, _fixed_p300_request(3, 0x1c60, 32)),
+    # Observed 295 times in P300 Deep Logger (2026-10-09).
+    # B1 slave-to-controller candidate begins two bytes in at 0x1642.
+    "ram_1640_32": (0x03, 0x1640, 32, _fixed_p300_request(3, 0x1640, 32)),
 }
 TX_ALLOW = frozenset([EOT, ACK, b"\x16\x00\x00", STX + VS1_ID, VS1_ID,
                       VS1_SOFTWARE, *GFA.values(), P300_ID, P300_SOFTWARE,
