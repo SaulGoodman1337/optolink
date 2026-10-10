@@ -34,6 +34,12 @@ class EnrollmentEvidenceTests(unittest.TestCase):
         self.original_stat=Path.stat
 
     def fake_stat(self,p,*args,**kwargs):
+        if str(p) in [str(f) for f in re.ORIGINAL_PATHS.values()]:
+            # GitHub CI must not need appliance-specific /usr/local scripts.
+            # This mocks metadata ONLY; _pinned_file is mocked independently.
+            return types.SimpleNamespace(
+                st_uid=0,st_mode=0o100640,st_size=123,
+                st_mtime=1.0,st_nlink=1)
         st=self.original_stat(p,*args,**kwargs)
         if str(p) in (str(self.manifest),str(self.lease)):
             return types.SimpleNamespace(st_uid=0,st_mode=st.st_mode,
