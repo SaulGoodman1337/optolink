@@ -1,238 +1,239 @@
-# Optolink maintenance CLI
+# Optolink-Wartung über die Kommandozeile
 
-`optolink-maintenance` is the guarded service/maintenance interface for the
-locally verified **Vitodens 200-W WB2A / VDensHO1 / 20C2 / SW03** maintenance
-datapoints.
-
-It deliberately exposes only operations that were verified on the real local
-controller. It is not a generic raw Optolink write tool.
+`optolink-maintenance` ist die abgesicherte Wartungsschnittstelle
+für die lokal überprüfte **Vitodens 200-W WB2A / VDensHO1 / 20C2 /
+SW03**. Sie bietet ausschließlich am realen Regler verifizierte
+Wartungsfunktionen. Sie ist **kein allgemeines Werkzeug für
+unbeschränkte Optolink-Schreibbefehle**.
 
 ## Installation
 
-The normal splitter update installs the CLI as:
+Der reguläre Produktions-Updater installiert:
 
 ```text
 /usr/local/bin/optolink-maintenance
 /usr/bin/optolink-maintenance -> /usr/local/bin/optolink-maintenance
 ```
 
-The executable is installed with mode `0750`. Run it as root on the
-Optolink-Splitter host.
-
-After updating the repository deployment:
+Die Datei besitzt den Modus `0750`. Bedienung als `root`
+auf dem Optolink-Splitter-Host:
 
 ```bash
 update
 optolink-maintenance status
 ```
 
-## Verified controller contract
+## Verifizierter Vertrag mit dem Regler
 
-| Address | Access used by CLI | Verified meaning |
+| Adresse | CLI-Zugriff | Verifizierte Bedeutung |
 | --- | --- | --- |
-| `0x5721` | read/write | burner-runtime maintenance threshold; raw x 100 h; source range 0..10000 h; changing 0 -> nonzero can re-baseline `0x7570` |
-| `0x5723` | read/write | maintenance time interval; 0..24 months |
-| `0x5724` | read/write sequence | maintenance state; verified maintenance reset sequence `1 -> 0` |
-| `0x756C` | read-only | `LastCheckInterval` 32-bit reference; exact Vitosoft wall-clock conversion still unresolved |
-| `0x7570` | read-only | `LastBurnerCheck` burner-runtime-seconds baseline |
-| `0x08A7` | read-only | total burner runtime in seconds |
-| `0x088A` | read-only | total burner starts |
+| `0x5721` | Lesen/Schreiben | Wartungsschwelle für Brennerbetriebsstunden; Rohwert × 100 Stunden, zulässig 0–10.000 h; beim Wechsel von 0 auf einen Wert größer 0 kann `0x7570` neu referenziert werden |
+| `0x5723` | Lesen/Schreiben | Wartungsintervall 0–24 Monate |
+| `0x5724` | kontrollierte Schreibfolge | Wartungsstatus; nachgewiesene Rücksetzfolge `1 → 0` |
+| `0x756C` | nur Lesen | `LastCheckInterval`, 32-Bit-Referenz; genaue Vitosoft-Zeitumrechnung nicht bestätigt |
+| `0x7570` | nur Lesen | `LastBurnerCheck`, gespeicherter Brennerlaufzeit-Referenzwert in Sekunden |
+| `0x08A7` | nur Lesen | Brennerlaufzeit gesamt in Sekunden |
+| `0x088A` | nur Lesen | Brennerstarts gesamt |
 
-The verified derived burner runtime since the current maintenance reference is:
+Berechnung der seit der Wartungsreferenz verstrichenen Brennerstunden:
 
 ```text
-(current 0x08A7 - stored 0x7570) / 3600
+(aktueller Wert 0x08A7 - gespeicherter Wert 0x7570) / 3600
 ```
 
-The maintenance reset does **not** reset `0x08A7` or `0x088A`.
+Ein Wartungsreset setzt weder `0x08A7` noch `0x088A` zurück.
 
-## Commands
+## Befehle
 
-### Status
+### Status anzeigen
 
 ```bash
 optolink-maintenance status
-```
-
-For machine-readable output:
-
-```bash
 optolink-maintenance --json status
 ```
 
-Use `--verbose` when individual splitter requests/responses are needed for
-diagnostics. Verbose protocol output goes to stderr so `--json` remains
-parseable on stdout.
+Für Einzelanfragen an den Splitter dient `--verbose`. Ausführliche
+Protokollausgaben gehen nach `stderr`; `--json` auf `stdout`
+bleibt dadurch maschinenlesbar.
 
-### Burner-runtime maintenance threshold
+### Brennerbetriebsstunden-Wartungsschwelle
 
-The operator-facing value is supplied in hours. Only exact 100 h steps in the
-verified source range are accepted:
+Der Bedienwert wird in Stunden angegeben. Zugelassen sind
+ausschließlich exakt 100-Stunden-Schritte im verifizierten Bereich.
 
 ```bash
 optolink-maintenance set-hours 3000 \
   --confirm-reference-reset RESET-BRENNERREFERENZ
 ```
 
-Examples:
+| Bedienwert | Rohwert |
+| --- | --- |
+| 0 h | 0 |
+| 100 h | 1 |
+| 3.000 h | 30 |
+| 10.000 h | 100 / `0x64` |
 
-```text
-0 h      -> raw 0
-100 h    -> raw 1
-3000 h   -> raw 30
-10000 h  -> raw 100 / 0x64
-```
+Zunächst wird der bisherige Wert gelesen. Ist er bereits gleich
+dem gewünschten Wert, unterbleibt standardmäßig jeder Schreibzugriff.
+`--force` erlaubt eine ausdrücklich angeforderte
+Gleichwert-Schreiboperation.
 
-The command reads the current value first. If the requested value is already
-active, it performs no write unless `--force` is supplied.
+Jeder tatsächliche Schreibvorgang muss durch einen neuen
+Controller-Readback bestätigt werden. Bei ausbleibender Bestätigung
+versucht die CLI die vorherige Konfiguration wiederherzustellen und
+erneut zu verifizieren.
 
-Every write is independently read back. If the requested state cannot be
-verified, the CLI attempts to restore and verify the previous value.
-
-A later live CLI test exposed an important side effect that the earlier raw
-probe had masked: changing `0x5721` from 0 h to a nonzero threshold
-re-baselined `0x7570` to the current total burner-runtime counter. Therefore
-every actual `set-hours` write now requires:
+**Wichtige Nebenwirkung:** Ein späterer Live-Test zeigte, dass ein
+Wechsel von `0x5721 = 0` auf einen Wert größer null den Zähler
+`0x7570` auf die aktuelle gesamte Brennerlaufzeit setzen kann.
+Deshalb verlangt jeder tatsächliche `set-hours`-Write
+das exakte Bestätigungstoken:
 
 ```text
 --confirm-reference-reset RESET-BRENNERREFERENZ
 ```
 
-The observed restore from 100 h back to 0 h did not re-baseline `0x7570`
-again, but the CLI intentionally applies the confirmation guard conservatively
-to every real threshold write.
+Ein beobachteter Wechsel von 100 h zurück auf 0 h setzte
+`0x7570` zwar nicht nochmals um; die Schutzregel gilt
+absichtlich für **alle** tatsächlichen Schwellenänderungen.
+Die Werte `0x756C`, `0x08A7` und `0x088A` wurden
+durch den Test von `0x5721` nicht verändert.
 
-Changing `0x5721` did not alter `0x756C`, `0x08A7` or `0x088A`.
-
-### Time interval
+### Zeitintervall der Wartung
 
 ```bash
 optolink-maintenance set-months 12 \
   --confirm-reference-reset RESET-ZEITREFERENZ
 ```
 
-Accepted values are `0..24` months.
+Zulässig sind ganzzahlige Werte von 0 bis 24 Monaten.
 
-**Important:** a write to `0x5723` re-baselines the 32-bit `0x756C`
-`LastCheckInterval` reference. This side effect was observed on the real
-controller for both the
-temporary 24-month setting and the restore to zero. Therefore the CLI refuses
-an actual `0x5723` write unless the explicit
-`--confirm-reference-reset RESET-ZEITREFERENZ` acknowledgement is present.
+**Wichtige Nebenwirkung:** Jeder wirkliche Schreibvorgang
+auf `0x5723` setzt die 32-Bit-Referenz `0x756C`
+(`LastCheckInterval`) neu. Das wurde am realen Regler
+sowohl beim vorübergehenden Wechsel auf 24 Monate
+als auch bei der Rückkehr zu null beobachtet.
+Daher verweigert die CLI jeden solchen Write ohne das
+exakte Token `RESET-ZEITREFERENZ`.
 
-When the requested month value is already active, the default behavior is a
-no-op so the existing time reference is preserved. `--force` permits an
-intentional same-value write, but the explicit reference-reset acknowledgement
-is still required.
+Wenn der Wert bereits stimmt, bleibt die vorhandene Zeitreferenz
+standardmäßig erhalten. Selbst bei einem bewusst erzwungenen
+Gleichwert-Write mit `--force` ist die Bestätigung erforderlich.
 
-### Maintenance reset
+### Wartungsstatus zurücksetzen
 
 ```bash
 optolink-maintenance reset --confirm RESET-WARTUNG
 ```
 
-This executes the locally verified sequence:
+Die nachgewiesene Folge lautet:
 
 ```text
 0x5724 = 1
 0x5724 = 0
 ```
 
-The CLI always attempts to return `0x5724` to `0` in a safety/finalization
-path, even if the first write ACK or subsequent readback fails.
+Die CLI versucht unabhängig von einem fehlenden ACK oder einer
+fehlgeschlagenen Rücklesung, den Status im Abschluss-/Sicherheitspfad
+wieder auf `0` zu bringen.
 
-After the sequence it verifies:
+Im Anschluss prüft sie:
 
-- `0x5724` returned to `Grundzustand`;
-- whether `0x756C` changed;
-- whether `0x7570` changed;
-- that any existing burner-runtime reference remains plausible;
-- total burner runtime and total burner starts did not decrease.
+- Rückkehr von `0x5724` in den Grundzustand;
+- ob sich `0x756C` verändert hat;
+- ob sich `0x7570` verändert hat;
+- Plausibilität einer bestehenden Brennerlaufzeitreferenz;
+- dass Brennerlaufzeit und Anzahl der Brennerstarts nicht gesunken sind.
 
-Live testing shows that the reference effects are not perfectly symmetric:
-`0x756C` is re-baselined by the reset, while `0x7570` is
-controller-state/configuration dependent. An early reset initialized a zero
-`0x7570` reference; a later end-to-end CLI reset with `0x5721 = 0 h`
-left an existing `0x7570` reference unchanged. The CLI therefore reports the
-two reference changes separately instead of claiming that both always reset.
+Die Referenzänderungen sind **nicht symmetrisch**:
+`0x756C` wird beim Reset neu referenziert.
+Die Wirkung auf `0x7570` hängt vom Reglerzustand
+beziehungsweise von der Konfiguration ab. Ein früherer
+Reset initialisierte eine zuvor leere Referenz `0x7570`;
+bei einem späteren vollständigen CLI-Test mit
+`0x5721 = 0 h` blieb eine vorhandene `0x7570`-Referenz
+unverändert. Beide Auswirkungen werden deshalb getrennt ausgegeben.
 
-The configured `0x5721` and `0x5723` thresholds remain intact.
+Die konfigurierten Schwellen `0x5721` und `0x5723`
+bleiben erhalten.
 
-## Guard rails
+## Sicherheitsregeln
 
-The CLI intentionally contains the following restrictions:
+- Eine Prozesssperre verhindert parallele Wartungs-CLI-Sitzungen.
+- Für `0x756C` und `0x7570` existiert **kein** Schreibbefehl.
+- `set-hours` akzeptiert nur 0–10.000 h in 100-h-Schritten.
+- Änderungen der Brennerstundenschwelle erfordern die explizite
+  Zustimmung zur möglichen Neu-Referenzierung von `0x7570`.
+- `set-months` akzeptiert nur 0–24 Monate und verlangt die
+  Bestätigung der Zeitreferenzänderung.
+- `reset` verlangt das exakte Token `RESET-WARTUNG`.
+- Der neue Controller-Readback, nicht das bloße ACK,
+  entscheidet über den Erfolg.
+- Fehlgeschlagene oder mehrdeutige Schreibvorgänge lösen
+  einen Versuch zur Wiederherstellung der bisherigen Konfiguration aus.
+- Wartungsrücksetzung und Entriegelung einer Brennerstörung
+  bleiben ausdrücklich getrennte Funktionen.
+- Ein getestetes Hybrid-P300-Lesefenster begründet
+  **keine Berechtigung für P300-Wartungsschreibvorgänge**.
 
-- a process lock prevents parallel maintenance CLI sessions;
-- `0x756C` and `0x7570` have no write command;
-- `set-hours` rejects values outside 0..10000 h or values not divisible by
-  100 h;
-- `set-hours` requires explicit acknowledgement that the burner-runtime
-  reference `0x7570` may be re-baselined;
-- `set-months` rejects values outside 0..24;
-- `set-months` requires explicit acknowledgement of the reference reset;
-- `reset` requires the exact `RESET-WARTUNG` confirmation token;
-- writes use readback as the authoritative success criterion;
-- ambiguous/failed writes attempt rollback to the previous configuration;
-- maintenance reset is kept separate from burner-fault unlock/reset semantics.
+## Gemeinsame MQTT-Wartungs-API
 
-## MQTT API backend
-
-The guarded MQTT service now uses the same shared core as this CLI:
+Die Wartungs-CLI und der MQTT-Dienst nutzen denselben abgesicherten Kern:
 
 ```text
 optolink-maintenance
-        \
-         -> optolink_maintenance_core.py -> splitter MQTT
-        /
+         \
+          --> optolink_maintenance_core.py --> Splitter-MQTT
+         /
 optolink-maintenance-api
 ```
 
-See [Optolink maintenance MQTT API](optolink-maintenance-api.md) for the
-request/response schema, retained state topic, request-ID deduplication and
-Home Assistant integration rules.
+Die genaue API mit Befehls- und Antwortformat,
+gespeicherten Zuständen, Request-ID-Deduplizierung und
+Home-Assistant-Anbindung dokumentiert
+[die MQTT-Wartungs-API](optolink-maintenance-api.md).
 
-## Home Assistant integration
+## Home-Assistant-Integration
 
-The Home Assistant maintenance path is implemented and live-verified on top of
-the shared guarded core. It preserves the same constraints as the CLI:
+Die am realen Gerät geprüfte Wartungsbedienung verwendet
+dieselben Regeln wie die CLI:
 
-- staged numeric control for `0x5721`, with explicit warning that a real
-  threshold change can re-baseline `0x7570`;
-- staged numeric control for `0x5723`, with explicit warning that changing it
-  re-baselines the `LastCheckInterval` reference;
-- protected maintenance-reset action;
-- no direct write access to `0x756C` or `0x7570`;
-- no reuse of the maintenance reset as a burner-fault reset;
-- Home Assistant never constructs raw `w;0x....` controller writes.
+- Vorgemerkter numerischer Wert für `0x5721` mit deutlicher
+  Warnung vor der möglichen Neu-Referenzierung von `0x7570`.
+- Vorgemerkter numerischer Wert für `0x5723` mit Warnung
+  vor der Änderung von `LastCheckInterval`.
+- Geschützter Wartungsreset mit ausdrücklicher Bestätigung.
+- Kein direkter Schreibzugriff auf `0x756C` oder `0x7570`.
+- Keine Verwendung des Wartungsresets zur Brennerstörungsentriegelung.
+- Home Assistant erzeugt niemals rohe `w;0x....`-Schreibbefehle.
 
-The complete 2026-09-24 end-to-end verification is summarized in
-[maintenance-ha-completion-2026-09-24.md](maintenance-ha-completion-2026-09-24.md).
+## Stand der Hardwareprüfung
 
-## Live CLI verification status
+Folgende CLI-Pfade wurden am realen Regler erfolgreich nachgewiesen:
 
-The production CLI paths have been verified on the local controller for:
+- Schreibvermeidung bei `set-hours 0` und `set-months 0`;
+- Bereichs- und Bestätigungsprüfungen ohne durchgereichte Writes;
+- `set-hours 100` einschließlich Readback und Rückkehr zu null;
+- Schutz vor der möglichen `0x7570`-Neu-Referenzierung;
+- `set-months 1` einschließlich Readback und Rückkehr zu null;
+- Neu-Referenzierung von `0x756C` bei beiden echten
+  `0x5723`-Schreibvorgängen, während `0x7570` unverändert blieb.
 
-- no-op suppression for `set-hours 0` and `set-months 0`;
-- range and confirmation guards with no write leakage;
-- `set-hours 100` plus readback and restore to zero;
-- explicit protection for the discovered `0x7570` re-baseline side effect;
-- `set-months 1` plus readback and restore to zero;
-- `0x756C` re-baselining on both actual `0x5723` writes while `0x7570`
-  remained unchanged.
+Auch der abgesicherte `reset`-Pfad wurde vollständig geprüft.
+Die tatsächliche Folge war `00 → 01 → 00`:
+`0x756C` änderte sich, `0x7570` blieb bei
+einer Brennerstundenschwelle von 0 h unverändert.
+Die CLI zeigt beide Effekte einzeln an.
 
-The guarded `reset` path is also live-verified end-to-end. The observed
-`0x5724` transition was `00 -> 01 -> 00`; `0x756C` changed, while
-`0x7570` remained unchanged with the burner-hours threshold configured to
-0 h. The CLI now reports these reference effects independently.
+### Hinweis zu `LastCheckInterval`
 
-
-### Note on `LastCheckInterval`
-
-The raw `0x756C` value advances in seconds-like increments and changes when
-the maintenance interval/reference is re-baselined. An earlier research pass
-temporarily interpreted the 32-bit little-endian value as a Unix timestamp.
-That interpretation is **not considered verified**: the public Vitosoft
-reverse-engineering documentation lists `LastCheckInterval` as a special
-converter whose algorithm is not implemented, and the decoded wall-clock value
-does not consistently match the host/controller time. The CLI therefore keeps
-this field semantically raw until the exact converter is reconstructed.
+Der rohe Wert von `0x756C` verändert sich in
+sekundenähnlichen Schritten und bei Neusetzen der Wartungsreferenz.
+Eine früher vermutete direkte Interpretation als
+Little-Endian-Unix-Zeitstempel gilt **nicht als verifiziert**.
+Die verfügbare Vitosoft-Dokumentation nennt dafür einen
+speziellen, noch nicht vollständig rekonstruierten Konverter.
+Auch der so berechnete Kalenderwert stimmt nicht
+verlässlich mit Host- oder Reglerzeit überein.
+Die CLI zeigt daher weiterhin den **rohen Referenzwert**
+ohne unbelegte Zeitstempelinterpretation an.

@@ -45,6 +45,11 @@ printf 'Repository: %s\nRef:        %s\n' "$CS_REPO" "$CS_REF" >&2
 [[ -d "$APP_DIR/.git" && -f "$APP_DIR/settings_ini.py" ]] ||
   die "No Optolink-Splitter installation found in $APP_DIR"
 
+# Never replace a library underneath an active supervised hardware window.
+if systemctl is-active --quiet optolink-hybrid-continuous-canary.service; then
+  die "Hybrid Canary aktiv: zuerst unabhaengige Rueckkehr zu VS1 pruefen."
+fi
+
 # Keep host packages current before changing the application runtime.
 info "Updating base system"
 export DEBIAN_FRONTEND=noninteractive
@@ -108,6 +113,34 @@ if COMMUNITY_SCRIPTS_ROOT="$ROOT" \
 else
   die "Profile activation failed; helper attempted rollback"
 fi
+
+# Install only a reviewed, explicitly listed *runtime* library. No research
+# probes, RAM-write helpers or continuous background service are installed.
+# The CLI stages a hashed side-by-side release only upon an operator command.
+info "Installing guarded read-only hybrid tools (default: disabled)"
+hybrid_module_manifest="$(repo_file tools/optolink-hybrid-modules.txt)"
+install -d -m 0755 /usr/local/lib/optolink-hybrid/handover_acceleration
+hybrid_count=0
+while IFS= read -r module || [[ -n "$module" ]]; do
+  [[ "$module" =~ ^[a-z][a-z0-9_]*[.]py$ || "$module" == "__init__.py" ]] ||
+    die "Unapproved hybrid module name in manifest"
+  install_repo_file "tools/handover_acceleration/$module" \
+    "/usr/local/lib/optolink-hybrid/handover_acceleration/$module" 0644
+  hybrid_count=$((hybrid_count + 1))
+done <"$hybrid_module_manifest"
+[[ "$hybrid_count" -eq 20 ]] || die "Incomplete reviewed hybrid module set"
+install_repo_file tools/optolink-hybrid.py /usr/local/bin/optolink-hybrid 0755
+install_repo_file tools/optolink-update-main-umstellen.sh /usr/local/bin/optolink-update-main-umstellen 0750
+ln -sf /usr/local/bin/optolink-hybrid /usr/bin/optolink-hybrid
+PYTHONPATH=/usr/local/lib/optolink-hybrid "$APP_DIR/venv/bin/python" - <<'PY_HYBRID'
+from handover_acceleration import continuous_canary, stage_release, release_rollout
+assert continuous_canary.TARGET_WINDOWS == 3
+assert continuous_canary.MAX_RUNTIME_SECONDS == 270
+assert callable(stage_release.stage)
+assert callable(release_rollout.stage_root_copy)
+print("Hybrid-Laufzeitbibliothek: importierbar; physische Umschaltung bleibt aus.")
+PY_HYBRID
+ok "Optional hybrid CLI installed (optolink-hybrid status / vorbereiten / pruefen / testen)"
 
 info "Configuring guarded maintenance MQTT API"
 if runuser -u optolink -- "$APP_DIR/venv/bin/python" - <<'PY_MAINT_API'

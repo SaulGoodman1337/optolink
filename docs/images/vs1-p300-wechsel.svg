@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="590" viewBox="0 0 1240 590" role="img" aria-labelledby="titel beschreibung">
+<title id="titel">Überwachter VS1/P300-Protokollwechsel mit einem Optolink-Port</title>
+<desc id="beschreibung">Ein einziger serieller Splitter: VS1-Normalbetrieb, geprüfte Writer-Sperre, ausschließlich lesendes P300-Fenster, Rückkehr zu VS1 und unabhängiger Systemd-Rückfallpfad.</desc>
+<defs>
+ <marker id="pfeil" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#475569"/></marker>
+ <style>
+  text{font-family:Arial,"Segoe UI",sans-serif;fill:#152235}
+  .titel{font-size:27px;font-weight:bold}
+  .untertitel{font-size:17px;fill:#536277}
+  .kopf{font-size:19px;font-weight:bold}
+  .zeile{font-size:15px}
+  .klein{font-size:14px;fill:#435269}
+  .pfeil{stroke:#475569;stroke-width:2.6;fill:none;marker-end:url(#pfeil)}
+ </style>
+</defs>
+<rect x="0" y="0" width="1240" height="590" rx="17" fill="#f8fafc"/>
+<text class="titel" x="47" y="52">Ein Optolink-Port – zwei Protokolle – ein sicherer Rückweg</text>
+<text class="untertitel" x="47" y="81">Vitodens 200-W WB2A: P300 nur lesend und nur nach ausdrücklicher Freigabe</text>
+
+<rect x="45" y="121" width="235" height="166" rx="14" fill="#e9f4ff" stroke="#93c5fd" stroke-width="2"/>
+<text class="kopf" x="64" y="156">1   VS1-Normalbetrieb</text>
+<text class="zeile" x="64" y="188">MQTT und TCP bedienen</text>
+<text class="zeile" x="64" y="215">GFA P80 und P06 lesen</text>
+<text class="zeile" x="64" y="243">Einziger serieller Owner</text>
+
+<rect x="327" y="121" width="249" height="166" rx="14" fill="#fff4e5" stroke="#fdba74" stroke-width="2"/>
+<text class="kopf" x="346" y="156">2   Sicherheitsprüfung</text>
+<text class="zeile" x="346" y="188">5 Writer-Prozesse prüfen</text>
+<text class="zeile" x="346" y="215">MQTT-/TCP-Queue frei</text>
+<text class="zeile" x="346" y="243">Keine offenen Readbacks</text>
+
+<rect x="623" y="121" width="260" height="166" rx="14" fill="#f1ecff" stroke="#c4b5fd" stroke-width="2"/>
+<text class="kopf" x="642" y="156">3   P300 – nur lesen</text>
+<text class="zeile" x="642" y="188">FC01: Gerätekennung 20C2</text>
+<text class="zeile" x="642" y="215">FC03: 0F20 / 1C60</text>
+<text class="zeile" x="642" y="243">Keine RAM-/Service-Writes</text>
+
+<rect x="931" y="121" width="263" height="166" rx="14" fill="#e7f7ee" stroke="#86efac" stroke-width="2"/>
+<text class="kopf" x="950" y="156">4   Rückkehr zu VS1</text>
+<text class="zeile" x="950" y="188">GFA P80 = 20 bestätigen</text>
+<text class="zeile" x="950" y="215">P06 gültig, nicht FF</text>
+<text class="zeile" x="950" y="243">Queue wieder freigeben</text>
+
+<path class="pfeil" d="M280 205H322"/>
+<path class="pfeil" d="M576 205H618"/>
+<path class="pfeil" d="M883 205H926"/>
+
+<rect x="328" y="324" width="550" height="88" rx="12" fill="#ffedd5" stroke="#fb923c" stroke-width="2"/>
+<text class="kopf" x="346" y="356">Prüfung nicht bestanden?</text>
+<text class="zeile" x="346" y="387">P300-Einstieg verweigern; VS1-Aufträge zuerst abarbeiten.</text>
+<path d="M454 287V319" stroke="#ea580c" stroke-width="2.5" fill="none" marker-end="url(#pfeil)"/>
+
+<rect x="45" y="444" width="1149" height="104" rx="14" fill="#e7edf5" stroke="#94a3b8" stroke-width="2"/>
+<text class="kopf" x="64" y="476">Unabhängige Absicherung durch Systemd und ExecStopPost</text>
+<text class="zeile" x="64" y="505">Bei Ende oder Supervisor-Ausfall: Originaldienste wiederherstellen, echten VS1-GFA-Rückweg prüfen.</text>
+<text class="klein" x="64" y="529">Hardwareabnahme 10.10.2026: 8/8 Fenster, 62/62 Leseanfragen; kein unbeaufsichtigter Dauerbetrieb.</text>
+<path d="M751 287V440" stroke="#64748b" stroke-width="2.3" stroke-dasharray="6,7" fill="none" marker-end="url(#pfeil)"/>
+<path d="M1062 287V440" stroke="#64748b" stroke-width="2.3" stroke-dasharray="6,7" fill="none" marker-end="url(#pfeil)"/>
+</svg>

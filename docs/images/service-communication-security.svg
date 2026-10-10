@@ -43,7 +43,7 @@
 
 <rect x="670" y="102" width="310" height="650" rx="22" fill="url(#redPanel)" stroke="#f09aa1"/>
 <circle cx="704" cy="138" r="24" fill="#ef3548"/><text x="704" y="147" text-anchor="middle" class="step">3</text>
-<text x="744" y="138" class="h-red">Guarded Runtime</text>
+<text x="744" y="138" class="h-red">Gesicherte Laufzeit</text>
 <text x="744" y="164" class="body">Kontrollierte Schnittstelle</text><text x="744" y="186" class="body">zum Heizgerät</text>
 
 <rect x="988" y="102" width="442" height="650" rx="22" fill="url(#yellowPanel)" stroke="#f0c060"/>
@@ -113,7 +113,7 @@
 <rect x="722" y="354" width="206" height="56" rx="10" fill="#ef3347"/>
 <text x="825" y="378" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-size="16" font-weight="800" fill="#fff">Einziger Besitzer</text><text x="825" y="399" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-size="16" font-weight="800" fill="#fff">des seriellen Ports</text>
 <rect x="722" y="425" width="206" height="51" rx="10" fill="#fff7f8" stroke="#f6c1c7"/><text x="825" y="447" text-anchor="middle" class="small">Zentralisiert den seriellen</text><text x="825" y="466" text-anchor="middle" class="small">Zugriff auf das Optolink-Gerät</text>
-<rect x="722" y="488" width="206" height="51" rx="10" fill="#fff7f8" stroke="#f6c1c7"/><text x="825" y="510" text-anchor="middle" class="small">MQTT Command/Response</text><text x="825" y="529" text-anchor="middle" class="small">Schnittstelle</text>
+<rect x="722" y="488" width="206" height="51" rx="10" fill="#fff7f8" stroke="#f6c1c7"/><text x="825" y="510" text-anchor="middle" class="small">MQTT-Befehl/Antwort</text><text x="825" y="529" text-anchor="middle" class="small">Schnittstelle</text>
 <rect x="722" y="551" width="206" height="62" rx="10" fill="#fff7f8" stroke="#f6c1c7"/><text x="825" y="573" text-anchor="middle" class="small">Validiert Befehle und nutzt</text><text x="825" y="592" text-anchor="middle" class="small">Sicherheitsmechanismen</text><text x="825" y="609" text-anchor="middle" class="tiny">(Guard Rails)</text>
 
 <!-- Physical path -->
@@ -126,7 +126,7 @@
 
 <rect x="1150" y="270" width="118" height="250" rx="15" fill="#fff" stroke="#eca83a" filter="url(#soft)"/>
 <rect x="1173" y="315" width="72" height="36" rx="14" fill="#30343a"/><path d="M1245 333 C1260 333 1261 346 1274 346" stroke="#22272c" stroke-width="5" fill="none"/>
-<text x="1209" y="397" text-anchor="middle" class="label">Optolink-Kopf</text><text x="1209" y="418" text-anchor="middle" class="label">/ P300</text><text x="1209" y="447" text-anchor="middle" class="small">Optische</text><text x="1209" y="467" text-anchor="middle" class="small">Schnittstelle</text>
+<text x="1209" y="397" text-anchor="middle" class="label">Optolink-Kopf</text><text x="1209" y="418" text-anchor="middle" class="label">/ VS1/P300</text><text x="1209" y="447" text-anchor="middle" class="small">Optische</text><text x="1209" y="467" text-anchor="middle" class="small">Schnittstelle</text>
 
 <rect x="1283" y="270" width="126" height="250" rx="15" fill="#fff" stroke="#eca83a" filter="url(#soft)"/>
 <rect x="1305" y="306" width="82" height="92" rx="5" fill="#edf2f6" stroke="#9aabb9"/><path d="M1305 306 L1320 314 L1320 398 L1305 390 Z" fill="#d9e1e8"/><text x="1346" y="356" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="#e74a1a">VIESSMANN</text>

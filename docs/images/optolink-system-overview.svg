@@ -56,13 +56,13 @@
 
 <path d="M714 230 V252" stroke="#f97316" stroke-width="5"/>
 <path d="M714 252 V230" class="arrow-orange"/>
-<text x="735" y="248" font-family="Inter,Segoe UI,Arial" font-size="17" font-weight="700" fill="#f97316">Optolink (optisch)</text>
+<text x="735" y="248" font-family="Inter,Segoe UI,Arial" font-size="17" font-weight="700" fill="#f97316">Optolink: VS1 / P300</text>
 
 <!-- 2 Optolink -->
 <rect x="20" y="258" width="1408" height="132" rx="25" fill="url(#g2)" stroke="#f4c873"/>
 <circle cx="62" cy="300" r="27" fill="#f07808" filter="url(#soft)"/><text x="62" y="310" text-anchor="middle" class="step">2</text>
 <text x="105" y="300" class="section-orange">Optolink-Schnittstelle</text>
-<text x="106" y="329" class="body">Optische Service-Schnittstelle</text>
+<text x="106" y="329" class="body">Optische VS1/P300-Schnittstelle</text>
 <text x="106" y="353" class="body">am Heizgerät (Optolink).</text>
 
 <rect x="505" y="277" width="330" height="92" rx="16" class="card-orange"/>
@@ -71,7 +71,7 @@
 
 <rect x="980" y="277" width="365" height="92" rx="16" class="card-orange"/>
 <rect x="1008" y="302" width="92" height="43" rx="18" fill="#31353a"/><path d="M1100 325 C1120 325 1125 336 1145 336" stroke="#202428" stroke-width="6" fill="none"/>
-<text x="1160" y="315" class="label">Optolink-Kopf / P300</text><text x="1160" y="341" class="small">Optischer Lesekopf</text>
+<text x="1160" y="315" class="label">Optolink-Kopf</text><text x="1160" y="341" class="small">Optischer Lesekopf</text>
 <path d="M965 322 H850" class="arrow-orange"/><path d="M850 342 H965" class="arrow-orange"/>
 <text x="907" y="306" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-size="15" font-weight="700" fill="#f97316">Optische</text>
 <text x="907" y="324" text-anchor="middle" font-family="Inter,Segoe UI,Arial" font-size="15" font-weight="700" fill="#f97316">Kommunikation</text>

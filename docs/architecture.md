@@ -35,7 +35,7 @@ Firmware-Reverse-Engineering, EEPROM/KBus-Experimente und andere Forschungswerkz
 +----------------+                                          |
                                                             |
                                                             v
-                                                  Optolink / P300 / VS1
+                                                  Optolink / VS1 (optional: P300)
                                                             |
                                                             v
                                                  Vitodens 200-W WB2A
@@ -60,12 +60,25 @@ Wichtige lokale Dateien:
 | `/opt/optolink/.maintenance.lock` | Prozessübergreifende Sperre für geschützte Wartungsoperationen |
 | `/var/lib/optolink-party/state.json` | Persistenter Zustand der Party-Emulation |
 | `/root/optolink-ha-discovery-dry-run.txt` | Letzte vor Aktivierung validierte HA-Discovery-Ausgabe |
+| `/usr/local/bin/optolink-hybrid` | Optionaler Operator-CLI für gestagte Read-only-Hardwarefenster |
+| `/usr/local/lib/optolink-hybrid/` | Versionierte Laufzeitmodule ohne automatische Aktivierung |
+| `/var/lib/optolink-hybrid/releases/` | Root-eigene, SHA256-gebundene Kandidaten |
+| `/var/lib/optolink-hybrid/producer-epoch.lock` | Persistenter Writer-/P300-Sperrmarker |
 
 Der Upstream-Code wird vom Profil-Helper auf den hardwarevalidierten Stand
 `c1ee204a1421447721603c5f21c6da7337fdac97` gebracht und anschließend mit zwei eng begrenzten Runtime-Patches ergänzt:
 
 1. read-only VS1/GFA-Unterstützung;
 2. phasenverschobener Poll-Scheduler.
+
+Der optionale Protokollwechsel wird nicht in den Originaldateien
+unter `/opt/optolink` installiert. Nach dem validierten
+VS1-Profil legt `tools/optolink-hybrid.py` ausschließlich bei
+ausdrücklicher Bedieneraktion eine eigene, durch SHA256 gebundene
+**Kopie** des laufenden Hauptprozesses und der schreibfähigen
+Zusatzdienste an. Diese ist standardmäßig inaktiv.
+Die Systemd-Laufzeitumschaltung wird ausschließlich für den
+überwachten, zeitbegrenzten Lesetest aktiviert.
 
 ## 4. Repository-Komponenten
 
@@ -164,19 +177,22 @@ Der systemd-Timer startet diesen Check alle 15 Minuten.
 
 Der Schreibpfad ist auf der lokalen 20C2/WB2A am **2026-10-06 live verifiziert**: ein erzwungener 8-Byte-Write auf `0x088E` wurde unmittelbar mit korrekter Gerätezeit und `0 s` Drift zurückgelesen. Dabei lieferte der Transport für den Write Status `255`; der anschließende Readback war korrekt. Deshalb ist der Readback — nicht der ACK-Code — die Erfolgsinstanz.
 
-### `tools/optolink-service-programs.py`
+### `tools/optolink-hybrid.py` und `tools/handover_acceleration/`
 
-Geschützter Übersetzer für die WB2A-Servicefunktion **Codieradresse 2F / Optolink `0x572F`**.
+Optionale, nachprüfbare VS1/P300-Lesefenster **ohne zweiten
+seriellen Portbesitzer**. Der Operator bereitet einen immutablen,
+root-eigenen Kandidaten vor, prüft dessen Quellhashes und
+bestätigt anschließend gegebenenfalls einen zeitbegrenzten
+Read-only-Canary. Dabei werden alle fünf externen Writer
+attestiert, MQTT-/TCP-Zugänge gegen parallele Writes gesperrt,
+FC01-ID und FC03-Leseblöcke geprüft sowie nach jedem Fenster
+die tatsächliche VS1-GFA-Antwort verlangt. Der unabhängige
+`ExecStopPost`-Rückfallpfad stellt die ursprünglichen Dienste
+wieder her.
 
-Der Controller besitzt nur einen Drei-Zustands-Wert:
-
-- 0 = aus;
-- 1 = Entlüftungsprogramm;
-- 2 = Befüllungsprogramm.
-
-Home Assistant zeigt zwei getrennte Schalter. Der Manager hält diese Darstellung konsistent mit dem echten Register, liest vor Writes, akzeptiert ausschließlich 0/1/2, verifiziert durch Readback und versucht bei einer fehlgeschlagenen Verifikation den vorherigen Zustand wiederherzustellen. Ein 5-Sekunden-Poll erkennt außerdem die automatische 20-Minuten-Rücksetzung des Reglers.
-
-Die Registerzuordnung und Programmlogik sind servicehandbuch-/OpenV-dokumentiert. Der Schreibpfad auf der konkreten lokalen 20C2/WB2A ist **noch als Live-Verifikation ausstehend**, bis die Funktion am realen Gerät bewusst getestet wurde.
+Die normal installierte Laufzeit aktiviert **keinen**
+automatischen P300-Prozess. Einzelheiten siehe
+[Hybrid-Protokollwechsel](hybrid-protokollwechsel.md).
 
 ## 5. Systemd-Dienste
 
@@ -189,6 +205,7 @@ Die Registerzuordnung und Programmlogik sind servicehandbuch-/OpenV-dokumentiert
 | `optolink-clock-sync.service` | oneshot | ein Zeitabgleich |
 | `optolink-clock-sync.timer` | Timer | startet Clock-Sync alle 15 Minuten |
 | `optolink-service-programs.service` | dauerhaft | geschützter Befüll-/Entlüftungsmanager für 2F / 0x572F |
+| `optolink-hybrid-continuous-canary.service` | nur temporär | root-eigener, ausdrücklich angeforderter und zeitlich begrenzter read-only Hybrid-Canary mit unabhängigem Rückfallpfad |
 
 ## 6. Schreibpfade und Sicherheitsmodell
 
@@ -205,6 +222,7 @@ Jeder produktive Schreibpfad ist auf einen bekannten Zweck begrenzt:
 | Systemzeit | nur `0x088E`, Drift-Schwelle und Readback |
 | Befüllen / Entlüften | nur `0x572F`, Zielwerte 0/1/2, Read-before-write, Readback/Restore |
 | GFA | produktive Integration ist read-only |
+| P300-Protokollfenster | nur FC01-ID und FC03-Leseblöcke; keine Controller-Writes; Writer-Barriere, Readback-Sperre und Systemd-Rollback |
 
 Ein Transport-ACK gilt bei kritischen Multi-Byte-Schreibvorgängen **nicht** als alleiniger Erfolgsnachweis. Der gelesene Controllerzustand ist maßgeblich.
 
@@ -214,13 +232,21 @@ Ein Transport-ACK gilt bei kritischen Multi-Byte-Schreibvorgängen **nicht** als
 /usr/bin/update
   -> /usr/local/lib/community-scripts/private-update.sh
      -> tools/private-run.sh
-        -> lädt optolink-splitter-ha als temporären Repository-Baum
+           -> lädt den in COMMUNITY_SCRIPTS_REF festgelegten Zweig
            -> tools/optolink-splitter-update.sh
               -> installiert Helfer und Units
               -> aktiviert Profil
               -> startet/aktualisiert Zusatzdienste
-              -> persistiert denselben Branch als Update-Kanal
+              -> installiert optionale Hybrid-CLI und 20 Laufzeitmodule
+              -> aktiviert KEIN P300-Fenster
+              -> persistiert denselben Zweig als Update-Kanal
 ```
+
+Nach dem geprüften Integrations-Merge kann `COMMUNITY_SCRIPTS_REF`
+einmalig auf `main` gestellt werden. Der Befehl `update` bleibt
+dabei unverändert. Wichtig: Der bestehende Upstream-Helper
+sichert vor dem benötigten `git reset --hard` lokale
+tracked Änderungen root-geschützt.
 
 Öffentliche GitHub-Downloads werden zuerst versucht. Ein gespeicherter PAT ist nur Fallback für ein künftig wieder privates Repository.
 

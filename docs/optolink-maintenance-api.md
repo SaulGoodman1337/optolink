@@ -1,12 +1,12 @@
-# Optolink maintenance MQTT API
+# Optolink-Wartungs-API über MQTT
 
-The maintenance MQTT API exposes the already verified WB2A / VDensHO1
-maintenance functions through a guarded application-level interface.
+Die Wartungs-API stellt die am realen Regler überprüften Funktionen
+der **WB2A / VDensHO1** als abgesicherte MQTT-Schnittstelle bereit.
 
-Home Assistant should use this API rather than publishing raw
-`w;0x....` commands to the splitter.
+Home Assistant soll diese Schnittstelle nutzen und **keine rohen**
+`w;0x....`-Befehle an den Splitter veröffentlichen.
 
-## Architecture
+## Architektur
 
 ```text
 Home Assistant
@@ -24,25 +24,27 @@ optolink_maintenance_core.py
 openv/cmnd + openv/resp
       |
       v
-Optolink splitter / controller
+Optolink-Splitter / Heizungsregler
 ```
 
-The root-operated `optolink-maintenance` CLI uses the same
-`optolink_maintenance_core.py` implementation. CLI and API also share the
-same advisory lock:
+Die als Root ausgeführte CLI `optolink-maintenance`
+verwendet dieselbe Implementierung
+`optolink_maintenance_core.py`. API und CLI teilen
+dieselbe Anwendungssperre:
 
 ```text
 /opt/optolink/.maintenance.lock
 ```
 
-The lock file is provisioned as `0660 optolink:optolink`. A CLI action and
-an API action therefore cannot execute maintenance operations concurrently.
+Die Datei wird mit `0660 optolink:optolink` angelegt.
+Eine CLI- und eine API-Wartungsaktion können daher
+nicht gleichzeitig ablaufen.
 
-## systemd lifecycle
+## Lebenszyklus des Systemd-Dienstes
 
-The maintenance API is intentionally **not** `PartOf=` and does not
-`Require=` the splitter service. It has only ordering/soft-start
-dependencies:
+Der Wartungs-API-Dienst verwendet absichtlich weder
+`PartOf=` noch `Requires=` für den Splitter.
+Er besitzt lediglich Reihenfolge- und weiche Startabhängigkeiten:
 
 ```ini
 After=network-online.target optolink-splitter.service
@@ -50,45 +52,49 @@ Wants=network-online.target optolink-splitter.service
 Restart=always
 ```
 
-This is deliberate. The API communicates with the splitter through MQTT and
-must survive an independent `optolink-splitter.service` restart. Controller
-requests can fail closed while the splitter is unavailable, but the API
-process and its Home Assistant availability must remain alive.
+Diese Entkopplung ist gewollt: Die API spricht mit dem Splitter
+über MQTT und muss einen unabhängigen Neustart von
+`optolink-splitter.service` überstehen. Während dessen
+Ausfall können Controlleranfragen kontrolliert fehlschlagen.
+Der API-Prozess und seine Home-Assistant-Verfügbarkeit
+bleiben jedoch erhalten.
 
-## Service
+## Dienstverwaltung
 
 ```bash
 systemctl status optolink-maintenance-api
 journalctl -u optolink-maintenance-api -f
 ```
 
-The service runs as the unprivileged `optolink` user.
+Der Dienst läuft als unprivilegierter Benutzer `optolink`.
 
-The update path enables and restarts the service only when
-`settings.mqtt_broker` is configured. Fresh installations intentionally
-leave it disabled because the default broker is `None`.
+Der Updatepfad aktiviert und startet die API nur dann neu,
+wenn `settings.mqtt_broker` konfiguriert ist.
+Bei einer Neuinstallation mit standardmäßig leerem Broker
+bleibt sie deaktiviert.
 
-## Topics
+## MQTT-Themen
 
-Assuming the standard base topic `openv`:
+Bei dem Standardpräfix `openv`:
 
-| Topic | Direction | Retained | Purpose |
+| Thema | Richtung | Gespeichert (`retain`) | Zweck |
 | --- | --- | --- | --- |
-| `openv/maintenance/cmnd` | client -> API | no | JSON requests |
-| `openv/maintenance/result` | API -> client | no | per-request result |
-| `openv/maintenance/state` | API -> clients | yes | latest normalized maintenance state |
-| `openv/maintenance/status` | API -> clients | yes | latest API/staging action summary |
-| `openv/maintenance/stage/hours/set` | HA -> API | no | stage burner-hours target only; no controller write |
-| `openv/maintenance/stage/hours/state` | API -> HA | yes | staged burner-hours target |
-| `openv/maintenance/stage/months/set` | HA -> API | no | stage month target only; no controller write |
-| `openv/maintenance/stage/months/state` | API -> HA | yes | staged month target |
-| `openv/maintenance/availability` | API -> clients | yes | `online` / clean-shutdown `offline` |
+| `openv/maintenance/cmnd` | Client → API | nein | JSON-Befehle |
+| `openv/maintenance/result` | API → Client | nein | Ergebnis pro Request |
+| `openv/maintenance/state` | API → Clients | ja | letzter normierter Wartungszustand |
+| `openv/maintenance/status` | API → Clients | ja | Status der API und Vormerkaktionen |
+| `openv/maintenance/stage/hours/set` | HA → API | nein | Brennerstundenschwelle nur vormerken, kein Regler-Write |
+| `openv/maintenance/stage/hours/state` | API → HA | ja | vorgemerkte Brennerstundenschwelle |
+| `openv/maintenance/stage/months/set` | HA → API | nein | Monatswert nur vormerken, kein Regler-Write |
+| `openv/maintenance/stage/months/state` | API → HA | ja | vorgemerkter Monatswert |
+| `openv/maintenance/availability` | API → Clients | ja | `online` / `offline` nach sauberem Beenden |
 
-The base topic is derived from `settings.mqtt_topic`.
+Das Präfix stammt aus `settings.mqtt_topic`.
 
-## Request envelope
+## Aufbau einer Anfrage
 
-Every request must contain a unique `request_id` and an `action`.
+Jede Anfrage benötigt eine eindeutige `request_id`
+und eine `action`.
 
 ```json
 {
@@ -98,24 +104,27 @@ Every request must contain a unique `request_id` and an `action`.
 }
 ```
 
-Allowed request IDs match:
+Erlaubte Request-IDs entsprechen folgendem Muster:
 
 ```text
 [A-Za-z0-9._:-]{1,128}
 ```
 
-The API retains the most recent 100 request results in memory. Reusing a
-request ID replays the cached result instead of executing the controller action
-again. This prevents accidental duplicate writes from repeated MQTT delivery
-or client retries.
+Die API hält die letzten **100 Ergebnisse** im Arbeitsspeicher.
+Wird eine Request-ID erneut übermittelt, liefert der Dienst
+das gespeicherte Ergebnis, anstatt die Regleraktion nochmals
+auszuführen. Das schützt vor doppelten Schreibvorgängen
+bei wiederholter MQTT-Zustellung oder Client-Reconnects.
 
-The command topic must never be used as retained state. The service explicitly
-ignores MQTT messages whose retained flag is set, so an old write/reset request
-cannot be replayed merely because the API service restarts or resubscribes.
+Das Befehlsthema darf **niemals als Retained-State** verwendet
+werden. Der Dienst ignoriert MQTT-Nachrichten mit gesetztem
+`retain`-Flag. Ein früherer Schreib- oder Resetbefehl
+kann dadurch nicht allein wegen eines Dienstneustarts
+oder einer neuen Subscription wiederholt werden.
 
-## Actions
+## Unterstützte Aktionen
 
-### status
+### `status` – Status lesen
 
 ```json
 {
@@ -125,9 +134,9 @@ cannot be replayed merely because the API service restarts or resubscribes.
 }
 ```
 
-No write is performed.
+Es wird kein Reglerwert geschrieben.
 
-### set_hours
+### `set_hours` – Brennerstunden-Schwelle setzen
 
 ```json
 {
@@ -139,17 +148,18 @@ No write is performed.
 }
 ```
 
-Constraints:
+Einschränkungen:
 
-- integer 0..10000;
-- exact 100-hour steps;
-- no-op when the value is already active unless `force: true`;
-- every actual write requires `confirm_reference_change: true`;
-- an actual `0x5721` change can re-baseline `0x7570`.
+- ganzzahlig 0–10.000 Stunden;
+- ausschließlich 100-Stunden-Schritte;
+- ohne `force: true` keine Änderung bei bereits gleichem Wert;
+- jeder tatsächliche Write braucht `confirm_reference_change: true`;
+- eine echte `0x5721`-Änderung kann `0x7570` neu referenzieren.
 
-The result reports whether the burner reference actually changed.
+Das Ergebnis zeigt an, ob sich die Brennerreferenz
+tatsächlich verändert hat.
 
-### set_months
+### `set_months` – Wartungsintervall setzen
 
 ```json
 {
@@ -161,14 +171,15 @@ The result reports whether the burner reference actually changed.
 }
 ```
 
-Constraints:
+Einschränkungen:
 
-- integer 0..24;
-- no-op when the value is already active unless `force: true`;
-- every actual write requires `confirm_reference_change: true`;
-- every actual `0x5723` write re-baselines `0x756C`.
+- ganzzahlig 0–24 Monate;
+- ohne `force: true` keine Änderung bei gleichem Wert;
+- jeder Write braucht `confirm_reference_change: true`;
+- jeder wirkliche Schreibzugriff auf `0x5723`
+  setzt die `0x756C`-Referenz neu.
 
-### reset
+### `reset` – Wartung zurücksetzen
 
 ```json
 {
@@ -179,19 +190,21 @@ Constraints:
 }
 ```
 
-The core executes the verified sequence:
+Der Kern führt die überprüfte Folge aus:
 
 ```text
 0x5724 = 1
-readback == 1
+Rücklesen == 1
 0x5724 = 0
-readback == 0
+Rücklesen == 0
 ```
 
-The safety-finalization path still attempts and verifies `0x5724 = 0` when
-the first phase produces an ambiguous error.
+Wenn bereits in der ersten Phase eine mehrdeutige Antwort
+eintrifft, versucht und überprüft der Sicherheits-/Abschlusspfad
+trotzdem `0x5724 = 0`.
 
-The result reports the two reference effects independently:
+Die Auswirkungen auf beide Referenzen werden unabhängig
+voneinander ausgegeben:
 
 ```json
 {
@@ -202,12 +215,12 @@ The result reports the two reference effects independently:
 }
 ```
 
-This is intentional. Live tests show that the `0x7570` effect of the reset is
-controller-state/configuration dependent.
+Dies ist beabsichtigt: Die Wirkung auf `0x7570`
+hängt nach Live-Tests vom Reglerzustand und der Konfiguration ab.
 
-## Successful result
+## Erfolgreiche Antwort
 
-Example shape:
+Beispiel:
 
 ```json
 {
@@ -224,10 +237,11 @@ Example shape:
 }
 ```
 
-The exact action data includes readback and reference information from the
-shared maintenance core.
+Die konkreten Aktionsdaten enthalten den Readback
+und Informationen zu den Referenzänderungen aus dem
+gemeinsamen Wartungskern.
 
-## Error result
+## Fehlerantwort
 
 ```json
 {
@@ -245,7 +259,8 @@ shared maintenance core.
 }
 ```
 
-Write-verification errors can additionally contain:
+Fehler bei der Schreibverifikation können außerdem
+folgende Daten enthalten:
 
 ```json
 {
@@ -257,15 +272,18 @@ Write-verification errors can additionally contain:
 }
 ```
 
-A restored configuration value must not be interpreted as proof that a
-reference side effect was undone. Writes to `0x5721` and `0x5723` can
-change their associated reference even when a later rollback restores the
-configuration byte.
+**Achtung:** Ein erfolgreich wiederhergestellter Konfigurationswert
+beweist nicht, dass Nebenwirkungen auf die Referenz ebenfalls
+rückgängig gemacht wurden. Schreibzugriffe auf `0x5721`
+und `0x5723` können eine Wartungsreferenz verändern,
+selbst wenn ein späterer Rollback das Konfigurationsbyte
+wiederherstellt.
 
-## Retained state
+## Gespeicherter Wartungszustand
 
-`openv/maintenance/state` publishes a normalized state object after service
-startup and after successful requests:
+`openv/maintenance/state` veröffentlicht nach dem
+Dienststart und nach erfolgreichen Anfragen einen
+normierten Zustandsdatensatz:
 
 ```json
 {
@@ -285,50 +303,61 @@ startup and after successful requests:
 }
 ```
 
-`interval_reference_uint` remains a raw little-endian integer. It must not be
-presented as a verified Unix timestamp.
+`interval_reference_uint` bleibt ein roher Little-Endian-Wert.
+Er darf **nicht** als bestätigter Unix-Zeitstempel angezeigt werden.
 
-## Home Assistant staging
+## Home Assistant: Werte zunächst vormerken
 
-The production Home Assistant profile now discovers two configuration numbers:
+Das Produktionsprofil meldet zwei Konfigurationszahlen an:
 
 - `number.vitodens_200_wb2a_wartung_brennerstunden_sollwert`;
 - `number.vitodens_200_wb2a_wartung_zeitintervall_sollwert`.
 
-Changing either entity only updates the corresponding `maintenance/stage/*`
-topic. The API validates the staged range and republishes a retained stage
-state, but does not acquire the maintenance lock and does not access the
-controller.
+Das Verstellen einer dieser Entities aktualisiert ausschließlich
+das zugehörige Thema `maintenance/stage/*`.
+Die API prüft den zulässigen Bereich und veröffentlicht
+den vorgemerkten Zustand als Retained-Nachricht.
+Dabei wird weder die Wartungssperre beansprucht
+noch der Heizungsregler angesprochen.
 
-Actual controller changes are performed only when the dashboard explicitly
-publishes a JSON request to `maintenance/cmnd` with a fresh request ID and
-the appropriate confirmation flag.
+Eine **wirkliche** Änderung erfolgt ausschließlich dann,
+wenn das Dashboard eine JSON-Anfrage mit neuer Request-ID
+und der passenden ausdrücklichen Bestätigung
+an `maintenance/cmnd` sendet.
 
-After successful API operations the API also mirrors the verified snapshot to
-the existing read-only Home Assistant maintenance topics so their displayed
-values update immediately rather than waiting for the RARE poll group.
+Nach einem erfolgreichen API-Aufruf spiegelt die API
+den verifizierten Zustand außerdem in die vorhandenen,
+nur lesenden Home-Assistant-Wartungsthemen.
+So werden die Anzeigen sofort aktualisiert,
+ohne auf die nächste RARE-Pollgruppe zu warten.
 
-The dashboard also consumes:
+Im Dashboard werden zudem angezeigt:
 
 - `sensor.vitodens_200_wb2a_wartung_brenner_seit_referenz`;
 - `sensor.vitodens_200_wb2a_wartung_api_status`;
 - `binary_sensor.vitodens_200_wb2a_wartung_api_verfuegbar`.
 
-## Home Assistant design rule
+## Gestaltungsregel für Home Assistant
 
-Home Assistant should stage desired values in helpers and execute the API only
-after an explicit Apply/Reset confirmation.
+Gewünschte Werte werden zuerst in Hilfs-Entities
+vorgemerkt. Die eigentliche API-Aktion darf
+erst nach einer ausdrücklichen Übernehmen-/Reset-Bestätigung erfolgen.
 
-Do not connect an interactive MQTT Number entity directly to `0x5721` or
-`0x5723`.
+Insbesondere darf eine direkt bedienbare MQTT-Zahl-Entity
+**nicht** direkt mit `0x5721` oder `0x5723`
+verbunden werden.
 
-Recommended flow:
+Empfohlener Ablauf:
 
 ```text
 input_number
-   -> explicit Apply button
-   -> confirmation dialog
-   -> MQTT API request
-   -> core validation/write/readback
-   -> result + retained state
+   -> ausdrückliche Schaltfläche „Übernehmen“
+   -> Bestätigungsdialog
+   -> MQTT-API-Anfrage
+   -> Prüfen / Schreiben / Rücklesen im Wartungskern
+   -> Ergebnis + gespeicherter Zustand
 ```
+
+Eine VS1/P300-Lesefenster-Freigabe ersetzt keinen dieser
+Wartungs-Sicherheitsmechanismen; der optionale Hybridmodus
+sendet keine P300-Controller-Writes.
