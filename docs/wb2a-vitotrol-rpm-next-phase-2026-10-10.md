@@ -238,3 +238,27 @@ Audit-/Quellbelege stehen im
 [Original-Vitotrol-Referenzbericht](wb2a-vitotrol-original-reference-2026-10-10.md).
 
 Die UART1-RX-/P300-Injektionssperre bleibt bestehen.
+
+## 6. Optolink-only-Entscheidung und neuer RX-Fund (10.10.2026)
+
+**Ausdrueckliche Architekturvorgabe:** Nur Optolink/P300; kein externer
+KM-Bus-Adapter oder physischer Emulator. Die fruehere Variantenbewertung
+ist durch diese Prioritaetsentscheidung ueberholt.
+
+Zwei historische private Archive enthalten im Hauptregler-RAM bei
+`0x1642` insgesamt **374/374** CRC-gueltige Frames der Richtung
+`00 01 B1` (andere Teilnehmerklasse als Vitotrol).
+Der Bereich liegt **40 Bytes hinter dem bekannten UART1-TX-Puffer**
+bei `0x161A`; beide beobachteten RX-Inhalte sind unterschiedlich.
+Ein Restbyte-Muster erlaubt eine eindeutige, jedoch **nicht beobachtete**
+CRC-Rekonstruktion eines laengeren B3-Kennungsframes. Es handelt sich
+um einen starken RX-Puffer-Kandidaten, **noch nicht** um verifizierten
+UART1-Hardware-RX oder einen freigegebenen RAM-Schreibpfad.
+
+Der bestehenden Root-only-On-Demand-API wurde ausschließlich die
+neu typisierte, bereits historisch 295-mal benutzte Read-only-Abfrage
+`p300_ram_1640_32` hinzugefuegt. Sie wird **nicht automatisch
+ausgefuehrt**, nicht in den Continuous-/Boot-Canary-Plan aufgenommen
+und nicht produktiv deployed. Der neue forensische Offline-Auditor
+und alle Beweise/Grenzen stehen unter
+[WB2A Optolink RX-Forschung](wb2a-vitotrol-optolink-rx-2026-10-10.md).
