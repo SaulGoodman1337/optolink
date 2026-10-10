@@ -35,6 +35,7 @@ ORIGINAL_PATHS = {
     "maintenance": Path("/opt/optolink/optolink_maintenance_core.py"),
 }
 TOKEN = "# HYBRID_PRODUCER_EPOCH_V1"
+API_TOKEN = "# HYBRID_MAINTENANCE_API_SHADOW_V1"
 
 
 class EnrollmentRejected(RuntimeError):
@@ -80,7 +81,8 @@ def _approved_api_path(name: str, core: Path) -> Path:
     return path
 
 
-def _pinned_file(path: Path, expected: str, *, marker: bool) -> bool:
+def _pinned_file(path: Path, expected: str, *, marker: bool,
+                 marker_token: str = TOKEN) -> bool:
     if not isinstance(expected, str) or len(expected) != 64:
         return False
     try:
@@ -94,7 +96,7 @@ def _pinned_file(path: Path, expected: str, *, marker: bool) -> bool:
         raw=path.read_bytes()
     except OSError:
         return False
-    if marker and TOKEN.encode() not in raw:
+    if marker and marker_token.encode() not in raw:
         return False
     return hashlib.sha256(raw).hexdigest() == expected
 
@@ -161,7 +163,7 @@ def verify_enrollment(manifest: Path = MANIFEST_PATH) -> EnrollmentResult:
                 api_path=_approved_api_path(declared.get("api_path",""),path)
                 api_marker=(api_path!=ORIGINAL_MAINTENANCE_API)
                 if not _pinned_file(api_path,declared.get("api_sha256",""),
-                                    marker=api_marker):
+                                    marker=api_marker,marker_token=API_TOKEN):
                     raise EnrollmentRejected("maintenance API source not pinned")
                 if not _process_confirms(
                         unit,api_path,

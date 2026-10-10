@@ -92,6 +92,16 @@ class PatchTests(unittest.TestCase):
         self.assertEqual(gate.decide(safe, Budget()).reason,
                          'WRITE_READBACK_NOT_ACKNOWLEDGED')
 
+    def test_continuous_admission_reads_fresh_original_vs1_identity(self):
+        generated = patch_dispatcher(UPSTREAM_EXCERPT)
+        self.assertIn("bytes.fromhex('20c2')", generated)
+        self.assertIn("_hybrid_auto.note_keepalive(1 if _id_valid else 0)", generated)
+        self.assertIn("HYBRID_RUNTIME_VS1_IDENTITY_REJECTED", generated)
+        self.assertLess(generated.index("bytes.fromhex('20c2')"),
+                        generated.index("_tick = _hybrid_auto.tick()"))
+        self.assertLess(generated.index("_hybrid_auto.clock() >= _hybrid_auto.next_due"),
+                        generated.index("_tick = _hybrid_auto.tick()"))
+
     def test_refuse_second_patch(self):
         with self.assertRaises(PatchRejected):patch_dispatcher(patch_dispatcher(UPSTREAM_EXCERPT))
 

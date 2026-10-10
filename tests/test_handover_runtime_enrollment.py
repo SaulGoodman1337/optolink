@@ -106,6 +106,30 @@ class EnrollmentEvidenceTests(unittest.TestCase):
         self.assertFalse(re._pinned_file(source,sha2,marker=True))
         self.assertFalse(re._pinned_file(source,'broken',marker=False))
 
+    def test_maintenance_api_uses_its_own_exact_patch_marker(self):
+        source=self.root/'maint-api.py'
+        source.write_text(re.API_TOKEN+'\nprint(1)\n')
+        sha=hashlib.sha256(source.read_bytes()).hexdigest()
+        original=Path.stat
+        def fake_root_stat(p,*a,**kw):
+            st=original(p,*a,**kw)
+            if p==source:
+                return types.SimpleNamespace(
+                    st_uid=0,st_mode=st.st_mode,st_nlink=st.st_nlink)
+            return st
+        with patch.object(Path,'stat',fake_root_stat):
+            self.assertTrue(re._pinned_file(
+                source,sha,marker=True,marker_token=re.API_TOKEN))
+            self.assertFalse(re._pinned_file(
+                source,sha,marker=True,marker_token=re.TOKEN))
+            self.assertFalse(re._pinned_file(
+                source,'0'*64,marker=True,marker_token=re.API_TOKEN))
+        source.write_text(re.TOKEN+'\nprint(1)\n')
+        sha=hashlib.sha256(source.read_bytes()).hexdigest()
+        with patch.object(Path,'stat',fake_root_stat):
+            self.assertFalse(re._pinned_file(
+                source,sha,marker=True,marker_token=re.API_TOKEN))
+
     def test_invalid_writer_release_path_rejected(self):
         for name in ('/tmp/unsafe.py','../relative','/etc/passwd'):
             with self.subTest(path=name),self.assertRaises(re.EnrollmentRejected):

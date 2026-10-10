@@ -138,7 +138,11 @@ AUTO_BOOT = '''
                             tcp_server.pending_count() if tcp_server is not None
                             else (0 if settings.tcpip_port is None else 9999)),
                         ingress=_hybrid_ingress,
-                        all_writers_attested=all_writers_attested)
+                        all_writers_attested=all_writers_attested,
+                        min_interval_s=(60.0 if
+                            os.environ.get('OPTO_HYBRID_CANARY_SESSION') and
+                            os.environ.get('INVOCATION_ID')
+                            else 120.0))
                     _handover_runtime_gate = _hybrid_auto.gate
                     logger.info('hybrid read-only automatic dispatcher admitted')
 '''
@@ -153,7 +157,25 @@ AUTO_TICK = '''
                 # At most one finite read-only FC03 batch per cooldown.
                 # This runs on the same main serial thread BETWEEN VS1 frames.
                 if _hybrid_auto is not None:
+                    # Continuous normal polling updates last_vs1_comm and
+                    # suppresses the separately scheduled KW keepalive.
+                    # At each admission deadline explicitly query the REAL
+                    # original VS1 identity instead of trusting a timer.
+                    # One bounded read, same existing serial owner, no STX.
+                    if _hybrid_auto.clock() >= _hybrid_auto.next_due:
+                        _id_rc, _id_addr, _id_data = vs12_adapter.read_datapoint_ext(
+                            0xf8, 2, serOptolink)
+                        _id_valid = (
+                            _id_rc == 1 and
+                            isinstance(_id_data, (bytes, bytearray)) and
+                            bytes(_id_data) == bytes.fromhex('20c2'))
+                        _hybrid_auto.note_keepalive(1 if _id_valid else 0)
+                        if not _id_valid:
+                            logger.warning('HYBRID_RUNTIME_VS1_IDENTITY_REJECTED')
                     _tick = _hybrid_auto.tick()
+                    if (_tick.status == 'NOT_ADMITTED' and
+                            os.environ.get('OPTO_HYBRID_CANARY_SESSION')):
+                        logger.info('HYBRID_RUNTIME_REFUSAL ' + _tick.reason)
                     if _tick.status == 'VERIFIED_SWITCH':
                         _readings = {key: value for key, value in _tick.result.reads}
                         _event = {'status': _tick.status,
@@ -164,6 +186,13 @@ AUTO_TICK = '''
                         mod_mqtt.publish_smart(
                             settings.mqtt_topic + '/hybrid/readonly',
                             json.dumps(_event), retain=False)
+                        # Independent, session-tagged canary evidence.
+                        # A P300 window is logged only AFTER verified VS1
+                        # and the original GFA identity/RPM readbacks.
+                        if os.environ.get('OPTO_HYBRID_CANARY_SESSION'):
+                            _event['canary_session'] = os.environ['OPTO_HYBRID_CANARY_SESSION']
+                            logger.info('HYBRID_RUNTIME_VERIFIED_SWITCH ' +
+                                        json.dumps(_event, sort_keys=True))
 '''
 TCP_SPECIAL_ANCHOR = (
     '        tcp_server.command_callback = do_special_command        # type: ignore')
