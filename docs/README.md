@@ -14,6 +14,7 @@ Dieser Ordner enthält die Betriebs- und Entwicklerdokumentation für den produk
 | [wb2a-vitotrol-optolink-rx-2026-10-10.md](wb2a-vitotrol-optolink-rx-2026-10-10.md) | Optolink-only RX-Forschung: 0x1642-Kandidatenpuffer aus 374 historischen P300-RAM-Samples, sicherer fester Read-only-Diagnosepfad |
 | [wb2a-vitotrol-optolink-rx-context-2026-10-10.md](wb2a-vitotrol-optolink-rx-context-2026-10-10.md) | Byte- und Zeitkontext des 0x1642-RX-Kandidaten, 79 Voll-RAM- und 295 Deep-Proben, nichtatomare Grenzen und 0 Klasse-11-Treffer |
 | [wb2a-vitotrol-optolink-emulator-profile-2026-10-10.md](wb2a-vitotrol-optolink-emulator-profile-2026-10-10.md) | Optolink-only Original-V300-Emulatorprofil: 420/448 Original-TX-Frames offline rekonstruierbar, 28 BF15 opaque und RAM-Xref-Audit |
+| [wb2a-vitotrol-acceptance-offline-2026-10-10.md](wb2a-vitotrol-acceptance-offline-2026-10-10.md) | Optolink-only Vitotrol-Hardwareabnahme: synthetische BC-/Rollback- und Temperatur-Regressionen, keine Freigabe fuer Live-Controller |
 | [operations.md](operations.md) | Beim Betrieb: Update, Status, Logs, Clock-Sync, Fehlerdiagnose |
 | [home-assistant.md](home-assistant.md) | Bei HA-/MQTT-/Dashboard-Änderungen |
 | [anlagenschema.md](anlagenschema.md) | WB2A-Anlagenschema, Hydrauliktopologie und dokumentierte Schreibwerte 00/52/53/54/5B |
