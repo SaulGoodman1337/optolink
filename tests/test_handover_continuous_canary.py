@@ -52,7 +52,8 @@ class ContinuousCanaryTests(unittest.TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["p300_fixed"]["p300_device"], "20c2")
         self.assertEqual(refused, ["HA_READBACK_PENDING"])
-        self.assertIn("@1234", mocked.call_args.args[0][-4:])
+        self.assertIn("@1234", mocked.call_args.args[0])
+        self.assertIn("--grep=HYBRID_RUNTIME_", mocked.call_args.args[0])
 
     def test_live_evidence_must_have_genuine_gfa_and_two_fixed_fc03_blocks(self):
         for change in (
@@ -199,6 +200,67 @@ class ContinuousCanaryTests(unittest.TestCase):
              patch.object(c,"verify_enrollment",return_value=attested):
             self.assertIsNone(c.verify_live_canary_epoch(123,98,100))
 
+    def test_extended_soak_has_fixed_conservative_limits(self):
+        count, window, runtime, passed = c.profile_limits("soak-eight")
+        self.assertEqual(count, 8)
+        self.assertGreaterEqual(window, count * 60 + 60)
+        self.assertGreater(runtime, window)
+        self.assertEqual(passed, "PASS_EIGHT_VERIFIED_CONTINUOUS_WINDOWS")
+        self.assertEqual(c.profile_limits("standard")[0], 3)
+        for name in ("soak-nine", "forever", "../bad", ""):
+            with self.subTest(name=name), self.assertRaises(c.ContinuousCanaryRejected):
+                c.profile_limits(name)
+
+    def test_soak_worker_requires_eight_independent_journal_records(self):
+        from types import SimpleNamespace
+        self.data["canary_profile"] = "soak-eight"
+        def status(unit):
+            return "inactive" if unit == "optolink-pump-override.service" else "active"
+        def save(path, value):
+            path.write_text(json.dumps(value))
+        with patch.object(c.sh, "load", return_value=self.data), \
+             patch.object(c.sh, "worker", return_value=0), \
+             patch.object(c.sh, "save", side_effect=save), \
+             patch.object(c, "_write_enrollment", return_value=None), \
+             patch.object(c, "verify_enrollment", return_value=SimpleNamespace(accepted=True)), \
+             patch.object(c, "_extra_path", return_value=self.extra), \
+             patch.object(c.sh, "call", side_effect=lambda argv,*a,**k:(
+                 "123" if "--property=MainPID" in argv else "")), \
+             patch.object(c.sh, "status", side_effect=status), \
+             patch.object(c.sh, "gfa", return_value={"P80":"20","P06":"53"}), \
+             patch.object(c, "_collect_events", return_value=([self._event() for _ in range(8)], [])), \
+             patch.object(c.os, "geteuid", return_value=0), \
+             patch.object(c.os, "chown", return_value=None), \
+             patch.dict(c.os.environ, {"INVOCATION_ID":"test-invocation"}):
+            self.assertEqual(c.worker(self.session), 0)
+        result=json.loads((self.session/"continuous-measurement.json").read_text())
+        self.assertEqual(result["result"], "PASS_EIGHT_VERIFIED_CONTINUOUS_WINDOWS")
+        self.assertEqual(result["event_count"], 8)
+
+    def test_soak_launch_pins_systemd_watchdog_and_root_session_profile(self):
+        import types
+        expected=[]
+        sessions=self.base/"sessions"
+        release=self.base/"release"
+        preflight={"release":str(release),"before":{},"phase":"PREPARED"}
+        def fake_run(argv,*,check=False):
+            expected.append(argv)
+            return types.SimpleNamespace(returncode=1)
+        with patch.object(c.sh,"SESSIONS",sessions), \
+             patch.object(c.sh,"preflight",return_value=preflight), \
+             patch.object(c.os,"geteuid",return_value=0), \
+             patch.object(c.subprocess,"run",side_effect=fake_run):
+            self.assertEqual(c.launch(release,profile="soak-eight"),1)
+        self.assertEqual(len(expected),1)
+        args=expected[0]
+        self.assertIn("--property=RuntimeMaxSec=800",args)
+        self.assertIn("--property=KillMode=control-group",args)
+        self.assertTrue(any(x.startswith("--property=ExecStopPost=") for x in args))
+        dirs=list(sessions.glob("run-*"))
+        self.assertEqual(len(dirs),1)
+        contents=json.loads((dirs[0]/"state.json").read_text())
+        self.assertEqual(contents["canary_profile"],"soak-eight")
+
     def test_systemd_runtime_watchdog_and_execstop_are_mandatory(self):
         self.assertLess(c.WATCH_SECONDS, c.MAX_RUNTIME_SECONDS)
         self.assertEqual(c.TARGET_WINDOWS, 3)
@@ -215,6 +277,12 @@ class ContinuousCanaryTests(unittest.TestCase):
              patch.object(c.os, "geteuid", return_value=1000):
             with self.assertRaises(c.ContinuousCanaryRejected):
                 c.worker(self.session)
+
+    def test_journalctl_grep_no_match_exit_one_means_no_windows_yet(self):
+        # Real Debian 13 systemd 257 returns 1 for --grep with zero matches.
+        empty = subprocess.CompletedProcess([], 1, "", "")
+        with patch.object(c.subprocess, "run", return_value=empty):
+            self.assertEqual(c._collect_events(self.session, 0), ([], []))
 
     def test_lost_journal_never_counts_as_a_real_vs1_return(self):
         bad = subprocess.CompletedProcess([], 1, "", "no journal")

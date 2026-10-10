@@ -117,6 +117,41 @@ class IngressEpochTests(unittest.TestCase):
         with gate.freeze():pass
         self.assertEqual(gate.freeze_depth,0)
 
+    def test_parallel_mqtt_tcp_write_readback_bursts_are_fenced_and_preserved(self):
+        """Synthetic write commands: never open a controller or dispatch a frame."""
+        gate=IngressEpoch(max_tcp_queue=64)
+        tcp=gate.tcp_class(FakeTcpServer)()
+        observed=[]
+        cb=gate.wrap_mqtt_callback(
+            lambda msg: observed.append(("mqtt",msg)))
+        mqtt=[f"w;0x2303;1;{i};False" for i in range(25)]
+        incoming=[f"gfaread;0x4006;1;raw;False;{i}" for i in range(25)]
+        ready=[threading.Event(),threading.Event()]
+        def mqtt_producer():
+            ready[0].set()
+            for msg in mqtt:
+                cb(msg)
+        def tcp_producer():
+            ready[1].set()
+            for msg in incoming:
+                tcp.received_data=msg
+        with gate.freeze():
+            a=threading.Thread(target=mqtt_producer)
+            b=threading.Thread(target=tcp_producer)
+            a.start();b.start()
+            self.assertTrue(ready[0].wait(2))
+            self.assertTrue(ready[1].wait(2))
+            self.assertEqual(tcp.pending_count(),0)
+            self.assertEqual(observed,[])
+        a.join(timeout=2);b.join(timeout=2)
+        self.assertFalse(a.is_alive())
+        self.assertFalse(b.is_alive())
+        self.assertEqual([msg for _,msg in observed],mqtt)
+        self.assertEqual(tcp.pending_count(),len(incoming))
+        self.assertEqual([tcp.get_request() for _ in incoming],incoming)
+        self.assertFalse(gate.tcp_overflow)
+        self.assertEqual(gate.freeze_depth,0)
+
     def test_unreviewed_tcp_contract_rejected(self):
         gate=IngressEpoch()
         for wrong in (object, lambda *a:None):

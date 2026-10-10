@@ -28,10 +28,25 @@ EXTRA_NAME = "99-optolink-hybrid-auto-canary.conf"
 TARGET_WINDOWS = 3
 WATCH_SECONDS = 225
 MAX_RUNTIME_SECONDS = 270
+# The extended profile is deliberately fixed: no arbitrary duration or
+# caller-supplied job count can extend a production hardware experiment.
+SOAK_WINDOWS = 8
+SOAK_WATCH_SECONDS = 710
+SOAK_MAX_RUNTIME_SECONDS = 800
 
 
 class ContinuousCanaryRejected(RuntimeError):
     pass
+
+
+def profile_limits(profile: str) -> tuple[int, int, int, str]:
+    if profile == "standard":
+        return (TARGET_WINDOWS, WATCH_SECONDS, MAX_RUNTIME_SECONDS,
+                "PASS_THREE_VERIFIED_CONTINUOUS_WINDOWS")
+    if profile == "soak-eight":
+        return (SOAK_WINDOWS, SOAK_WATCH_SECONDS, SOAK_MAX_RUNTIME_SECONDS,
+                "PASS_EIGHT_VERIFIED_CONTINUOUS_WINDOWS")
+    raise ContinuousCanaryRejected("unknown immutable hardware canary profile")
 
 
 def _extra_path() -> Path:
@@ -72,10 +87,18 @@ def _collect_events(session: Path, start_epoch: int) -> tuple[list[dict], list[s
     # Journal evidence originates from the *real* original VS1 owner's
     # successfully completed P300 window after original GFA verification.
     args = ["journalctl", "-u", sh.MAIN, "--since", "@" + str(start_epoch),
-            "--no-pager", "-o", "cat"]
+            "--no-pager", "-o", "cat", "--grep=HYBRID_RUNTIME_"]
     proc = subprocess.run(args, capture_output=True, text=True, timeout=8)
+    # On systemd 257, journalctl -g returns exit 1 for a healthy query
+    # with NO matches yet. That is expected at the beginning of a canary,
+    # not a journal access failure. Stderr or any other nonzero code still
+    # fails closed.
+    if proc.returncode == 1 and not proc.stdout.strip() and not proc.stderr.strip():
+        return [], []
     if proc.returncode:
-        raise ContinuousCanaryRejected("cannot independently read original main journal")
+        raise ContinuousCanaryRejected(
+            "cannot independently read original main journal: "
+            + proc.stderr[-160:])
     events, refusals = [], []
     for line in proc.stdout.splitlines():
         if "HYBRID_RUNTIME_REFUSAL " in line:
@@ -149,7 +172,10 @@ def worker(session: Path) -> int:
     sh.load(session)
     if os.geteuid() != 0 or not os.environ.get("INVOCATION_ID"):
         raise ContinuousCanaryRejected("root-owned systemd worker required")
-    release = Path(sh.load(session)["release"])
+    data = sh.load(session)
+    release = Path(data["release"])
+    target_windows, watch_seconds, _runtime_seconds, expected_result = (
+        profile_limits(data.get("canary_profile", "standard")))
     # First perform the already REAL-HARDWARE-verified full shadow startup.
     # Every unexpected error exits the unit, triggering independent recovery.
     sh.worker(session)
@@ -186,7 +212,7 @@ def worker(session: Path) -> int:
     initial = sh.gfa(wait=30)
     events, refusals = [], []
     marker_since = None
-    deadline = time.monotonic() + WATCH_SECONDS
+    deadline = time.monotonic() + watch_seconds
     while time.monotonic() < deadline:
         if any(sh.status(name) != "active" for name in sh.ALL):
             raise ContinuousCanaryRejected("a productive service failed during P300 canary")
@@ -195,13 +221,13 @@ def worker(session: Path) -> int:
         marker_since = verify_live_canary_epoch(
             auto_main_pid, marker_since, time.monotonic())
         events, refusals = _collect_events(session, since)
-        if len(events) >= TARGET_WINDOWS:
+        if len(events) >= target_windows:
             break
         time.sleep(3.0)
     post = sh.gfa(wait=25)
     measurement = {
-        "result": ("PASS_THREE_VERIFIED_CONTINUOUS_WINDOWS"
-                   if len(events) >= TARGET_WINDOWS else "NO_VERIFIED_CONTINUOUS_WINDOWS"),
+        "result": (expected_result if len(events) >= target_windows
+                   else "NO_VERIFIED_CONTINUOUS_WINDOWS"),
         "event_count": len(events), "events": events,
         "last_refusals": refusals[-15:],
         "gfa_initial": initial, "gfa_final": post,
@@ -212,8 +238,8 @@ def worker(session: Path) -> int:
     print("HYBRID_CONTINUOUS_CANARY=" + json.dumps({
         "result":measurement["result"],"event_count":len(events),
         "last_refusals":refusals[-5:]}, sort_keys=True), flush=True)
-    if len(events) < TARGET_WINDOWS:
-        raise ContinuousCanaryRejected("three verified hardware windows not observed")
+    if len(events) < target_windows:
+        raise ContinuousCanaryRejected("required verified hardware windows not observed")
     return 0
 
 
@@ -252,10 +278,12 @@ def recover(session: Path) -> int:
     return int(rc != 0 or bool(errors))
 
 
-def launch(release: Path) -> int:
+def launch(release: Path, *, profile: str = "standard") -> int:
     if os.geteuid() != 0:
         raise ContinuousCanaryRejected("root required for hardware canary")
+    target_windows, watch_seconds, max_runtime, expected_result = profile_limits(profile)
     before = sh.preflight(release)
+    before["canary_profile"] = profile
     sh.SESSIONS.mkdir(mode=0o700, parents=True, exist_ok=True)
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     session = sh.SESSIONS / ("run-" + stamp + "-" + str(os.getpid()))
@@ -264,7 +292,7 @@ def launch(release: Path) -> int:
     env = str(release/"tools") + ":/opt/optolink"
     cmd = ["systemd-run", "--unit=" + UNIT, "--wait", "--collect",
            "--property=Type=exec",
-           "--property=RuntimeMaxSec=" + str(MAX_RUNTIME_SECONDS),
+           "--property=RuntimeMaxSec=" + str(max_runtime),
            "--property=TimeoutStopSec=120",
            "--property=KillMode=control-group",
            "--setenv=PYTHONPATH=" + env,
@@ -279,10 +307,11 @@ def launch(release: Path) -> int:
     try: restored = json.loads((session/"recovery.json").read_text())
     except (OSError, ValueError): restored = {}
     success = (run.returncode == 0
-               and measure.get("result") == "PASS_THREE_VERIFIED_CONTINUOUS_WINDOWS"
-               and measure.get("event_count", 0) >= TARGET_WINDOWS
+               and measure.get("result") == expected_result
+               and measure.get("event_count", 0) >= target_windows
                and restored.get("result") == "PASS_ORIGINAL_SERVICES_RESTORED")
     result = {"result":"PASS" if success else "FAIL_OR_NOT_VERIFIED",
+              "profile":profile, "target_windows":target_windows,
               "session":str(session), "event_count":measure.get("event_count",0),
               "last_refusals":measure.get("last_refusals", [])[-10:],
               "recovery":restored, "run_rc":run.returncode}
@@ -298,13 +327,17 @@ def main(argv=None):
     choices.add_argument("--worker", type=Path)
     choices.add_argument("--recover", type=Path)
     parser.add_argument("--accept-telemetry-pause", action="store_true")
+    parser.add_argument("--soak-eight", action="store_true")
     args = parser.parse_args(argv)
     if args.plan is not None:
         return sh.main(["--plan",str(args.plan)])
     if args.launch is not None:
         if not args.accept_telemetry_pause:
             raise ContinuousCanaryRejected("explicit telemetry interruption approval required")
-        return launch(args.launch)
+        return launch(args.launch, profile=("soak-eight" if args.soak_eight
+                                            else "standard"))
+    if args.soak_eight:
+        raise ContinuousCanaryRejected("soak profile is chosen only by root launch")
     if os.geteuid() != 0 or not os.environ.get("INVOCATION_ID"):
         raise ContinuousCanaryRejected("only root systemd worker/recovery allowed")
     if args.worker is not None:
