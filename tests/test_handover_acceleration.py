@@ -105,6 +105,18 @@ def expect_vs1(enqs=2, *, device=DEVICE_ID, software=SOFTWARE, p80=b"\x20", p06=
     ]
 
 
+def expect_attached_vs1(*, device=DEVICE_ID, software=SOFTWARE,
+                        p80=b"\x20", p06=b"\x00"):
+    """Already initialized original splitter: NO second STX, EOT or ENQ."""
+    from handover_acceleration.coordinator import VS1_ID
+    return [
+        (VS1_ID, device),
+        (VS1_SOFTWARE, software),
+        (GFA["P80"], p80),
+        (GFA["P06"], p06),
+    ]
+
+
 def p300_reply(address, data, *, bad_crc=False, wrong_addr=False):
     if wrong_addr:
         address ^= 1

@@ -10,7 +10,7 @@ from handover_acceleration.coordinator import EOT, GFA, HandoverCoordinator, Mod
 from handover_acceleration.dispatcher_bridge import InProcessDispatchBridge, BridgeRejected
 from handover_acceleration.phase_planner import ReadJob, Budget
 from handover_acceleration.scheduler import ReadKind
-from test_handover_acceleration import FakePort, FakeClock, expect_vs1, expect_p300
+from test_handover_acceleration import FakePort, FakeClock, expect_vs1, expect_attached_vs1, expect_p300
 from test_handover_fc03_fixed import response
 
 
@@ -100,7 +100,7 @@ class DispatcherBridgeTests(unittest.TestCase):
 
     def test_same_port_verified_session_one_fc03_window_then_legacy_read(self):
         clock=FakeClock()
-        port=FakePort(expect_vs1(2)[1:]+expect_p300()+response('ram_0f20_32')+
+        port=FakePort(expect_attached_vs1()+expect_p300()+response('ram_0f20_32')+
                       response('ram_1c60_32')+expect_vs1(1))
         self.serial=port
         with tempfile.TemporaryDirectory() as d:
@@ -130,7 +130,7 @@ class DispatcherBridgeTests(unittest.TestCase):
 
     def test_invalid_maintenance_budget_leaves_original_vs1_usable(self):
         clock=FakeClock()
-        port=FakePort(expect_vs1(2)[1:])
+        port=FakePort(expect_attached_vs1())
         self.serial=port
         with tempfile.TemporaryDirectory() as d:
             owner=HandoverCoordinator.borrow_existing_vs1(port,PortLease(Path(d)/'lease'),
@@ -150,7 +150,7 @@ class DispatcherBridgeTests(unittest.TestCase):
 
     def test_corrupt_fc03_halts_legacy_even_after_verified_context_recovery(self):
         clock=FakeClock()
-        port=FakePort(expect_vs1(2)[1:]+expect_p300()+response('ram_0f20_32',bad_crc=True)[:1]+expect_vs1(2))
+        port=FakePort(expect_attached_vs1()+expect_p300()+response('ram_0f20_32',bad_crc=True)[:1]+expect_vs1(2))
         self.serial=port
         with tempfile.TemporaryDirectory() as d:
             owner=HandoverCoordinator.borrow_existing_vs1(port,PortLease(Path(d)/'lease'),
@@ -171,7 +171,7 @@ class DispatcherBridgeTests(unittest.TestCase):
 
     def test_legacy_calls_invalidate_maintenance_attestation(self):
         clock=FakeClock()
-        port=FakePort(expect_vs1(2)[1:])
+        port=FakePort(expect_attached_vs1())
         self.serial=port
         with tempfile.TemporaryDirectory() as d:
             owner=HandoverCoordinator.borrow_existing_vs1(port,PortLease(Path(d)/'lease'),

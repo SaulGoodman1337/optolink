@@ -15,7 +15,7 @@ from handover_acceleration.runtime_admission import (
     AdmissionRejected, DispatcherSnapshot, RuntimeAdmissionGate,
 )
 from test_handover_acceleration import (
-    FakeClock, FakePort, expect_vs1, expect_p300, p300_reply,
+    FakeClock, FakePort, expect_vs1, expect_attached_vs1, expect_p300, p300_reply,
 )
 from test_handover_fc03_fixed import response
 
@@ -130,7 +130,7 @@ class RuntimeAdmissionTests(unittest.TestCase):
 
     def _port(self, *, corrupt=False):
         from test_handover_acceleration import DEVICE_ID
-        script = (expect_vs1(2)[1:] + expect_p300()
+        script = (expect_attached_vs1() + expect_p300()
                   + [(P300_ID, p300_reply(0xf8, DEVICE_ID)), (ACK, b'')])
         if corrupt:
             script += response('ram_0f20_32', bad_crc=True)[:1] + expect_vs1(2)

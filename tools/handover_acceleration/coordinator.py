@@ -40,7 +40,7 @@ P300_RAM_READS = {
     "ram_0f20_32": (0x03, 0x0f20, 32, _fixed_p300_request(3, 0x0f20, 32)),
     "ram_1c60_32": (0x03, 0x1c60, 32, _fixed_p300_request(3, 0x1c60, 32)),
 }
-TX_ALLOW = frozenset([EOT, ACK, b"\x16\x00\x00", STX + VS1_ID,
+TX_ALLOW = frozenset([EOT, ACK, b"\x16\x00\x00", STX + VS1_ID, VS1_ID,
                       VS1_SOFTWARE, *GFA.values(), P300_ID, P300_SOFTWARE,
                        *(v[3] for v in P300_RAM_READS.values())])
 
@@ -81,7 +81,7 @@ class WirePhase(enum.Enum):
 PHASE_TX_ALLOW = {
     WirePhase.FAILED_CLOSED: frozenset(),
     WirePhase.VS1_SYNC: frozenset((EOT,)),
-    WirePhase.VS1_HANDSHAKE: frozenset((STX + VS1_ID, VS1_SOFTWARE,
+    WirePhase.VS1_HANDSHAKE: frozenset((STX + VS1_ID, VS1_ID, VS1_SOFTWARE,
                                          GFA["P80"], GFA["P06"])),
     WirePhase.VS1_VERIFIED: frozenset(GFA.values()),
     WirePhase.P300_SYNC: frozenset((EOT,)),
@@ -212,7 +212,7 @@ class ReadOnlyWire:
         if self.phase not in (WirePhase.VS1_HANDSHAKE,
                               WirePhase.VS1_VERIFIED):
             raise ProtocolError("VS1 read outside VS1 phase")
-        if request not in (STX + VS1_ID, VS1_SOFTWARE, *GFA.values()):
+        if request not in (STX + VS1_ID, VS1_ID, VS1_SOFTWARE, *GFA.values()):
             raise ProtocolError("unknown VS1 read")
         self.gap()
         self.tx(request)
@@ -230,7 +230,11 @@ class ReadOnlyWire:
         self._handshake_gfa.clear()
         self.phase = WirePhase.VS1_HANDSHAKE
         try:
-            if self.vs1_read(STX + VS1_ID, 2) != DEVICE_ID:
+            # The original optolinkvs1.init_protocol() already sent STX
+            # while synchronizing EOT/ENQ. In a LIVE VS1 session another
+            # STX is not an ordinary request, and on the WB2A it times out.
+            # Query the *same* fixed device ID without an extra STX.
+            if self.vs1_read(VS1_ID, 2) != DEVICE_ID:
                 raise ProtocolError("attached VS1 device identity mismatch")
             if self.vs1_read(VS1_SOFTWARE, 2) != SOFTWARE:
                 raise ProtocolError("attached VS1 software mismatch")
@@ -423,7 +427,7 @@ class HandoverCoordinator:
         """Use the already open serial object; never reopen or close it.
 
         The first action is fresh read-only VS1 identity, SW, P80, P06
-        verification in the currently initialized VS1 session. NO EOT,
+        verification in the currently initialized VS1 session. NO STX, NO EOT,
         no zero-cost trust of the original splitter state and NO fallbacks.
         The surrounding in-process loop remains the sole serial owner.
         """

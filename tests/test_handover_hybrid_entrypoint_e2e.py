@@ -11,14 +11,14 @@ from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
 from handover_acceleration.dispatcher_patch import patch_dispatcher
 from handover_acceleration.coordinator import EOT, P300_ID, DEVICE_ID
-from test_handover_acceleration import FakePort, expect_vs1, expect_p300, p300_reply
+from test_handover_acceleration import FakePort, expect_vs1, expect_attached_vs1, expect_p300, p300_reply
 from test_handover_fc03_fixed import response
 from test_handover_dispatcher_patch import UPSTREAM_EXCERPT
 
 
 class EntryPointEndToEndTests(unittest.TestCase):
     def test_actual_patch_entrypoint_borrows_exact_original_port_and_restores_gfa(self):
-        seq = (expect_vs1(2)[1:] + expect_p300() +
+        seq = (expect_attached_vs1() + expect_p300() +
                [(P300_ID,p300_reply(0x00f8,DEVICE_ID)),(b'\x06',b'')] +
                response('ram_0f20_32') + response('ram_1c60_32') + expect_vs1(1))
         port=FakePort(seq)

@@ -18,7 +18,7 @@ from handover_acceleration.producer_fence import (
     ProducerFenceRejected, writer_transaction, p300_window,
     fenced_readonly_batch, LEASE_PATH, COOPERATIVE_SERVICES,
 )
-from test_handover_acceleration import FakePort, FakeClock, expect_vs1, expect_p300, p300_reply, P300_ID, ACK, DEVICE_ID
+from test_handover_acceleration import FakePort, FakeClock, expect_vs1, expect_attached_vs1, expect_p300, p300_reply, P300_ID, ACK, DEVICE_ID
 from test_handover_fc03_fixed import response
 
 
@@ -147,7 +147,7 @@ class ProducerFenceTests(unittest.TestCase):
     def test_fenced_batch_holds_writer_lease_until_real_vs1_gfa_check(self):
         clock=FakeClock()
         port=FakePort(
-            expect_vs1(2)[1:] + expect_p300() +
+            expect_attached_vs1() + expect_p300() +
             [(P300_ID,p300_reply(0xf8,DEVICE_ID)),(ACK,b'')] +
             response('ram_0f20_32') + response('ram_1c60_32') +
             expect_vs1(1))

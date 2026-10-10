@@ -11,7 +11,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
 from handover_acceleration.hybrid_boot import (
     _legacy_gfa, run_one_shot, BootRejected, _private_report_dir)
 from handover_acceleration.coordinator import EOT, GFA, P300_ID, DEVICE_ID, ProtocolError
-from test_handover_acceleration import FakePort, FakeClock, expect_vs1, expect_p300, p300_reply
+from test_handover_acceleration import FakePort, FakeClock, expect_vs1, expect_attached_vs1, expect_p300, p300_reply
 from test_handover_fc03_fixed import response
 
 
@@ -26,7 +26,7 @@ class HybridBootTests(unittest.TestCase):
         self.resumed=[]
 
     def script(self,*,corrupt=False,identity=DEVICE_ID):
-        seq=expect_vs1(2,device=identity)[1:]+expect_p300()
+        seq=expect_attached_vs1(device=identity)+expect_p300()
         seq += [(P300_ID,p300_reply(0x00F8,DEVICE_ID)),(b'\x06',b'')]
         seq += response('ram_0f20_32',bad_crc=corrupt)
         if not corrupt:
@@ -82,7 +82,7 @@ class HybridBootTests(unittest.TestCase):
         self.assertFalse((self.path/'hybrid-result.json').exists())
 
     def test_attach_wrong_identity_refused_without_eot(self):
-        port=FakePort(expect_vs1(2,device=b'\x12\x34')[1:])
+        port=FakePort(expect_attached_vs1(device=b'\x12\x34'))
         with self.assertRaisesRegex(ProtocolError,'identity mismatch'):
             self.run_case(port)
         self.assertEqual(port.writes.count(EOT),0)
