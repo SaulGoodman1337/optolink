@@ -212,3 +212,7 @@ dieser Punkt eine offene Forschungsabhängigkeit.
 
 **Produktivstatus:** `main`/VS1 bleibt unverändert, RPM-v2-Logger
 läuft unverändert im bestehenden Dienst. PR #52 bleibt Draft.
+
+## 5. Vorbereitung einer spaeteren, sicheren Abnahme
+
+Die quellgebundenen Original-V300-Antworten lassen sich jetzt auch gegen eine [rein synthetische Vitotrol-Abnahmeteststrecke](wb2a-vitotrol-acceptance-offline-2026-10-10.md) einordnen. Dort werden die spaeter benoetigten Controller-Readbacks, stabile Softwarekennung, mehrstufige Temperaturuebernahme, BC- und Fehlerhistorienfreiheit sowie eine vollstaendige Rueckstellung einschliesslich Nachlauf als Regressionen modelliert. **Dies beweist keine echte Erkennung an der WB2A**: der Optolink-interne UART1-RX-/Commit-Mechanismus ist weiterhin unbekannt. Es wurden weder die Codierung aktiviert noch Controller-RAM-Writes oder neue P300-Hardwarefenster ausgefuehrt.
