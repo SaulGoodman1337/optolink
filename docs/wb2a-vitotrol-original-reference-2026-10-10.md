@@ -174,3 +174,17 @@ nur mit bewerteter elektrischer Sicherheit planen.
 
 Die produktive VS1-Hauptschleife und laufende RPM-V2-Forschung
 bleiben unberuehrt; PR #52 bleibt Draft.
+
+## Nachtrag: echtes Original-V300-Offlineprofil und BF/15-Sequenz-Audit
+
+Es gibt nun ein **separates Originalprofil** für die tatsächlich
+aufgezeichnete Vitotrol 300 mit `F8..FB = 11 38 01 0A`,
+Register `00 = 12`, PONG sowie zwei Original-Raumtemperaturen.
+Der neue vollständige Sequence-Audit reproduziert damit
+**420/448** Telegramminstanzen (davon 416 identische PONGs).
+Die 28 unterschiedlichen `BF/15` bleiben explizit **opaque** und
+werden nicht generiert. Die neuerliche RAM-Xref-Prüfung findet
+weitere Adressliterals und erlaubt keine Schlussfolgerung auf eine
+sichere UART1-/Optolink-Injektion.
+Siehe [Details, SHA-Beweise, Modell, Tests](wb2a-vitotrol-optolink-emulator-profile-2026-10-10.md).
+**Verbindlicher Pfad bleibt ausschließlich Optolink/P300.**

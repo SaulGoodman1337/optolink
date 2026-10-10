@@ -23,6 +23,10 @@ KNOWN_MASTER_HEX = (
 )
 IDENTITY_V200 = bytes.fromhex("11340005")
 IDENTITY_V300_SAMPLE = bytes.fromhex("11380011")
+# Original hardware TX in openv/openv#387 (log.bin SHA256 b6d5b052...).
+# This is an EXTERNAL Vitotrol 300 profile, NOT validated on WB2A RX.
+IDENTITY_V300_ORIGINAL = bytes.fromhex("1138010a")
+REGISTER_00_V300_ORIGINAL = 0x12
 
 
 class FrameRejected(ValueError):
@@ -278,13 +282,26 @@ class OfflineVitotrolState:
         return model_pong(frame)
 
 
+def original_v300_offline_profile(*, stale_after_s: float = 90.0) -> OfflineVitotrolState:
+    """Byte-grounded ORIGINAL-V300 slot-1 profile, offline-only.
+
+    The source captured only outgoing frames from an original Vitotrol 300.
+    The master queries and timing are NOT present in that binary capture,
+    and nothing here proves or authorizes a physical WB2A RX injection.
+    """
+    return OfflineVitotrolState(slot=1,identity=IDENTITY_V300_ORIGINAL,
+                                register_00=REGISTER_00_V300_ORIGINAL,
+                                stale_after_s=stale_after_s)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--slot",type=int,choices=(1,2),default=1)
-    p.add_argument("--variant",choices=("v200","v300_sample"),default="v200")
+    p.add_argument("--variant",choices=("v200","v300_sample","v300_original"),default="v200")
     args=p.parse_args()
     query=bytes.fromhex(KNOWN_MASTER_HEX[args.slot-1])
-    identity=IDENTITY_V200 if args.variant=="v200" else IDENTITY_V300_SAMPLE
+    identity={"v200":IDENTITY_V200, "v300_sample":IDENTITY_V300_SAMPLE,
+              "v300_original":IDENTITY_V300_ORIGINAL}[args.variant]
     reply=model_identity_reply(query,identity=identity)
     print(json.dumps({
         "mode":"OFFLINE_ONLY_NO_SERIAL",
