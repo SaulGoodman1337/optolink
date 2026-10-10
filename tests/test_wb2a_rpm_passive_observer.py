@@ -46,9 +46,11 @@ class PassiveTests(unittest.TestCase):
 
     def test_modulation_and_flame_are_only_context(self):
         self.assertEqual(self.obs.record(
-            "openv/modulation_gfa_p09",b"37",retained=False,mono=1,utc="t")["metric"],"p09")
+            "openv/gfa_modulationssollwert_p09",b"37",retained=False,mono=1,utc="t")["metric"],"p09")
         self.assertEqual(self.obs.record(
-            "openv/brennerstatus",b"1",retained=False,mono=1,utc="t")["metric"],"flame")
+            "openv/brenner_flamme",b"ON",retained=False,mono=1,utc="t")["metric"],"flame")
+        self.assertIsNotNone(self.obs.record(
+            "openv/brenner_flamme_gfa",b"0",retained=False,mono=7,utc="t"))
         self.assertEqual(self.obs.p06_positive_samples,0)
 
     def test_commands_response_and_foreign_topics_rejected(self):

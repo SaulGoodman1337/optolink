@@ -54,16 +54,25 @@ Forschungsgrundlagen im Branch `optolink-research`:
 
 ## 2. Vier Tage passiv VS1-P06 mitschneiden
 
-**Läuft seit 10.10.2026, 21:52 Uhr CEST** als transienter Dienst:
-`optolink-wb2a-rpm-passive-20261010.service`.
-Laufzeit 96 Stunden bis ungefähr 14.10.2026, 21:52 Uhr CEST;
-unabhängige Systemd-Grenze vier Tage plus eine Minute.
+**Läuft seit 10.10.2026, 21:52 Uhr CEST.** Der erste, nur P06
+erfassende Dienst `optolink-wb2a-rpm-passive-20261010.service`
+wurde um 21:59 Uhr ausschließlich als Beobachter sicher beendet
+(`SIGNAL_STOPPED`; 64 vorhandene P06-Samples bleiben im Archiv).
+Mit unverändertem absolutem Endtermin wurde der erweiterte Dienst
+`optolink-wb2a-rpm-passive-20261010-v2.service` gestartet.
+Er erfasst jetzt **P06, P09 und Brennerflamme**; die exakten
+Produktions-MQTT-Topics wurden gegen `homeassistant_poll_list.py`
+geprüft. Gemeinsame Auswertung verwendet beide Recorder-Generationen.
+Gesamtlaufzeit 96 Stunden bis 14.10.2026, ca. 21:53 Uhr CEST;
+separate Systemd-Maximallaufzeit rund eine Minute länger.
 
 `tools/wb2a-rpm-passive-observer.py` liest via bestehendem MQTT-Broker
 nur aktuelle (nicht Retained-) VS1-Werte; kein zweiter serieller Port,
 keine MQTT-Veröffentlichungen, keine Controller-Kommandos.
-Erfasst `geblaesedrehzahl_gfa_p06` sowie verfügbare
-Modulations-/Brennerstatuswerte, jeweils höchstens alle fünf Sekunden.
+Erfasst `geblaesedrehzahl_gfa_p06`,
+`gfa_modulationssollwert_p09`, `brenner_flamme` und
+`brenner_flamme_gfa`, jeweils höchstens alle fünf Sekunden
+pro Messart. P09/Flamme sind Kontext und ausdrücklich **keine RPM**.
 Ausgabefelder markieren die Provenienz unmissverständlich:
 `VS1_MQTT_PUBLISHED_NOT_P300_RPM`.
 
@@ -90,9 +99,17 @@ optolink-hybrid status
 
 Die Offline-Zusammenfassung meldet echte positive P06-Anzeigeepisoden,
 Zeitbereiche und Spitzenwerte, aber **niemals eine P300-Istdrehzahl**.
+**Erste positive Referenz:** Bereits am 10.10.2026 von
+21:56:30 bis 21:57:01 Uhr CEST wurde eine positive P06-Episode
+mit **6 Messpunkten und 4410 U/min Spitzenanzeige** protokolliert.
+Dieses Fenster liegt vor der v2-Kontexterweiterung und besitzt daher
+noch keine flankierenden neuen P09-/Flammen-Samples.
+Es beweist **keine P300-Gebläse-Istdrehzahl**.
+
 Eine für vier Vormittage (11.–14.10.2026, Europe/Berlin)
-eingerichtete, rein lesende Aufgabenautomatik kontrolliert die
-Messdateien und meldet Auffälligkeiten; keine Hardwarewechsel.
+eingerichtete, rein lesende Aufgabenautomatik kontrolliert beide
+Recorder-Generationen im gemeinsamen Archiv und meldet Auffälligkeiten;
+keine Hardwarewechsel.
 
 ### Warum kein unbeaufsichtigter P300-Dauerwechsel?
 

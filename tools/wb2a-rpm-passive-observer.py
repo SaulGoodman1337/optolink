@@ -21,8 +21,10 @@ SCHEMA_VERSION = 1
 SOURCE = "VS1_MQTT_PUBLISHED_NOT_P300_RPM"
 TRACKED = {
     "p06": ("geblaesedrehzahl_gfa_p06",),
-    "p09": ("modulation_gfa_p09", "brennermodulation_gfa_p09"),
-    "flame": ("brennerstatus", "flamme", "brenner_ein"),
+    "p09": ("gfa_modulationssollwert_p09", "modulation_gfa_p09",
+            "brennermodulation_gfa_p09"),
+    "flame": ("brenner_flamme", "brenner_flamme_gfa",
+              "brennerstatus", "flamme", "brenner_ein"),
 }
 MAX_VALUE = 32
 MIN_SAMPLE_SECONDS = 5.0
@@ -99,6 +101,10 @@ class PassiveRecorder:
             return None
         kind=metric_for_topic(topic,self.root)
         raw=finite_display_value(payload)
+        if raw is None and kind=="flame" and isinstance(payload,bytes):
+            # The regular MQTT publisher may use textual boolean states.
+            raw=({"true":"1","on":"1","false":"0","off":"0"}
+                 .get(payload.decode("ascii","ignore").strip().lower()))
         if kind is None or raw is None:
             return None
         if kind in self.last and mono-self.last[kind]<MIN_SAMPLE_SECONDS:
