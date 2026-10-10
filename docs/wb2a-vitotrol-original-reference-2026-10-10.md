@@ -131,6 +131,19 @@ grobe Trunkierung. Synthetische Test-Fixures basieren auf wenigen
 **unveraenderten Originalframes**, nicht auf einem kompletten Kopieren
 des Fremdarchivs.
 
+## Verbindliche Projektrichtlinie (Nachtrag 10.10.2026)
+
+**Nur Optolink/P300-Vitotrol-Emulation. Keine externe KM-Bus-Hardware.**
+Die nachfolgend zitierten historischen Alternativen waren frühere
+Forschungsentscheidungen und sind **als Projektplan verworfen**;
+sie dokumentieren nur den physikalischen Vergleichsstand.
+Neuer gerätebezogener Erkenntnisstand:
+[UART1-RX-Kandidat](wb2a-vitotrol-optolink-rx-2026-10-10.md) und
+[Offline-Timing-/RAM-Zuordnung](wb2a-vitotrol-optolink-rx-context-2026-10-10.md).
+Es wird weder Hardware besorgt noch eine physische Slave-Schaltung
+entwickelt. Auch kein RAM-Write, bevor der ISR-/Parser-Zustandsübergang
+mit Quellenbelegen und reproduzierbaren Tests abgesichert ist.
+
 ## 4. Technische Entscheidung fuer unsere WB2A
 
 **Protokollformat: hoch belegt (extern).** Originale V300-Slaveframes

@@ -211,6 +211,34 @@ berechtigt zu `Physical_WRITE`, `Virtual_WRITE`, direktem
 `U1RB`-Zugriff oder künstlichem RX-Interrupt.** Solche
 Schreiboperationen werden nicht implementiert.
 
+## 3a. Neu: zusätzliche Offline-Zeit- und Kontextkorrelation
+
+[Eigenständiger Kontext-Audit](wb2a-vitotrol-optolink-rx-context-2026-10-10.md)
+führt die archivierten Block-Zeitstempel und Statusbeziehungen
+zusammen. Er belegt `0x166A..0x166C = 06 00 01` in **78/79**
+Voll-RAM-Aufnahmen und `0A 04 01` im **einen** seltenen
+`00 01 B1 ... 00 00`-Fall. Er findet außerdem in **79/79**
+Images bei `0x0B6D..0x0B70` die Bytefolge `42 16 0A FE`,
+einen **möglichen, nicht bewiesenen** 16-Bit-Zeiger `0x1642`.
+
+Für Voll-RAM-Snapshot 64 wurde die ursprüngliche Roh-FC03-
+Blockliste unabhängig gehasht: `0x1660` (+0 ms), `0x1640`
+(+161,270 ms), `0x1620` (+322,138 ms), `0x1600`
+(+487,706 ms), **kein atomarer Auslesezeitpunkt**. Die
+seltene Deep-Probe 145 besitzt nur den Master-Header `01 00 31`;
+der zeitversetzt zusammengesetzte vollständige Master-Puffer hat
+**ungültige CRC** und darf nicht als echte gesendete Anfrage
+klassifiziert werden. Die separate Deep-Probe 1417 hat einen
+CRC-gültigen `01 00 31`-Master-Puffer.
+
+Ein vollständiger Slave-Klasse-`0x11`-CRC-Scan durch alle
+79 archivierten 20.480-Byte-Snapshots ergab **0** Treffer;
+positiver synthetischer Scanner-Gegentest ist vorhanden.
+Das ist kein Nachweis, dass der Bus nie Vitotrol-Antworten
+empfangen kann, und kein Schreibrecht. Die neuen Daten
+bestätigen daher nur einen **stärkeren RX-SRAM-Kandidaten**, keine
+Optolink-Injektionsfunktion.
+
 ## 4. Ab hier: Optolink-only Forschungsentscheidung
 
 Wir verfolgen **keinen externen KM-Bus-Emulator**. Die

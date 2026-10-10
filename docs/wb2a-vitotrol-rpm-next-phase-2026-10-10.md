@@ -262,3 +262,20 @@ ausgefuehrt**, nicht in den Continuous-/Boot-Canary-Plan aufgenommen
 und nicht produktiv deployed. Der neue forensische Offline-Auditor
 und alle Beweise/Grenzen stehen unter
 [WB2A Optolink RX-Forschung](wb2a-vitotrol-optolink-rx-2026-10-10.md).
+
+## 7. Optolink-only RX-Kontext-Audit: zwei gesicherte Archive
+
+Der erweiterte, ausschließlich offline arbeitende
+[RX-Timing-/Status-Auditor](wb2a-vitotrol-optolink-rx-context-2026-10-10.md)
+verifiziert 79 vollständige RAM- und 295 Deep-Proben sowie die
+640 Blockread-Zeitstempel von Snapshot 64. **0/79** Voll-RAM-Images
+enthalten einen gültigen Klasse-11-Slaveframe; `0x0B6D` könnte ein
+Zeiger auf den RX-Kandidaten `0x1642` sein, bleibt aber unbewiesen.
+Die bisherige Master-Anfragezuordnung in Deep-Runde 145 wurde
+**herabgestuft**: der über zwei Zeitpunkte zusammengesetzte
+Master-TX-Frame enthält einen CRC-Fehler, der nicht mit einem
+fehlerhaften Drahtframe gleichgesetzt werden darf.
+
+**Fehlendes Gate:** lokal belegter INTB/Vektor20, UART1-RX-Handler
+und Übergang zum Vitotrol-State. Bis dahin keine physische Emulation,
+keine neue Optolink-/RAM-/Register-Schreibfunktion.

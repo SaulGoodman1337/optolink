@@ -12,6 +12,7 @@ Dieser Ordner enthält die Betriebs- und Entwicklerdokumentation für den produk
 | [wb2a-vitotrol-rpm-next-phase-2026-10-10.md](wb2a-vitotrol-rpm-next-phase-2026-10-10.md) | Separater Entwicklungsbranch: Vitotrol-KM-Bus-Offline-Simulator, passive Vier-Tage-VS1-RPM-Messung und Beweisgrenzen |
 | [wb2a-vitotrol-original-reference-2026-10-10.md](wb2a-vitotrol-original-reference-2026-10-10.md) | Research: 448 CRC-gueltige Original-Vitotrol-300-TX-Frames, Quellvergleich und Offline-Audit |
 | [wb2a-vitotrol-optolink-rx-2026-10-10.md](wb2a-vitotrol-optolink-rx-2026-10-10.md) | Optolink-only RX-Forschung: 0x1642-Kandidatenpuffer aus 374 historischen P300-RAM-Samples, sicherer fester Read-only-Diagnosepfad |
+| [wb2a-vitotrol-optolink-rx-context-2026-10-10.md](wb2a-vitotrol-optolink-rx-context-2026-10-10.md) | Byte- und Zeitkontext des 0x1642-RX-Kandidaten, 79 Voll-RAM- und 295 Deep-Proben, nichtatomare Grenzen und 0 Klasse-11-Treffer |
 | [operations.md](operations.md) | Beim Betrieb: Update, Status, Logs, Clock-Sync, Fehlerdiagnose |
 | [home-assistant.md](home-assistant.md) | Bei HA-/MQTT-/Dashboard-Änderungen |
 | [anlagenschema.md](anlagenschema.md) | WB2A-Anlagenschema, Hydrauliktopologie und dokumentierte Schreibwerte 00/52/53/54/5B |
