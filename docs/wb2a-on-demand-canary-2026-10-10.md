@@ -131,3 +131,65 @@ optolink-hybrid status
 Nach Korrektur und vor C2: **315/315** Tests bestanden.
 Der automatische `update`-Kanal bleibt bewusst auf dem bestehenden
 stabilen `main`. Der Feature-Branch dient als getrennte PR-Basis.
+
+
+## 6. Dritter Canary C3: manueller Root-Socket-Auftrag mit Ergebniskanal
+
+Die zweite bestandene physische Abnahme am **10.10.2026** prüft nun nicht
+nur den ursprünglichen internen Selbsttest, sondern die vollständige,
+authentifizierte Operator-Schnittstelle.
+
+| Prüfgegenstand | Tatsächliches Ergebnis |
+| --- | --- |
+| Root-eigenes Shadow-Release | `wb2a-manual-rpc-c3-20261010` |
+| Canary-Session | `run-20261010T192559Z-327016` |
+| Aufnahme | `sudo ... optolink-hybrid.py anfordern p300_ram_0f20_32 ...` |
+| Request-ID | `eee42b270dac733e49a1811bdce929be` |
+| Root-Gateway-Session | `a9cefcf93a25e4cec24660736eda0e3f` |
+| Annahme | `ok=true`, `state=queued` |
+| Endstatus per eigenem Root-CLI | `state=completed`, `verified_vs1=true` |
+| Echte P300-FC03-Diagnose | `0x0F20`, genau 32 Bytes |
+| Gemessener Protokollwechsel | **5180,292 ms** |
+| Original-VS1-GFA nach Return | P80 `20`, P06 `00` |
+| Sitzungsevents im echten Journal | **exakt 1** |
+| Unabhängige Supervisorprüfung | `PASS_ONE_VERIFIED_DEMAND_WINDOW` |
+| ExecStopPost-Rollback | `PASS_ORIGINAL_SERVICES_RESTORED`, `errors=[]` |
+| Finaler Anlagenstatus | `VS1_BETRIEB_OK`, Writer-Sperre frei |
+
+Vom Hardware-C3 erhaltener Rohblock:
+
+```text
+000900aeab00000100000064648d05f50e18006408020000440ac2016b0d6b0d
+```
+
+Die Rohdaten wurden sowohl vom originalen Hauptprozess protokolliert als
+auch von `optolink-hybrid.py ergebnis` authentifiziert zurückgegeben.
+Sie sind **kein** verifizierter Drehzahl-Istwert. Der neue lokale Socket
+(`/run/optolink-hybrid/p300-demand.sock`, Datei `0600`,
+systemd-`RuntimeDirectory` `0700`) wurde nach dem Canary wieder entfernt.
+Es blieb kein Enrollment und kein temporäres systemd-Drop-in zurück.
+Der ursprüngliche CP2102-Port gehört wieder dem originalen Splitter.
+Die ursprünglichen sechs Dienste/Timer sind aktiv; Canary und
+Pumpenoverride inaktiv.
+
+Gespeicherte root-eigene Abnahmebelege:
+
+```text
+/var/lib/optolink-hybrid/canary-sessions/run-20261010T192559Z-327016/
+  continuous-measurement.json
+  measurement.json
+  recovery.json
+  state.json
+```
+
+Der exakte Root-Only-Request-Vertrag mit Allowlist, Peer-Prüfung,
+TTL und expliziten Einsatzgrenzen ist in
+[WB2A Root-On-Demand API](wb2a-root-on-demand-api-2026-10-10.md)
+beschrieben.
+
+Die ursprünglichen Angaben zu C1 (Abbruch plus funktionierender Recovery)
+und C2 (bestandener interner Selbsttest) bleiben als getrennte,
+unveränderte Versuchsnachweise gültig. Die 315 historischen Tests im
+Abschnitt davor entsprechen dem Stand **vor C3**. Nach Ergänzung der
+Root-Socket-Integration wurden **362/362** Offline-Regressionstests
+erfolgreich durchgeführt.

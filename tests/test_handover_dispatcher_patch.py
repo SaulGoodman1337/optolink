@@ -15,6 +15,9 @@ def do_poll_item(item, ser):
     retcode, data, val, _ = requests_util.response_to_request(item, ser)
     return retcode
 
+def close_everything():
+    pass
+
 def main():
     global _mock
     serOptolink = object()
@@ -31,6 +34,8 @@ def main():
                 if False:
                         retcode,_,_ = vs12_adapter.read_datapoint_ext(0xf8, 2, serOptolink)     # type: ignore
                 # let cpu take a breath if there was nothing to do
+        if True:
+            close_everything()
 '''
 
 

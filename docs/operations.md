@@ -85,6 +85,14 @@ oder beim Ausfall des Canary-Supervisors die Originaldienste
 wieder her. Details, Sperrmarker und Grenzen siehe
 [VS1/P300-Protokollwechsel](hybrid-protokollwechsel.md).
 
+Für separate manuelle, lokal nur von Root autorisierte On-Demand-Diagnosen
+existieren die Kommandos `optolink-hybrid anfordern`, `ergebnis` und
+`abbrechen`. Sie funktionieren **ausschließlich im explizit gestarteten,
+überwachten `fenced-ondemand`-Shadow-Betrieb**, nicht in normalem VS1.
+Bedienung, Sitzungskennung, Ergebnisnachweis und die in C3 bestandene
+echte Hardwareabnahme: [Root-On-Demand-API](wb2a-root-on-demand-api-2026-10-10.md).
+Keiner dieser Befehle schaltet Controller-Writes frei.
+
 ## 2. Schnellcheck nach Update oder Reboot
 
 ```bash

@@ -42,6 +42,15 @@ Rollback. Die Funktion bleibt **standardmäßig deaktiviert**; weder eine
 allgemeine MQTT-/TCP-P300-API noch P300-Writes sind freigegeben.
 Der Standardbetrieb bleibt unverändert.
 
+**Erweiterte C3-Abnahme:** Ein manueller P300-Rohleseauftrag über den
+lokalen, root-authentifizierten Unix-Socket und die neue Operator-CLI
+wurde am echten WB2A geprüft: 32 Bytes in 5180,292 ms, nachfolgend echte
+VS1-GFA-P80/P06-Bestätigung, per CLI zurückgegebenes
+`verified_vs1=true` und bestandener unabhängiger Recovery. Die neue
+[Root-On-Demand-API](wb2a-root-on-demand-api-2026-10-10.md) ist **nur
+in der ausdrücklich beaufsichtigten Shadow-Sitzung** aktiv; normaler
+VS1-Betrieb besitzt keinen Socket und keinen P300-Dauerbetrieb.
+
 ## Installation über `update`
 
 Der normale Installer installiert aus der gewählten Repository-Revision:
