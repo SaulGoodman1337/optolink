@@ -299,3 +299,16 @@ kein ISR-Gate und kein Recht zu RAM-Writes.
 ## 9. Offline-Teststrecke fuer die spaetere Vitotrol-Hardwareabnahme (10.10.2026)
 
 Der **rein synthetische** [Abnahmepruefer](wb2a-vitotrol-acceptance-offline-2026-10-10.md) kontrolliert hypothetische Readbacks fuer `0x27A0`, `0x0A5C`, `0x0896`, `0x089C`, aktuelle BC-Stoerung, Fehlerhistorie, VS1-Zustand, zwei unterschiedliche Raumtemperaturziele und die vollstaendige Rueckstellung mit Nachlauf. Ein synthetischer BC-Fall fuehrt zu `OFFLINE_SCENARIO_FAIL`. Selbst eine positive Testdatei meldet **immer** `live_hardware_authorized=false`; sie enthaelt keine Hardwarezugriffs- oder Code-Aktivierungsfunktion. Derzeit fehlen nach wie vor 20C2-RX-Parser/State-Commit, belegter Optolink-Inject-Service und ein unabhaengiges Controller-Codierungs-Rollback. Die RPM-v2-Forschung und der produktive VS1-Betrieb wurden nicht angetastet.
+
+## 10.10.2026 spaet: exakt verknuepfter VitoSoft-Profilaudit
+
+Der [neue SHA-attestierte VitoSoft-Auditor](wb2a-vitotrol-vitosoft-profile-audit-2026-10-10.md)
+verknuepft `DatapointTypeId=60` mit den echten FCRead-/FCWrite-
+Definitionen aus den zwei unveraenderten lokalen Original-XML-Dateien.
+**581** Definitionen sind exakt dem VDensHO1-Profil zugeordnet, darunter
+**22** RPCs. **Kein** exakt verknuepfter XRAM_WRITE-/KM-Bus-
+Transparent-Schreib- oder Vitotrol-RX-Injektionsdienst. Die scheinbar
+passende `0x1642`-Zeichenkette im globalen Eventbestand gehoert
+zum fremden Alias `WPR_Heizwaerme03` und ist kein RX-Pufferbeweis.
+Die 20C2-Firmware selbst bleibt unvollstaendig verstanden; aus dem
+negativen Hostkatalogbefund folgt **kein** ROM-Ausschluss.

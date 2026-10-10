@@ -46,3 +46,13 @@ Das bestehende VS1/P300-Systemd-Recovery stellt die serielle Originalkommunikati
 - [P300-RX-Kandidat 0x1642](wb2a-vitotrol-optolink-rx-2026-10-10.md)
 - [Zeit-/CRC-/RAM-Xref-Beweisgrenzen](wb2a-vitotrol-optolink-rx-context-2026-10-10.md)
 - [Bestehendes verifiziertes Read-only-Demand-Recovery](wb2a-root-on-demand-api-2026-10-10.md)
+
+## Nachtrag: VitoSoft-Hostkatalog als unabhängiges Recherche-Gate
+
+Der [VitoSoft-Profilaudit](wb2a-vitotrol-vitosoft-profile-audit-2026-10-10.md)
+belegt fuer das Profil VDensHO1 **581** Eventdefinitionen und **22**
+RPCs, aber **keinen** genau zugeordneten KM-Bus-RX-Injektions- oder
+XRAM_WRITE-Aufruf. Die Herkunft aus dem globalen Dropdown-Katalog
+reicht dafuer nicht aus. Der vollstaendige Live-Abnahme-Blocker
+bleibt deshalb bestehen: ohne belegten Optolink-RX-/State-Commit
+und unabhaengigen Codierungs-Rollback kein Hardware-Schreibversuch.
