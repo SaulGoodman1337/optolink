@@ -231,3 +231,218 @@ class GfaFreshnessLedger:
     def invalidate_all(self):
         with self._lock:
             self._samples.clear()
+
+
+# ---------------------------------------------------------------------------
+# Experimental demand-driven P300 batching (OFFLINE ONLY until dispatcher
+# ingress, producer attestation and recovery are integrated). Not an executor.
+# Existing production behaviour and BoundedReadQueue remain unchanged.
+# ---------------------------------------------------------------------------
+
+P300_DEMAND_KINDS = frozenset({
+    ReadKind.P300_ID,
+    ReadKind.P300_RAM_0F20_32,
+    ReadKind.P300_RAM_1C60_32,
+})
+_P300_ESTIMATED_READ_MS = {
+    ReadKind.P300_ID: 85.0,
+    ReadKind.P300_RAM_0F20_32: 140.0,
+    ReadKind.P300_RAM_1C60_32: 140.0,
+}
+
+
+@dataclass(eq=False)
+class DemandTicket:
+    sequence: int
+    kind: ReadKind
+    enqueued_at: float
+    expires_at: float
+    state: TicketState = TicketState.QUEUED
+
+
+@dataclass(frozen=True)
+class DemandSelection:
+    """A *simulation* only; a separate RuntimeAdmissionGate must allow IO."""
+    tickets: tuple[DemandTicket, ...]
+    jobs: tuple
+    phase_plan: object
+
+
+class BoundedDemandBatcher:
+    """Finite read-only P300 demand queue owned by the original serial loop.
+
+    Producers may submit known diagnostic reads from other threads. Only the
+    creating serial-loop thread may select and reserve a batch. No port,
+    MQTT client, command dispatcher or transition operation is imported.
+    A reserved batch MUST be completed after the verified VS1 return.
+    Rejected admission must NOT reserve or discard waiting tickets.
+    """
+
+    def __init__(self, *, capacity: int = 16, max_distinct_reads: int = 3,
+                 min_spacing_s: float = 60.0, clock=time.monotonic):
+        if (type(capacity) is not int or not 1 <= capacity <= 128
+                or type(max_distinct_reads) is not int
+                or not 1 <= max_distinct_reads <= 3
+                or type(min_spacing_s) not in (int, float)
+                or not math.isfinite(min_spacing_s) or min_spacing_s < 30
+                or not callable(clock)):
+            raise ValueError("bounded capacity, batch and cooldown required")
+        self.capacity = capacity
+        self.max_distinct_reads = max_distinct_reads
+        self.min_spacing_s = float(min_spacing_s)
+        self.clock = clock
+        self._owner = threading.get_ident()
+        self._pending: deque[DemandTicket] = deque()
+        self._reserved: DemandSelection | None = None
+        self._offered: DemandSelection | None = None
+        self._offered_at: float | None = None
+        self._next = 1
+        self._last_completed: float | None = None
+        self._failed_closed = False
+        self._lock = threading.RLock()
+
+    def _require_owner(self):
+        if threading.get_ident() != self._owner:
+            raise QueueBusy("batch selection belongs only to serial-owner thread")
+
+    def _expire(self):
+        now = self.clock()
+        keep = deque()
+        for t in self._pending:
+            if now >= t.expires_at:
+                t.state = TicketState.EXPIRED
+            else:
+                keep.append(t)
+        self._pending = keep
+
+    def submit(self, kind: ReadKind, *, ttl_s: float = 30.0) -> DemandTicket:
+        if type(kind) is not ReadKind or kind not in P300_DEMAND_KINDS:
+            raise SchedulingError("only three exact P300 diagnostic read kinds")
+        if (type(ttl_s) not in (int,float) or not math.isfinite(ttl_s)
+                or ttl_s <= 0 or ttl_s > 300):
+            raise SchedulingError("finite 0<ttl<=300s required")
+        with self._lock:
+            if self._failed_closed:
+                raise SchedulingError("demand queue latched FAILED_CLOSED")
+            self._expire()
+            if len(self._pending) >= self.capacity:
+                raise QueueBusy("bounded P300 demand queue full")
+            now = self.clock()
+            ticket = DemandTicket(self._next,kind,now,now+float(ttl_s))
+            self._next += 1
+            self._pending.append(ticket)
+            return ticket
+
+    def pending_count(self) -> int:
+        with self._lock:
+            self._expire()
+            return len(self._pending)
+
+    def cancel(self, ticket: DemandTicket) -> bool:
+        with self._lock:
+            if type(ticket) is not DemandTicket or ticket not in self._pending:
+                return False
+            self._pending.remove(ticket)
+            ticket.state = TicketState.CANCELLED
+            return True
+
+    def select(self, budget, *, initial_p06_age_ms: float) -> DemandSelection | None:
+        """Dry-run against caller-supplied deadlines and phase/freshness budget.
+
+        Deliberately does not clear the queue or claim a serial/producer lock.
+        The caller must first prove external writer quiescence and perform the
+        existing RuntimeAdmissionGate checks before calling reserve().
+        """
+        self._require_owner()
+        from .phase_planner import Budget, ReadJob, plan_phase_windows, PlanRejected
+        if type(budget) is not Budget:
+            raise SchedulingError("reviewed Budget required")
+        if (type(initial_p06_age_ms) not in (int,float)
+                or not math.isfinite(initial_p06_age_ms)
+                or initial_p06_age_ms < 0):
+            raise SchedulingError("explicit valid P06 age required")
+        with self._lock:
+            self._offered = None
+            self._offered_at = None
+            self._expire()
+            if self._failed_closed or self._reserved is not None:
+                return None
+            if (self._last_completed is not None
+                    and self.clock()-self._last_completed < self.min_spacing_s):
+                return None
+            if not self._pending:
+                return None
+            selected = []
+            kinds = []
+            for ticket in self._pending:
+                if ticket.kind not in kinds and len(kinds) >= self.max_distinct_reads:
+                    break  # do not starve earlier work by skipping a barrier
+                selected.append(ticket)
+                if ticket.kind not in kinds:
+                    kinds.append(ticket.kind)
+            now_ms = self.clock() * 1000
+            jobs = tuple(
+                ReadJob(kind.value,kind,_P300_ESTIMATED_READ_MS[kind],
+                        min(t.expires_at for t in selected if t.kind is kind)*1000,
+                        min(t.enqueued_at for t in selected if t.kind is kind)*1000,
+                        True) for kind in kinds
+            )
+            try:
+                plan = plan_phase_windows(jobs,budget,now_ms=now_ms,
+                       initial_p06_age_ms=initial_p06_age_ms)
+            except PlanRejected:
+                return None  # no serial IO; deadlines will expire naturally
+            if plan.p300_windows != 1 or plan.handovers != 2:
+                raise SchedulingError("only one bounded P300 roundtrip allowed")
+            selection = DemandSelection(tuple(selected),jobs,plan)
+            self._offered = selection
+            self._offered_at = self.clock()
+            return selection
+
+    def reserve(self, selection: DemandSelection) -> None:
+        """Call only AFTER a verified producer fence and runtime admission."""
+        self._require_owner()
+        if type(selection) is not DemandSelection:
+            raise SchedulingError("validated selection required")
+        with self._lock:
+            if self._reserved is not None or self._failed_closed:
+                raise QueueBusy("active or failed demand batch")
+            if (selection is not self._offered or self._offered_at is None
+                    or not 0 <= self.clock()-self._offered_at <= 1.0):
+                raise SchedulingError("untrusted or expired batch selection")
+            self._expire()
+            if not selection.tickets or any(
+                    t not in self._pending or t.state is not TicketState.QUEUED
+                    for t in selection.tickets):
+                raise SchedulingError("selection expired or no longer pending")
+            for t in selection.tickets:
+                self._pending.remove(t)
+                t.state = TicketState.RUNNING
+            self._reserved = selection
+            self._offered = None
+            self._offered_at = None
+
+    def complete(self, *, success: bool, verified_vs1: bool) -> None:
+        """No ticket may be marked successful without an original VS1 proof."""
+        self._require_owner()
+        if type(success) is not bool or type(verified_vs1) is not bool:
+            raise SchedulingError("explicit boolean result required")
+        with self._lock:
+            if self._reserved is None:
+                raise SchedulingError("no reserved demand batch")
+            if success and not verified_vs1:
+                success = False
+            now = self.clock()
+            for t in self._reserved.tickets:
+                t.state = (TicketState.COMPLETED if now <= t.expires_at
+                           else TicketState.EXPIRED) if success else TicketState.FAILED
+            if success:
+                self._last_completed = now
+            else:
+                self._failed_closed = True
+            self._reserved = None
+
+    @property
+    def failed_closed(self) -> bool:
+        with self._lock:
+            return self._failed_closed

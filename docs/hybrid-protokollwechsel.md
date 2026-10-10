@@ -32,6 +32,12 @@ liegen auf dem Branch
 Der Produktionsbranch enthält lediglich die dafür nötige,
 reproduzierbar installierbare Laufzeit und Sicherheitsprüfungen.
 
+**Neue, noch nicht aktivierte Entwicklungsstufe:** Der auf VS1 aufbauende
+[bedarfsgesteuerte P300-Lesebatcher](wb2a-on-demand-p300-design-2026-10-10.md)
+ist inzwischen offline mit dem bestehenden Admission-Gate und simuliertem
+Port getestet. Das ist **keine zusätzliche Hardwarefreigabe** und kein
+aktivierter MQTT-/TCP-P300-Aufruf. Der Standardbetrieb bleibt unverändert.
+
 ## Installation über `update`
 
 Der normale Installer installiert aus der gewählten Repository-Revision:
