@@ -268,7 +268,9 @@ class RuntimeAdmissionGate:
                            lease: PortLease,
                            jobs: tuple[ReadJob, ...] | None = None,
                            clock: Callable[[], float] = time.monotonic,
-                           sleep: Callable[[float], None] = time.sleep
+                           sleep: Callable[[float], None] = time.sleep,
+                           plan_clock_deadlines: bool = False,
+                           initial_p06_age_ms: float = 0.0,
                            ) -> ReadOnlyBatchResult | None:
         """Borrow the SAME existing VS1 handle; no other serial open.
 
@@ -288,6 +290,12 @@ class RuntimeAdmissionGate:
                          for name, kind, duration in READONLY_PRESET)
         if not isinstance(jobs, tuple) or not jobs:
             raise AdmissionRejected('only typed finite read-only batches are supported')
+        if type(plan_clock_deadlines) is not bool:
+            raise AdmissionRejected('absolute deadline mode must be explicit')
+        if (type(initial_p06_age_ms) not in (int,float)
+                or not math.isfinite(initial_p06_age_ms)
+                or initial_p06_age_ms < 0):
+            raise AdmissionRejected('invalid P06 age for runtime planner')
         started = clock()
         self.in_window = True
         try:
@@ -298,7 +306,13 @@ class RuntimeAdmissionGate:
                 allow_maintenance=True, resume_vs1=resume_vs1)
             with manager:
                 bridge.bind_verified_coordinator(manager)
-                result = bridge.execute_maintenance(jobs, budget)
+                # Demand jobs carry absolute monotonic deadlines. Existing
+                # preset jobs remain relative to 0 for backwards compatibility.
+                _now_ms = clock()*1000 if plan_clock_deadlines else 0.0
+                _age_ms = (initial_p06_age_ms+(clock()-started)*1000
+                           if plan_clock_deadlines else 0.0)
+                result = bridge.execute_maintenance(
+                    jobs, budget, now_ms=_now_ms, initial_p06_age_ms=_age_ms)
                 if manager.mode is not Mode.VS1_VERIFIED:
                     raise AdmissionRejected('no verified VS1 after batch')
                 # Recheck through the actual legacy adapter, never a P300 proxy.

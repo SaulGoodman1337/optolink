@@ -188,3 +188,176 @@ class ContinuousReadonlyRuntime:
         self.last_keepalive_at=self.clock()  # verified final legacy P80/P06
         self.last_refusal=''
         return TickOutcome('VERIFIED_SWITCH',result=result)
+
+
+
+@dataclass(frozen=True)
+class DemandReply:
+    """Raw diagnostic from one fully recovered, nonexpired P300 ticket."""
+    sequence: int
+    kind: str
+    raw_hex: str
+    origin: str = "P300_RAW_DIAGNOSTIC_NOT_ACTUAL_RPM"
+
+
+@dataclass(frozen=True)
+class DemandTickOutcome:
+    status: str
+    reason: str = ""
+    replies: tuple[DemandReply, ...] = ()
+    result: ReadOnlyBatchResult | None = None
+
+
+class OnDemandReadonlyRuntime(ContinuousReadonlyRuntime):
+    """Opt-in, single-serial-owner demand path; never schedules itself.
+
+    Only an explicitly bound original main-loop integration can call tick().
+    Ingress admission and the complete external producer epoch are checked
+    again under the same exclusive freeze/producer lock as the existing
+    continuous read-only canary, not via a second serial connection.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        from .scheduler import BoundedDemandBatcher, OwnerGfaProvenance
+        self.demands = BoundedDemandBatcher(
+            clock=self.clock, min_spacing_s=self.min_interval_s)
+        self.provenance = OwnerGfaProvenance(clock=self.clock)
+        self.next_due = self.clock()
+        self._last_replies: tuple[DemandReply, ...] = ()
+
+    def submit_internal(self, kind, *, ttl_s: float = 30.0):
+        """Typed internal API, NEVER a generic MQTT/TCP raw-frame parser."""
+        return self.demands.submit(kind, ttl_s=ttl_s)
+
+    def observe_original_result(self, request, response) -> bool:
+        """Only post original synchronous VS1 GFA_READ, never a P300 proxy."""
+        self._assert_owner()
+        return self.provenance.observe_original(request, response)
+
+    def due(self) -> bool:
+        self._assert_owner()
+        return (not self.gate.failed_closed
+                and not self.demands.failed_closed
+                and self.demands.pending_count() > 0
+                and self.clock() >= self.next_due)
+
+    @staticmethod
+    def _validate_raw(result, selection) -> dict[str, str]:
+        from .scheduler import ReadKind
+        expected = {job.name: job.kind for job in selection.jobs}
+        received = dict(result.reads)
+        if len(received) != len(result.reads) or set(received) != set(expected):
+            raise ContinuousRuntimeRejected("P300 diagnostic count/address mismatch")
+        for name, kind in expected.items():
+            value = received[name]
+            if (not isinstance(value,str)
+                    or len(value) != (4 if kind is ReadKind.P300_ID else 64)):
+                raise ContinuousRuntimeRejected("P300 raw length not verified")
+            try:
+                raw = bytes.fromhex(value)
+            except ValueError as exc:
+                raise ContinuousRuntimeRejected("P300 raw hex invalid") from exc
+            if kind is ReadKind.P300_ID and raw != bytes.fromhex("20c2"):
+                raise ContinuousRuntimeRejected("P300 identity mismatch")
+        return received
+
+    def tick(self) -> DemandTickOutcome:
+        from .scheduler import StaleReading
+        self._assert_owner()
+        if self.gate.failed_closed or self.demands.failed_closed:
+            return DemandTickOutcome("FAIL_CLOSED", reason="previous protocol failure")
+        if self.demands.pending_count() == 0:
+            return DemandTickOutcome("NO_DEMAND",reason="read-only queue empty")
+        now=self.clock()
+        if now < self.next_due:
+            return DemandTickOutcome("NOT_DUE",reason="bounded admission backoff")
+        self.next_due = now + 3.0
+        if not self.all_writers_attested():
+            return DemandTickOutcome("NOT_ADMITTED",
+                                     reason="WRITER_ENROLMENT_NOT_ATTESTED")
+        if self.last_keepalive_at is None or not 0 <= now-self.last_keepalive_at <= 2.0:
+            return DemandTickOutcome("NOT_ADMITTED",reason="LEGACY_KEEPALIVE_NOT_FRESH")
+        try:
+            age_ms=self.provenance.require_age_ms(
+                max_age_ms=self.budget.max_p06_age_ms)
+        except StaleReading:
+            return DemandTickOutcome("NOT_ADMITTED",reason="REAL_GFA_P06_NOT_FRESH")
+        selected=self.demands.select(self.budget,initial_p06_age_ms=age_ms)
+        if selected is None:
+            return DemandTickOutcome("NOT_ADMITTED",
+                                     reason="DEADLINE_OR_P06_BUDGET_REJECTED")
+
+        with self.ingress.freeze():
+            try:
+                with p300_window(path=self.lease_path) as proof:
+                    ha_ledger=self.mqtt._hybrid_readback_ledger
+                    if ha_ledger.failed_closed:
+                        self.gate.failed_closed=True
+                        return DemandTickOutcome("FAIL_CLOSED",
+                                                 reason="HA_READBACK_FAILED")
+                    if ha_ledger.pending_count:
+                        return DemandTickOutcome("NOT_ADMITTED",
+                                                 reason="HA_READBACK_PENDING")
+                    snapshot=self._snapshot()
+                    decision=self.gate.decide(snapshot,self.budget)
+                    if not decision.admitted:
+                        return DemandTickOutcome("NOT_ADMITTED",
+                                                 reason=decision.reason)
+                    # Recheck under the frozen ingress and producer lock.
+                    try:
+                        fresh_age=self.provenance.require_age_ms(
+                            max_age_ms=self.budget.max_p06_age_ms)
+                    except StaleReading:
+                        return DemandTickOutcome("NOT_ADMITTED",
+                                                 reason="REAL_GFA_P06_NOT_FRESH")
+                    selection=self.demands.select(
+                        self.budget,initial_p06_age_ms=fresh_age)
+                    if selection is None:
+                        return DemandTickOutcome("NOT_ADMITTED",
+                                                 reason="DEADLINE_OR_P06_BUDGET_REJECTED")
+                    self.demands.reserve(selection)
+                    try:
+                        self.provenance.before_transfer()
+                        # Persist the crash-proof P300 marker before any EOT.
+                        proof.begin()
+                        result=self.gate.run_readonly_batch(
+                            snapshot,self.budget,
+                            port=self.port,legacy_dispatch=self.legacy_dispatch,
+                            resume_vs1=self.resume_vs1,
+                            lease=PortLease(self.serial_lease_path),
+                            jobs=selection.jobs,
+                            clock=self.clock,sleep=self.sleep,
+                            plan_clock_deadlines=True,
+                            initial_p06_age_ms=fresh_age)
+                        if result is None or result.verified_vs1 is not True:
+                            raise ContinuousRuntimeRejected(
+                                "P300 return identity/P80/P06 not verified")
+                        received=self._validate_raw(result,selection)
+                        self.provenance.after_verified_return(
+                            p80_hex=result.p80_hex,p06_hex=result.p06_hex)
+                        proof.confirm_verified_vs1()
+                        self.demands.complete(success=True,verified_vs1=True)
+                        replies=tuple(
+                            DemandReply(ticket.sequence,ticket.kind.value,
+                                        received[ticket.kind.value])
+                            for ticket in selection.tickets
+                            if ticket.state.value == "completed")
+                    except BaseException:
+                        self.provenance.fail_closed()
+                        self.gate.failed_closed=True
+                        if any(t.state.value == "running" for t in selection.tickets):
+                            self.demands.complete(success=False,verified_vs1=False)
+                        raise
+            except ProducerFenceRejected:
+                return DemandTickOutcome("NOT_ADMITTED",
+                                         reason="WRITER_LEASE_BUSY_OR_UNVERIFIED")
+            except BaseException:
+                self.gate.failed_closed=True
+                self.provenance.fail_closed()
+                raise
+        self.last_result=result
+        self._last_replies=replies
+        self.next_due=self.clock()+self.min_interval_s
+        self.last_keepalive_at=self.clock()
+        return DemandTickOutcome("VERIFIED_SWITCH",replies=replies,result=result)

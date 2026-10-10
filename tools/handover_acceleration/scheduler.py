@@ -446,3 +446,133 @@ class BoundedDemandBatcher:
     def failed_closed(self) -> bool:
         with self._lock:
             return self._failed_closed
+
+
+# VS1 P06 provenance is deliberately independent of the P300 scheduler.
+# Only raw results from the original synchronous GFA dispatch are accepted.
+class OwnerGfaProvenance:
+    """Single-owner, generation-scoped P80/P06 proof for a hybrid request.
+
+    Passing a formatted MQTT value, virtual read, FC01 status or P300 memory
+    cannot renew either reference. observe_original must be called solely
+    after the original legacy GFA dispatcher has actually returned.
+    """
+
+    def __init__(self, *, clock=time.monotonic):
+        if not callable(clock):
+            raise ValueError("clock required")
+        self.clock = clock
+        self.owner = threading.get_ident()
+        self.generation = 1
+        self.in_transfer = False
+        self.ledger = GfaFreshnessLedger(clock=clock)
+
+    def _require_owner(self):
+        if threading.get_ident() != self.owner:
+            raise QueueBusy("only the original serial owner may attest GFA")
+
+    @staticmethod
+    def _gfa_kind(request) -> ReadKind | None:
+        if isinstance(request, str):
+            fields = request.split(";")
+            if not 3 <= len(fields) <= 5 or fields[0].lower() not in ("gr", "gfaread"):
+                return None
+            if len(fields) > 3 and fields[3].lower() != "raw":
+                return None
+            if len(fields) > 4 and fields[4].lower() not in ("false", "0"):
+                return None
+            addr, size = fields[1:3]
+        elif isinstance(request, (list, tuple)) and len(request) == 5:
+            # Original normalized poll item: Name, Addr, Len, Scale, Signed.
+            name, addr, size, fmt, signed = request
+            if (not isinstance(name, str)
+                    or not isinstance(fmt, str) or not fmt.lower().startswith("gfa:")
+                    or signed is not False):
+                return None
+        else:
+            return None
+        try:
+            address = int(addr,0) if isinstance(addr,str) else addr
+            length = int(size,0) if isinstance(size,str) else size
+        except (ValueError, TypeError):
+            return None
+        if type(address) is not int or type(length) is not int or length != 1:
+            return None
+        return ({0x4050: ReadKind.VS1_P80,
+                 0x4006: ReadKind.VS1_P06}).get(address)
+
+    def observe_original(self, request, response) -> bool:
+        """Record a REAL raw original GFA response, or invalidate on failure."""
+        self._require_owner()
+        kind = self._gfa_kind(request)
+        if kind is None:
+            return False
+        if self.in_transfer:
+            self.ledger.invalidate_all()
+            raise SchedulingError("legacy GFA response during protocol transfer")
+        if (not isinstance(response, tuple) or len(response) != 4
+                or type(response[0]) is not int or response[0] != 1
+                or not isinstance(response[1], (bytes, bytearray))
+                or len(response[1]) != 1):
+            self.ledger.invalidate_all()
+            return False
+        raw = bytes(response[1])
+        if raw == b"\xff" or (kind is ReadKind.VS1_P80 and raw != b"\x20"):
+            self.ledger.invalidate_all()
+            return False
+        self.ledger.record(kind, raw, session_generation=self.generation,
+                           vs1_verified=True)
+        return True
+
+    def require_age_ms(self, *, max_age_ms: float) -> float:
+        """Fresh P80 plus fresh P06 required; zero RPM is valid, FF is not."""
+        self._require_owner()
+        if self.in_transfer:
+            raise StaleReading("P300 transfer active")
+        if (type(max_age_ms) not in (int,float) or not math.isfinite(max_age_ms)
+                or max_age_ms <= 0):
+            raise SchedulingError("finite positive age required")
+        p80 = self.ledger.fresh(ReadKind.VS1_P80,
+                               current_generation=self.generation,
+                               max_age_s=max_age_ms/1000)
+        if p80.raw != b"\x20":
+            raise StaleReading("unverified P80 identity")
+        p06 = self.ledger.fresh(ReadKind.VS1_P06,
+                               current_generation=self.generation,
+                               max_age_s=max_age_ms/1000)
+        age_ms = (self.clock() - p06.acquired_at)*1000
+        if age_ms < 0 or age_ms > max_age_ms:
+            raise StaleReading("invalid P06 acquisition age")
+        return age_ms
+
+    def before_transfer(self):
+        self._require_owner()
+        if self.in_transfer:
+            raise SchedulingError("nested protocol transfer forbidden")
+        self.ledger.invalidate_all()
+        self.in_transfer = True
+        self.generation += 1
+
+    def after_verified_return(self, *, p80_hex: str, p06_hex: str):
+        """Accept bytes only from the existing verified VS1 runtime result."""
+        self._require_owner()
+        if not self.in_transfer or not isinstance(p80_hex,str) or not isinstance(p06_hex,str):
+            raise SchedulingError("original VS1 verified-return proof required")
+        if (p80_hex.lower() != "20" or len(p06_hex) != 2):
+            raise SchedulingError("VS1 P80/P06 return identity invalid")
+        try:
+            p06 = bytes.fromhex(p06_hex)
+        except ValueError as exc:
+            raise SchedulingError("invalid VS1 P06 return byte") from exc
+        if len(p06) != 1 or p06 == b"\xff":
+            raise SchedulingError("VS1 P06 return invalid")
+        self.ledger.record(ReadKind.VS1_P80,b"\x20",
+                           session_generation=self.generation,vs1_verified=True)
+        self.ledger.record(ReadKind.VS1_P06,p06,
+                           session_generation=self.generation,vs1_verified=True)
+        self.in_transfer = False
+
+    def fail_closed(self):
+        self._require_owner()
+        self.ledger.invalidate_all()
+        self.in_transfer = True

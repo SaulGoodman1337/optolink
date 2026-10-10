@@ -32,11 +32,15 @@ liegen auf dem Branch
 Der Produktionsbranch enthält lediglich die dafür nötige,
 reproduzierbar installierbare Laufzeit und Sicherheitsprüfungen.
 
-**Neue, noch nicht aktivierte Entwicklungsstufe:** Der auf VS1 aufbauende
-[bedarfsgesteuerte P300-Lesebatcher](wb2a-on-demand-p300-design-2026-10-10.md)
-ist inzwischen offline mit dem bestehenden Admission-Gate und simuliertem
-Port getestet. Das ist **keine zusätzliche Hardwarefreigabe** und kein
-aktivierter MQTT-/TCP-P300-Aufruf. Der Standardbetrieb bleibt unverändert.
+**Neue, standardmäßig deaktivierte Entwicklungsstufe:** Der auf VS1
+aufbauende [bedarfsgesteuerte P300-Lesebatcher](wb2a-on-demand-p300-design-2026-10-10.md)
+wurde offline mit dem bestehenden Admission-Gate und simuliertem Port sowie
+am 10.10.2026 [in einem einmaligen Hardwarecanary](wb2a-on-demand-canary-2026-10-10.md)
+getestet. Ein zeitlich auf **ein Read-only-P300-Diagnosefenster** begrenzter
+Shadow-Test bestand inklusive Original-VS1-P80/P06 und unabhängigem Systemd-
+Rollback. Die Funktion bleibt **standardmäßig deaktiviert**; weder eine
+allgemeine MQTT-/TCP-P300-API noch P300-Writes sind freigegeben.
+Der Standardbetrieb bleibt unverändert.
 
 ## Installation über `update`
 
