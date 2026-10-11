@@ -99,3 +99,9 @@ Daraus folgen ohne weitere Befehlssuche diese nächsten Gates:
 4. **ROM-Dump weiter nur über einen bestätigten Controller-Service** oder autonom sicher restaurierbaren Transport prüfen. Die belegten DMA0/1-Kanäle gehören KM-Bus bzw. Optolink und werden nicht experimentell umprogrammiert.
 
 **Fazit:** Die Optolink-only-Passivforschung hat erstmals einen seltenen RX-/Metadaten-Koppelzustand über eine **einzige** FC03-Kopie mit einem historischen 32-Byte-Muster abgeglichen. Es ist ein echter neuer Beobachtungsanker für den Vitotrol-Parser, **noch keine Vitotrol-Emulation und kein ROM-Dump**.
+
+## Nachtrag 11.10.2026, 21:05 CEST: Korrektur der starken 53|0A-Kopplung
+
+Der nachfolgende strikt lesende `FC03 0x164B/32`-Liveversuch mit 16 neuen Fusionsfenstern widerlegt eine **deterministische** Kopplung der beiden Bytepositionen: 15× `C6|06`, **einmal `53|06`**. Die hier dokumentierte frühere seltene Beobachtung `53|0A` (ebenfalls innerhalb einer FC03-Kopie) war real, aber **nicht das einzig mögliche Metadatenverhältnis**. Der CRC-Endbytewert `53` kann mit `0x166A=06` oder `=0A` einhergehen. Der neue Einzelread erfasst nicht den vollständigen 10-Byte-B1-Frame gleichzeitig; daher ist `53` dort lediglich der Inhalt bei `0x164B`, nicht zwingend der CRC eines aktuell vollständig empfangenen Frames.
+
+Zusätzlich wurden `0x166A/0x166B` über `FC03 0x164C/32` 8× gemeinsam als `06 00` beobachtet. Über 79 historische Paare (78× `06 00`, einmal `0A 04`) und acht neue Paare blieb `(0x166A - 0x166B) & 0xFF == 6`. Diese Invariante ist ein Indiz für zusammenhängende Offsets, **kein** verifiziertes Ready-Flag oder Pointer-Ownership. Die vollständige SHA-attestierte Korrektur, echte Master-`0x31`-CRC-Kopie und Literalsuche stehen in `wb2a-vitotrol-master31-metadata-invariant-2026-10-11.md`. Bitte bei Auslegung dieses früheren Berichts den neueren Befund bevorzugen.
