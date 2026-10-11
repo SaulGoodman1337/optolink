@@ -103,6 +103,8 @@ Das bedeutet: Durch Übergabe einer 20-Bit-Adresse an die bestehende `do_request
 
 Implementierung: `tools/wb2a-vitotrol-p300-wire-alias-audit.py`, `tests/test_wb2a_vitotrol_p300_wire_alias_audit.py`. Der Auditor prüft die AST-Struktur der **genau SHA-gepinnten Originalquelle**, bildet Telegramme mitsamt Prüfsumme nur im lokalen RAM und öffnet keine serielle Verbindung.
 
+**Publikationsstand:** Der im Anschluss getestete ausführbare C-Auditor mit Paketsimulation und seine acht Unittests befinden sich in diesem Forschungs-LXC, wurden jedoch beim Commit über den verbundenen GitHub-Zugang **nicht freigegeben**. Der veröffentlichte PR enthält die A- und B-Auswerter samt 17 Tests sowie diese dokumentierten C-Befunde und die Korrektur des historischen FC99-Berichts. Die **689 lokalen** Testfälle schließen die dort vorhandenen C-Tests ein; die unabhängig laufende GitHub-CI prüft entsprechend einen kleineren Satz. Die C-Wire-Bytes sind aus dem dokumentierten Quellcode nachvollziehbar; ein realer zusätzlicher P300-Request wurde nicht ausgeführt.
+
 ## 4. Regression, private Ergebnisse und konkrete Fortsetzung
 
 - **Neue Tests:** 9 A, 8 B, 8 C = **25 Testfälle**; sie decken ursprüngliche Hardwarequellen, CRC, Zeitfolge, Wire-FC-Sequenz-Aliasing, 16-Bit-Adressabschneidung und DMA-Grenzen ab.
