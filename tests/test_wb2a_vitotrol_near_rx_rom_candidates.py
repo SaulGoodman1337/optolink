@@ -55,6 +55,17 @@ class PointerTests(unittest.TestCase):
                          {'01':1,'0a':3})
         self.assertEqual(original['stable_neighbor_modal_sample_counts'],
                          {'0x0b74':79,'0x0b7e':79})
+        self.assertEqual(original['neighbor_0b5c_rx_descriptor_prefix_echo_samples'],2)
+        for key, count in [
+            ('neighbor_0b51',75),('neighbor_0b55',75),
+            ('neighbor_0b5c',76),('near_rx_descriptor_0b74',0),
+            ('near_rx_descriptor_0b7e',0),('other_uart0_context_18f8',79),
+            ('other_uart0_context_1a7d',79)]:
+            self.assertEqual(m1[key]['zero_padded_20bit_candidate_samples'],count)
+        self.assertEqual(m1['near_rx_descriptor_0b74']['le32_raw_quad_counts'],
+                         {'ff230f64':79})
+        self.assertEqual(m1['near_rx_descriptor_0b7e']['le32_raw_quad_counts'],
+                         {'f0010e64':79})
         self.assertTrue(original['non_atomic_fc03_snapshots'])
         self.assertFalse(original['isr_vector20_handler_resolved'])
         self.assertFalse(original['interrupt_can_be_injected_via_optolink'])
@@ -73,6 +84,34 @@ class PointerTests(unittest.TestCase):
             self.assertEqual(p[name]['fourth_byte_counts'],{'64':3})
             self.assertFalse(p[name]['typed_as_executable_callback'])
             self.assertFalse(p[name]['proven_uart1_rx_parser_address'])
+        self.assertTrue(result['candidate_addresses_are_not_call_targets'])
+
+    def test_four_byte_candidate_discriminator_offline(self):
+        x=bytearray(make_image())
+        for addr,val in [(0x0b51,0xf203f),(0x0b55,0xfcbb6),
+                         (0x0b5c,0xf2420),(0x18f8,0xf5239),
+                         (0x1a7d,0xf5c28)]:
+            off=addr-0x400
+            x[off:off+4]=val.to_bytes(4,'little')
+        result=m.inspect([bytes(x)])
+        candidates={row['label']:row for row in result['near_rx_far_address_lookalikes']}
+        for label in ('neighbor_0b51','neighbor_0b55','neighbor_0b5c',
+                      'other_uart0_context_18f8','other_uart0_context_1a7d'):
+            self.assertEqual(candidates[label]['zero_padded_20bit_candidate_samples'],1)
+            self.assertFalse(candidates[label]['typed_as_executable_callback'])
+            self.assertTrue(candidates[label]['four_byte_format_cannot_prove_pointer_type'])
+        for label in ('near_rx_descriptor_0b74','near_rx_descriptor_0b7e'):
+            self.assertEqual(candidates[label]['zero_padded_20bit_candidate_samples'],0)
+        self.assertEqual(result['neighbor_0b5c_rx_descriptor_prefix_echo_samples'],0)
+
+    def test_echo_of_descriptor_prefix_does_not_identify_receive_handler(self):
+        x=bytearray(make_image())
+        off=0x0b5c-0x400
+        x[off:off+4]=bytes.fromhex('42160a00')
+        result=m.inspect([bytes(x)])
+        self.assertEqual(result['neighbor_0b5c_rx_descriptor_prefix_echo_samples'],1)
+        self.assertFalse(result['isr_vector20_handler_resolved'])
+        self.assertFalse(result['controller_code_execution_requested'])
         self.assertTrue(result['candidate_addresses_are_not_call_targets'])
 
     def test_runtime_status_change_does_not_make_readable_rom(self):
