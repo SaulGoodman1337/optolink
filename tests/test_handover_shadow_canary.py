@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -91,6 +92,95 @@ class FakeRollbackTests(unittest.TestCase):
             args[:2]==["systemctl","start"]
             and args[-1] in canary.WRITERS
             for args in self.events))
+
+    def test_attested_stuck_shadow_requires_exact_pid_executable_and_uid(self):
+        from types import SimpleNamespace
+        p_root=self.root/'proc'
+        target=p_root/'777'
+        target.mkdir(parents=True)
+        correct=b'\x00'.join((canary.PYTHON.encode(),b'-u',
+             str(self.release/'main/optolinkvs2_switch.py').encode()))+b'\x00'
+        (target/'cmdline').write_bytes(correct)
+        with patch.object(canary,'RELEASES',self.root),\
+             patch.object(canary,'PROC_ROOT',p_root),\
+             patch.object(canary,'call',return_value='777'),\
+             patch.object(canary,'status',return_value='deactivating'),\
+             patch.object(canary.pwd,'getpwnam',return_value=SimpleNamespace(pw_uid=os.getuid())):
+            self.assertEqual(canary._attest_stuck_shadow_main(self.release),777)
+            (target/'cmdline').write_bytes(b'/opt/optolink/venv/bin/python\x00-u\x00/opt/optolink/optolinkvs2_switch.py\x00')
+            with self.assertRaisesRegex(canary.CanaryRejected,'exact pinned'):
+                canary._attest_stuck_shadow_main(self.release)
+            (target/'cmdline').write_bytes(correct)
+            with patch.object(canary.pwd,'getpwnam',return_value=SimpleNamespace(pw_uid=os.getuid()+1)):
+                with self.assertRaisesRegex(canary.CanaryRejected,'exact pinned'):
+                    canary._attest_stuck_shadow_main(self.release)
+
+    def test_timeout_for_exact_shadow_kills_only_attested_main_then_restores_but_never_passes_canary(self):
+        state={'killed':False,'original_started':False}
+        def result(cmd,*a,**kw):
+            if cmd[:2]==['systemctl','stop'] and cmd[-1]==canary.MAIN:
+                raise subprocess.TimeoutExpired(cmd,15)
+            if cmd[:2]==['systemctl','kill']:
+                self.assertEqual(cmd,['systemctl','kill','--kill-whom=main',
+                                      '--signal=SIGKILL',canary.MAIN])
+                state['killed']=True
+            if cmd[:2]==['systemctl','start'] and cmd[-1]==canary.MAIN:
+                state['original_started']=True
+            return self.fake_call(cmd,*a,**kw)
+        def unit_state(name):
+            if name==canary.MAIN and not state['original_started']:
+                return 'inactive' if state['killed'] else 'deactivating'
+            return 'active'
+        with patch.object(canary,'call',side_effect=result),\
+             patch.object(canary,'status',side_effect=unit_state),\
+             patch.object(canary,'_attest_stuck_shadow_main',return_value=777):
+            rc=canary.recover(self.session)
+        self.assertEqual(rc,1)
+        self.assertTrue(state['killed'])
+        self.assertTrue(state['original_started'])
+        report=json.loads((self.session/'recovery.json').read_text())
+        self.assertEqual(report['errors'],[])
+        self.assertTrue(report['warnings'])
+        self.assertEqual(report['result'],'RESTORED_WITH_VERIFIED_FORCE_STOP_NOT_CANARY_PASS')
+        self.assertIn('original_gfa_confirmed',report['actions'])
+        self.assertIn('cleared_failed_main_state_before_original_restart',report['actions'])
+        self.assertTrue(any(x[:2]==['systemctl','reset-failed'] and x[-1]==canary.MAIN
+                            for x in self.events))
+        self.assertTrue(any(x.startswith('exact_shadow_main_force_stopped_after_timeout:')
+                            for x in report['actions']))
+
+    def test_unknown_main_pid_stop_timeout_must_never_kill_or_restart(self):
+        def result(cmd,*a,**kw):
+            if cmd[:2]==['systemctl','stop'] and cmd[-1]==canary.MAIN:
+                raise subprocess.TimeoutExpired(cmd,15)
+            return self.fake_call(cmd,*a,**kw)
+        with patch.object(canary,'call',side_effect=result),\
+             patch.object(canary,'status',return_value='deactivating'),\
+             patch.object(canary,'_attest_stuck_shadow_main',
+                          side_effect=canary.CanaryRejected('not exact pinned shadow')):
+            self.assertEqual(canary.recover(self.session),1)
+        report=json.loads((self.session/'recovery.json').read_text())
+        self.assertEqual(report['result'],'FAIL_OR_NOT_VERIFIED')
+        self.assertTrue(any('not exact pinned shadow' in x for x in report['errors']))
+        self.assertFalse(any(x[:2] in (['systemctl','kill'],['systemctl','start'])
+                             for x in self.events))
+
+    def test_timeout_and_already_stopped_unit_does_not_force_kill(self):
+        state={'started':False}
+        def result(cmd,*a,**kw):
+            if cmd[:2]==['systemctl','stop'] and cmd[-1]==canary.MAIN:
+                raise subprocess.TimeoutExpired(cmd,15)
+            if cmd[:2]==['systemctl','start'] and cmd[-1]==canary.MAIN:
+                state['started']=True
+            return self.fake_call(cmd,*a,**kw)
+        with patch.object(canary,'call',side_effect=result),\
+             patch.object(canary,'status',side_effect=lambda name:
+                          'active' if state['started'] else 'inactive'):
+            self.assertEqual(canary.recover(self.session),1)
+        report=json.loads((self.session/'recovery.json').read_text())
+        self.assertEqual(report['result'],'RESTORED_WITH_VERIFIED_FORCE_STOP_NOT_CANARY_PASS')
+        self.assertFalse(any(x[:2]==['systemctl','kill'] for x in self.events))
+        self.assertTrue(state['started'])
 
     def test_no_worker_outside_root_owned_systemd(self):
         with patch.dict(os.environ,{},clear=True):

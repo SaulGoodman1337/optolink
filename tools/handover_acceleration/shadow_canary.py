@@ -12,6 +12,7 @@ import fcntl
 import hashlib
 import json
 import os
+import pwd
 from pathlib import Path
 import re
 import subprocess
@@ -30,6 +31,7 @@ SESSIONS=ROOT/"canary-sessions"
 DROPIN="98-optolink-hybrid-canary.conf"
 SERIAL_LEASE=Path("/var/lib/optolink-hybrid/serial.lease")
 PYTHON="/opt/optolink/venv/bin/python"
+PROC_ROOT=Path("/proc")
 
 
 class CanaryRejected(RuntimeError):pass
@@ -244,13 +246,81 @@ def clear_p300_after_gfa(got):
     return False
 
 
+def _attest_stuck_shadow_main(release: Path) -> int:
+    """Identify only our pinned shadow MAIN in a deactivating systemd unit.
+
+    This is an emergency recovery precondition, never a generic process kill.
+    An unexpected PID, changed executable, missing /proc or original service
+    must remain untouched and the recovery must fail closed.
+    """
+    if (not isinstance(release,Path) or release.parent != RELEASES
+            or release.is_symlink() or not release.is_dir()):
+        raise CanaryRejected('shadow recovery has no pinned release')
+    if status(MAIN) != 'deactivating':
+        raise CanaryRejected('main unit is not in the expected stopping state')
+    raw_pid=call(['systemctl','show',MAIN,'-p','MainPID','--value'],5)
+    try:pid=int(raw_pid)
+    except ValueError as exc:raise CanaryRejected('missing original main PID') from exc
+    if pid <= 1:
+        raise CanaryRejected('no identified live shadow main PID')
+    proc=PROC_ROOT/str(pid)
+    cmd=(proc/'cmdline').read_bytes().rstrip(b'\x00').split(b'\x00')
+    expected=[PYTHON.encode(),b'-u',str(release/'main/optolinkvs2_switch.py').encode()]
+    if cmd != expected or proc.stat().st_uid != pwd.getpwnam('optolink').pw_uid:
+        raise CanaryRejected('service PID is not the exact pinned shadow main')
+    return pid
+
+
+def _recover_stuck_shadow_stop(release: Path, actions: list[str]):
+    """Escalate only a PROVEN shadow main after graceful stop timed out.
+
+    The full original-service/GFA recovery still runs afterward. Mark the
+    session degraded even when restoration succeeds, never canary PASS.
+    """
+    pid=_attest_stuck_shadow_main(release)
+    # systemd targets the currently registered main PID, not an unverified
+    # potentially reused raw PID. Avoid SIGKILL if the unit has changed.
+    if _attest_stuck_shadow_main(release) != pid:
+        raise CanaryRejected('shadow main PID changed before emergency stop')
+    call(['systemctl','kill','--kill-whom=main','--signal=SIGKILL',MAIN],5)
+    for _ in range(35):
+        state=status(MAIN)
+        if state in ('inactive','failed'):
+            actions.append('exact_shadow_main_force_stopped_after_timeout:'+str(pid))
+            return
+        if state != 'deactivating':
+            raise CanaryRejected('shadow shutdown changed state unexpectedly')
+        time.sleep(.2)
+    raise CanaryRejected('verified shadow main did not stop after bounded SIGKILL')
+
+
 def recover(session):
     data=load(session)
     errors=[]
+    warnings=[]
     actions=[]
+    release=Path(data["release"])
     for name in (TIMER,UNITS["clock-sync"],*WRITERS,MAIN):
         try:
             call(["systemctl","stop",name],15)
+        except subprocess.TimeoutExpired as exc:
+            if name != MAIN:
+                errors.append("stop "+name+": "+str(exc)[:90])
+                continue
+            try:
+                state=status(MAIN)
+                if state in ('inactive','failed'):
+                    # The systemd stop completed at the operator timeout.
+                    # Do not force-kill or claim normal canary success.
+                    actions.append('shadow_stop_completed_after_command_timeout')
+                    warnings.append('shadow stop exceeded the supervised command timeout')
+                elif state == 'deactivating':
+                    _recover_stuck_shadow_stop(release,actions)
+                    warnings.append('verified shadow main required forced shutdown')
+                else:
+                    raise CanaryRejected('unexpected shadow shutdown state: '+state)
+            except Exception as recover_exc:
+                errors.append('shadow stop fallback refused: '+str(recover_exc)[:130])
         except Exception as exc:
             errors.append("stop "+name+": "+str(exc)[:90])
     # Inspect ALL potential override paths, not only the last persisted
@@ -273,6 +343,13 @@ def recover(session):
     try:
         call(["systemctl","daemon-reload"])
         if errors:raise CanaryRejected("rollback could not remove all dropins")
+        if warnings:
+            # A correctly attested timed-out shadow may have left systemd
+            # ActiveState=failed after emergency shutdown. Reset only the
+            # original MAIN's failed unit state, after all known drop-ins
+            # have been removed and before starting original ExecStart.
+            call(["systemctl","reset-failed",MAIN],5)
+            actions.append('cleared_failed_main_state_before_original_restart')
         call(["systemctl","start",MAIN])
         got=gfa(35)
         actions.append("original_gfa_confirmed")
@@ -290,12 +367,13 @@ def recover(session):
     except Exception as exc:
         errors.append("restore: "+str(exc)[:180])
         post={}
-    report={"result":"PASS_ORIGINAL_SERVICES_RESTORED" if not errors
-                    else "FAIL_OR_NOT_VERIFIED",
-            "errors":errors,"actions":actions,"gfa":post}
+    report={"result":("FAIL_OR_NOT_VERIFIED" if errors else
+                       "RESTORED_WITH_VERIFIED_FORCE_STOP_NOT_CANARY_PASS" if warnings
+                       else "PASS_ORIGINAL_SERVICES_RESTORED"),
+            "errors":errors,"warnings":warnings,"actions":actions,"gfa":post}
     save(session/"recovery.json",report)
     print("HYBRID_SHADOW_RECOVERY="+json.dumps(report,sort_keys=True),flush=True)
-    return int(bool(errors))
+    return int(bool(errors or warnings))
 
 
 def launch(release):
