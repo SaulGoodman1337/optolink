@@ -66,6 +66,18 @@ Weitere nominal ROM-nahe XML-Namen (nur andere Geraetefamilien):
 - `HO2B_LAN_Card_Firmware~0xD069` / `Virtual_READ` bei `0xD084` (Versionsinformationen).
 Keines ist eine Funktion zum Auslesen von Programmcode oder hiermit als `20C2`-Adresse qualifiziert.
 
+## 2a. Archivierter VitoSoft-CIL-Wire-Serializer: Praefix-Mechanismus belegt
+
+Die alte, frueher direkt aus der originalen VitoSoft-Assembly hergestellte Disassemblierung wurde in `vitosoft/kmbus-read-memory-analysis-2026-09-24.md` (Abschnitt „Host-implementation recovery“) und `vitosoft/private-archive-2026-09-23-analysis.md` dokumentiert. Die **Originaldatei** `MobileClient_vsmInterfaceCore.dll.il` / `vsmInterfaceCore.dll` steht im derzeit zugaenglichen LXC-Forschungsverzeichnis nicht direkt zur erneuten Inline-Disassemblierung bereit. Die folgenden Feststellungen stammen folglich **aus dem bereits geprueften historischen CIL-Bericht**, nicht aus einer im aktuellen Arbeitsschritt erneut geoeffneten DLL:
+
+- `EventType.FCRead -> MRKey.FunctionCode -> LDAPMessage.FunctionCode`, und `EventType.Address -> LDAPMessage.Address` sowie `EventType.BlockLength -> LDAPMessage.DataLength`.
+- `LDAPMessage.toByteArray()` schreibt den normalen Nutzinhalt als `00 FCT ADDR_H ADDR_L DATA_LENGTH [DATA...]` und der DAP-Wrapper als `41 LEN 00 FCT ADDR_H ADDR_L DATA_LENGTH [DATA...] CRC`. Der Adressteil ist **zwei Byte** breit.
+- `RPCConverter.IsFCReadRpc()` trifft nur auf `FCRead=0x07` zu. **Nur auf diesem Zweig** setzt `ConvertRpcToDevice_Default()` die decodierten `PrefixRead`-Bytes als `BlockDataToDevice` und ersetzt `BlockLength` durch die Prefix-Laenge.
+- Gewoehnliche Non-RPC-Lese-Definitionen (z.B. `KMBUS_EEPROM_READ=0x43` mit scheinbar langem `PrefixRead`) durchlaufen diese Konvertierung **nicht**. Die rekonstruierte Standardanforderung bleibt deshalb ein **16-Bit**-Request ohne den im Katalog stehenden langen Praefix.
+- Die fruehere Quelltext- und Call-Site-Auswertung fand keinen versteckten Non-RPC-Prefix-Lesecaller oder zweiten Serializer in den damaligen ServiceTool-Managed-Assemblies. Nicht gefundene private OEM-Monitore koennen dadurch logisch nicht ausgeschlossen werden.
+
+**Konsequenz:** Die heute gefundenen `0xA095`-RPC-Praefixe belegen einen echten Host-Nutzdatentransport fuer M-Bus-Datenheader, **nicht** die Semantik einer 20-Bit-Flash-Leseanforderung fuer die WB2A. Das naechste belastbare Beweisstueck muesste eine zusaetzliche **20C2-spezifische OEM-Bytefolge oder einen bestaetigten MCU-seitigen Copy-/Monitor-Handler** sein.
+
 ## 3. Uebrige Artefakte (statische Triage, keine Ausfuehrung)
 
 - `openv.wiki/files/vMon.jar`: 920 Java-Klassen, davon nur 3 projekt-spezifische `vMon/...`-Klassen. Der eingebettete Einstiegspunkt `vMon.Vmonitor` nennt Telnet/vcontrold-Remote-IP und OpenHAB-REST als Ausfuehrungsparameter. Das ist **kein Nachweis** eines MCU-ROM-Readers trotz des missverstaendlichen Namens `Vmonitor`.
