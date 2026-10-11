@@ -316,3 +316,16 @@ negativen Hostkatalogbefund folgt **kein** ROM-Ausschluss.
 ## 10. Echter kurzer Optolink-B0:3-Canary am 10.10.2026
 
 Auf ausdrückliche Nutzerfreigabe wurde am produktiven Regler einmalig `0x27B0=03` gesetzt, gelesen, `0x0A5C=00000000` und `0x089C=03` beobachtet und innerhalb von rund 15 Sekunden auf die Baseline `0x27B0=00` zurückgestellt. Ein zuvor gestarteter eigenständiger systemd-Rückfall-Service bestätigte später zusätzlich `B0=00` (Exit 0). Es gab keine aktuelle BC-Störung, keinen neuen P300-Portowner und keine Unterbrechung von VS1 oder RPM-v2. **Die Vitotrol ist damit nicht emuliert**. Details unter [B0-Live-Canary](wb2a-vitotrol-b0-real-canary-2026-10-10.md). Weitere nächtliche Versuche bleiben offline.
+
+## 10. Live-Hardware-RAM- und KM-Bus-Master-TX-Diagnose (11.10.2026)
+
+[Live-Abnahmebericht](wb2a-vitotrol-live-optolink-ram-2026-10-11.md):
+B0:3 unter aktivem independent systemd-Restore real gesetzt. Fuenf
+VS1-Vergleiche ohne neue Raumtemperatur/Identitaet. P300-RX 0x1640/32
+und Master-TX 0x161A/32 wurden am echten 20C2 über je **ein**
+Single-Owner-FC03-Fenster gelesen. Bei 0x1642 erneut gueltiges
+Class01-B1, bei 0x161A ein CRC-gueltiger Class20-B3-Puffer.
+Beide Canonical-Canaries mit verifizierter VS1-P80/P06-Rueckkehr und
+originalen Services RESTORED. A0=00, B0=00, keine aktuelle BC und
+Fault-History unveraendert. **Keine Vitotrol registriert**, kein
+belegter KM-Bus-Receive-Inject-Dienst.
