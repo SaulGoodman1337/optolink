@@ -28,6 +28,8 @@ audit=ctx.audit
 ROM=(0xC0000,0xFFFFF)
 CANDIDATES={
     "comparison_0ab8":0x0AB8,
+    "neighbor_0b51":0x0B51,
+    "neighbor_0b55":0x0B55,
     "neighbor_0b5c":0x0B5C,
     "near_rx_descriptor_0b74":0x0B74,
     "near_rx_descriptor_0b7e":0x0B7E,
@@ -36,6 +38,10 @@ CANDIDATES={
 }
 CANDIDATE_RX_DESCRIPTOR=0x0B6D
 CANDIDATE_RX_BODY=0x1642
+# Only these three locations share a volatile 0x0B40-0x0B5F neighborhood.
+VOLATILE_NEIGHBORS=(0x0B51,0x0B55,0x0B5C)
+STABLE_NEIGHBORS=(0x0B74,0x0B7E)
+STATUS_CANDIDATE=0x0B6B
 
 class CandidateRejected(ValueError):pass
 
@@ -62,6 +68,29 @@ def inspect(images):
             "typed_as_executable_callback":False,
             "proven_uart1_rx_parser_address":False,
         })
+    # An independent ROM-looking triple is not established when the three
+    # windows move in lockstep during a scheduler/queue state transition.
+    # The FC03 images were read non-atomically: cochange is NOT causation.
+    modal={}
+    for addr in (*VOLATILE_NEIGHBORS,*STABLE_NEIGHBORS):
+        off=addr-0x400
+        modal[addr]=Counter(int.from_bytes(x[off:off+3],'little')
+                            for x in images).most_common(1)[0][0]
+    cochanged=[]
+    independently_changed=[]
+    status_if_cochanged=Counter()
+    for index,im in enumerate(images,1):
+        changed=tuple(addr for addr in VOLATILE_NEIGHBORS
+                      if int.from_bytes(im[addr-0x400:addr-0x400+3],
+                                        'little')!=modal[addr])
+        if len(changed)==len(VOLATILE_NEIGHBORS):
+            cochanged.append(index)
+            status_if_cochanged[im[STATUS_CANDIDATE-0x400]]+=1
+        elif changed:
+            independently_changed.append(index)
+    stable_counts={f'0x{addr:04x}':sum(
+        int.from_bytes(im[addr-0x400:addr-0x400+3],'little')==modal[addr]
+        for im in images) for addr in STABLE_NEIGHBORS}
     off=CANDIDATE_RX_DESCRIPTOR-0x400
     descriptor=Counter(x[off:off+4].hex() for x in images)
     rxoffset=CANDIDATE_RX_BODY-0x400
@@ -73,6 +102,17 @@ def inspect(images):
         "descriptor_0b6d_fourbyte_counts":dict(sorted(descriptor.items())),
         "descriptor_rx_candidate_length_alignment_samples":match,
         "near_rx_far_address_lookalikes":matches,
+        "volatile_neighbor_modal_le24":{
+            f'0x{a:04x}':f'0x{modal[a]:05x}' for a in VOLATILE_NEIGHBORS
+        },
+        "volatile_neighbor_all_three_cochange_indices":cochanged,
+        "volatile_neighbor_partial_cochange_indices":independently_changed,
+        "scheduler_0b6b_in_cochange_samples":{
+            f'{k:02x}':v for k,v in sorted(status_if_cochanged.items())
+        },
+        "stable_neighbor_modal_sample_counts":stable_counts,
+        "cochange_is_not_proof_of_scheduler_or_isr":True,
+        "non_atomic_fc03_snapshots":True,
         "mcu_program_flash_image_present":False,
         "isr_vector20_handler_resolved":False,
         "interrupt_can_be_injected_via_optolink":False,
