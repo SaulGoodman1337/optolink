@@ -109,6 +109,24 @@ class DualReadOnlyTests(unittest.TestCase):
             with self.assertRaises(m.Rejected):
                 m.run_high(cycles=n)
 
+    def test_dma_occupancy_is_read_only_and_cannot_authorize_dma_reconfiguration(self):
+        commands=[]
+        def inv(cmd):
+            commands.append(cmd)
+            data=bytes.fromhex(m.EXPECTED_ID) if cmd==m.IDENTITY[0] else bytes(m.ALLOWED[cmd][1])
+            return m.decode(cmd, fake(cmd,data=data), 0)
+        report=m.run_dma(invoke_fn=inv,cycles=2)
+        self.assertEqual(len(report["dma_snapshots"]),2)
+        self.assertEqual(len(commands),1+2*len(m.BASELINE)+2*len(m.DMA_PROBES))
+        self.assertEqual(report["controller_writes"],0)
+        self.assertFalse(report["dma_triggered"])
+        self.assertFalse(report["channel_reassignment_allowed"])
+        for cmd in commands:
+            self.assertNotIn("request;4;",cmd)
+        for n in (1,7,-1,True,2.0):
+            with self.assertRaises(m.Rejected):
+                m.run_dma(cycles=n)
+
     def test_no_unbounded_cycles(self):
         for value in (0,4,1.0,True,-1):
             with self.assertRaises(m.Rejected):
