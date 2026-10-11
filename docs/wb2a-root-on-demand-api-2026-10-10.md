@@ -66,6 +66,7 @@ Raw-Frame-Operationen werden verworfen. Nur folgende feste Arten:
 | `p300_ram_1c60_32` | Freigegebene FC03 | 32 diagnostische Rohbytes |
 | `p300_ram_1640_32` | Historisch belegte FC03 (nur Draft-Entwicklungsbranch) | 32 Rohbytes ab 0x1640, einschließlich UART1-RX-Pufferkandidat 0x1642; **kein** RX-/Write-Nachweis |
 | `p300_ram_161a_32` | Zusätzliche rein manuelle FC03 (Draft-Branch, am 11.10. live abgenommen) | 32 Rohbytes ab UART1-Master-TX-RAM 0x161A; keine physische On-Wire-Telegrammerfassung, kein Write |
+| `p300_kmbus_txrx_64` | Nur expliziter Root-only-On-Demand-Auftrag im geprüften Shadow-Release | Zwei feste nacheinander ausgeführte FC03/32-Reads ab `0x161A` und `0x1640` mit genau 64 Bytes, kein atomarer On-Wire-Mitschnitt; Offline-Regressions- und echte Read-Abnahme am 11.10., aber **ein Gesamt-Canary scheiterte am Shadow-Stop-Timeout** |
 
 Request/Response-Beispiel (IDs illustrativ):
 
