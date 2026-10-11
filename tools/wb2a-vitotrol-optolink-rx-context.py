@@ -30,6 +30,67 @@ META_MEM=0x166A
 POINTER_CANDIDATE=0x0B6D
 TRACE_ADDRESS=('0x1660','0x1640','0x1620','0x1600')
 FRAME_CLASS11_COMMANDS=frozenset((0x80,0xB1,0xB3,0xBF))
+WINDOW_CENTERS=(0x0B6D,0x33A3,0x161A)
+WINDOW_RADIUS=32
+
+
+def window_locality(images:list[bytes]) -> dict:
+    """Compare historic RAM neighborhoods without assuming address literals are pointers.
+
+    This is an offline classifier, NOT proof of firmware execution, RX ownership,
+    INTB, valid participant state, or an injectable memory location.
+    """
+    if (type(images) not in (list,tuple) or not 1<=len(images)<=79
+            or any(type(b) is not bytes or len(b)!=20_480 for b in images)):
+        raise audit.EvidenceRejected('1..79 complete, immutable 20 KiB RAM images required')
+    results={}
+    for addr in WINDOW_CENTERS:
+        off=addr-0x400
+        lo=off-WINDOW_RADIUS
+        hi=off+WINDOW_RADIUS
+        if lo<0 or hi>20_480:
+            raise audit.EvidenceRejected('invalid fixed neighborhood')
+        windows=[b[lo:hi] for b in images]
+        variations=[i-WINDOW_RADIUS for i in range(2*WINDOW_RADIUS)
+                    if len({w[i] for w in windows})>1]
+        core=images[0][off:off+4]
+        results[f'0x{addr:04x}']={
+            'source_images':len(images),
+            'center_cpu_address':f'0x{addr:04x}',
+            'window_radius_bytes':WINDOW_RADIUS,
+            'distinct_64byte_windows':len(set(windows)),
+            'varying_byte_positions':len(variations),
+            'varying_offsets_from_center':variations,
+            'varying_positions_near_center_8':sum(-8<=i<8 for i in variations),
+            'same_four_anchor_bytes_samples':sum(
+                b[off:off+4]==core for b in images),
+            'literal_0x1642_present_samples':sum(
+                b[off:off+2]==bytes((0x42,0x16)) for b in images),
+        }
+    # These values are sampled during separate, non-atomic 32-byte P300 reads.
+    # Counting them together is descriptive only, not evidence of causality.
+    candidate_off=0x0B6B-0x400
+    rx_off=RX_MEM-0x400
+    candidate=Counter(f'{b[candidate_off]:02x}' for b in images)
+    rx_prefix=Counter(b[rx_off:rx_off+8].hex() for b in images)
+    paired=Counter(
+        f'{b[candidate_off]:02x}|{b[rx_off:rx_off+8].hex()}'
+        for b in images)
+    return {
+        'scope':'COMPLETED_HISTORICAL_NONATOMIC_20K_RAM_SNAPSHOTS_ONLY',
+        'candidate_pointer_or_parser_verified':False,
+        'no_new_hardware_io':True,
+        'windows':results,
+        'non_atomic_candidate_rx_sample_counts':{
+            'descriptor_minus2_address':'0x0b6b',
+            'rx_prefix_address':'0x1642',
+            'rx_prefix_bytes':8,
+            'descriptor_minus2_counts':dict(sorted(candidate.items())),
+            'rx_prefix_counts':dict(sorted(rx_prefix.items())),
+            'paired_counts':dict(sorted(paired.items())),
+            'sampling_order_and_causality_proven':False,
+        },
+    }
 
 
 def frame_hits(img:bytes, *, source_class:int=0x11) -> tuple[tuple[int,str], ...]:
@@ -69,6 +130,7 @@ def fullram_context(tar:tarfile.TarFile, *, count:int=79,
     # Compare both RX and independently proven TX buffer address matches.
     literal_occurrences={"0x1642":Counter(),"0x161a":Counter()}
     special_samples=[]
+    images=[]
     for i in range(1,count+1):
         name=f'snapshots/s{i:05d}'
         obj=json.loads(audit._verified(tar,mf,'p300-fullram',name+'.json',max_size=8_000))
