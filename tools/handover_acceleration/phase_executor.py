@@ -107,7 +107,20 @@ def execute_read_phases(coordinator: HandoverCoordinator,
                 job=by_name.get(step.request)
                 if job is None or job.kind.mode!=step.mode:
                     raise ExecutionRejected('plan does not map to typed request')
-                if job.kind in (ReadKind.P300_RAM_0F20_32,
+                if job.kind is ReadKind.P300_KMBUS_TXRX_64:
+                    # Exact two fixed FC03 requests within the same verified P300 lease.
+                    # Byte layout TX @ 161A [0:32], RX candidate @ 1640 [32:64].
+                    # Never a physical wire trace and never a controller write.
+                    if coordinator.mode is not Mode.P300_VERIFIED:
+                        raise ExecutionRejected('paired FC03 outside verified P300')
+                    tx = coordinator.p300_ram_read('ram_161a_32')
+                    if len(tx) != 32:
+                        raise ProtocolError('paired TX FC03 returned wrong length')
+                    rx = coordinator.p300_ram_read('ram_1640_32')
+                    if len(rx) != 32:
+                        raise ProtocolError('paired RX FC03 returned wrong length')
+                    raw = tx + rx
+                elif job.kind in (ReadKind.P300_RAM_0F20_32,
                                 ReadKind.P300_RAM_1C60_32,
                                 ReadKind.P300_RAM_1640_32,
                                 ReadKind.P300_RAM_161A_32):

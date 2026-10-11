@@ -260,7 +260,9 @@ class OnDemandReadonlyRuntime(ContinuousReadonlyRuntime):
         for name, kind in expected.items():
             value = received[name]
             if (not isinstance(value,str)
-                    or len(value) != (4 if kind is ReadKind.P300_ID else 64)):
+                    or len(value) != (4 if kind is ReadKind.P300_ID else
+                                      128 if kind is ReadKind.P300_KMBUS_TXRX_64
+                                      else 64)):
                 raise ContinuousRuntimeRejected("P300 raw length not verified")
             try:
                 raw = bytes.fromhex(value)
@@ -381,6 +383,7 @@ _DEMAND_KINDS = {
     "p300_ram_1c60_32": "P300_RAM_1C60_32",
     "p300_ram_1640_32": "P300_RAM_1640_32",
     "p300_ram_161a_32": "P300_RAM_161A_32",
+    "p300_kmbus_txrx_64": "P300_KMBUS_TXRX_64",
 }
 
 

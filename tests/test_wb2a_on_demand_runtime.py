@@ -132,6 +132,26 @@ class DemandRuntimeTests(unittest.TestCase):
         self.assertEqual(self.port.script,[])
         self.assertFalse(self.port.closed)
 
+    def test_manual_pair_publishes_both_fixed_blocks_only_after_vs1_recovery(self):
+        tx=bytes.fromhex('1100330a0101f80449ef').ljust(32,b'\x00')
+        rx=bytes.fromhex('0001b10a010110fe23d8').ljust(32,b'\x00')
+        self.port=FakePort(expect_attached_vs1()+expect_p300()
+                           +response('ram_161a_32',raw=tx)
+                           +response('ram_1640_32',raw=rx)
+                           +expect_vs1(1,p06=b'\x53'))
+        self.runtime.port=self.port
+        ticket=self.submit(ReadKind.P300_KMBUS_TXRX_64)
+        self.valid_gfa()
+        result=self.runtime.tick()
+        self.assertEqual(result.status,'VERIFIED_SWITCH')
+        self.assertEqual(ticket.state,TicketState.COMPLETED)
+        self.assertEqual(result.result.p80_hex,'20')
+        self.assertEqual(result.result.p06_hex,'53')
+        self.assertEqual([v.kind for v in result.replies],['p300_kmbus_txrx_64'])
+        self.assertEqual(bytes.fromhex(result.replies[0].raw_hex),tx+rx)
+        self.assertEqual(self.port.script,[])
+        self.assertFalse(self.port.closed)
+
     def test_large_real_monotonic_epoch_uses_consistent_absolute_deadlines(self):
         # Regression for 2026-10-10 first live canary: bridge used now_ms=0
         # while demand jobs had real absolute monotonic queued timestamps.

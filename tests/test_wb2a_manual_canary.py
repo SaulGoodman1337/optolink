@@ -92,6 +92,9 @@ class ManualCanaryTests(unittest.TestCase):
                 '00000001b10a010110fe23d8fa01fb0122d10000000000000000000000000000',
             'p300_ram_161a_32':
                 '1100330a0101f80449ef'+'00'*22,
+            'p300_kmbus_txrx_64':
+                ('1100330a0101f80449ef'+'00'*22+
+                 '0001b10a010110fe23d8'+'00'*22),
         }
         for kind,raw in allowed.items():
             case=json.loads(json.dumps(self.event))
@@ -113,6 +116,8 @@ class ManualCanaryTests(unittest.TestCase):
             {'p300_fixed':{'p300_ram_1640_32':'aa'*31}},
             {'p300_fixed':{'p300_ram_1640_32':'aa'*33}},
             {'p300_fixed':{'p300_ram_1640_32':'aa'*32,'p300_ram_0f20_32':'bb'*32}},
+            {'p300_fixed':{'p300_kmbus_txrx_64':'aa'*32}},
+            {'p300_fixed':{'p300_kmbus_txrx_64':'aa'*33}},
             {'p300_fixed':{'p300_identity':'aa'*32}},
         )
         for change in variants:

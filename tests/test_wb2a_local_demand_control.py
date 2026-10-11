@@ -348,6 +348,17 @@ class LocalControlTests(unittest.TestCase):
         self.assertFalse(bad['ok'])
         self.assertEqual(self.runtime.demands.pending_count(),1)
 
+    def test_explicit_txrx_pair_single_operator_ticket_no_io(self):
+        req=self.request(self.payload(kind='p300_kmbus_txrx_64'))
+        self.assertTrue(req['ok'])
+        self.assertEqual(req['kind'],'p300_kmbus_txrx_64')
+        self.assertEqual(self.runtime.demands.pending_count(),1)
+        self.assertEqual(self.fixture.port.writes,[])
+        for bad in ('p300_kmbus_txrx_write','p300_kmbus_txrx_96'):
+            out=self.request(self.payload(kind=bad,request_id=self.b))
+            self.assertFalse(out['ok'])
+        self.assertEqual(self.runtime.demands.pending_count(),1)
+
     def test_duplicate_socket_bind_must_not_unlink_original_owner(self):
         self.control.start()
         self.addCleanup(self.control.close)

@@ -96,6 +96,43 @@ class P300FC03ReadOnlyTests(unittest.TestCase):
         self.assertFalse(any(packet.startswith(b'\x41\x05\x00\x04')
                              for packet in port.writes))
 
+    def test_manual_pair_two_fixed_fC03_same_p300_verified_window(self):
+        from handover_acceleration.runtime_admission import READONLY_PRESET
+        self.assertNotIn(ReadKind.P300_KMBUS_TXRX_64,
+                         {kind for _,kind,_ in READONLY_PRESET})
+        tx=bytes.fromhex('1100330a0101f80449ef').ljust(32,b'\x00')
+        rx=bytes.fromhex('0001b10a010110fe23d8').ljust(32,b'\x00')
+        seq=(expect_vs1(2)+expect_p300()
+             +response('ram_161a_32',raw=tx)
+             +response('ram_1640_32',raw=rx)+expect_vs1(1))
+        manager,port=self.manager(seq)
+        with manager:
+            result=execute_read_phases(
+                manager,[job('p300_kmbus_txrx_64',ReadKind.P300_KMBUS_TXRX_64)],
+                Budget(max_vs1_unavailable_ms=8500,
+                       max_p06_age_ms=9000,max_queue_wait_ms=9000))
+            self.assertEqual(manager.mode,Mode.VS1_VERIFIED)
+        self.assertEqual(result.reads[0].raw,tx+rx)
+        self.assertEqual(result.p300_entry_count,1)
+        self.assertEqual(port.script,[])
+        self.assertEqual(port.writes.count(P300_RAM_READS['ram_161a_32'][3]),1)
+        self.assertEqual(port.writes.count(P300_RAM_READS['ram_1640_32'][3]),1)
+        self.assertFalse(any(packet.startswith(b'\x41\x05\x00\x04')
+                             for packet in port.writes))
+
+    def test_manual_pair_second_FC03_bad_checksum_recovers(self):
+        tx=bytes.fromhex('1100330a0101f80449ef').ljust(32,b'\x00')
+        seq=(expect_vs1(2)+expect_p300()+response('ram_161a_32',raw=tx)
+             +response('ram_1640_32',bad_crc=True)[:1]+expect_vs1(2))
+        manager,port=self.manager(seq)
+        with self.assertRaises(ProtocolError):
+            with manager:
+                manager.to_p300()
+                manager.p300_ram_read('ram_161a_32')
+                manager.p300_ram_read('ram_1640_32')
+        self.assertEqual(manager.mode,Mode.DETACHED)
+        self.assertEqual(port.script,[])
+
     def test_uart1_master_tx_source_bad_crc_recovers_no_second_owner(self):
         seq=expect_vs1(2)+expect_p300()+response('ram_161a_32',bad_crc=True)[:1]+expect_vs1(2)
         manager,port=self.manager(seq)
