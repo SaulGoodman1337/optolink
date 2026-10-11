@@ -76,3 +76,32 @@ Jede P300-Livesitzung verwendete vor dem temporären Protokollwechsel einen unab
 Neue Programme: persistenter MQTT-Diagnoseclient, `persistent-rx-audit.py`, `persistent-event-watch.py`, `master31-register00-event-audit.py` mit eigenen Offline- und Echtdaten-Regressionsmodulen. Alte Quellen werden nicht ersetzt; im älteren Metadatenbericht muss die statische +6-Invariante ausdrücklich durch diesen **neuen Gegenbeweis** korrigiert werden.
 
 **Priorisierter nächster Schritt:** Den natürlichen `0x31/00`-Follow-up in einem weiteren **gezielt begrenzten** Lesefenster um **mehrere rasch aufeinanderfolgende `0x166A/0x166B`-Kopien** und allenfalls den historisch lesbaren Status bei `0x0B6B` erweitern. Ziel: Unterscheiden, ob `0x166B=07` nur transient nach Register-00-Verarbeitung ist oder stabil bis zur nächsten B1-Antwort bleibt. Kein `0x166A`-/`0x166B`-Write und kein fingierter UART1-Interrupt. Nur wenn ein eindeutiger Consumer- oder Dispatcher-Eingang im lesbaren Controllerpfad belegt ist, folgt ein aktiver Vitotrol-Emulationsversuch.
+
+## Nachtrag 11.10.2026, 21:33 CEST: Kurzlebigen Zustand direkt nach natürlichem 0x31/00 gemessen
+
+**Neue unabhängige P300-Session:** Start 21:31:28, Ende mit erfolgreichem Restore 21:32:26 CEST. Optolink-only, derselbe Splitter-Portbesitzer, vorab aktivierter unabhängiger 4-Minuten-Restore-Timer, 130-Sekunden-Timeout, 0 RAM-/Controller-/SFR-/DMA-/UART-/Codierwrites. Programm `tools/wb2a-vitotrol-register00-meta-transition.py`, Sicherheits-/Synthetic-Fixtures `tests/test_wb2a_vitotrol_register00_meta_transition.py`. Strikt auf 256 natürliche TX-Pollversuche begrenzt, bei CRC-validem **genauem** Master-Register-00-Frame sofort Stop-on-Event und acht aufeinanderfolgende Metapair-Reads. Der Controller wurde in keiner Weise zur Aussendung eines 0x31-Kommandos angeregt.
+
+**Messresultat:** Nach **199** TX-Polls tatsächlich der erwartete CRC-gültige Master-Request `01 00 31 09 01 01 00 27 FA` sichtbar, insgesamt **221/221** bestätigte READs, P300-Median **235,365 ms**. Alle TX-Header in 199 Polls: 167× `0100B1`, 30× `2000B3`, 2× `010031`. Der sofort nach dem passenden Register-00-Request separat gelesene volle Klasse01-RX-Frame war erneut **CRC-gültig `00 01 B1 0A 01 01 00 00 43 53`**, also dasselbe spezielle B1/00-Muster wie bei den vorangehenden Ereignissen.
+
+**Acht zeitlich aufeinanderfolgende, jeweils 32 Byte breite `FC03 0x164C/32`-Metadatenkopien ergaben:**
+
+```text
+Messung 0: 0x166A/0x166B = 0A 08
+Messung 1: 0x166A/0x166B = 06 00
+Messung 2: 0x166A/0x166B = 06 00
+Messung 3: 0x166A/0x166B = 06 00
+Messung 4: 0x166A/0x166B = 06 00
+Messung 5: 0x166A/0x166B = 06 00
+Messung 6: 0x166A/0x166B = 06 00
+Messung 7: 0x166A/0x166B = 06 00
+```
+
+Zwischen den **Antwortende-Zeitpunkten** des ersten (`0A08`) und zweiten (`0600`) FC03-Metareads lagen **229,755 ms**. Die exakte controllerinterne Umschaltzeit liegt nur **zwischen den beiden sequenziellen Speicherproben**, nicht bekannt innerhalb dieser 229,755 ms. Der anschließend erneut ausgelesene vollständige RX-Puffer enthielt wieder den CRC-gültigen Normalframe `00 01 B1 0A 01 01 10 00 D2 C6`, der Master-TX-Puffer ein CRC-gültiges B1. SWIndex weiter `00000000`, Raum-Sensorstatus `03`; **keine Vitotrol-Teilnehmeranmeldung**.
+
+Zusammen mit den Originalarchiven sind nun **drei getrennt beobachtete Sonder-Metapaare** belegt: historischer FullRAM-Snapshot 64 → `0A 04`, kurzes natürliches Event 85 → `0A 07`, jetzt Event 198 → **`0A 08`**. Damit ist eine stets konstante Offsetdifferenz `0x166A-0x166B=6` endgültig unhaltbar. Das im neuen Experiment unmittelbar danach beobachtete **`0A08 -> 0600`** stützt die Hypothese eines kurzlebigen KM-Bus-RX-Verarbeitungszustands; **es identifiziert aber weder den UART1-ISR noch einen Firmware-Consumer, der für Klasse11-Vitotrol-Emulation aus Optolink aufrufbar wäre**.
+
+**Forensische Dreiquellenprüfung:** `tools/wb2a-vitotrol-register00-metaprogression-audit.py` mit Einzel- und SHA-Verifikation gegen vorheriges Event und historische FullRAM-Probe. Neue private JSON-Datei `/tmp/wb2a-vitotrol-reg00-metaprogress-live-20261011.json`, SHA256 **`a7194c20d6582b7c71cba1626c867e523b5cd2aec978292ad235cc75281c1b04`**; vorherige Quellen `26669707fbd572f25a384b865740c730ec9f4b7e1035cde33cbb142ae99d2e27` und `94d5842b6dc5759ecb446a4c617b60b72873b639885d116032f783abdef8431c`. Root-Zugriff auf alle drei Originaldateien: kompletter 4/4-Regressionstest erfolgreich. Private Rohdaten bleiben vom Git-PR ausgeschlossen.
+
+**Betrieb nach Restore:** Wieder VS1, Konfigurations-SHA unverändert `e9a120ef37fe17236a7505ee713c8dd338d98d5093ed75dfb34629d7e8f5c42d`; alle produktiven Dienste aktiv, Fehler `00`, Event-Restore-Timer inaktiv. Die bereits vorher fehlende alte RPM-Resume-Unit verursacht lediglich die bekannte Warnung.
+
+**Nächstes tatsächliches Forschungs-Gate:** `0x166A/0x166B` mit dem ursprünglichen M16C-Adress- und Codekontext korrelieren (z.B. über statische RAM-Deskriptoren, bereits vorhandene VitoSoft-/Controller-Quellen), damit aus dem bislang nur lesbaren kurzlebigen Ereignis eine sichere RX-Consumer-Routine wird. Kein UART1-IRQ-/DMA-Write auf Basis der gegenwärtigen Korrelationsmessungen.
