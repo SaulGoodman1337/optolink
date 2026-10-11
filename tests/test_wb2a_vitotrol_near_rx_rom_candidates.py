@@ -46,6 +46,16 @@ class PointerTests(unittest.TestCase):
         self.assertEqual(m1['near_rx_descriptor_0b74']['le24_hex_counts'],{'0xf23ff':79})
         self.assertEqual(m1['near_rx_descriptor_0b7e']['le24_hex_counts'],{'0xe01f0':79})
         self.assertEqual(m1['neighbor_0b5c']['le24_hex_counts']['0xf2420'],75)
+        self.assertEqual(m1['neighbor_0b51']['le24_hex_counts']['0xf203f'],75)
+        self.assertEqual(m1['neighbor_0b55']['le24_hex_counts']['0xfcbb6'],75)
+        self.assertEqual(original['volatile_neighbor_all_three_cochange_indices'],
+                         [1,41,60,62])
+        self.assertEqual(original['volatile_neighbor_partial_cochange_indices'],[])
+        self.assertEqual(original['scheduler_0b6b_in_cochange_samples'],
+                         {'01':1,'0a':3})
+        self.assertEqual(original['stable_neighbor_modal_sample_counts'],
+                         {'0x0b74':79,'0x0b7e':79})
+        self.assertTrue(original['non_atomic_fc03_snapshots'])
         self.assertFalse(original['isr_vector20_handler_resolved'])
         self.assertFalse(original['interrupt_can_be_injected_via_optolink'])
         self.assertFalse(original['controller_code_execution_requested'])
@@ -73,6 +83,26 @@ class PointerTests(unittest.TestCase):
         self.assertEqual(p['near_rx_descriptor_0b74']['distinct_le24_values'],2)
         self.assertFalse(result['physical_rom_word_read_back_verified'])
         self.assertFalse(result['mcu_program_flash_image_present'])
+
+    def test_neighbor_cochange_is_only_observational(self):
+        normal=make_image()
+        all_changed=bytearray(normal)
+        for adr in m.VOLATILE_NEIGHBORS:
+            offset=adr-0x400
+            all_changed[offset:offset+3]=(0xf203f).to_bytes(3,'little')
+        all_changed[m.STATUS_CANDIDATE-0x400]=10
+        partial_changed=bytearray(normal)
+        partial_changed[0x0b51-0x400:0x0b51-0x400+3]=(
+            0xfcbb6).to_bytes(3,'little')
+        partial_changed[m.STATUS_CANDIDATE-0x400]=1
+        result=m.inspect([normal,bytes(all_changed),bytes(partial_changed)])
+        self.assertEqual(result['volatile_neighbor_all_three_cochange_indices'],[2])
+        self.assertEqual(result['volatile_neighbor_partial_cochange_indices'],[3])
+        self.assertEqual(result['scheduler_0b6b_in_cochange_samples'],{'0a':1})
+        self.assertEqual(result['stable_neighbor_modal_sample_counts'],
+                         {'0x0b74':3,'0x0b7e':3})
+        self.assertTrue(result['cochange_is_not_proof_of_scheduler_or_isr'])
+        self.assertFalse(result['isr_vector20_handler_resolved'])
 
     def test_descriptor_length_mismatch_not_causality(self):
         result=m.inspect([make_image(rxlen=11)])
