@@ -21,6 +21,12 @@ PROOFS={
     'room_input':22.0,
     'actual_supply_active':350,
   },
+  'neutral':{
+    'name':'wb2a-vitotrol-external-room-neutral-live-20261011.json',
+    'actual_external_setpoint':21,
+    'room_input':21.0,
+    'actual_supply_active':355,
+  },
 }
 
 def validate_real_live_readback(row:dict,scenario:dict):
@@ -93,8 +99,8 @@ class HardwareProofTests(unittest.TestCase):
                 result=validate_real_live_readback(json.loads(f.read_text()),cfg)
                 self.assertTrue(result['proven_live_20c2_actuation'])
                 self.assertFalse(result['emulated_vitotrol_present'])
-                self.assertAlmostEqual(result['supply_change_c'],
-                                       1.9 if kind=='heating' else -0.5)
+                expected={'heating':1.9,'cooling':-0.5,'neutral':0.0}[kind]
+                self.assertAlmostEqual(result['supply_change_c'],expected)
 
     def test_fixture_both_directions_work_without_fake_vitotrol(self):
         for kind,cfg in PROOFS.items():
@@ -103,6 +109,18 @@ class HardwareProofTests(unittest.TestCase):
             self.assertEqual(v['supplier_setpoint_after_c'],35.5)
             self.assertFalse(v['room_sensor_bound'])
             self.assertFalse(v['emulated_vitotrol_present'])
+
+    def test_three_real_calibration_points_are_ordered_without_linear_assumption(self):
+        by_setpoint={
+            PROOFS[scenario]['actual_external_setpoint']:
+            validate_real_live_readback(self._synthetic(scenario),cfg)['supplier_setpoint_while_c']
+            for scenario,cfg in PROOFS.items()
+        }
+        self.assertEqual(by_setpoint,{20:35.0,21:35.5,22:37.4})
+        self.assertTrue(by_setpoint[20]<by_setpoint[21]<by_setpoint[22])
+        self.assertNotAlmostEqual(
+            by_setpoint[22]-by_setpoint[21],
+            by_setpoint[21]-by_setpoint[20])
 
     def test_remove_restore_proof_fails_closed(self):
         for k,cfg in PROOFS.items():

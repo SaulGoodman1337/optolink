@@ -69,6 +69,31 @@ den angenommenen Wert.
 Privat vorhandene Maschine:
  /tmp/wb2a-vitotrol-external-room-cooling-live-20261011.json
 
+### Neutrale Mitte als dritter Liveversuch (14:49 Uhr CEST)
+
+In einer separat mit unabhängiger Rückstellung ausgeführten A/B/A-Probe
+wurde der externe Sollwert bewusst genau auf den **normalen Sollwert
+21 Grad C** gesetzt: writeraw;0x2321;15, angenommen bei einer
+gedachten Raumtemperatur von 21 Grad C.
+
+| Phase | Vorlauf-Soll |
+| --- | --- |
+| Vor dem Eingriff | **35,5 Grad C** |
+| Extern 21 Grad C aktiv – 1. Rücklesung | **35,5 Grad C** |
+| Extern 21 Grad C aktiv – 2. Rücklesung | **35,5 Grad C** |
+| Nach Rückstellung 0x2321=00 | **35,5 Grad C** |
+
+Der neutrale Punkt erzeugt **0,0 Grad C** Vorlauf-Sollwertänderung.
+Privates Original-JSON:
+ /tmp/wb2a-vitotrol-external-room-neutral-live-20261011.json
+
+Damit ist die beobachtete Reihenfolge **20 / 21 / 22 Grad C externer
+Raumsoll → 35,0 / 35,5 / 37,4 Grad C Vorlauf-Soll** an genau
+dieser WB2A reproduziert. Die Steigung ist nicht linear.
+Auch für den dritten Test wurden Reglercode, aktueller Fehler,
+A0/B0 und wieder auf 00 gesetzter externer Sollwert kontrolliert,
+bevor der unabhängige Restore-Timer deaktiviert wurde.
+
 **Es sind echte, in beide Richtungen verifizierte Reglerreaktionen**,
 nicht nur angenommene Unterschiede oder erfolgreich beantwortete
 Schreibbefehle. Die asymmetrische Kennlinie ist eine Momentaufnahme

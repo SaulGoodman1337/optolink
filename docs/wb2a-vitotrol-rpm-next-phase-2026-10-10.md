@@ -5,6 +5,9 @@ des externen Raumsollwerts M1/A1 (0x2321) bereits einen
 **bidirektionalen tatsaechlichen Vorlauf-Sollwert-Stelleffekt**:
 35,5 -> 37,4 -> 35,5 Grad C (extern 22 Grad C) sowie
 35,5 -> 35,0 -> 35,5 Grad C (extern 20 Grad C).
+Ein dritter Live-Neutralpunkt bestaetigte **35,5 -> 35,5 ->
+35,5 Grad C** bei extern 21 Grad C, jeweils unter unabhaengig
+bewaffneter Rueckstellung und vollstaendig geprueftem Postcheck.
 Regler 20C2/0103, beide unabhängigen Rollbacks und Störung 00
 sind belegt. Eine experimentelle MQTT-Raumrueckkopplung
 nutzt diesen funktionierenden Aktor, ist aber ohne echte
