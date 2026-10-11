@@ -66,13 +66,19 @@ HIGH_PAIR_PROBES = (
     ROM_READS[2], INDIRECT_READS[7],
     ("request;99;0xfff2;2", 0xFFF2, 2),
 )
+DMA_PROBES = (
+    ("request;3;0x0020;32", 0x0020, 32),  # both M16C DMAC channels, including SAR/DAR/TCR/CON
+    ("request;3;0x03b8;4", 0x03B8, 4),   # DMiSL request-select / software-trigger SFRs
+    ("read;0x0a5c;4", 0x0A5C, 4),       # no Vitotrol state change
+    ("read;0x089c;1", 0x089C, 1),       # unmodified room-sensor state
+)
 COPY_PROBES = (
     ("request;3;0x1de0;32", 0x1DE0, 32),
     ("request;3;0x1e60;32", 0x1E60, 32),
     ("request;3;0x3300;32", 0x3300, 32),
 )
 ALLOWED = {cmd: (addr, n) for cmd, addr, n in
-           (IDENTITY, *BASELINE, *ROM_READS, *INDIRECT_READS, *RX_PROBES, *COPY_PROBES, *HIGH_PAIR_PROBES)}
+           (IDENTITY, *BASELINE, *ROM_READS, *INDIRECT_READS, *RX_PROBES, *COPY_PROBES, *HIGH_PAIR_PROBES, *DMA_PROBES)}
 
 
 class Rejected(RuntimeError):
@@ -200,11 +206,42 @@ def run_high(*, invoke_fn=invoke, cycles: int = 3) -> dict:
     }
 
 
+def run_dma(*, invoke_fn=invoke, cycles: int = 5) -> dict:
+    """Check real M16C DMA channel occupancy, never configure/trigger it."""
+    if type(cycles) is not int or not 2 <= cycles <= 6:
+        raise Rejected("DMA watch bounded to 2..6 snapshots")
+    started = time.monotonic()
+    ident = invoke_fn(IDENTITY[0])
+    if hard(ident) != EXPECTED_ID:
+        raise Rejected("not the original 20C2 device")
+    baseline = [invoke_fn(x[0]) for x in BASELINE]
+    if any(hard(x) != "00" for x in baseline):
+        raise Rejected("baseline A0/B0/type/fault mismatch")
+    rows = []
+    for i in range(cycles):
+        part = [invoke_fn(x[0]) for x in DMA_PROBES]
+        for r in part:
+            hard(r)
+        rows.append({"index": i, "reads": part})
+    after = [invoke_fn(x[0]) for x in BASELINE]
+    if any(hard(r) != "00" for r in after):
+        raise Rejected("unexpected status after read-only DMA observation")
+    return {"mode": "M16C_DMA_ROM_BRIDGE_OCCUPANCY_READ_ONLY",
+            "target": "20C2/0103", "identity": ident, "baseline": baseline,
+            "dma_snapshots": rows, "after": after,
+            "duration_s": round(time.monotonic()-started,3),
+            "controller_writes": 0, "dma_triggered": False,
+            "rom_contents_read": False, "channel_reassignment_allowed": False,
+            "serial_owner": "optolink-splitter.service"}
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--execute", action="store_true")
     p.add_argument("--cycles", type=int, default=3)
-    p.add_argument("--high-only", action="store_true")
+    group = p.add_mutually_exclusive_group()
+    group.add_argument("--high-only", action="store_true")
+    group.add_argument("--dma-only", action="store_true")
     p.add_argument("--output", type=Path)
     args = p.parse_args()
     if not args.execute:
@@ -214,9 +251,15 @@ def main():
     if args.output is None or not str(args.output).startswith("/tmp/wb2a-vitotrol-"):
         p.error("bounded /tmp/wb2a-vitotrol-... output required")
     require_native()
-    out = run_high(cycles=args.cycles) if args.high_only else run(cycles=args.cycles)
+    out = (run_dma(cycles=args.cycles) if args.dma_only else
+           run_high(cycles=args.cycles) if args.high_only else
+           run(cycles=args.cycles))
     args.output.write_text(json.dumps(out, indent=2, sort_keys=True) + "\n")
-    if args.high_only:
+    if args.dma_only:
+        total = 1 + len(out["baseline"]) + len(out["after"]) + sum(
+            len(x["reads"]) for x in out["dma_snapshots"])
+        n = len(out["dma_snapshots"])
+    elif args.high_only:
         total = 1 + len(out["baseline"]) + len(out["after"]) + sum(
             len(x["rows"]) for x in out["windows"])
         n = len(out["windows"])
