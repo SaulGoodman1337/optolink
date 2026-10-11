@@ -1,3 +1,35 @@
+## Update 11.10.2026, 14:12 Uhr: reale M16C-SFR-Messungen
+
+Die vorherige **rein statische** MCU-Zuordnung wurde durch neue, direkt an
+der eigenen WB2A ausgeführte P300-`Physical_READ`-Messungen **materiell
+verbessert**: `S1RIC 0x0054` hat aktiv beobachtete Werte `40` und
+`41`; `U1C1 0x03AD` die Werte `03` und `07`. Damit ist die
+M16C/62P-UART1-Registerkarte mit **echtem** Gerätedatenverkehr korreliert
+und sowohl deaktivierte als auch aktivierte UART1-RX-Freigabe sind
+hardwareseitig beobachtet. `U1MR/U1BRG 0x03A8/2=6598` sowie
+DMA0 nach `U1TB=0x03AA` bestätigen den Kontext.
+
+Die vier initialen Samples ergaben 0x40/03 ohne Fernbedienung und
+dreimal 0x41/07 mit A0:2/B0:3. Ein unmittelbar anschließender
+**siebenphasiger** Codierungsvergleich ergab aber 0x41/07 **auch bei
+A0:0/B0:0** und 0x40/03 **sogar bei A0:2/B0:3**. Ein exklusiver
+A0→UART-Enable-Kausalbeweis wäre deshalb falsch. Die UART1-Empfangs-
+Freigabe und die IRQ-Priorität werden dynamisch geschaltet.
+
+Zudem enthalten 79 SHA-verifizierte RAM-Snapshots in unmittelbarer
+Nachbarschaft des RX-Deskriptorkandidaten `0x0B6D` die ROM-ähnlichen
+Little-Endian-Werte `0x0B74→0xF23FF` und `0x0B7E→0xE01F0` (beide
+79/79). Deren Funktion und tatsächliche Code-Instruktionen sind
+nicht nachgewiesen. Ein per Optolink ausführbarer RX-Dispatcher
+wurde **nicht** entdeckt. Vollständige Originalregister und Tests:
+[wb2a-vitotrol-uart1-p300-sfr-live-2026-10-11.md](wb2a-vitotrol-uart1-p300-sfr-live-2026-10-11.md).
+
+Der exakte MCU-Aufdruck bleibt in den verfügbaren lokalen Fotos
+unbestätigt, aber das ist **nicht mehr** mit einer bloß hypothetischen
+UART1-SFR-Zuordnung gleichzusetzen. Es gibt nun gemessene Hardwareevidenz.
+
+---
+
 # WB2A/VDensHO1/20C2: UART1-ISR and firmware attribution gate (2026-10-11)
 
 **Status:** static evidence recheck only; no firmware image, ISR discovery, or hardware Vitotrol acceptance. No controller commands, physical port access, coding changes, or injection.
