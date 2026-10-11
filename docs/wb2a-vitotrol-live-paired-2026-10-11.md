@@ -107,3 +107,20 @@ Bestehende und neue synthetische Regressionen decken Timeout-Pfade, unverändert
 - Separate Ergebnisse: [Live-Einzelreads am Morgen](wb2a-vitotrol-live-optolink-ram-2026-10-11.md), [Firmware-/UART1-Identitätsgrenzen](wb2a-vitotrol-uart1-firmware-attribution-2026-10-11.md), [VitoSoft-Profil](wb2a-vitotrol-vitosoft-profile-audit-2026-10-10.md).
 
 **Entscheidungsgrenze:** Die Live-Tests beweisen P300-RAM-Beobachtung, **nicht** Optolink-Receive-Emulation. Für einen echten Teilnehmer benötigen wir eine belegte, in VDensHO1 erreichbare KM-Bus-Receive-/ISR-/State-Commit-Funktion. Ohne solche Firmware-/Controllerbelege dürfen unbekannte RAM-/SFR-/EEPROM-Writes, `XRAM_WRITE` oder freie `KBUS_TRANSPARENT_WRITE`-Experimente nicht als sicherer Emulatorpfad ausgegeben werden. PR bleibt Draft, originaler VS1-Betrieb bleibt produktiv.
+
+## Nachtrag: echte native P300-Schreibversuche am selben Tag (09:23–09:39)
+
+Die vorherige **read-only**-Evidenz wurde danach entscheidend erweitert:
+FC04 `Physical_WRITE` kann **originale Klasse11-Vitotrol-300-Antworten**
+nach `0x1642` schreiben; eine physische FC03-RAM-Rücklesung bestätigte
+alle vier Originaltelegramme, mehrfach unter `A0:1/B0:3` sowie bei
+Type `0x7342=0x74`. Eine echte Vitotrol-Teilnehmerannahme erfolgte
+**nicht**; `0x0A5C` blieb 0, Raumtemperatur beim Fallback 20°C,
+Sensorstatus `03`. Zustandsbytes `0x166A`/`0x0B6B` wurden mit
+früher natürlich beobachteten Varianten aktiv versucht, ohne
+Teilnehmerannahme. Weitere aktive Tests im nativen P300-Modus sind
+in [wb2a-vitotrol-native-p300-active-2026-10-11.md](wb2a-vitotrol-native-p300-active-2026-10-11.md)
+mit Code, Rücklesungen und genauem Abnahmevorbehalt dokumentiert.
+Die früheren `VS1/P300`-Canary-Read-only-Gates sollen **nicht** als
+grundsätzliche Pflicht für alle P300-basierten Vitotrol-Tests verstanden
+werden. Native P300 ist ein eigenständiger real abgenommener Testmodus.

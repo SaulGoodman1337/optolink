@@ -1,3 +1,26 @@
+## Native-P300-Optolink-Vitotrol: echter Handshakeversuch am 11.10.2026
+
+Direkter nativer P300-Betrieb über den vorhandenen Produktions-Splitter
+wurde real mit `20C2 / 0103` abgenommen. `Physical_WRITE FC04`
+konnte originale Klasse11-Vitotrol-B3/B1/BF/PONG-Antworten **nachweislich**
+in den echten RAM-Kandidaten `0x1642` schreiben und bytegenau
+zurücklesen. Bei `A0:1/B0:3` blieb die Teilnehmerkennung trotzdem null.
+Ein anschließender lebender TX-Poller erkannte **zwei RAM-Beobachtungen**
+des tatsächlich vom WB2A-Master bereitgestellten Vitotrol-F8-Discovery-
+Frames `1100330a0101f80449ef` und schrieb dazu **zweimal** die passende
+originale B3-Slaveantwort `0011b3100101f811f938fa01fb0a1db1`.
+Trotz zweimaligem korrektem SRAM-Readback **keine** gültige
+Vitotrol-Registrierung oder Raumtemperaturquelle. Die fehlende
+RX-/ISR-/State-Commit-Aktivierung ist somit als enger Entwicklungs-
+Blocker isoliert, statt generell P300- vs. VS1-Umschaltungen.
+**P300 ist ein direkt zulässiger Emulator-Betriebsmodus.**
+
+Reproduzierbare Treiber, echte Rücklesungen, P300-KBUS-Funktionsmatrix
+und vollständig belegte A0/B0-/Typ-Rückstellung:
+[wb2a-vitotrol-native-p300-active-2026-10-11.md](wb2a-vitotrol-native-p300-active-2026-10-11.md).
+Originale serielle VS1-Dienstkonfiguration und passive
+RPM-Aufzeichnung nach Testabschluss wiederhergestellt.
+
 ## Nachtrag zur reinen Optolink-Vitotrol-Forschung (11.10.2026)
 
 In einem neuen, vollständig offline durchgeführten Audit wurden 5269 +
