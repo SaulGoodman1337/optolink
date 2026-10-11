@@ -1,3 +1,21 @@
+## Neue aktive Raumregelungs-Hardwareergebnisse 11.10.2026
+
+Die echt angeschlossene WB2A zeigt ueber Virtual_WRITE
+des externen Raumsollwerts M1/A1 (0x2321) bereits einen
+**bidirektionalen tatsaechlichen Vorlauf-Sollwert-Stelleffekt**:
+35,5 -> 37,4 -> 35,5 Grad C (extern 22 Grad C) sowie
+35,5 -> 35,0 -> 35,5 Grad C (extern 20 Grad C).
+Regler 20C2/0103, beide unabhängigen Rollbacks und Störung 00
+sind belegt. Eine experimentelle MQTT-Raumrueckkopplung
+nutzt diesen funktionierenden Aktor, ist aber ohne echte
+nachgewiesene Raumsensor-Publikation **nicht produktiv aktiv**.
+
+**Das ist eine separate funktionale Raumfuehrungsalternative,
+keine in der Reglerfirmware registrierte Vitotrol.**
+Details: [wb2a-vitotrol-optolink-room-feedback-live-2026-10-11.md](wb2a-vitotrol-optolink-room-feedback-live-2026-10-11.md).
+Die echte Klasse11-KM-Bus-Slaveanmeldung braucht nach wie vor
+den Firmware-RX-ISR-/Queue-/Parser-State-Commit.
+
 ## Native-P300-Optolink-Vitotrol: echter Handshakeversuch am 11.10.2026
 
 Direkter nativer P300-Betrieb über den vorhandenen Produktions-Splitter
