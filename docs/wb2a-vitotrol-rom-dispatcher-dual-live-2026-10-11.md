@@ -2,6 +2,10 @@
 
 **Datum:** 11.10.2026, 16:26–16:34 CEST. **Ziel:** echte Vitotrol-200/300-Anmeldung ohne separate KM-Bus-Hardware, allein über den originalen Optolink-Splitter. **Ergebnis:** Beide Wege tatsächlich am eigenen Regler mit 123 ausschließlich lesenden nativen P300-Abfragen geprüft, jedoch **weder ein 20-Bit-ROM-Lesezugang noch ein RX-/Teilnehmer-Commit bewiesen**. Das separate Raumregelungsprojekt (0x2321) bleibt ausgesetzt.
 
+## Nachtrag 19:30 CEST: FC99/FC101 sind als eigenstaendige Dienste unbewiesen
+
+Eine erneute SHA-verifizierte Analyse des produktiven Host-Serializers `/opt/optolink/optolinkvs2.py` zeigt: Der Request sendet das volle Byte `0x63` fuer decimal `99`, aber der Host-Antwortdecoder interpretiert das Funktionsbyte als `FC = byte & 0x1F` und `sequence = byte >> 5`. **FC99/0x63 hat nach diesem Decoder dieselben unteren fünf Funktionsbits wie Physical_READ/0x03**; ebenso FC101/0x65 wie EEPROM_READ/0x05. Damit darf die unten dokumentierte FC03/FC99-Differenz **nicht mehr ohne Weiteres als Beweis zweier unabhaengiger Controller-Speicherpfade** bezeichnet werden. Ein alternativer MCU-seitiger Dispatch ist theoretisch moeglich, wurde bisher aber nicht gezeigt. Die historischen Rohantworten bleiben unveraendert korrekt. Die ausfuehrliche Korrektur und die Host-Telegrammtests stehen im Folgebericht `wb2a-vitotrol-abc-optolink-offline-2026-10-11.md`.
+
 ## Durchführung und Provenienz
 
 Verwendet wurde ausschließlich der bereits produktive serielle Portbesitzer `optolink-splitter.service`. Für jedes Messfenster wurde mit `systemd-run` zuerst ein **unabhängiger, zeitbegrenzter Restore-Timer** scharfgeschaltet, dann der Originaldienst von VS1 auf natives P300 umgestellt und anschließend die genau begrenzte Read-Whitelist abgefragt. Python-Messsoftware selbst schaltet keine Dienste und hat keinen Schreibbefehl für den Kessel.
