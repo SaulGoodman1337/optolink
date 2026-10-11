@@ -109,13 +109,15 @@ def execute_read_phases(coordinator: HandoverCoordinator,
                     raise ExecutionRejected('plan does not map to typed request')
                 if job.kind in (ReadKind.P300_RAM_0F20_32,
                                 ReadKind.P300_RAM_1C60_32,
-                                ReadKind.P300_RAM_1640_32):
+                                ReadKind.P300_RAM_1640_32,
+                                ReadKind.P300_RAM_161A_32):
                     if coordinator.mode is not Mode.P300_VERIFIED:
                         raise ExecutionRejected('FC03 read outside verified P300')
                     key = {
                         ReadKind.P300_RAM_0F20_32: 'ram_0f20_32',
                         ReadKind.P300_RAM_1C60_32: 'ram_1c60_32',
                         ReadKind.P300_RAM_1640_32: 'ram_1640_32',
+                        ReadKind.P300_RAM_161A_32: 'ram_161a_32',
                     }[job.kind]
                     raw = coordinator.p300_ram_read(key)
                     if len(raw) != 32:

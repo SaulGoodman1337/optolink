@@ -146,7 +146,8 @@ def _collect_events(session: Path, start_epoch: int, *,
                        else {"p300_identity": 4,
                              "p300_ram_0f20_32": 64,
                              "p300_ram_1c60_32": 64,
-                             "p300_ram_1640_32": 64})
+                             "p300_ram_1640_32": 64,
+                             "p300_ram_161a_32": 64})
             replies = event.get("on_demand_raw")
             if not isinstance(raw_reads, dict) or len(raw_reads) != 1:
                 raise ContinuousCanaryRejected("live demand evidence absent or mismatched")

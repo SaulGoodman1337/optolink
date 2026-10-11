@@ -24,7 +24,7 @@ class DemandBatchTests(unittest.TestCase):
                              max_queue_wait_ms=9000)
 
     def test_only_known_fixed_size_p300_reads_admitted(self):
-        self.assertEqual(len(P300_DEMAND_KINDS),4)
+        self.assertEqual(len(P300_DEMAND_KINDS),5)
         for kind in ReadKind:
             if kind in P300_DEMAND_KINDS:
                 self.assertEqual(self.q.submit(kind).state,TicketState.QUEUED)

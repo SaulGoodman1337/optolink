@@ -90,6 +90,8 @@ class ManualCanaryTests(unittest.TestCase):
             'p300_ram_1c60_32':'bb'*32,
             'p300_ram_1640_32':
                 '00000001b10a010110fe23d8fa01fb0122d10000000000000000000000000000',
+            'p300_ram_161a_32':
+                '1100330a0101f80449ef'+'00'*22,
         }
         for kind,raw in allowed.items():
             case=json.loads(json.dumps(self.event))

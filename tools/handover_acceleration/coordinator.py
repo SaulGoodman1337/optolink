@@ -42,6 +42,9 @@ P300_RAM_READS = {
     # Observed 295 times in P300 Deep Logger (2026-10-09).
     # B1 slave-to-controller candidate begins two bytes in at 0x1642.
     "ram_1640_32": (0x03, 0x1640, 32, _fixed_p300_request(3, 0x1640, 32)),
+    # Source of KM-Bus-shaped TX master frames in completed 20C2 archival scans.
+    # Read-only SRAM view, NOT a physical on-wire bus capture.
+    "ram_161a_32": (0x03, 0x161a, 32, _fixed_p300_request(3, 0x161a, 32)),
 }
 TX_ALLOW = frozenset([EOT, ACK, b"\x16\x00\x00", STX + VS1_ID, VS1_ID,
                       VS1_SOFTWARE, *GFA.values(), P300_ID, P300_SOFTWARE,

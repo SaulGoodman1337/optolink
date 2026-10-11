@@ -337,6 +337,17 @@ class LocalControlTests(unittest.TestCase):
             self.assertEqual(self.runtime.demands.pending_count(),1)
         self.assertEqual(self.fixture.port.writes,[])
 
+    def test_explicit_161a_master_tx_buffer_is_operator_only_read(self):
+        self.assertNotIn('p300_ram_161a_32',getattr(self.runtime,'READONLY_PRESET',()))
+        request=self.request(self.payload(kind='p300_ram_161a_32'))
+        self.assertTrue(request['ok'])
+        self.assertEqual(request['kind'],'p300_ram_161a_32')
+        self.assertEqual(self.runtime.demands.pending_count(),1)
+        self.assertEqual(self.fixture.port.writes,[])
+        bad=self.request(self.payload(kind='p300_ram_161b_32',request_id=self.b))
+        self.assertFalse(bad['ok'])
+        self.assertEqual(self.runtime.demands.pending_count(),1)
+
     def test_duplicate_socket_bind_must_not_unlink_original_owner(self):
         self.control.start()
         self.addCleanup(self.control.close)

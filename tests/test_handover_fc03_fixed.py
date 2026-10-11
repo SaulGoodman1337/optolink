@@ -48,10 +48,11 @@ class P300FC03ReadOnlyTests(unittest.TestCase):
         return manager, port
 
     def test_golden_request_bytes_and_whitelist(self):
-        self.assertEqual(set(P300_RAM_READS), {'ram_0f20_32','ram_1c60_32','ram_1640_32'})
+        self.assertEqual(set(P300_RAM_READS), {'ram_0f20_32','ram_1c60_32','ram_1640_32','ram_161a_32'})
         self.assertEqual(P300_RAM_READS['ram_0f20_32'][3].hex(), '410500030f202057')
         self.assertEqual(P300_RAM_READS['ram_1c60_32'][3].hex(), '410500031c6020a4')
         self.assertEqual(P300_RAM_READS['ram_1640_32'][3].hex(), '410500031640207e')
+        self.assertEqual(P300_RAM_READS['ram_161a_32'][3].hex(), '41050003161a2058')
 
     def test_uart1_rx_candidate_one_fixed_fc03_no_arbitrary_write(self):
         from handover_acceleration.runtime_admission import READONLY_PRESET
@@ -74,6 +75,36 @@ class P300FC03ReadOnlyTests(unittest.TestCase):
         self.assertEqual(port.script,[])
         self.assertFalse(any(len(packet)>8 and packet.startswith(b'\x41\x05\x00\x04')
                              for packet in port.writes))
+
+    def test_uart1_master_tx_source_exact_fixed_read_never_auto(self):
+        from handover_acceleration.runtime_admission import READONLY_PRESET
+        self.assertNotIn(ReadKind.P300_RAM_161A_32,
+                         {kind for _,kind,_ in READONLY_PRESET})
+        raw=bytes.fromhex('1100330a0101f80449ef').ljust(32,b'\x00')
+        seq=expect_vs1(2)+expect_p300()+response('ram_161a_32',raw=raw)+expect_vs1(1)
+        manager,port=self.manager(seq)
+        with manager:
+            out=execute_read_phases(manager,
+                    [job('p300_ram_161a_32',ReadKind.P300_RAM_161A_32)],
+                    Budget(max_vs1_unavailable_ms=8500,
+                           max_p06_age_ms=9000,max_queue_wait_ms=9000))
+            self.assertEqual(manager.mode,Mode.VS1_VERIFIED)
+        self.assertEqual(out.reads[0].raw,raw)
+        self.assertEqual(len(out.reads),1)
+        self.assertEqual(out.p300_entry_count,1)
+        self.assertEqual(port.script,[])
+        self.assertFalse(any(packet.startswith(b'\x41\x05\x00\x04')
+                             for packet in port.writes))
+
+    def test_uart1_master_tx_source_bad_crc_recovers_no_second_owner(self):
+        seq=expect_vs1(2)+expect_p300()+response('ram_161a_32',bad_crc=True)[:1]+expect_vs1(2)
+        manager,port=self.manager(seq)
+        with self.assertRaises(ProtocolError):
+            with manager:
+                manager.to_p300()
+                manager.p300_ram_read('ram_161a_32')
+        self.assertEqual(manager.mode,Mode.DETACHED)
+        self.assertEqual(port.script,[])
 
     def test_uart1_rx_candidate_corrupt_fc03_response_recovers(self):
         seq=(expect_vs1(2)+expect_p300()
