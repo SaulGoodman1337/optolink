@@ -54,7 +54,7 @@ class FakeController:
 
     def write_config(self,addr,val):
         if (addr,val) not in {
-            (0x27A0,0),(0x27A0,1),(0x27B0,0),(0x27B0,3),
+            (0x27A0,0),(0x27A0,1),(0x27A0,2),(0x27B0,0),(0x27B0,3),
             (0x7342,0),(0x7342,0x74)
         }:raise AssertionError('unsafe config')
         self.writes.append(('config',addr,val))
@@ -102,6 +102,8 @@ class BridgeTests(unittest.TestCase):
         self.assertFalse(r['remote_accepted_by_controller'])
         self.assertTrue(all(x['physical_readback_exact'] for x in r['frames_staged']))
         self.assertEqual(len(r['frames_staged']),4)
+        self.assertEqual(r['configured_a0_matches_original_v300'],'02')
+        self.assertIn(('config',0x27A0,2),controller.writes)
         self.assertEqual(r['last_active_acceptance_check']['software_index_nonzero'],False)
         self.assertFalse(r['last_active_acceptance_check']['accepted_remote_proven'])
         self.assertFalse(r['km_bus_uart_rx_interrupt_triggered'])

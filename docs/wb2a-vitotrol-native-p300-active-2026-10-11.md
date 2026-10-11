@@ -187,3 +187,9 @@ mit bestätigtem Original-Hauptdienst, `A0/B0/Type=00/00/00`,
 SWIndex 0, aktueller Fehler `00`; die unabhängige Restore-Timer-
 Reserve wurde erst nach bestätigter Rückstellung deaktiviert.
 Der neue passive RPM-Beobachter blieb aktiv.
+
+## Nachtrag: Die modellrichtigen Vitotrol-Hardwareversuche vom 11.10.2026
+
+Die exakt zugeordnete VDensHO1-Codierung lautet **A0:1 = Vitotrol 200, A0:2 = Vitotrol 300**. Frühere V300-Frames bei A0:1 hatten daher einen Typkonflikt. Dies wurde direkt am Gerät aufgelöst: Original-V300-Antworten unter A0:2 sowohl vorausgefüllt als auch dynamisch nach Master-F8-Discovery; das V200-Referenzprofil unter A0:1, sowie V300-Follower unter A0:2/B0:3 **mit Typ `0x7342=74`**. In allen Varianten blieb die Controller-Fernbedienungskennung `00000000`, virtueller Raum `c800` und Sensor `03`. Es wurde weiterhin **kein tatsächlicher UART1-RX-Commit belegt**.
+
+Der Kessel stand nach der letzten temporären nativen P300-Phase um **10:21:17 CEST** wieder im Originalbetrieb: `A0/B0/Type=00/00/00`, `vs1protocol=True`, `VS1_BETRIEB_OK`, passiver RPM-Logger aktiv. Vollständige Testmatrix einschließlich der durch den natürlichen Klasse01-Verkehr überschriebenen RX-Identitätsbytes: [wb2a-vitotrol-native-p300-variant-matrix-2026-10-11.md](wb2a-vitotrol-native-p300-variant-matrix-2026-10-11.md).

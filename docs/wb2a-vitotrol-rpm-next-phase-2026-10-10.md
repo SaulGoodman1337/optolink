@@ -366,3 +366,7 @@ Beide Canonical-Canaries mit verifizierter VS1-P80/P06-Rueckkehr und
 originalen Services RESTORED. A0=00, B0=00, keine aktuelle BC und
 Fault-History unveraendert. **Keine Vitotrol registriert**, kein
 belegter KM-Bus-Receive-Inject-Dienst.
+
+## Korrigierte Modellzuordnung und Live-Optolink-P300-Stand (11.10.2026, 10:21)
+
+**A0:1 verlangt Vitotrol 200; A0:2 verlangt Vitotrol 300.** Der V300-P300-Emulator wurde für das originale B3-Replay und den echten Master-Discovery-Follower auf A0:2 umgestellt. Auch mit korrektem `A0:2/B0:3` und optionalem Typ `0x7342=74` akzeptiert die reale WB2A die Byte-für-Byte bestätigten SRAM-Antworttelegramme nicht als KM-Bus-Empfang (`SWIndex=00000000`, Sensor=03). V200-Referenz B3 bei A0:1 ebenfalls negativ. Details: [native-P300-Variantenmatrix](wb2a-vitotrol-native-p300-variant-matrix-2026-10-11.md). Ein erneuter reiner RAM-Preseed ist kein sinnvoller Erfolgstest; nötig ist ein nachgewiesener Optolink-erreichbarer RX-Event-/Firmware-State-Commit.

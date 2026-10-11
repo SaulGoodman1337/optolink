@@ -133,7 +133,7 @@ class OptolinkP300Client:
 
     def write_config(self, addr: int, value: int):
         if (addr, value) not in {
-            (0x27A0, 0), (0x27A0, 1),
+            (0x27A0, 0), (0x27A0, 1), (0x27A0, 2),
             (0x27B0, 0), (0x27B0, 3),
             (0x7342, 0), (0x7342, 0x74),
         }:
@@ -246,7 +246,9 @@ class VitotrolP300Stager:
             began=True
             if configure_type:
                 self.client.write_config(0x7342,0x74)
-            self.client.write_config(0x27A0,1)
+            # Controller VDensHO1 A0:2 = Vitotrol 300. Original V300
+            # identity 11 38 01 0A is not the A0:1 / Vitotrol 200 subtype.
+            self.client.write_config(0x27A0,2)
             self.client.write_config(0x27B0,3)
             observations.append({"stage":"enabled","values":monitor(self.client)})
             for frame in REPLAY:
@@ -280,6 +282,7 @@ class VitotrolP300Stager:
         return {
             "mode":"REAL_NATIVE_P300_RAM_STAGING_NOT_UART_RX_EMULATION",
             "identity_20c2_0103_verified":True,
+            "configured_a0_matches_original_v300":"02",
             "before":before,
             "frames_staged":events,
             "observations":observations,

@@ -85,6 +85,8 @@ class TestMasterFollower(unittest.TestCase):
         self.assertFalse(result['physical_controller_uart1_rx_interrupt_verified'])
         self.assertFalse(result['master_frame_wire_send_timestamp_proven'])
         self.assertEqual(result['restored']['a0'],'00')
+        self.assertEqual(result['matched_remote_type_a0'],'02')
+        self.assertIn((0x27A0,2),x.codes)
         self.assertEqual(result['restored']['b0'],'00')
         self.assertEqual(result['restored']['type'],'00')
 

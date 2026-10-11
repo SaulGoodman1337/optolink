@@ -99,7 +99,10 @@ class NativeP300MasterFollower:
             engaged=True
             if configure_type:
                 self.client.write_config(0x7342,0x74)
-            self.client.write_config(0x27A0,1)
+            # Exact VDensHO1 coding: A0=2 expects Vitotrol 300 (ID 11 38).
+            # The older A0=1 attempts expected Vitotrol 200 (ID 11 34);
+            # using an actual V300 response with A0=1 was a model mismatch.
+            self.client.write_config(0x27A0,2)
             self.client.write_config(0x27B0,3)
             while self.now()-started<duration_s and sum(counts.values())<MAX_READS:
                 result=self.poll_once(remote,at_s=self.now())
@@ -137,6 +140,7 @@ class NativeP300MasterFollower:
             "model":"REAL_LIVE_NATIVE_P300_MASTER_TX_POLL_RAM_STAGE",
             "start_relative_duration_s":round(self.now()-started,3),
             "requested_duration_s":duration_s,
+            "matched_remote_type_a0":"02",
             "master_frame_counts":dict(sorted(counts.items())),
             "staged_frame_count":len(staged),
             "staged_frames":staged[:100],
