@@ -55,6 +55,7 @@ def inspect(images):
         off=addr-0x400
         vals=Counter(int.from_bytes(x[off:off+3],'little') for x in images)
         trailing=Counter(x[off+3] for x in images)
+        quads=Counter(x[off:off+4].hex() for x in images)
         inrange=sum(c for v,c in vals.items() if ROM[0]<=v<=ROM[1])
         matches.append({
             "label":name,
@@ -65,6 +66,11 @@ def inspect(images):
             },
             "m30624_program_address_range_sample_count":inrange,
             "fourth_byte_counts":{f'{v:02x}':c for v,c in sorted(trailing.items())},
+            "le32_raw_quad_counts":dict(sorted(quads.items())),
+            "zero_padded_20bit_candidate_samples":sum(
+                x[off+3]==0 and ROM[0]<=int.from_bytes(x[off:off+3],'little')<=ROM[1]
+                for x in images),
+            "four_byte_format_cannot_prove_pointer_type":True,
             "typed_as_executable_callback":False,
             "proven_uart1_rx_parser_address":False,
         })
@@ -111,6 +117,13 @@ def inspect(images):
             f'{k:02x}':v for k,v in sorted(status_if_cochanged.items())
         },
         "stable_neighbor_modal_sample_counts":stable_counts,
+        # A volatile position sometimes contains 42 16 0A, mirroring the
+        # known RX descriptor's first three bytes. This is an observational
+        # overlap, NOT an RX interrupt or producer/consumer proof.
+        "neighbor_0b5c_rx_descriptor_prefix_echo_samples":sum(
+            im[0x0B5C-0x400:0x0B5F-0x400] ==
+            im[CANDIDATE_RX_DESCRIPTOR-0x400:CANDIDATE_RX_DESCRIPTOR-0x400+3]
+            for im in images),
         "cochange_is_not_proof_of_scheduler_or_isr":True,
         "non_atomic_fc03_snapshots":True,
         "mcu_program_flash_image_present":False,
