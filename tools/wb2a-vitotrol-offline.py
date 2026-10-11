@@ -182,15 +182,44 @@ def decode_candidate_slave_record_15(frame: bytes) -> dict:
             "controller_write_authorized":False}
 
 
+def decode_candidate_slave_record_16(frame: bytes) -> dict:
+    """Classify historical emulated slot-2 0xBF/0x16 queries, never execute.
+
+    OpenV #387 public Oct-2018 KM3 capture has 223 CRC-valid slot-2
+    0x16 frames. The 2020 Python emulator describes record 0x16 as a
+    slot-2 query companion to slot-1 record 0x15. These are not verified
+    actual Vitotrol-300 frames from the local WB2A.
+    """
+    frame=validate_frame(frame)
+    if (len(frame)!=12 or frame[0]!=SRC_CONTROLLER
+            or frame[1]!=CLASS_VITOTROL or frame[2]!=0xBF
+            or frame[4]!=2 or frame[5]!=1 or frame[6]!=0x16):
+        raise FrameRejected("not an external emulated slot-2 record 0x16")
+    return {"slot":2,"record":0x16,
+            "xor_decoded_payload_hex":bytes(v^0xAA for v in frame[7:-2]).hex(),
+            "source":"PUBLIC_EXPERIMENTAL_EMULATOR_NOT_LOCAL_ORIGINAL_VITOTROL",
+            "command_semantics_verified_for_wb2a":False,
+            "controller_write_authorized":False}
+
+
 def decode_master_status(frame: bytes) -> dict:
     """Recognize controller status-record envelopes; payload semantics unknown.
 
     No state is inferred from opaque bytes; this is not a hardware RX proof.
     """
     frame=validate_frame(frame)
+    # Public OpenV #387 original-master capture (Jan 2018):
+    # 0x11: 180 frames / 40 bytes, 0x1D: 146 frames / 21 bytes.
+    # Independent emulator-capture (Oct 2018): 0x12: 111 / 40 bytes,
+    # 0x1A: 277 / 11 bytes, 0x1E: 33 / 21 bytes.
+    # Never infer a room setpoint or an RX write from these opaque records.
+    source_backed_lengths = {0x11:40,0x12:40,0x1a:11}
     if (frame[0]!=CLASS_VITOTROL or frame[1]!=SRC_CONTROLLER
             or frame[2]!=0xBF or frame[4] not in (1,2)
-            or frame[5]!=1 or len(frame)<9 or frame[6] not in (0x1c,0x1d,0x1e,0x1f)):
+            or frame[5]!=1 or len(frame)<9
+            or frame[6] not in (0x11,0x12,0x1a,0x1c,0x1d,0x1e,0x1f)
+            or (frame[6] in source_backed_lengths
+                and len(frame)!=source_backed_lengths[frame[6]])):
         raise FrameRejected("not a known controller status-record envelope")
     return {"slot":frame[4],"record":frame[6],
             "opaque_payload_hex":frame[7:-2].hex(),

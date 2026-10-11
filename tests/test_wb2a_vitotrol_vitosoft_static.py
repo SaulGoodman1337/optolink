@@ -48,6 +48,11 @@ class VitosoftStaticTests(unittest.TestCase):
         self.assertEqual(r['raw_rx_injection_alias_count'],0)
         self.assertEqual(r['dangerous_crossprofile_write_aliases'],[])
         self.assertEqual(r['addresses']['0x1642'],[])
+        for addr in ('0x0b6b','0x0b6c','0x0b6d','0x0b6f','0x0b70',
+                     '0x0ade','0x0b00','0x161a','0x1640','0x164c',
+                     '0x166a','0x166b','0x166c','0x7342'):
+            with self.subTest(address=addr):
+                self.assertEqual(r['addresses'][addr],[])
         self.assertEqual(r['addresses']['0x0896'][0]['access'],'Read')
         self.assertEqual(r['addresses']['0x089c'][0]['write'],'undefined')
         self.assertEqual(r['addresses']['0x0a5c'][0]['access'],'Read')

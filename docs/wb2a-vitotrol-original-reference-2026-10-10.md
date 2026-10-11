@@ -188,3 +188,14 @@ weitere Adressliterals und erlaubt keine Schlussfolgerung auf eine
 sichere UART1-/Optolink-Injektion.
 Siehe [Details, SHA-Beweise, Modell, Tests](wb2a-vitotrol-optolink-emulator-profile-2026-10-10.md).
 **Verbindlicher Pfad bleibt ausschließlich Optolink/P300.**
+
+## Nachtrag: PCAP-Nachrichten und Slot 2 vom 11.10.2026
+
+Die beiden separat SHA-gepinnten OpenV-PCAPNG-ZIP-Quellen sind jetzt in
+[OpenV-PCAP- und Firmware-Gate](wb2a-vitotrol-public-pcap-firmware-gate-2026-10-11.md)
+auditiert: 5269 + 701 CRC-gültige Ethernet-KM-Bus-Nachrichten, darunter
+180 Master-BF-Records 0x11 (40 Byte) und 223 von einem **experimentellen**
+externen Slot-2-Emulator erzeugte Slave-BF-Records 0x16 (12 Byte).
+**Nicht** Original-V300-Slave-TX, nicht WB2A-20C2-RX.
+Die pcapng-Zeitstempel sind Ethernet-Paketzeiten, keine bewiesene
+physische KM-Bus-Latenz. Kein Optolink-RX-State-Commit entdeckt.

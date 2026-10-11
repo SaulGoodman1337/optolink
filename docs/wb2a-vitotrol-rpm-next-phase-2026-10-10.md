@@ -1,3 +1,17 @@
+## Nachtrag zur reinen Optolink-Vitotrol-Forschung (11.10.2026)
+
+In einem neuen, vollständig offline durchgeführten Audit wurden 5269 +
+701 öffentliche OpenV-KM-Bus-Pakete CRC-validiert und die zusätzlichen
+Master-Statusrecordformen 0x11, 0x12, 0x1A sowie 223 experimentelle
+Slot-2-Slaveanfragen Record 0x16 auditiert. Außerdem wurde der lokale
+statische 20C2-SRAM-Strukturhinweis 0x0B6D = 42 16 0A FE bei allen
+79/79 SHA-gepinnten historischen RAM-Images bestätigt. Der exakte
+VitoSoft-Hostprofil-Join hat keinerlei RX-Deskriptor-Service in
+VDensHO1 nachgewiesen. Die Daten **belegen noch keinen Parser/ISR oder
+schreibbaren Vitotrol-State-Commit über Optolink**. Reproduzierbare
+Quellen und technische Grenzen:
+[wb2a-vitotrol-public-pcap-firmware-gate-2026-10-11.md](wb2a-vitotrol-public-pcap-firmware-gate-2026-10-11.md).
+
 # WB2A: Vitotrol und mehrtägige RPM-Forschung – 10.10.2026
 
 **Basis:** PR #51 ist in `main` integriert (Merge `6664c5e`).

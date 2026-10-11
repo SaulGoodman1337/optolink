@@ -76,11 +76,37 @@ def window_locality(images:list[bytes]) -> dict:
     paired=Counter(
         f'{b[candidate_off]:02x}|{b[rx_off:rx_off+8].hex()}'
         for b in images)
+    # 0x0B6D contains constant bytes 42 16 0A FE in 79 archived frames.
+    # The first two bytes happen to equal LE16 0x1642 and the third equals
+    # the CRC-valid B1 frame length at 0x1642. The last byte 0xFE has NO
+    # grounded meaning. Do not infer parser ownership from this coincidence.
+    descriptor_off=POINTER_CANDIDATE-0x400
+    descriptor_values=Counter(
+        b[descriptor_off:descriptor_off+4].hex() for b in images)
+    pointer_and_length_matches=sum(
+        b[descriptor_off:descriptor_off+2] == RX_MEM.to_bytes(2,'little')
+        and b[descriptor_off+2] == b[rx_off+3]
+        for b in images)
+    descriptor_by_rx=Counter(
+        f'{b[descriptor_off:descriptor_off+4].hex()}|'
+        f'{b[rx_off:rx_off+10].hex()}' for b in images)
     return {
         'scope':'COMPLETED_HISTORICAL_NONATOMIC_20K_RAM_SNAPSHOTS_ONLY',
         'candidate_pointer_or_parser_verified':False,
         'no_new_hardware_io':True,
         'windows':results,
+        'descriptor_0b6d_hypothesis':{
+            'candidate_cpu_address':'0x0b6d',
+            'candidate_rx_cpu_address':'0x1642',
+            'candidate_raw_four_byte_counts':dict(sorted(descriptor_values.items())),
+            'candidate_le16_and_third_byte_match_rx_length_samples':pointer_and_length_matches,
+            'sample_count':len(images),
+            'descriptor_and_crc_frame_counts':dict(sorted(descriptor_by_rx.items())),
+            'candidate_type_or_firmware_owner_verified':False,
+            'rx_isr_and_state_commit_verified':False,
+            'controller_write_authorized':False,
+            'non_atomic_samples_cannot_prove_causality':True,
+        },
         'non_atomic_candidate_rx_sample_counts':{
             'descriptor_minus2_address':'0x0b6b',
             'rx_prefix_address':'0x1642',

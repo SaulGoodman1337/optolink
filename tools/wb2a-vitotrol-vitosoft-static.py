@@ -17,7 +17,14 @@ EVENT_SHA='2338beb0e8544b6149bc4b2433ecabd9509edcdafc2e8e91f00182eba1aff7ba'
 TARGET_TYPE=60
 MAX_DP_BYTES=188_000_000
 MAX_EVENT_BYTES=12_000_000
-ADDRESS_LIST=('0x27a0','0x0a5c','0x0896','0x089c','0x1642')
+# Historical RAM addresses are hypotheses; the host catalog alone cannot
+# reveal a 20C2 ROM receive parser or authorize RAM injection.
+ADDRESS_LIST=(
+    '0x27a0','0x0a5c','0x0896','0x089c','0x7342',
+    '0x0b6b','0x0b6c','0x0b6d','0x0b6f','0x0b70',
+    '0x0ade','0x0b00','0x161a','0x1640','0x1642','0x164c',
+    '0x166a','0x166b','0x166c'
+)
 FORBIDDEN_INFERENCE_CODES=('XRAM_WRITE','KBUS_TRANSPARENT_WRITE','KBUS_DIRECT_WRITE')
 
 class SourceRejected(ValueError):

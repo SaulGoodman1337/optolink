@@ -69,6 +69,38 @@ class SramWindowLocalityTests(unittest.TestCase):
         self.assertFalse(names & {"serial","socket","paho","subprocess",
                                   "ctypes","paramiko","requests"})
 
+    def test_candidate_descriptor_matches_two_rx_lengths_not_a_proven_pointer(self):
+        base,_=fixture_images()
+        a=bytearray(base)
+        b=bytearray(base)
+        first=bytes.fromhex('0001b10a010110fe23d8')
+        rare=bytes.fromhex('0001b10a010100004353')
+        a[0x1642-0x400:0x1642-0x400+10]=first
+        b[0x1642-0x400:0x1642-0x400+10]=rare
+        a[0x0b6b-0x400]=1
+        b[0x0b6b-0x400]=10
+        r=module.window_locality([bytes(a),bytes(b)])
+        e=r['descriptor_0b6d_hypothesis']
+        self.assertEqual(e['candidate_raw_four_byte_counts'],{'42160afe':2})
+        self.assertEqual(e['candidate_le16_and_third_byte_match_rx_length_samples'],2)
+        self.assertEqual(e['sample_count'],2)
+        self.assertEqual(e['descriptor_and_crc_frame_counts'],{
+            '42160afe|'+first.hex():1, '42160afe|'+rare.hex():1})
+        self.assertFalse(e['candidate_type_or_firmware_owner_verified'])
+        self.assertFalse(e['rx_isr_and_state_commit_verified'])
+        self.assertFalse(e['controller_write_authorized'])
+
+    def test_tampered_descriptor_length_not_promoted_to_controller_rx(self):
+        raw,_=fixture_images()
+        v=bytearray(raw)
+        v[0x1642-0x400:0x1642-0x400+10]=bytes.fromhex('0001b10a010110fe23d8')
+        v[0x0b6f-0x400]=11  # incorrect length for even a valid B1
+        report=module.window_locality([bytes(v)])
+        e=report['descriptor_0b6d_hypothesis']
+        self.assertEqual(e['candidate_le16_and_third_byte_match_rx_length_samples'],0)
+        self.assertFalse(e['candidate_type_or_firmware_owner_verified'])
+        self.assertFalse(e['controller_write_authorized'])
+
     def test_descriptor_rx_contingency_is_descriptive_not_causal(self):
         base, _ = fixture_images()
         descriptor_offset = 0x0B6B - 0x0400
