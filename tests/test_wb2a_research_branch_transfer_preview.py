@@ -150,6 +150,13 @@ class TransferPreviewTests(SyntheticGit):
         for artifact in (
             "tools/wb2a-research-branch-transfer-preview.py",
             "tests/test_wb2a_research_branch_transfer_preview.py",
+            "docs/wb2a-c5-f9-fault-incident-2026-10-12.md",
+            "tools/wb2a-experiment-fault-gate.py",
+            "tools/wb2a-experiment-with-fault-gate.sh",
+            "tools/wb2a-c5-f9-incident-audit-offline.py",
+            "tests/test_wb2a_experiment_fault_gate.py",
+            "tests/test_wb2a_experiment_fault_wrapper_offline.py",
+            "tests/test_wb2a_c5_f9_incident_audit_offline.py",
         ):
             self.assertTrue(
                 any(m.fnmatch.fnmatchcase(artifact, rule) for rule in m.PREFIXES),

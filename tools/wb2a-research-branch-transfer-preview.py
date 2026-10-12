@@ -21,6 +21,7 @@ import sys
 
 PREFIXES = (
     "docs/wb2a-gwg-*",
+    "docs/wb2a-c5-f9-fault-incident-*",
     "docs/wb2a-v200kw2-*gwg*",
     "docs/wb2a-vitotrol-200kw2-gwg*",
     "docs/wb2a-gg1-bootloader-gwg*",
@@ -28,6 +29,9 @@ PREFIXES = (
     "docs/wb2a-optolink-only-rom*",
     "docs/wb2a-vitotrol-rom*",
     "tools/wb2a-gwg-*",
+    "tools/wb2a-c5-f9-incident-audit-offline.py",
+    "tools/wb2a-experiment-fault-gate.py",
+    "tools/wb2a-experiment-with-fault-gate.sh",
     "tools/wb2a-v200kw2-gwg*",
     "tools/wb2a-m16c-boot*",
     "tools/wb2a-optolink-rom*",
@@ -38,6 +42,9 @@ PREFIXES = (
     "tests/test_gwg_*",
     "tests/test_optolinkgwg.py",
     "tests/test_wb2a_gwg*",
+    "tests/test_wb2a_c5_f9_incident_audit_offline.py",
+    "tests/test_wb2a_experiment_fault_gate.py",
+    "tests/test_wb2a_experiment_fault_wrapper_offline.py",
     "tests/test_wb2a_m16c*",
     "tests/test_wb2a_optolink_rom*",
     "tests/test_wb2a_vitotrol_rom*",
