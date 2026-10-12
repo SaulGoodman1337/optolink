@@ -72,8 +72,8 @@ Die alten GWG-Zugriffsarten werden in [OpenV Protokoll-GWG](https://github.com/o
 | **C7** | Virtual Read | **Live bestätigt**: F8/4, F8/8, F9/3 | 8-Bit virtuelles Fenster, **kein ROM-Gate** |
 | **CB** | Physical Read | 6F/1 und F8/1 je 2x **keine Antwort** | Anderer Adressbereich/Zustand möglich, bisher kein ROM |
 | **C5** | Physical XRAM Read | 6F/1 und F8/1 je 2x **keine Antwort** | XRAM ≠ Programm-ROM |
-| **AE** | EEPROM Read | Noch **kein WB2A-Test** | EEPROM ≠ CPU-Programm-ROM |
-| **6E** | Physical Port Read | Noch **kein WB2A-Test** | Portregister, kein belegtes ROM |
+| **AE** | EEPROM Read | Nachtrag 11:18 Uhr: **`AE/0x17/2` zweimal ohne Antwort** auf 20C2; 2053-Originalprotokoll | EEPROM ≠ CPU-Programm-ROM; andere Adressen offen |
+| **6E** | Physical Port Read | Nachtrag 11:18 Uhr: **`6E/0x01/1 = 00` zweimal** echt beantwortet; konkrete WB2A-Registersemantik weiterhin offen | Portregister/Status möglich, kein ROM-Beleg |
 | **9E** | Physical BE Read | Noch **kein WB2A-Test** | Bedienteil-Bereich in alten Konfigurationen; kein ROM-Beleg |
 | **33** | KM-Bus RAM Read | Noch **kein WB2A-Test** | Eventuell KM-Bus-Forschung, kein ROM-Nachweis |
 | **43** | KM-Bus EEPROM Read | Noch **kein WB2A-Test** | EEPROM, nicht Programm-ROM |
