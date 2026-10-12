@@ -4,6 +4,7 @@
 
 **Priority 1 remains genuine WB2A/20C2 program-ROM extraction over the existing Optolink port.** Do not equate a 16-bit reader, a likely ROM pointer, a stable RAM window, a successful disassembly or a synthetic CRC calculation with a real firmware dump.
 
+- [firmware-romcopy-tuple-nullmodel-2026-10-12.md](firmware-romcopy-tuple-nullmodel-2026-10-12.md): two stable far-source/low-RAM/count-shaped tuples against 300 full-SRAM histogram- and temporal-stability-preserving shuffle controls; nonrandom structure is not proof of ROM copying.
 - [firmware-indirect-byte-oracles-strategy-2026-10-12.md](firmware-indirect-byte-oracles-strategy-2026-10-12.md): indirect ROM-extraction strategy with synthetic CRC-prefix inversion and the exact missing 20C2 evidence gates.
 - [firmware-cache-m16c-disasm-control-study-2026-10-12.md](firmware-cache-m16c-disasm-control-study-2026-10-12.md): genuine SHA-attested Ghidra 12.1.4 M16C/60 offline disassembly of the 12,926-byte stable RAM tail versus **ten byte-histogram-preserving shuffled controls**; no executable ROM code provenance established.
 - [firmware-oem-native-gwg-20bit-source-gate-2026-10-12.md](firmware-oem-native-gwg-20bit-source-gate-2026-10-12.md): original Viessmann native GWG identity implementation and full 2490-method CLR scan.
