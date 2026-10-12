@@ -4,6 +4,7 @@
 
 **Priority 1 remains genuine WB2A/20C2 program-ROM extraction over the existing Optolink port.** Do not equate a 16-bit reader, a likely ROM pointer, a stable RAM window, a successful disassembly or a synthetic CRC calculation with a real firmware dump.
 
+- [firmware-romcopy-natural-events-crosssession-2026-10-12.md](firmware-romcopy-natural-events-crosssession-2026-10-12.md): 79 original natural-event P300 RAM scans (48 off, 11 running, 8 flame-transition flags), two copy-shaped tuples, 300 destination-uniqueness controls, and three SHA-verified independent Oct 11 low-RAM captures. **No ROM copy proven; no new live controller I/O.**
 - [firmware-romcopy-tuple-nullmodel-2026-10-12.md](firmware-romcopy-tuple-nullmodel-2026-10-12.md): two stable far-source/low-RAM/count-shaped tuples against 300 full-SRAM histogram- and temporal-stability-preserving shuffle controls; nonrandom structure is not proof of ROM copying.
 - [firmware-indirect-byte-oracles-strategy-2026-10-12.md](firmware-indirect-byte-oracles-strategy-2026-10-12.md): indirect ROM-extraction strategy with synthetic CRC-prefix inversion and the exact missing 20C2 evidence gates.
 - [firmware-cache-m16c-disasm-control-study-2026-10-12.md](firmware-cache-m16c-disasm-control-study-2026-10-12.md): genuine SHA-attested Ghidra 12.1.4 M16C/60 offline disassembly of the 12,926-byte stable RAM tail versus **ten byte-histogram-preserving shuffled controls**; no executable ROM code provenance established.
