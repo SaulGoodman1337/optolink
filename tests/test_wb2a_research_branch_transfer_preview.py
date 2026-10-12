@@ -146,6 +146,20 @@ class TransferPreviewTests(SyntheticGit):
         self.assertGreaterEqual(r["candidate_file_count"], 35)
         self.assertGreaterEqual(r["source_only_commits"], 1)
 
+    def test_transfer_plan_includes_own_reproducibility_tool_and_test(self):
+        for artifact in (
+            "tools/wb2a-research-branch-transfer-preview.py",
+            "tests/test_wb2a_research_branch_transfer_preview.py",
+        ):
+            self.assertTrue(
+                any(m.fnmatch.fnmatchcase(artifact, rule) for rule in m.PREFIXES),
+                artifact + " omitted from research transfer",
+            )
+        self.assertFalse(
+            any(m.fnmatch.fnmatchcase("docs/README.md", rule)
+                for rule in m.PREFIXES)
+        )
+
     def test_transfer_script_has_no_ref_write_subprocess(self):
         src = SRC.read_text()
         for phrase in ('"git", "-C", str(repo), "push"',

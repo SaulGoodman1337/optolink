@@ -32,6 +32,7 @@ PREFIXES = (
     "tools/wb2a-m16c-boot*",
     "tools/wb2a-optolink-rom*",
     "tools/wb2a-vitotrol-rom*",
+    "tools/wb2a-research-branch-transfer-preview.py",
     "tools/optolinkgwg.py",
     "tools/optolink-apply-gwg-readonly-patch.py",
     "tests/test_gwg_*",
@@ -40,6 +41,7 @@ PREFIXES = (
     "tests/test_wb2a_m16c*",
     "tests/test_wb2a_optolink_rom*",
     "tests/test_wb2a_vitotrol_rom*",
+    "tests/test_wb2a_research_branch_transfer_preview.py",
 )
 OMIT = ("docs/README.md", "README.md", "install/", "config/", "apps/", "ct/")
 MAX_CANDIDATE_SIZE = 500_000
