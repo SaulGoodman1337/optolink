@@ -32,6 +32,7 @@ Dieser Ordner enthält die Betriebs- und Entwicklerdokumentation für den produk
 | [wb2a-vitotrol-vs1-p300-rom-contrast-live-2026-10-11.md](wb2a-vitotrol-vs1-p300-rom-contrast-live-2026-10-11.md) | Geraete-Livevergleich: 13 VS1- und 20 P300-Reads, getrennte Adressraeume und neue RAM-Byteabweichung |
 | [wb2a-vitotrol-200kw2-crossgeneration-compatibility-2026-10-11.md](wb2a-vitotrol-200kw2-crossgeneration-compatibility-2026-10-11.md) | Original KarlKoch 2010 gegen Original-Vitotrol 2018 und WB2A 2026: CRC-/KM-Bus-Kompatibilitaet, aber unbekannter Optolink-ROM-Auslesebefehl |
 | [wb2a-vitotrol-200kw2-gwg-issue10-rom-gate-2026-10-12.md](wb2a-vitotrol-200kw2-gwg-issue10-rom-gate-2026-10-12.md) | OpenV-Originalbelege GWG-C7 an 200KW2 (2010), Adressscan ueber 0x8000 leer (2011), wiedergefundenes privates Entwicklerforumzitat, gegen Original-VitoSoft falsifizierte KW2-ROM-Programmierflags |
+| [wb2a-v200kw2-legacy-gwg-live-compatibility-2026-10-12.md](wb2a-v200kw2-legacy-gwg-live-compatibility-2026-10-12.md) | **Echte WB2A-Hardwarevalidierung 12.10.:** unveraendertes 200KW2-GWG-C7 liest 20C2-ID, 8-Byte- und verschobenes Adressfenster erfolgreich, CB/C5 an 6F und F8 ohne Antwort, 16/16 read-only-Anfragen mit unabhaengiger Rueckstellung |
 | [operations.md](operations.md) | Beim Betrieb: Update, Status, Logs, Clock-Sync, Fehlerdiagnose |
 | [home-assistant.md](home-assistant.md) | Bei HA-/MQTT-/Dashboard-Änderungen |
 | [anlagenschema.md](anlagenschema.md) | WB2A-Anlagenschema, Hydrauliktopologie und dokumentierte Schreibwerte 00/52/53/54/5B |
