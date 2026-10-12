@@ -1,5 +1,14 @@
 # WB2A / VDensHO1 research notes
 
+## Latest firmware-dump research — 2026-10-12
+
+**Priority 1 remains genuine WB2A/20C2 program-ROM extraction over the existing Optolink port.** Do not equate a 16-bit reader, a likely ROM pointer, a stable RAM window, a successful disassembly or a synthetic CRC calculation with a real firmware dump.
+
+- [firmware-indirect-byte-oracles-strategy-2026-10-12.md](firmware-indirect-byte-oracles-strategy-2026-10-12.md): indirect ROM-extraction strategy with synthetic CRC-prefix inversion and the exact missing 20C2 evidence gates.
+- [firmware-cache-m16c-disasm-control-study-2026-10-12.md](firmware-cache-m16c-disasm-control-study-2026-10-12.md): genuine SHA-attested Ghidra 12.1.4 M16C/60 offline disassembly of the 12,926-byte stable RAM tail versus **ten byte-histogram-preserving shuffled controls**; no executable ROM code provenance established.
+- [firmware-oem-native-gwg-20bit-source-gate-2026-10-12.md](firmware-oem-native-gwg-20bit-source-gate-2026-10-12.md): original Viessmann native GWG identity implementation and full 2490-method CLR scan.
+- Following real **C5/F9** pump/fan faults and an operator restart, no new live controller experiment was sent during the indirect-oracle/Ghidra work. The existing protected error-archive-before/after safety gate must precede any later P300 live test.
+
 ## Current checkpoint — 2026-09-24
 
 The authoritative current execution queue is [../../../docs/research-plan-2026-09-24.md](../../../docs/research-plan-2026-09-24.md). Historical sections below remain evidence and may contain superseded "next task" wording.
@@ -245,5 +254,3 @@ captures.
 - [m2-conversion-pump-assessment.md](m2-conversion-pump-assessment.md) —
   assessment of converting the local A1 + DHW topology to a real M2 mixer
   circuit, including implications for internal-pump speed and burner startup.
-
-[executed on device: optolink-splitter (adb0c2e1-4670-4fc7-a00a-6548706280dd)]
