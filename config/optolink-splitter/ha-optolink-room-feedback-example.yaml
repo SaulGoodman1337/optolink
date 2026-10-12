@@ -1,0 +1,27 @@
+# OPTIONAL Home Assistant automation ONLY; NOT deployed automatically.
+# Choose a real room temperature sensor applicable to A1/M1.
+# The entity is already referenced in the project HA dashboard.
+# MQTT state topic below is not the optolink-splitter command topic.
+- id: wb2a_optolink_room_feedback_publish_example
+  alias: "WB2A: living room temperature to Optolink"
+  description: >
+    Publish current HA room temperature as a non-retained sensor value for
+    optional external-room-target closed-loop research, NOT a KM-Bus Vitotrol.
+  mode: single
+  triggers:
+    - trigger: state
+      entity_id: sensor.temperatursensorwohnzimmer_temperatur
+    - trigger: time_pattern
+      minutes: "/1"
+  conditions:
+    - condition: template
+      value_template: >-
+        {{ is_number(states('sensor.temperatursensorwohnzimmer_temperatur'))
+           and 10 <= (states('sensor.temperatursensorwohnzimmer_temperatur') | float(0)) <= 32 }}
+  actions:
+    - action: mqtt.publish
+      data:
+        topic: "openv/room/temperature"
+        payload: "{{ states('sensor.temperatursensorwohnzimmer_temperatur') }}"
+        qos: 0
+        retain: false

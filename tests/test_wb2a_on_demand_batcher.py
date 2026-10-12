@@ -24,7 +24,7 @@ class DemandBatchTests(unittest.TestCase):
                              max_queue_wait_ms=9000)
 
     def test_only_known_fixed_size_p300_reads_admitted(self):
-        self.assertEqual(len(P300_DEMAND_KINDS),3)
+        self.assertEqual(len(P300_DEMAND_KINDS),6)
         for kind in ReadKind:
             if kind in P300_DEMAND_KINDS:
                 self.assertEqual(self.q.submit(kind).state,TicketState.QUEUED)
@@ -34,6 +34,47 @@ class DemandBatchTests(unittest.TestCase):
         for invalid in ("w;0x20a5", "fc03;0x2000", None, True):
             with self.subTest(invalid=invalid),self.assertRaises(SchedulingError):
                 self.q.submit(invalid)
+
+    def test_rx_candidate_never_scheduled_unless_explicitly_submitted(self):
+        self.assertIsNone(self.q.select(self.budget,initial_p06_age_ms=0))
+        t=self.q.submit(ReadKind.P300_RAM_1640_32)
+        planned=self.q.select(self.budget,initial_p06_age_ms=0)
+        self.assertEqual(planned.tickets,(t,))
+        self.assertEqual([j.kind for j in planned.jobs],[ReadKind.P300_RAM_1640_32])
+        self.assertEqual(planned.phase_plan.p300_windows,1)
+        self.assertEqual(planned.phase_plan.handovers,2)
+        self.assertEqual(t.state,TicketState.QUEUED)
+        self.assertTrue(self.q.cancel(t))
+        self.assertEqual(self.q.pending_count(),0)
+
+    def test_manual_pair_is_one_ticket_and_one_window(self):
+        from handover_acceleration.runtime_admission import READONLY_PRESET
+        self.assertNotIn(ReadKind.P300_KMBUS_TXRX_64,
+                         {kind for _,kind,_ in READONLY_PRESET})
+        self.assertIsNone(self.q.select(self.budget,initial_p06_age_ms=0))
+        ticket=self.q.submit(ReadKind.P300_KMBUS_TXRX_64)
+        plan=self.q.select(self.budget,initial_p06_age_ms=0)
+        self.assertEqual(plan.tickets,(ticket,))
+        self.assertEqual(plan.jobs[0].kind,ReadKind.P300_KMBUS_TXRX_64)
+        self.assertEqual(plan.phase_plan.p300_windows,1)
+        self.assertEqual(plan.phase_plan.handovers,2)
+        self.assertTrue(self.q.cancel(ticket))
+
+    def test_pair_rejects_stale_p06_budget_without_consuming_ticket(self):
+        from handover_acceleration.runtime_admission import READONLY_PRESET
+        self.assertNotIn(ReadKind.P300_KMBUS_TXRX_64,
+                         {kind for _,kind,_ in READONLY_PRESET})
+        ticket=self.q.submit(ReadKind.P300_KMBUS_TXRX_64,ttl_s=90)
+        # With a 10s full-window P06 budget, 5300ms initial age leaves too
+        # little time for 2175.657 + 280 + 2295.102ms VS1/P300/VS1.
+        self.assertIsNone(self.q.select(self.budget,initial_p06_age_ms=5300))
+        self.assertEqual(ticket.state,TicketState.QUEUED)
+        self.assertEqual(self.q.pending_count(),1)
+        selected=self.q.select(self.budget,initial_p06_age_ms=100)
+        self.assertIsNotNone(selected)
+        self.assertEqual(selected.tickets,(ticket,))
+        self.assertEqual(selected.phase_plan.p300_windows,1)
+        self.assertTrue(self.q.cancel(ticket))
 
     def test_coalesces_duplicate_reads_in_one_simulated_roundtrip(self):
         a=self.q.submit(ReadKind.P300_RAM_0F20_32)

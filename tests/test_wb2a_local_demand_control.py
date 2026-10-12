@@ -324,6 +324,41 @@ class LocalControlTests(unittest.TestCase):
         self.assertEqual(self.runtime.demands.pending_count(),2)
         self.assertEqual(self.fixture.port.writes,[])
 
+    def test_explicit_1640_rx_diagnostic_is_root_socket_queue_only(self):
+        req=self.request(self.payload(kind='p300_ram_1640_32'))
+        self.assertTrue(req['ok'])
+        self.assertEqual(req['kind'],'p300_ram_1640_32')
+        self.assertEqual(self.runtime.demands.pending_count(),1)
+        self.assertEqual(self.fixture.port.writes,[])
+        for bad_kind in ('p300_ram_1642_32','p300_fc04_1640_32',
+                         'p300_ram_1640_write'):
+            rejected=self.request(self.payload(kind=bad_kind,request_id=self.b))
+            self.assertFalse(rejected['ok'])
+            self.assertEqual(self.runtime.demands.pending_count(),1)
+        self.assertEqual(self.fixture.port.writes,[])
+
+    def test_explicit_161a_master_tx_buffer_is_operator_only_read(self):
+        self.assertNotIn('p300_ram_161a_32',getattr(self.runtime,'READONLY_PRESET',()))
+        request=self.request(self.payload(kind='p300_ram_161a_32'))
+        self.assertTrue(request['ok'])
+        self.assertEqual(request['kind'],'p300_ram_161a_32')
+        self.assertEqual(self.runtime.demands.pending_count(),1)
+        self.assertEqual(self.fixture.port.writes,[])
+        bad=self.request(self.payload(kind='p300_ram_161b_32',request_id=self.b))
+        self.assertFalse(bad['ok'])
+        self.assertEqual(self.runtime.demands.pending_count(),1)
+
+    def test_explicit_txrx_pair_single_operator_ticket_no_io(self):
+        req=self.request(self.payload(kind='p300_kmbus_txrx_64'))
+        self.assertTrue(req['ok'])
+        self.assertEqual(req['kind'],'p300_kmbus_txrx_64')
+        self.assertEqual(self.runtime.demands.pending_count(),1)
+        self.assertEqual(self.fixture.port.writes,[])
+        for bad in ('p300_kmbus_txrx_write','p300_kmbus_txrx_96'):
+            out=self.request(self.payload(kind=bad,request_id=self.b))
+            self.assertFalse(out['ok'])
+        self.assertEqual(self.runtime.demands.pending_count(),1)
+
     def test_duplicate_socket_bind_must_not_unlink_original_owner(self):
         self.control.start()
         self.addCleanup(self.control.close)

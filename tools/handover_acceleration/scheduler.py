@@ -33,6 +33,9 @@ class ReadKind(Enum):
     P300_ID = "p300_identity"
     P300_RAM_0F20_32 = "p300_ram_0f20_32"
     P300_RAM_1C60_32 = "p300_ram_1c60_32"
+    P300_RAM_1640_32 = "p300_ram_1640_32"  # opt-in KM-Bus RX-candidate read
+    P300_RAM_161A_32 = "p300_ram_161a_32"  # manual read-only KM-Bus master TX candidate
+    P300_KMBUS_TXRX_64 = "p300_kmbus_txrx_64"  # two fixed FC03 reads, contiguous in one P300 window
 
     @property
     def mode(self) -> str:
@@ -243,11 +246,17 @@ P300_DEMAND_KINDS = frozenset({
     ReadKind.P300_ID,
     ReadKind.P300_RAM_0F20_32,
     ReadKind.P300_RAM_1C60_32,
+    ReadKind.P300_RAM_1640_32,
+    ReadKind.P300_RAM_161A_32,
+    ReadKind.P300_KMBUS_TXRX_64,
 })
 _P300_ESTIMATED_READ_MS = {
     ReadKind.P300_ID: 85.0,
     ReadKind.P300_RAM_0F20_32: 140.0,
     ReadKind.P300_RAM_1C60_32: 140.0,
+    ReadKind.P300_RAM_1640_32: 140.0,
+    ReadKind.P300_RAM_161A_32: 140.0,
+    ReadKind.P300_KMBUS_TXRX_64: 280.0,
 }
 
 
@@ -317,7 +326,7 @@ class BoundedDemandBatcher:
 
     def submit(self, kind: ReadKind, *, ttl_s: float = 30.0) -> DemandTicket:
         if type(kind) is not ReadKind or kind not in P300_DEMAND_KINDS:
-            raise SchedulingError("only three exact P300 diagnostic read kinds")
+            raise SchedulingError("only exact reviewed P300 diagnostic read kinds")
         if (type(ttl_s) not in (int,float) or not math.isfinite(ttl_s)
                 or ttl_s <= 0 or ttl_s > 300):
             raise SchedulingError("finite 0<ttl<=300s required")
