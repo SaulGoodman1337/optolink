@@ -26,6 +26,7 @@ PREFIXES = (
     "docs/wb2a-vitotrol-200kw2-gwg*",
     "docs/wb2a-gg1-bootloader-gwg*",
     "docs/wb2a-optolink-rom*",
+    "docs/wb2a-optolinklogger-*",
     "docs/wb2a-optolink-only-rom*",
     "docs/wb2a-vitotrol-rom*",
     "tools/wb2a-gwg-*",
@@ -35,6 +36,7 @@ PREFIXES = (
     "tools/wb2a-v200kw2-gwg*",
     "tools/wb2a-m16c-boot*",
     "tools/wb2a-optolink-rom*",
+    "tools/wb2a-optolinklogger-*",
     "tools/wb2a-vitotrol-rom*",
     "tools/wb2a-research-branch-transfer-preview.py",
     "tools/optolinkgwg.py",
@@ -47,6 +49,7 @@ PREFIXES = (
     "tests/test_wb2a_experiment_fault_wrapper_offline.py",
     "tests/test_wb2a_m16c*",
     "tests/test_wb2a_optolink_rom*",
+    "tests/test_wb2a_optolinklogger_*",
     "tests/test_wb2a_vitotrol_rom*",
     "tests/test_wb2a_research_branch_transfer_preview.py",
 )
