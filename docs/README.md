@@ -1,6 +1,6 @@
 # Dokumentationsindex
 
-Dieser Ordner enthält die Betriebs- und Entwicklerdokumentation für den produktiven Branch `optolink-splitter-ha`.
+Hier liegt die deutsche Betriebs- und Entwicklerdokumentation des freigegebenen Produktivstands aus `main`. Der Zweig `optolink-splitter-ha` dient der Integration.
 
 ## Einstieg
 
@@ -8,7 +8,8 @@ Dieser Ordner enthält die Betriebs- und Entwicklerdokumentation für den produk
 | --- | --- |
 | [architecture.md](architecture.md) | Als Erstes: Komponenten, Datenfluss, Dienste und Sicherheitsgrenzen |
 | [hybrid-protokollwechsel.md](hybrid-protokollwechsel.md) | Optionaler VS1/P300-Lesetest, Verifikation, Rückfallroutine und Sperrmechanismen |
-| [wb2a-root-on-demand-api-2026-10-10.md](wb2a-root-on-demand-api-2026-10-10.md) | Nur Root: authentifizierter lokaler On-Demand-P300-Request, Rückgabe, TTL, Berechtigungsgrenze und C3-Hardwarecanary |
+| [lesebetrieb-gwg-vs1-p300.md](lesebetrieb-gwg-vs1-p300.md) | GWG-/GFA-Daten, VS1-Standardbetrieb und P300-Sicherheitsgrenzen |
+| [p300-root-lese-api.md](p300-root-lese-api.md) | Lokale schreibgeschützte Root-Diagnose, TTL, Berechtigungen und Rückfall |
 | [operations.md](operations.md) | Beim Betrieb: Update, Status, Logs, Clock-Sync, Fehlerdiagnose |
 | [home-assistant.md](home-assistant.md) | Bei HA-/MQTT-/Dashboard-Änderungen |
 | [anlagenschema.md](anlagenschema.md) | WB2A-Anlagenschema, Hydrauliktopologie und dokumentierte Schreibwerte 00/52/53/54/5B |
@@ -56,4 +57,4 @@ Wenn Codeverhalten geändert wird, sollten im selben Änderungssatz mindestens d
 - [Dienstekommunikation und Sicherheitsmodell](images/service-communication-security.svg)
 - [Überwachter VS1/P300-Protokollwechsel](images/vs1-p300-wechsel.svg)
 
-Die Root-README rendert beide Diagramme direkt.
+Die Haupt-README zeigt alle drei Diagramme direkt.

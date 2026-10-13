@@ -2,9 +2,8 @@
 
 Dieses Repository stellt eine geprüfte Home-Assistant-Integration
 für die **Viessmann Vitodens 200-W WB2A / VDensHO1 / 20C2 / SW03**
-bereit. Der Zweig `optolink-splitter-ha` ist der Integrationszweig
-für produktive Komponenten. Nach der geprüften Freigabe
-werden dessen Änderungen auch in `main` übernommen.
+bereit. `main` enthält den freigegebenen Produktivstand;
+`optolink-splitter-ha` dient der vorgelagerten Integration.
 
 Firmware-Reverse-Engineering, EEPROM- und KM-Bus-Versuche,
 einmalige Datensammlungen und experimentelle Pumpenregister
@@ -20,12 +19,13 @@ Empfohlene Reihenfolge für Betrieb und Wartung:
 2. [Systemarchitektur](docs/architecture.md) – Komponenten, Datenflüsse und technische Sicherheitsgrenzen.
 3. [Betrieb und Fehlerdiagnose](docs/operations.md) – Update, Status, Logs und Wiederherstellung.
 4. [Home Assistant](docs/home-assistant.md) – MQTT-Entities, Zeitprogramme und Dashboard.
-5. [Optionaler VS1/P300-Protokollwechsel](docs/hybrid-protokollwechsel.md) – Bedienung, Voraussetzungen und Rückfallpfad.
-6. [Entwicklungsleitfaden](docs/development.md) – Regeln für Änderungen, Tests und Hardwareabnahme.
-7. [Wartungs-CLI](docs/optolink-maintenance.md) und [MQTT-Wartungs-API](docs/optolink-maintenance-api.md).
-8. [WB2A-Zeitprogrammblöcke](docs/wb2a-schedule-blocks.md).
-9. [WB2A-Anlagenschema und Anlagenkonfiguration](docs/anlagenschema.md).
-10. [VControl-/Adresszuordnung](config/optolink-splitter/vcontrol-mapping.md).
+5. [GWG, GFA, VS1 und P300](docs/lesebetrieb-gwg-vs1-p300.md) – Lesewege und Schutzgrenzen.
+6. [Optionaler VS1/P300-Protokollwechsel](docs/hybrid-protokollwechsel.md) – Bedienung, Voraussetzungen und Rückfallpfad.
+7. [Entwicklungsleitfaden](docs/development.md) – Regeln für Änderungen, Tests und Hardwareabnahme.
+8. [Wartungs-CLI](docs/optolink-maintenance.md) und [MQTT-Wartungs-API](docs/optolink-maintenance-api.md).
+9. [WB2A-Zeitprogrammblöcke](docs/wb2a-schedule-blocks.md).
+10. [WB2A-Anlagenschema und Anlagenkonfiguration](docs/anlagenschema.md).
+11. [VControl-/Adresszuordnung](config/optolink-splitter/vcontrol-mapping.md).
 
 Vereinfachter Laufzeitpfad:
 
@@ -66,7 +66,7 @@ ausschließlich ausdrücklich angeforderte, über Systemd
 Protokollwechsel und keine P300-Controller-Writes.
 Die Details stehen in
 [der Hybrid-Betriebsanleitung](docs/hybrid-protokollwechsel.md).
-Die gesonderte [Root-only-On-Demand-Diagnose](docs/wb2a-root-on-demand-api-2026-10-10.md)
+Die gesonderte [Root-only-On-Demand-Diagnose](docs/p300-root-lese-api.md)
 verwendet ausschließlich einen während des beaufsichtigten Shadow-Canarys
 vorhandenen lokalen Unix-Socket. Im regulären VS1-Betrieb bleibt sie deaktiviert.
 

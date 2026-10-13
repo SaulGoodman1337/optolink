@@ -21,18 +21,18 @@
 <text class="kopf" x="64" y="156">1   VS1-Normalbetrieb</text>
 <text class="zeile" x="64" y="188">MQTT und TCP bedienen</text>
 <text class="zeile" x="64" y="215">GFA P80 und P06 lesen</text>
-<text class="zeile" x="64" y="243">Einziger serieller Owner</text>
+<text class="zeile" x="64" y="243">Einziger serieller Besitzer</text>
 
 <rect x="327" y="121" width="249" height="166" rx="14" fill="#fff4e5" stroke="#fdba74" stroke-width="2"/>
 <text class="kopf" x="346" y="156">2   Sicherheitsprüfung</text>
-<text class="zeile" x="346" y="188">5 Writer-Prozesse prüfen</text>
+<text class="zeile" x="346" y="188">Schreibdienste sperren</text>
 <text class="zeile" x="346" y="215">MQTT-/TCP-Queue frei</text>
 <text class="zeile" x="346" y="243">Keine offenen Readbacks</text>
 
 <rect x="623" y="121" width="260" height="166" rx="14" fill="#f1ecff" stroke="#c4b5fd" stroke-width="2"/>
 <text class="kopf" x="642" y="156">3   P300 – nur lesen</text>
 <text class="zeile" x="642" y="188">FC01: Gerätekennung 20C2</text>
-<text class="zeile" x="642" y="215">FC03: 0F20 / 1C60</text>
+<text class="zeile" x="642" y="215">FC03: 0F20 / 1C60, je 32 B</text>
 <text class="zeile" x="642" y="243">Keine RAM-/Service-Writes</text>
 
 <rect x="931" y="121" width="263" height="166" rx="14" fill="#e7f7ee" stroke="#86efac" stroke-width="2"/>
@@ -53,7 +53,7 @@
 <rect x="45" y="444" width="1149" height="104" rx="14" fill="#e7edf5" stroke="#94a3b8" stroke-width="2"/>
 <text class="kopf" x="64" y="476">Unabhängige Absicherung durch Systemd und ExecStopPost</text>
 <text class="zeile" x="64" y="505">Bei Ende oder Supervisor-Ausfall: Originaldienste wiederherstellen, echten VS1-GFA-Rückweg prüfen.</text>
-<text class="klein" x="64" y="529">Hardwareabnahme 10.10.2026: 8/8 Fenster, 62/62 Leseanfragen; kein unbeaufsichtigter Dauerbetrieb.</text>
+<text class="klein" x="64" y="529">Nur manuell beaufsichtigt; Root-Diagnose im Shadow-Modus; niemals automatisch durch update.</text>
 <path d="M751 287V440" stroke="#64748b" stroke-width="2.3" stroke-dasharray="6,7" fill="none" marker-end="url(#pfeil)"/>
 <path d="M1062 287V440" stroke="#64748b" stroke-width="2.3" stroke-dasharray="6,7" fill="none" marker-end="url(#pfeil)"/>
 </svg>

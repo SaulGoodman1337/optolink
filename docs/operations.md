@@ -1,4 +1,4 @@
-# Betrieb und Troubleshooting
+# Betrieb und Fehlerdiagnose
 
 Diese Datei ist das Runbook für den laufenden `optolink-splitter-ha`-Container.
 
@@ -9,6 +9,8 @@ Im bestehenden Optolink-LXC als `root`:
 ```bash
 update
 ```
+
+**Achtung:** `update` aktualisiert Betriebssystem- und Pythonpakete, kann Dienste neu starten und einen Uhrzeitabgleich ausführen. Es ist kein nebenwirkungsfreier Prüfaufruf.
 
 Der aktive Update-Kanal wird ausschließlich über
 `/etc/community-scripts-private.conf` bestimmt. Vor der einmaligen
@@ -90,7 +92,7 @@ existieren die Kommandos `optolink-hybrid anfordern`, `ergebnis` und
 `abbrechen`. Sie funktionieren **ausschließlich im explizit gestarteten,
 überwachten `fenced-ondemand`-Shadow-Betrieb**, nicht in normalem VS1.
 Bedienung, Sitzungskennung, Ergebnisnachweis und die in C3 bestandene
-echte Hardwareabnahme: [Root-On-Demand-API](wb2a-root-on-demand-api-2026-10-10.md).
+echte Hardwareabnahme: [Root-On-Demand-API](p300-root-lese-api.md).
 Keiner dieser Befehle schaltet Controller-Writes frei.
 
 ## 2. Schnellcheck nach Update oder Reboot

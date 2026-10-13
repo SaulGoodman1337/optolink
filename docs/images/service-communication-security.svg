@@ -140,7 +140,7 @@
 <text x="1070" y="596" class="label">Wichtiger Hinweis</text>
 <text x="1040" y="625" class="small">Nur optolink-splitter hat direkten Zugriff auf den</text>
 <text x="1040" y="646" class="small">USB-Seriell-Adapter und das Heizgerät. Alle anderen</text>
-<text x="1040" y="667" class="small">Komponenten kommunizieren ausschließlich über MQTT.</text>
+<text x="1040" y="667" class="small">Zusatzdienste nutzen MQTT; Root-Diagnose lokal.</text>
 
 <!-- Lower security section -->
 <rect x="18" y="770" width="1040" height="292" rx="20" fill="#f7fbff" stroke="#b8d7eb"/>
@@ -155,7 +155,7 @@
 
 <rect x="368" y="856" width="320" height="86" rx="13" class="rule"/>
 <circle cx="395" cy="885" r="20" fill="#22a45d"/><text x="395" y="893" text-anchor="middle" class="step" font-size="19">2</text>
-<text x="425" y="879" class="small" font-weight="700">Writes laufen über Guard Rails</text><text x="425" y="899" class="small" font-weight="700">und Controller-Readback.</text><text x="425" y="922" class="tiny">Jede Änderung wird am Controller verifiziert.</text>
+<text x="425" y="879" class="small" font-weight="700">Writes laufen über Guard Rails</text><text x="425" y="899" class="small" font-weight="700">und Controller-Readback.</text><text x="425" y="922" class="tiny">Schreiben nur mit erlaubtem, geprüftem Readback.</text>
 
 <rect x="702" y="856" width="338" height="86" rx="13" class="rule"/>
 <circle cx="729" cy="885" r="20" fill="#7c3aed"/><text x="729" y="893" text-anchor="middle" class="step" font-size="19">3</text>

@@ -19,37 +19,18 @@ kein zusätzlicher Portbesitzer.
 - **Nicht vorgesehen:** Controller-Schreibvorgänge über P300,
   direkte RAM-Veränderungen, Dienstprogramme für Rohwrites und
   die Ableitung einer vermeintlich verifizierten P300-Gebläsedrehzahl.
-- **Abnahme:** Am 10.10.2026 waren acht automatische, lesende
-  Hardwarefenster erfolgreich. Gleichzeitig bestanden 31/31 MQTT-
-  und 31/31 TCP-GFA-Leseanfragen. Ein gezielter SIGKILL des
-  *separaten Canary-Supervisors* löste den unabhängigen Systemd-Rollback
-  aus. Diese Tests ersetzen **nicht** einen Hardware-Abbruch mitten
-  in einem P300-Telegramm oder eine Freigabe für produktive P300-Writes.
+- **Freigabegrenze:** Nur lesende P300-Diagnose und geprüfter Rückfall;
+  keine automatischen P300-Dauerfenster, keine P300-Schreibbefehle.
 
-Die historischen Versuchsberichte und die P300-RPM-Auswertung
-liegen auf dem Branch
-[`optolink-research`](https://github.com/SaulGoodman1337/optolink/tree/optolink-research).
-Der Produktionsbranch enthält lediglich die dafür nötige,
-reproduzierbar installierbare Laufzeit und Sicherheitsprüfungen.
+Der laufende GWG-/GFA-/VS1-/P300-Datenpfad ist in
+[GWG, GFA, VS1 und P300](lesebetrieb-gwg-vs1-p300.md) beschrieben.
+Die optionale lokale, root-authentifizierte On-Demand-Lesediagnose
+ist nur während einer explizit beaufsichtigten Shadow-Sitzung erreichbar;
+normaler VS1-Betrieb und `update` aktivieren sie nicht.
+Bedienung und Sicherheitsvertrag: [Root-Lesediagnose](p300-root-lese-api.md).
 
-**Neue, standardmäßig deaktivierte Entwicklungsstufe:** Der auf VS1
-aufbauende [bedarfsgesteuerte P300-Lesebatcher](wb2a-on-demand-p300-design-2026-10-10.md)
-wurde offline mit dem bestehenden Admission-Gate und simuliertem Port sowie
-am 10.10.2026 [in einem einmaligen Hardwarecanary](wb2a-on-demand-canary-2026-10-10.md)
-getestet. Ein zeitlich auf **ein Read-only-P300-Diagnosefenster** begrenzter
-Shadow-Test bestand inklusive Original-VS1-P80/P06 und unabhängigem Systemd-
-Rollback. Die Funktion bleibt **standardmäßig deaktiviert**; weder eine
-allgemeine MQTT-/TCP-P300-API noch P300-Writes sind freigegeben.
-Der Standardbetrieb bleibt unverändert.
-
-**Erweiterte C3-Abnahme:** Ein manueller P300-Rohleseauftrag über den
-lokalen, root-authentifizierten Unix-Socket und die neue Operator-CLI
-wurde am echten WB2A geprüft: 32 Bytes in 5180,292 ms, nachfolgend echte
-VS1-GFA-P80/P06-Bestätigung, per CLI zurückgegebenes
-`verified_vs1=true` und bestandener unabhängiger Recovery. Die neue
-[Root-On-Demand-API](wb2a-root-on-demand-api-2026-10-10.md) ist **nur
-in der ausdrücklich beaufsichtigten Shadow-Sitzung** aktiv; normaler
-VS1-Betrieb besitzt keinen Socket und keinen P300-Dauerbetrieb.
+Historische Forschungsberichte und Rohmessungen liegen ausschließlich
+auf dem getrennten Zweig `optolink-research`.
 
 ## Installation über `update`
 
@@ -190,7 +171,7 @@ Hauptprozesses während `P300_ACTIVE`. Für eine dauerhaft aktivierte
 P300-Automatik und für Controller-Schreibtransaktionen sind weitere
 separate Freigaben notwendig.
 
-## Branches und Aktualisierung
+## Zweige und Aktualisierung
 
 Der Produktivcode sowie diese Anleitung gehören zu
 `optolink-splitter-ha` und nach dem geprüften Release-Merge auch
