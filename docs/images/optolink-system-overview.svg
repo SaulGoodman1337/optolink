@@ -144,7 +144,7 @@
 <path d="M605 846 q25 -42 50 0 M614 846 q16 -27 32 0 M625 846 q5 -10 10 0" stroke="#7c3aed" stroke-width="7" fill="none" stroke-linecap="round"/>
 <text x="680" y="834" class="label">MQTT Broker</text><text x="680" y="859" class="small">z. B. Mosquitto</text>
 <rect x="1030" y="803" width="330" height="67" rx="14" fill="#effdf5" stroke="#83d8a0"/>
-<text x="1060" y="833" class="label">↔</text><text x="1100" y="830" class="small">Alle Komponenten kommunizieren</text><text x="1100" y="853" class="small">ausschließlich über MQTT.</text>
+<text x="1060" y="833" class="label">↔</text><text x="1100" y="830" class="small">Zusatzdienste kommunizieren</text><text x="1100" y="853" class="small">über MQTT; Root-Diagnose lokal.</text>
 <path d="M737 742 V797" class="arrow-green"/>
 
 <!-- 5 HA -->
