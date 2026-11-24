@@ -1,0 +1,70 @@
+# Home Assistant package: room sensors for the Optolink room-temperature
+# feedback (tools/optolink-room-control.py).
+#
+# Installation (once):
+#   1. configuration.yaml:
+#        homeassistant:
+#          packages: !include_dir_named packages
+#   2. Copy this file to <config>/packages/optolink_raumregelung.yaml.
+#   3. Settings -> Areas, labels & zones -> Labels: create the label
+#      "Optolink Raumregelung" (label id: optolink_raumregelung).
+#   4. Assign that label to every room temperature sensor (sensor.*) or
+#      thermostat (climate.*, uses current_temperature) that should be used.
+#   5. Restart Home Assistant (or reload automations).
+#
+# Adding or removing a sensor later only means assigning or removing the
+# label; no YAML change is needed. The splitter host combines the values
+# (mean/minimum/maximum, selectable in the dashboard) and ignores values
+# older than 10 minutes, so a stopped automation releases the override.
+#
+# The payload is published non-retained on purpose: a retained value would
+# carry no freshness information and is rejected by the service.
+
+automation:
+  - id: optolink_raumregelung_sensoren_publizieren
+    alias: "Optolink: Raumtemperaturen an Raumregelung senden"
+    description: >-
+      Sends all room temperatures labelled "Optolink Raumregelung" to the
+      optolink-room-control service on the splitter host.
+    mode: single
+    triggers:
+      - trigger: time_pattern
+        minutes: "/1"
+      - trigger: homeassistant
+        event: start
+    variables:
+      label_id: optolink_raumregelung
+      payload: >-
+        {% set ns = namespace(d={}) %}
+        {% for e in label_entities(label_id) %}
+          {% if e.startswith('sensor.') %}
+            {% set v = states(e) %}
+          {% elif e.startswith('climate.') %}
+            {% set v = state_attr(e, 'current_temperature') %}
+          {% else %}
+            {% set v = none %}
+          {% endif %}
+          {% if v is not none and is_number(v) %}
+            {% set ns.d = dict(ns.d, **{e: (v | float) | round(2)}) %}
+          {% endif %}
+        {% endfor %}
+        {{ {'sensors': ns.d} }}
+    conditions:
+      - condition: template
+        value_template: "{{ label_entities(label_id) | count > 0 }}"
+    actions:
+      - action: mqtt.publish
+        data:
+          topic: openv/room_control/sensors
+          payload: "{{ payload | tojson }}"
+          qos: 0
+          retain: false
+
+template:
+  - sensor:
+      - name: "Optolink Raumregelung Sensoren"
+        unique_id: optolink_raumregelung_sensoren
+        icon: mdi:thermometer-lines
+        state: "{{ label_entities('optolink_raumregelung') | count }}"
+        attributes:
+          entities: "{{ label_entities('optolink_raumregelung') }}"

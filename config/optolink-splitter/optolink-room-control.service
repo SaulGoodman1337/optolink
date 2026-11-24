@@ -1,0 +1,30 @@
+# Room-temperature feedback: adjusts the WB2A external room setpoint 0x2321
+# from Home Assistant room sensors. Ownership lives in
+# /var/lib/optolink-room-control via StateDirectory. ExecStopPost hands
+# control back to the regular room target even after a crash. Wants= (not
+# Requires=) keeps the service alive while the splitter restarts; requests
+# simply time out and the next cycle retries.
+
+[Unit]
+Description=Optolink WB2A room-temperature feedback (external room setpoint)
+After=network-online.target optolink-splitter.service
+Wants=network-online.target
+Wants=optolink-splitter.service
+PartOf=optolink-splitter.service
+
+[Service]
+Type=simple
+User=optolink
+Group=optolink
+WorkingDirectory=/opt/optolink
+Environment=PYTHONUNBUFFERED=1
+StateDirectory=optolink-room-control
+StateDirectoryMode=0750
+ExecStart=/usr/local/bin/optolink-room-control
+ExecStopPost=-/usr/local/bin/optolink-room-control --release
+TimeoutStopSec=60
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

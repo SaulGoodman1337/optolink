@@ -18,6 +18,7 @@ Hier liegt die deutsche Betriebs- und Entwicklerdokumentation des freigegebenen 
 | [optolink-maintenance-api.md](optolink-maintenance-api.md) | MQTT-Wartungs-API und HA-Integration |
 | [wb2a-schedule-blocks.md](wb2a-schedule-blocks.md) | Zeitprogrammformat und verifizierte WB2A-Blöcke |
 | [service-programs.md](service-programs.md) | Befüllungs-/Entlüftungsprogramm, Codieradresse 2F / 0x572F |
+| [raumregelung.md](raumregelung.md) | Vorlauftemperatur nach Raumtemperatur, mehrere Sensoren, Komfortband |
 | [manuals/README.md](manuals/README.md) | Servicehandbuch-Quelle und lokaler Download-Helfer |
 
 Zusätzliche technische Referenz:
@@ -37,6 +38,7 @@ Für unterschiedliche Fragestellungen gelten bewusst unterschiedliche Dateien al
 | Wie wird Party technisch umgesetzt? | `tools/optolink-party-emulator.py` |
 | Wie wird die Gerätezeit synchronisiert? | `tools/optolink-clock-sync.py` |
 | Wie werden Befüllung/Entlüftung gesteuert? | `tools/optolink-service-programs.py` |
+| Wie wird der Vorlauf nach Raumtemperatur angepasst? | `tools/optolink-room-control.py` |
 | Wie wird ein bestehendes System aktualisiert? | `tools/optolink-splitter-update.sh` |
 | Wie wird das Profil sicher aktiviert? | `tools/optolink-apply-vdensho1-ha-profile.sh` |
 | Wo sind die zulässigen Hybridfenster und deren Sperren implementiert? | `tools/optolink-hybrid.py`, `tools/handover_acceleration/` |

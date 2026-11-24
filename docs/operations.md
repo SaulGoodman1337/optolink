@@ -104,6 +104,7 @@ systemctl --no-pager --full status optolink-schedule-manager
 systemctl --no-pager --full status optolink-maintenance-api
 systemctl --no-pager --full status optolink-clock-sync.timer
 systemctl --no-pager --full status optolink-service-programs
+systemctl --no-pager --full status optolink-room-control
 optolink-maintenance status
 ```
 
@@ -154,6 +155,13 @@ Befüll-/Entlüftungsprogramme:
 
 ```bash
 journalctl -u optolink-service-programs -n 100 --no-pager
+```
+
+Raumregelung (Vorlauf nach Raumtemperatur, siehe [raumregelung.md](raumregelung.md)):
+
+```bash
+journalctl -u optolink-room-control -n 100 --no-pager
+optolink-debug request "read;0x2321;1"   # 00 = normaler Raumsollwert
 ```
 
 ## 4. Systemzeit der Therme

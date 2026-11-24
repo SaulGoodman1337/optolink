@@ -169,6 +169,11 @@ function update_script() {
   chown root:root /usr/local/bin/optolink-service-programs
   /usr/local/bin/optolink-service-programs --self-test
 
+  cs_repo_fetch tools/optolink-room-control.py /usr/local/bin/optolink-room-control
+  chmod 755 /usr/local/bin/optolink-room-control
+  chown root:root /usr/local/bin/optolink-room-control
+  /usr/local/bin/optolink-room-control --self-test
+
   cs_repo_fetch config/optolink-splitter/optolink-party-emulator.service /etc/systemd/system/optolink-party-emulator.service
   chmod 644 /etc/systemd/system/optolink-party-emulator.service
   chown root:root /etc/systemd/system/optolink-party-emulator.service
@@ -192,6 +197,10 @@ function update_script() {
   cs_repo_fetch config/optolink-splitter/optolink-service-programs.service /etc/systemd/system/optolink-service-programs.service
   chmod 644 /etc/systemd/system/optolink-service-programs.service
   chown root:root /etc/systemd/system/optolink-service-programs.service
+
+  cs_repo_fetch config/optolink-splitter/optolink-room-control.service /etc/systemd/system/optolink-room-control.service
+  chmod 644 /etc/systemd/system/optolink-room-control.service
+  chown root:root /etc/systemd/system/optolink-room-control.service
 
   systemctl daemon-reload
   systemctl enable optolink-party-emulator.service
