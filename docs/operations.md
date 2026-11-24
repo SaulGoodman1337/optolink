@@ -27,9 +27,11 @@ curl -fsSL https://raw.githubusercontent.com/SaulGoodman1337/optolink/optolink-s
 
 ### Vor dem ersten Update aus `main`
 
-Der Release-Pfad ist bewusst zweistufig:
+Der Release-Pfad war bewusst zweistufig:
 zuerst Integration in `optolink-splitter-ha`, danach der
-geprüfte Merge nach `main`. Erst wenn der dortige Updater und die
+geprüfte Merge nach `main`. Beide Schritte sind seit dem
+13.10.2026 abgeschlossen (PR #49, #51, #53); `main` ist
+der aktuelle Kanal (siehe [Branch-Übersicht](branches.md)). Erst wenn der dortige Updater und die
 deutsche Hybrid-Dokumentation vorhanden sind, darf die LXC-Instanz
 auf `main` umgestellt werden.
 
