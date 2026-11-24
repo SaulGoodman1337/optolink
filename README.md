@@ -2,8 +2,11 @@
 
 Dieses Repository stellt eine geprüfte Home-Assistant-Integration
 für die **Viessmann Vitodens 200-W WB2A / VDensHO1 / 20C2 / SW03**
-bereit. `main` enthält den freigegebenen Produktivstand;
-`optolink-splitter-ha` dient der vorgelagerten Integration.
+bereit. `main` enthält den freigegebenen Produktivstand
+und ist der empfohlene Update-Kanal. `optolink-splitter-ha`
+war der vorgelagerte Integrationszweig; er ist vollständig in
+`main` enthalten und wird nicht mehr weitergeführt
+(Stand 13.10.2026, siehe [Branch-Übersicht](docs/branches.md)).
 
 Firmware-Reverse-Engineering, EEPROM- und KM-Bus-Versuche,
 einmalige Datensammlungen und experimentelle Pumpenregister
@@ -118,9 +121,23 @@ werden. Details zur Sicherung stehen unter
 
 ## Bestehende LXC-Installation: Update mit `update`
 
-Die einmalige Einrichtung des Produktionskanals für
-den bisherigen `optolink-splitter-ha`-Zweig erfolgt
-als `root` im existierenden LXC:
+Die einmalige Einrichtung des Produktionskanals erfolgt
+als `root` im existierenden LXC. Empfohlen ist direkt der
+freigegebene Stand aus `main`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SaulGoodman1337/optolink/main/tools/optolink-splitter-ha-bootstrap.sh | COMMUNITY_SCRIPTS_REF=main bash
+```
+
+> **Hinweis:** Ohne `COMMUNITY_SCRIPTS_REF=main` verwenden
+> Bootstrap und Updater weiterhin den historischen Standardwert
+> `optolink-splitter-ha`. Dieser Zweig liegt seit dem
+> 13.10.2026 hinter `main` zurück. Wer noch auf
+> `optolink-splitter-ha` steht, stellt mit
+> `optolink-update-main-umstellen --freigeben` um
+> (siehe [Betrieb](docs/operations.md)).
+
+Historischer Aufruf für den alten Integrationszweig:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SaulGoodman1337/optolink/optolink-splitter-ha/tools/optolink-splitter-ha-bootstrap.sh | bash
@@ -142,12 +159,11 @@ Die gewöhnliche Folgeaktualisierung geschieht dann durch:
 update
 ```
 
-### Nach dem freigegebenen Merge: `update` aus `main`
+### Umstellung bestehender Installationen: `update` aus `main`
 
-Sobald zuerst die Hybridintegration in
-`optolink-splitter-ha` **und danach** dieser
-Produktionsstand in `main` gemergt wurde,
-kann der lokale Kanal auf `main` umgestellt werden.
+Die Hybridintegration wurde zuerst in `optolink-splitter-ha`
+(PR #49) **und danach** in `main` gemergt (PR #51, #53).
+Damit kann der lokale Kanal auf `main` umgestellt werden.
 Ein GitHub-Merge ändert die LXC-Konfiguration nicht von selbst.
 
 ```text
@@ -339,8 +355,10 @@ update --clear-token
 update
 ```
 
-Den Bootstrap für den aktuellen Zweig findet man
-in `tools/optolink-splitter-ha-bootstrap.sh`.
+Den Bootstrap findet man in
+`tools/optolink-splitter-ha-bootstrap.sh`
+(der Dateiname ist historisch; der Zweig wird über
+`COMMUNITY_SCRIPTS_REF` gewählt).
 
 ## Erkennung der seriellen Schnittstelle
 

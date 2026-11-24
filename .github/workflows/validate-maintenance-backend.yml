@@ -3,6 +3,7 @@ name: Validate Optolink Splitter HA
 on:
   push:
     branches:
+      - main
       - optolink-splitter-ha
   pull_request:
     paths:
