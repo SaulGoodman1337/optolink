@@ -158,6 +158,31 @@ Befüll-/Entlüftungsprogramme:
 journalctl -u optolink-service-programs -n 100 --no-pager
 ```
 
+### Therme nicht erreichbar (Link-Recovery)
+
+Der Splitter schreibt sein eigenes Log nach
+`/opt/optolink/optolinkvs2_switch.log` (das Journal enthält nur die
+Konsolenausgabe). Ist die Therme bzw. der Optolink-Kopf nicht erreichbar,
+erscheint dort zunächst `Timeout waiting for 0x05`. Seit dem
+Link-Recovery-Patch (`tools/optolink-apply-link-recovery-patch.py`) gilt:
+
+- Nach 60 s ohne gültige VS1-Antwort meldet der Splitter
+  `Optolink link lost ... re-open serial port and re-init protocol` und
+  öffnet die serielle Schnittstelle neu (ein frisch geöffneter Port hat im
+  Feld zuverlässig geholfen, das reine Weiterwarten auf demselben Handle nicht).
+- Scheitert die Initialisierung, versucht er es endlos weiter: fünfmal im
+  Abstand von `restart_delay` (10 s), danach mit Backoff bis maximal 120 s
+  (`Optolink still not available after N re-starts - keep trying`). Früher
+  beendete sich der Prozess nach fünf Versuchen mit Exit-Code 0, und
+  `Restart=on-failure` startete ihn nicht mehr.
+- Die Unit steht zusätzlich auf `Restart=always` und
+  `StartLimitIntervalSec=0`; nur ein explizites `systemctl stop` hält den
+  Splitter an.
+
+```bash
+grep -E "link lost|still not available|protocol initialized" /opt/optolink/optolinkvs2_switch.log | tail
+```
+
 ## 4. Systemzeit der Therme
 
 Nur lesen:

@@ -6,6 +6,8 @@ Description=Optolink Switch/Splitter
 Documentation=https://github.com/philippoo66/optolink-splitter
 After=network-online.target
 Wants=network-online.target
+# Never stop retrying while the boiler/Optolink head is unreachable.
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
@@ -15,7 +17,10 @@ SupplementaryGroups=dialout
 WorkingDirectory=/opt/optolink
 Environment=PYTHONUNBUFFERED=1
 ExecStart=/opt/optolink/venv/bin/python /opt/optolink/optolinkvs2_switch.py
-Restart=on-failure
+# always: upstream main() may also end with exit code 0 (e.g. after
+# max_restarts); the splitter must come back in every case except an
+# explicit systemctl stop.
+Restart=always
 RestartSec=10
 
 [Install]
