@@ -9,7 +9,9 @@
 #   3. Settings -> Areas, labels & zones -> Labels: create the label
 #      "Optolink Raumregelung" (label id: optolink_raumregelung).
 #   4. Assign that label to every room temperature sensor (sensor.*) or
-#      thermostat (climate.*, uses current_temperature) that should be used.
+#      thermostat (climate.*, uses current_temperature) that should be used,
+#      or to the whole device (e.g. a Shelly H&T): then all temperature
+#      sensors of that device are used.
 #   5. Restart Home Assistant (or reload automations).
 #
 # Adding or removing a sensor later only means assigning or removing the
@@ -34,9 +36,21 @@ automation:
         event: start
     variables:
       label_id: optolink_raumregelung
+      # Entities with the label, plus every temperature entity of a device
+      # that carries the label (e.g. a Shelly H&T labelled as a device).
+      kandidaten: >-
+        {% set ns = namespace(e=label_entities(label_id) | list) %}
+        {% for d in label_devices(label_id) %}
+          {% for e in device_entities(d) %}
+            {% if e.startswith('sensor.') and state_attr(e, 'device_class') == 'temperature' %}
+              {% set ns.e = ns.e + [e] %}
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+        {{ ns.e | unique | list }}
       payload: >-
         {% set ns = namespace(d={}) %}
-        {% for e in label_entities(label_id) %}
+        {% for e in kandidaten %}
           {% if e.startswith('sensor.') %}
             {% set v = states(e) %}
           {% elif e.startswith('climate.') %}
@@ -51,20 +65,29 @@ automation:
         {{ {'sensors': ns.d} }}
     conditions:
       - condition: template
-        value_template: "{{ label_entities(label_id) | count > 0 }}"
-    actions:
-      - action: mqtt.publish
-        data:
-          topic: openv/room_control/sensors
-          payload: "{{ payload | tojson }}"
-          qos: 0
-          retain: false
-
-template:
+        value_template:
   - sensor:
       - name: "Optolink Raumregelung Sensoren"
         unique_id: optolink_raumregelung_sensoren
         icon: mdi:thermometer-lines
-        state: "{{ label_entities('optolink_raumregelung') | count }}"
+        state: >-
+          {% set ns = namespace(e=label_entities('optolink_raumregelung') | list) %}
+          {% for d in label_devices('optolink_raumregelung') %}
+            {% for e in device_entities(d) %}
+              {% if e.startswith('sensor.') and state_attr(e, 'device_class') == 'temperature' %}
+                {% set ns.e = ns.e + [e] %}
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
+          {{ ns.e | unique | list | count }}
         attributes:
-          entities: "{{ label_entities('optolink_raumregelung') }}"
+          entities: >-
+            {% set ns = namespace(e=label_entities('optolink_raumregelung') | list) %}
+            {% for d in label_devices('optolink_raumregelung') %}
+              {% for e in device_entities(d) %}
+                {% if e.startswith('sensor.') and state_attr(e, 'device_class') == 'temperature' %}
+                  {% set ns.e = ns.e + [e] %}
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+            {{ ns.e | unique | list }}

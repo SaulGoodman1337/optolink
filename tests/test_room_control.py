@@ -129,6 +129,15 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(io.mem[rc.ADDR_EXTERNAL_SETPOINT], 0)
         self.assertEqual(ctl.owned, 0)
 
+    def test_status_shows_regular_target_when_idle(self):
+        ctl, io, clock = make(enabled=False)
+        status = ctl.tick()
+        self.assertEqual(status["state"], "aus")
+        self.assertEqual(status["effective_target_c"], 21)
+        status = make()[0].tick()
+        self.assertEqual(status["state"], "keine_sensoren")
+        self.assertEqual(status["effective_target_c"], 21)
+
     def test_disabled_releases(self):
         ctl, io, clock = make()
         feed(ctl, clock, a=18.0)

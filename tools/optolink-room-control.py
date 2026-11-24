@@ -274,6 +274,7 @@ class RoomController:
         self.influence_coded = False
         self.status = {"state": "start"}
         self.resumed = False
+        self.last_normal_target = None
 
     @property
     def config(self):
@@ -329,6 +330,12 @@ class RoomController:
             "external_setpoint_c": self.owned or None,
             **extra,
         }
+        # The boiler always works with some room target: the external one we
+        # own, else the regular normal target. Show it in every state.
+        normal = self.status.get("normal_target_c", self.last_normal_target)
+        if normal is not None:
+            self.status["normal_target_c"] = normal
+            self.status.setdefault("effective_target_c", self.owned or normal)
         return self.status
 
     def tick(self):
@@ -354,6 +361,9 @@ class RoomController:
         if current != 0 and current != self.owned:
             return self._status("fremdbelegt", foreign_value_c=current, **info)
 
+        normal = self.io.read_int(ADDR_NORMAL_SETPOINT, 1)
+        self.last_normal_target = normal if 3 <= normal <= 37 else None
+
         if not cfg["enabled"]:
             self.release("disabled")
             return self._status("aus", **info)
@@ -376,6 +386,7 @@ class RoomController:
             return self._status("keine_sensoren", **info)
 
         target = self.io.read_int(ADDR_NORMAL_SETPOINT, 1)
+        self.last_normal_target = target if 3 <= target <= 37 else None
         if not 3 <= target <= 37:
             self.release("implausible normal setpoint")
             return self._status("fehler", error=f"0x2306={target}", **info)
