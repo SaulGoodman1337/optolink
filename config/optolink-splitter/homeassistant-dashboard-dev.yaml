@@ -2134,7 +2134,7 @@ views:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
-                  name: Gebläse
+                  name: Gebläse (nur VS1)
 
           - type: custom:button-card
             template: diag_group3_blue
@@ -5048,14 +5048,14 @@ views:
                 entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
                 icon: mdi:fan
                 content: >-
-                  Gebläse {{ states('sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06') }} rpm
+                  Gebläse {{ states('sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06') }} rpm (nur VS1)
                 tap_action:
                   action: more-info
               - type: template
                 entity: sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09
                 icon: mdi:gauge-full
                 content: >-
-                  GFA Soll {{ states('sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09') }} %
+                  GFA Soll {{ states('sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09') }} % (nur VS1)
                 tap_action:
                   action: more-info
               - type: template
@@ -5117,7 +5117,7 @@ views:
                 entity: sensor.vitodens_200_wb2a_gfa_status3_p87
                 icon: mdi:code-tags
                 content: >-
-                  P87 {{ states('sensor.vitodens_200_wb2a_gfa_status3_p87') }}
+                  P87 {{ states('sensor.vitodens_200_wb2a_gfa_status3_p87') }} (nur VS1)
                 tap_action:
                   action: more-info
             card_mod:
@@ -5305,10 +5305,10 @@ views:
                 graph_min: 0
                 graph_max: 100
               - entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
-                name: Gebläse P06
+                name: Gebläse P06 (nur VS1)
                 icon: mdi:fan
                 extra_value_entity: sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09
-                extra_value_name: GFA Soll
+                extra_value_name: GFA Soll (nur VS1)
                 overwrite_graph_appearance: true
                 graph_min: 0
                 graph_max: 6000
@@ -8160,10 +8160,10 @@ views:
               curve: smooth
             series:
               - entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
-                name: Gebläse P06
+                name: Gebläse P06 (nur VS1)
                 yaxis_id: rpm
               - entity: sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09
-                name: GFA Soll P09
+                name: GFA Soll P09 (nur VS1)
                 yaxis_id: percent
               - entity: sensor.vitodens_200_wb2a_brenner_modulationsgrad
                 name: Modulation Ist

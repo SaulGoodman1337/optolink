@@ -358,6 +358,35 @@ update --clear-token
 update
 ```
 
+## 12a. Protokoll: VS1 oder Dauer-P300
+
+Standard ist VS1. Dauer-P300 ist die Grundlage für die ausfallsichere
+Pumpensteuerung per RAM-Override (E7-Arbeitskopie `0x20A5`), denn
+RAM-Schreibzugriffe gibt es nur unter P300.
+
+```bash
+# auf P300 umstellen (wirkt beim nächsten update)
+echo p300 | sudo tee /etc/optolink/protocol
+update
+
+# zurück auf VS1
+echo vs1 | sudo tee /etc/optolink/protocol   # oder Datei löschen
+update
+```
+
+Im P300-Betrieb gilt:
+
+- Die VS1-only-GFA-Werte P06 (Gebläse), P09, P80 und P87 werden nicht gepollt
+  (die WB2A weist GFA über P300 ab). Im Dashboard sind sie als „nur VS1“
+  markiert; ihr letzter Wert bleibt stehen.
+- Der Link-Watchdog (60 s ohne gültige Antwort → Port neu öffnen) gilt für
+  beide Protokolle, dazu kommt ein P300-Keep-Alive auf `0x00F8` nach 5 s
+  Leerlauf.
+- Alle anderen Datenpunkte, MQTT-/TCP-Befehle und Zusatzdienste laufen
+  unverändert. Gemessen am 24.11.2026: alle 81 unter VS1 laufend
+  aktualisierten Topics außer den 4 GFA-Werten auch unter P300, keine
+  Fehler, Write mit Readback OK.
+
 ## 12. Rollback
 
 Der Profil-Helper erzeugt vor Änderungen Zeitstempel-Backups unter `/opt/optolink`. Bei einem Aktivierungsfehler versucht er automatisch, den vorherigen Stand zurückzustellen.
