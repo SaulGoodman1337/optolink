@@ -116,7 +116,9 @@ gfa_patcher_tmp="$(mktemp)"
 poll_patcher_tmp="$(mktemp)"
 link_patcher_tmp="$(mktemp)"
 p300rt_patcher_tmp="$(mktemp)"
-trap 'rm -f "$tmp" "$gfa_patcher_tmp" "$poll_patcher_tmp" "$link_patcher_tmp" "$p300rt_patcher_tmp"' EXIT
+pumpguard_patcher_tmp="$(mktemp)"
+pumpguard_module_tmp="$(mktemp)"
+trap 'rm -f "$tmp" "$gfa_patcher_tmp" "$poll_patcher_tmp" "$link_patcher_tmp" "$p300rt_patcher_tmp" "$pumpguard_patcher_tmp" "$pumpguard_module_tmp"' EXIT
 
 cs_repo_fetch "$PROFILE_REL" "$tmp"
 python3 -m py_compile "$tmp"
@@ -132,6 +134,11 @@ python3 -m py_compile "$link_patcher_tmp"
 
 cs_repo_fetch tools/optolink-apply-p300-runtime-patch.py "$p300rt_patcher_tmp"
 python3 -m py_compile "$p300rt_patcher_tmp"
+
+cs_repo_fetch tools/optolink-apply-pump-guard-patch.py "$pumpguard_patcher_tmp"
+python3 -m py_compile "$pumpguard_patcher_tmp"
+cs_repo_fetch config/optolink-splitter/pump_guard.py "$pumpguard_module_tmp"
+python3 -m py_compile "$pumpguard_module_tmp"
 
 # Optolink protocol: VS1 is the default. Permanent P300 (needed for the
 # inverted pump RAM override) is selected per host with
@@ -155,6 +162,7 @@ echo "Preflighting VS1/GFA, phased scheduler and link-recovery patchers..."
 "$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --self-test
 "$APP_DIR/venv/bin/python" "$link_patcher_tmp" --self-test
 "$APP_DIR/venv/bin/python" "$p300rt_patcher_tmp" --self-test
+"$APP_DIR/venv/bin/python" "$pumpguard_patcher_tmp" --self-test
 echo "Patcher preflight OK."
 
 cp "$tmp" "$APP_DIR/profiles/$PROFILE_NAME"
@@ -173,6 +181,11 @@ runtime_patch_files=(
 for rel in "${runtime_patch_files[@]}"; do
   cp -a "$APP_DIR/$rel" "$APP_DIR/$rel.bak-$STAMP"
 done
+had_pumpguard=0
+if [[ -f "$APP_DIR/pump_guard.py" ]]; then
+  had_pumpguard=1
+  cp -a "$APP_DIR/pump_guard.py" "$APP_DIR/pump_guard.py.bak-$STAMP"
+fi
 
 had_poll=0
 had_ha=0
@@ -209,6 +222,9 @@ rollback_profile() {
   for rel in "${runtime_patch_files[@]}"; do
     chown optolink:optolink "$APP_DIR/$rel" 2>/dev/null || true
   done
+  if [[ "$had_pumpguard" == "1" ]]; then
+    cp -a "$APP_DIR/pump_guard.py.bak-$STAMP" "$APP_DIR/pump_guard.py"
+  fi
 }
 
 cp "$tmp" "$APP_DIR/homeassistant_poll_list.py"
@@ -300,6 +316,18 @@ fi
 echo "Applying P300 runtime compatibility..."
 if ! "$APP_DIR/venv/bin/python" "$p300rt_patcher_tmp" --apply; then
   echo "P300 runtime integration failed." >&2
+  rollback_profile
+  exit 1
+fi
+
+# Must run after the P300 runtime patch: pinned to its output. The fail-safe
+# pump guard only runs in permanent P300 and stays off until Home Assistant
+# switches it on (retained openv/pump_guard/enabled/state). Under VS1 the hook
+# is inert. E7 must stay persistently coded to 100 %.
+echo "Installing fail-safe pump guard..."
+install -m 0644 -o optolink -g optolink "$pumpguard_module_tmp" "$APP_DIR/pump_guard.py"
+if ! "$APP_DIR/venv/bin/python" "$pumpguard_patcher_tmp" --apply; then
+  echo "Pump guard integration failed." >&2
   rollback_profile
   exit 1
 fi
