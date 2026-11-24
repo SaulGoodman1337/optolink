@@ -411,7 +411,7 @@ nach spätestens ~3 s wieder mit 100 %. E7 selbst wird nie geschrieben.
 | --- | --- | --- |
 | Schalter aus | AUS | 100 % |
 | Zustand älter als 5 s, E7 ≠ 100, Störung/Verriegelung | GESPERRT | 100 % |
-| Warmwasser, Ventil nicht Heizen, Startsequenz (0x55D3 Byte 6/7), Flamme, Nachlauf | BOOST | 100 % |
+| Warmwasser, Ventil nicht Heizen, Startsequenz (0x55D3 Byte 6/7), Flamme, Nachlauf, Vorboost | BOOST | 100 % |
 | unerwarteter RAM-Wert, Ausnahme | FEHLER (bis Schalter aus/ein) | 100 % |
 | sonst | ABGESENKT | Normaldrehzahl |
 
@@ -419,8 +419,17 @@ Hinweis: Ein Virtual_READ von 0x27E7 liefert die aktive RAM-Kopie, nicht den
 codierten Wert. Der Wächter liest E7 deshalb nur außerhalb der Absenkung; beim
 Absenken beweist jeder Firmware-Reload auf 100 die Codierung.
 
+**Vorboost (Phase 3):** Der Wächter liest zusätzlich Kesseltemperatur
+(0x0810) und effektives Kesselsoll (0x555A). Bei jedem Brennerstart merkt er
+sich, wie weit der Kessel unter dem Soll lag (gelernte Startschwelle, gleitender
+Mittelwert, Startwert 4 K = Codierstecker „Einschaltdifferenz“). Mit
+`vorboost` = X K geht die Pumpe schon auf 100 %, sobald der Kessel weniger als
+X K von dieser Schwelle entfernt ist (Freigabe 0,5 K darunter, 0 = aus).
+Veraltete Temperaturen (> 10 s) schalten nur den Vorboost ab, nicht die
+Absenkung.
+
 MQTT (unter `openv/pump_guard/`): `enabled/set` ON|OFF, `low/set` 20–100,
-`nachlauf/set` 0–30 min, jeweils retained `…/state`; `status` (JSON),
+`nachlauf/set` 0–30 min, `vorboost/set` 0–10 K, jeweils retained `…/state`; `status` (JSON),
 `zustand`, `protocol`. HA: Schalter „Pumpensteuerung aktiv“, Zahlen
 „Normaldrehzahl“ und „Nachlauf“, Sensoren Zustand/Grund/RAM-E7/Korrekturen.
 

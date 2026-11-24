@@ -31,6 +31,7 @@ class FakeBoiler:
         self.t = 0.0
         self.gfa = IDLE_GFA
         self.ww, self.valve, self.fault, self.e7 = 0, 1, 0, 100
+        self.kessel, self.soll = 36.0, 36.5
         self.ram = bytearray(32)
         self.ram[5] = 100
         self.next_reload = 2.3
@@ -54,6 +55,8 @@ class FakeBoiler:
         values = {
             (0x01, 0x55D3): self.gfa, (0x01, 0x650A): bytes([self.ww]),
             (0x01, 0x0A10): bytes([self.valve]), (0x01, 0x5738): bytes([self.fault]),
+            (0x01, 0x0810): int(round(self.kessel * 10)).to_bytes(2, "little", signed=True),
+            (0x01, 0x555A): int(round(self.soll * 10)).to_bytes(2, "little", signed=True),
             # live finding: 0x27E7 reads the active RAM copy, not the coded value
             (0x01, 0x27E7): bytes([self.ram[5]]), (0x03, 0x20A0): bytes(self.ram),
         }
@@ -142,6 +145,54 @@ class GuardTest(unittest.TestCase):
             b.advance(0.06)
             states.add(g.logic.decide(b.t)[0])
         self.assertEqual(states, {pg.ABGESENKT})
+
+    def test_vorboost_learns_threshold_and_boosts_early(self):
+        b = FakeBoiler()
+        g = make_guard(b)
+        g.logic.nachlauf_s = 0.0
+        run(g, b, 8)
+        # burner start at 3 K below setpoint -> learned threshold moves towards 3 K
+        b.kessel = 33.5
+        run(g, b, 3)
+        b.gfa = SEQ_GFA
+        run(g, b, 3)
+        b.gfa = IDLE_GFA
+        b.kessel = 37.0
+        run(g, b, 3)
+        self.assertEqual(g.logic.start_margins, [3.0])
+        self.assertAlmostEqual(g.logic.start_margin, 0.7 * 4.0 + 0.3 * 3.0)
+        g.logic.vorboost_k = 1.0                      # trigger at 3.7 - 1.0 = 2.7 K below
+        b.kessel = 34.0                               # 2.5 K below: still lowered
+        run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+        b.kessel = 33.7                               # 2.8 K below: pre-boost
+        run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Vorboost"))
+        self.assertEqual(b.ram[5], 100)
+        b.kessel = 33.9                               # hysteresis keeps it on
+        run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Vorboost"))
+        b.kessel = 34.4                               # 2.1 K below: released
+        run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+
+    def test_vorboost_off_by_default_and_stale_temps(self):
+        b = FakeBoiler()
+        b.kessel = 20.0
+        g = make_guard(b)
+        run(g, b, 8)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)   # vorboost_k = 0
+        g.logic.vorboost_k = 2.0
+        run(g, b, 3)
+        self.assertEqual(g.logic.decide(b.t)[1], "Vorboost")
+        g.logic.ts["kessel"] = b.t - 60                          # stale temperature
+        self.assertFalse(g.logic.vorboost(b.t))
+
+    def test_implausible_temperature_ignored(self):
+        lg = pg.GuardLogic()
+        lg.update("kessel", (3000).to_bytes(2, "little", signed=True), 0.0)
+        self.assertIsNone(lg.kessel)
+        self.assertNotIn("kessel", lg.ts)
 
     def test_only_allowed_telegrams(self):
         b = FakeBoiler()

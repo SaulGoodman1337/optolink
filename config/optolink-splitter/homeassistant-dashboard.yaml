@@ -4085,6 +4085,31 @@ views:
             grid_options:
               columns: 6
               rows: 2
+          - type: tile
+            entity: number.vitodens_200_wb2a_pumpensteuerung_vorboost
+            name: Vorboost vor Startschwelle
+            icon: mdi:fast-forward-outline
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_pumpensteuerung_kessel_unter_soll
+            name: Kessel unter Soll
+            icon: mdi:thermometer-minus
+            grid_options:
+              columns: 6
+              rows: 1
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_pumpensteuerung_gelernte_startschwelle
+            name: Gelernte Startschwelle
+            icon: mdi:school-outline
+            grid_options:
+              columns: 6
+              rows: 1
           - type: entities
             show_header_toggle: false
             entities:
@@ -4101,7 +4126,9 @@ views:
               E7 bleibt fest auf **100 %** codiert. Bei Brenner aus und Ventil auf
               Heizen senkt der Wächter nur die RAM-Kopie auf die Normaldrehzahl.
               Boost (100 %) bei Warmwasser, Ventil nicht Heizen, Startsequenz
-              (Vorspülen), Flamme und im Nachlauf. Fällt Home Assistant, MQTT
+              (Vorspülen), Flamme und im Nachlauf. Vorboost: schon 100 %, wenn
+              der Kessel nur noch so viele K von der gelernten Startschwelle
+              (Kessel unter Soll beim Brennerstart) entfernt ist (0 = aus). Fällt Home Assistant, MQTT
               oder der Splitter aus, läuft die Pumpe nach spätestens ~3 s wieder
               mit 100 %. Nur im Dauer-P300-Betrieb aktiv.
             grid_options:
