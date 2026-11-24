@@ -5128,6 +5128,52 @@ views:
             grid_options:
               columns: 6
 
+          - type: markdown
+            title: Was passiert gerade?
+            content: >-
+              {% set s = states.sensor.vitodens_200_wb2a_raumregelung_status %}
+              {% set a = s.attributes if s else {} %}
+              {% set room = a.get('room_c') %}
+              {% set lo = a.get('schwelle_unten_c') %}
+              {% set hi = a.get('schwelle_oben_c') %}
+              {% set phase = states('sensor.vitodens_200_wb2a_raumregelung_phase') %}
+              **Zeitprogramm:** {{ phase }}, Basis-Sollwert
+              **{{ a.get('base_target_c', '–') }} °C**
+              (Tag {{ a.get('normal_target_c', '–') }} °C, Nacht {{ a.get('reduced_target_c', '–') }} °C)<br>
+              **Komfortband:** {{ lo if lo is not none else '–' }} … {{ hi if hi is not none else '–' }} °C<br>
+              **Raum:** {{ room if room is not none else 'keine Daten' }}{{ ' °C' if room is not none }}
+              aus {{ a.get('sensor_count', 0) }} Sensor(en), {{ a.get('aggregation', '') }}<br>
+              **Therme rechnet mit:** {{ a.get('effective_target_c', '–') }} °C Raumsoll<br><br>
+              {% set st = states('sensor.vitodens_200_wb2a_raumregelung_status') %}
+              {% if st == 'Aus' %}Die Regelung ist ausgeschaltet. Die Therme folgt nur ihrem Zeitprogramm.
+              {% elif st == 'Aktiv' %}Der Raum liegt außerhalb des Bandes. Der Raumsoll ist um
+              **{{ '%+.0f' | format((a.get('effective_target_c', 0) - a.get('base_target_c', 0))) }} K**
+              verschoben, dadurch ändert sich der Vorlauf-Soll.
+              {% elif st == 'Im Komfortband' %}Der Raum liegt im Komfortband. Es wird nichts verändert.
+              {% elif st.startswith('Nachtabsenkung') %}Nachtabsenkung laut Zeitprogramm. Die Therme übernimmt
+              dort keinen externen Sollwert, deshalb wird nur angezeigt. Zur nächsten Heizzeit regelt
+              der Dienst wieder.
+              {% elif st == 'Keine Sensordaten' %}Seit über 10 Minuten kam kein Sensorwert an. Prüfe das
+              Label „Optolink Raumregelung“ und die Automation in Home Assistant.
+              {% elif st == 'Extern belegt' %}Im externen Sollwert 0x2321 steht ein fremder Wert
+              ({{ a.get('foreign_value_c') }} °C). Der Dienst fasst ihn nicht an.
+              {% elif st.startswith('Störung') %}Die Therme meldet eine Störung. Die Korrektur ist freigegeben.
+              {% elif st == 'Fehler' %}Therme oder Splitter haben nicht geantwortet. Neuer Versuch im
+              nächsten Zyklus.
+              {% else %}Status: {{ st }}{% endif %}
+            grid_options:
+              columns: full
+
+          - type: markdown
+            content: >-
+              **Sensoren auswählen:** In Home Assistant unter *Einstellungen → Bereiche,
+              Labels & Zonen → Labels* das Label **„Optolink Raumregelung“** an einen
+              Temperatursensor oder an ein ganzes Gerät (z. B. Shelly H&T) hängen. Neue
+              Sensoren sind nach spätestens einer Minute dabei. Tippe auf die Kachel
+              „Sensoren“, um die Einzelwerte zu sehen.
+            grid_options:
+              columns: full
+
           - type: heading
             heading: Wochenplan
             heading_style: subtitle
@@ -5244,6 +5290,40 @@ views:
             features:
               - type: select-options
             features_position: bottom
+            grid_options:
+              columns: full
+
+          - type: markdown
+            content: >-
+              **Verstärkung:** um wie viel K der Raumsoll je K Abweichung vom Band
+              verschoben wird. Beispiel bei 1,0 K/K: Band ab 20,5 °C, Raum 19,5 °C →
+              Raumsoll +1 K. Höher heißt kräftiger, aber unruhiger.<br>
+              **Max. Korrektur:** größte Verschiebung des Raumsolls in beide Richtungen.
+              Begrenzt, wie stark der Vorlauf angehoben oder abgesenkt werden kann.<br>
+              **Mehrere Sensoren:** *Mittelwert* für das ganze Haus, *Minimum* wenn der
+              kälteste Raum warm werden soll, *Maximum* wenn kein Raum überheizen soll.<br>
+              Der Vorlauf ändert sich entlang deiner Heizkennlinie (Neigung/Niveau, Ansicht
+              „Heizkurve“). 1 K Raumsoll entspricht je nach Außentemperatur etwa 0,5–2 K Vorlauf.
+            grid_options:
+              columns: full
+
+          - type: markdown
+            title: Status-Übersicht
+            content: |-
+              | Status | Bedeutung |
+              |---|---|
+              | Aktiv | Raumsoll wird gerade korrigiert |
+              | Im Komfortband | Raum passt, Zeitprogramm-Sollwert gilt |
+              | Nachtabsenkung – nur Anzeige | reduzierte Phase, keine Korrektur möglich |
+              | Abschaltbetrieb / Party | Therme läuft im Sondermodus, keine Korrektur |
+              | Keine Sensordaten | länger als 10 min kein Wert aus HA, freigegeben |
+              | Extern belegt | 0x2321 von anderer Stelle gesetzt, wird nicht angefasst |
+              | Störung – freigegeben | Therme meldet Fehler, Korrektur zurückgenommen |
+              | Raumeinfluss codiert | Therme hat eigene Raumaufschaltung codiert, Dienst pausiert |
+              | Fehler | Therme/Splitter nicht erreichbar, neuer Versuch im nächsten Zyklus |
+
+              Sicherheit: Die Korrektur ändert sich höchstens um 1 K alle 5 Minuten. Bei
+              Ausschalten, Dienststopp oder Absturz wird sie sofort zurückgenommen.
             grid_options:
               columns: full
 
