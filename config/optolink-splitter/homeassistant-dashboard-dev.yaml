@@ -5129,13 +5129,25 @@ views:
               columns: 6
 
           - type: heading
-            heading: Komfortband
+            heading: Wochenplan
             heading_style: subtitle
-            icon: mdi:arrow-expand-vertical
+            icon: mdi:calendar-clock
 
           - type: tile
-            entity: number.vitodens_200_wb2a_raumregelung_schwelle_min
-            name: Untere Schwelle
+            entity: sensor.vitodens_200_wb2a_raumregelung_phase
+            name: Phase laut Zeitprogramm
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_raumregelung_basis_sollwert
+            name: Basis-Sollwert
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
+            name: Tagestemperatur
             features:
               - type: numeric-input
                 style: buttons
@@ -5144,8 +5156,44 @@ views:
               columns: 6
 
           - type: tile
-            entity: number.vitodens_200_wb2a_raumregelung_schwelle_max
-            name: Obere Schwelle
+            entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
+            name: Nachttemperatur
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+
+          - type: heading
+            heading: Komfortband um den Basis-Sollwert
+            heading_style: subtitle
+            icon: mdi:arrow-expand-vertical
+            badges:
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_raumregelung_untere_schwelle
+                name: ab
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_raumregelung_obere_schwelle
+                name: bis
+                show_state: true
+                show_icon: false
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_toleranz_unten
+            name: Toleranz nach unten
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_toleranz_oben
+            name: Toleranz nach oben
             features:
               - type: numeric-input
                 style: buttons
@@ -5155,11 +5203,13 @@ views:
 
           - type: markdown
             content: >-
-              Liegt die Raumtemperatur **unter der unteren Schwelle**, wird der
-              Raumsollwert der Therme angehoben und damit die Vorlauftemperatur
-              erhöht. **Über der oberen Schwelle** wird abgesenkt. Innerhalb des
-              Bandes gilt der normale Raumsollwert. Die Korrektur ändert sich um
-              höchstens 1 K alle 5 Minuten.
+              Basis ist immer der Raumsollwert, den dein **Zeitprogramm** gerade
+              vorgibt: in den Heizzeiten die Tagestemperatur, sonst die
+              Nachttemperatur. Liegt der Raum **mehr als die Toleranz darunter**,
+              hebt die Regelung den Raumsollwert an und damit den Vorlauf.
+              **Darüber** senkt sie ab. Die Korrektur ändert sich um höchstens
+              1 K alle 5 Minuten. In der **Nachtabsenkung** wird nur angezeigt,
+              weil die Therme den externen Sollwert dort nicht übernimmt.
             grid_options:
               columns: full
 
@@ -5212,6 +5262,10 @@ views:
                 name: Raum (kombiniert)
               - entity: sensor.vitodens_200_wb2a_raumregelung_wirksamer_raumsollwert
                 name: Raumsoll wirksam
+              - entity: sensor.vitodens_200_wb2a_raumregelung_untere_schwelle
+                name: Untere Schwelle
+              - entity: sensor.vitodens_200_wb2a_raumregelung_obere_schwelle
+                name: Obere Schwelle
               - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlaufsolltemperatur
                 name: Vorlauf-Soll
               - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur

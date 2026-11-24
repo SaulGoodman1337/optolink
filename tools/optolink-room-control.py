@@ -3,10 +3,20 @@
 
 Home Assistant publishes the current values of one or more room temperature
 sensors to ``<mqtt_topic>/room_control/sensors``. This service combines them
-(mean, minimum or maximum), compares the result with a configurable comfort
-band (lower and upper threshold) and adjusts the WB2A *external normal room
-setpoint* ``0x2321``. The boiler then shifts its flow setpoint along the
-configured heating curve exactly as if the room target had been changed.
+(mean, minimum or maximum), compares the result with a comfort band around
+the room target that the boiler's own weekly schedule currently applies and
+adjusts the WB2A *external normal room setpoint* ``0x2321``. The boiler then
+shifts its flow setpoint along the configured heating curve exactly as if
+the room target had been changed.
+
+The base target follows the schedule: the service reads the current
+operating phase from ``0x2500`` (byte 1: 0 off, 1 reduced, 2 normal,
+3 permanent normal). In the normal phase the base is the normal room target
+``0x2306`` (day temperature) and the band is ``base - toleranz_unten`` ..
+``base + toleranz_oben``. In the reduced phase (night) the base is
+``0x2307``; ``0x2321`` has no effect there (live test 2026-11-24 22:00:
+external 23 °C left the reduced target at 18.0 °C and the flow setpoint at
+36.5 °C), so the service only monitors and releases any override.
 
 Hardware basis (VDensHO1 / 20C2 / SW 0103, live A/B/A tests 2026-10-11):
 external room setpoint 20 / 21 / 22 °C at normal target 21 °C produced
@@ -51,6 +61,10 @@ STATE_FILE = os.path.join(STATE_DIR, "state.json")
 # Hardware-verified controller datapoints. The write surface is 0x2321 only.
 ADDR_EXTERNAL_SETPOINT = 0x2321
 ADDR_NORMAL_SETPOINT = 0x2306
+ADDR_REDUCED_SETPOINT = 0x2307
+ADDR_NATIVE_PARTY = 0x2303
+ADDR_OPERATING_STATE = 0x2500   # 22 bytes: [1] phase, [12:13] current room target x0.1
+OPERATING_STATE_LEN = 22
 ADDR_FLOW_SETPOINT = 0x2544
 ADDR_CURRENT_FAULT = 0x5738
 ADDR_ROOM_INFLUENCE = (0x27A0, 0x27B0)
@@ -69,10 +83,14 @@ REQUEST_TIMEOUT = 8.0
 
 AGGREGATIONS = ("Mittelwert", "Minimum", "Maximum")
 
+# 0x2500 byte 1 -> phase name
+PHASES = {0: "abschalt", 1: "reduziert", 2: "normal", 3: "dauernd_normal"}
+
 # name: (type, minimum, maximum, default)
 PARAMETERS = {
-    "schwelle_min": (float, 15.0, 25.0, 20.5),
-    "schwelle_max": (float, 15.0, 26.0, 21.5),
+    # comfort band relative to the currently scheduled room target
+    "toleranz_unten": (float, 0.2, 3.0, 0.5),
+    "toleranz_oben": (float, 0.2, 3.0, 0.5),
     "verstaerkung": (float, 0.5, 3.0, 1.0),
     "max_korrektur": (int, 1, 5, 2),
 }
@@ -165,11 +183,30 @@ def validate_config(config):
             value = default
         if not (lo <= value <= hi):
             value = default
-        cfg[name] = value
-    if cfg["schwelle_min"] >= cfg["schwelle_max"]:
-        cfg["schwelle_min"] = DEFAULT_CONFIG["schwelle_min"]
-        cfg["schwelle_max"] = DEFAULT_CONFIG["schwelle_max"]
+        cfg[name] = round(value, 2) if kind is float else value
     return cfg
+
+
+def parse_operating_state(raw_hex):
+    """Decode 0x2500 (22 bytes, hex) into ``(phase, current_target_c)``.
+
+    ``phase`` is one of ``PHASES`` (or ``"unbekannt_<n>"``); the current
+    target is the room setpoint the boiler is using right now.
+    """
+    try:
+        data = bytes.fromhex(raw_hex.strip())
+    except ValueError as exc:
+        raise RoomControlError(f"0x2500 is not hex: {raw_hex[:60]!r}") from exc
+    if len(data) < 14:
+        raise RoomControlError(f"0x2500 too short ({len(data)} bytes)")
+    phase = PHASES.get(data[1], f"unbekannt_{data[1]}")
+    current = int.from_bytes(data[12:14], "little", signed=True) / 10.0
+    return phase, current
+
+
+def comfort_band(base_c, config):
+    return (round(base_c - config["toleranz_unten"], 2),
+            round(base_c + config["toleranz_oben"], 2))
 
 
 def band_correction(room_c, lower_c, upper_c, gain, max_k):
@@ -194,10 +231,11 @@ def next_command(*, target_c, room_c, current_cmd, config, now, last_step_at):
     limited to 1 K per step and ``MIN_STEP_INTERVAL_S`` between steps; a
     hysteresis avoids toggling at rounding boundaries.
     """
+    lower, upper = comfort_band(target_c, config)
     corr = band_correction(
         room_c,
-        config["schwelle_min"],
-        config["schwelle_max"],
+        lower,
+        upper,
         config["verstaerkung"],
         config["max_korrektur"],
     )
@@ -274,7 +312,7 @@ class RoomController:
         self.influence_coded = False
         self.status = {"state": "start"}
         self.resumed = False
-        self.last_normal_target = None
+        self.schedule_info = {}
 
     @property
     def config(self):
@@ -331,12 +369,43 @@ class RoomController:
             **extra,
         }
         # The boiler always works with some room target: the external one we
-        # own, else the regular normal target. Show it in every state.
-        normal = self.status.get("normal_target_c", self.last_normal_target)
-        if normal is not None:
-            self.status["normal_target_c"] = normal
-            self.status.setdefault("effective_target_c", self.owned or normal)
+        # own, else the target its schedule applies. Show it in every state.
+        for key, value in self.schedule_info.items():
+            self.status.setdefault(key, value)
+        base = self.status.get("base_target_c")
+        if base is not None:
+            self.status.setdefault("effective_target_c", self.owned or base)
         return self.status
+
+    def read_schedule(self):
+        """Phase and base target as the boiler's weekly schedule sets them now."""
+        phase, current = parse_operating_state(
+            self.io.read_bytes(ADDR_OPERATING_STATE, OPERATING_STATE_LEN))
+        normal = self.io.read_int(ADDR_NORMAL_SETPOINT, 1)
+        reduced = self.io.read_int(ADDR_REDUCED_SETPOINT, 1)
+        party = self.io.read_int(ADDR_NATIVE_PARTY, 1)
+        if party:
+            phase = "party"
+        if phase in ("normal", "dauernd_normal"):
+            base = normal
+        elif phase == "reduziert":
+            base = reduced
+        else:
+            base = current if 3 <= current <= 37 else None
+        if base is not None and not 3 <= base <= 37:
+            base = None
+        info = {
+            "phase": phase,
+            "normal_target_c": normal,
+            "reduced_target_c": reduced,
+            "boiler_target_c": current,
+            "base_target_c": base,
+        }
+        if base is not None:
+            lower, upper = comfort_band(base, self.config)
+            info.update(schwelle_unten_c=lower, schwelle_oben_c=upper)
+        self.schedule_info = info
+        return phase, base
 
     def tick(self):
         now = self.clock()
@@ -348,8 +417,8 @@ class RoomController:
             "sensors": {k: values[k] for k in sorted(values)},
             "sensor_count": len(values),
             "aggregation": cfg["aggregation"],
-            "schwelle_min": cfg["schwelle_min"],
-            "schwelle_max": cfg["schwelle_max"],
+            "toleranz_unten": cfg["toleranz_unten"],
+            "toleranz_oben": cfg["toleranz_oben"],
         }
 
         current = self.io.read_int(ADDR_EXTERNAL_SETPOINT, 1)
@@ -361,8 +430,7 @@ class RoomController:
         if current != 0 and current != self.owned:
             return self._status("fremdbelegt", foreign_value_c=current, **info)
 
-        normal = self.io.read_int(ADDR_NORMAL_SETPOINT, 1)
-        self.last_normal_target = normal if 3 <= normal <= 37 else None
+        phase, base = self.read_schedule()
 
         if not cfg["enabled"]:
             self.release("disabled")
@@ -381,16 +449,23 @@ class RoomController:
             self.release(f"boiler fault {fault:#04x}")
             return self._status("stoerung", fault=fault, **info)
 
+        if phase not in ("normal", "dauernd_normal"):
+            # 0x2321 only acts on the normal phase: night setback, off mode
+            # and native party run on their own target; hand back and watch.
+            self.release(f"phase {phase}")
+            state = {"reduziert": "nachtabsenkung", "abschalt": "abschaltbetrieb",
+                     "party": "party"}.get(phase, "fehler")
+            return self._status(state, **info)
+
         if room is None:
             self.release("no fresh sensor data")
             return self._status("keine_sensoren", **info)
 
-        target = self.io.read_int(ADDR_NORMAL_SETPOINT, 1)
-        self.last_normal_target = target if 3 <= target <= 37 else None
-        if not 3 <= target <= 37:
+        if base is None:
             self.release("implausible normal setpoint")
-            return self._status("fehler", error=f"0x2306={target}", **info)
+            return self._status("fehler", error=f"0x2306={self.schedule_info.get('normal_target_c')}", **info)
 
+        target = base
         cmd = next_command(
             target_c=target,
             room_c=room,
@@ -418,14 +493,13 @@ class RoomController:
             self.last_step_at = now
             log(f"room {room:.2f} °C, target {target} °C: 0x2321 {previous} -> {cmd}")
 
+        lower, upper = comfort_band(target, cfg)
         correction = band_correction(
-            room, cfg["schwelle_min"], cfg["schwelle_max"],
-            cfg["verstaerkung"], cfg["max_korrektur"],
+            room, lower, upper, cfg["verstaerkung"], cfg["max_korrektur"],
         )
         state = "aktiv" if self.owned else "neutral"
         return self._status(
             state,
-            normal_target_c=target,
             correction_k=round(correction, 2),
             effective_target_c=self.owned or target,
             **info,
@@ -489,6 +563,10 @@ class SplitterIO:
             return int(raw, 0)
         except ValueError:
             return int(float(raw))
+
+    def read_bytes(self, addr, length):
+        """Raw read; the splitter answers ``read`` with a hex string."""
+        return self.request(f"read;0x{addr:04X};{length}", addr)
 
     def write_int(self, addr, length, value):
         if addr != ADDR_EXTERNAL_SETPOINT or length != 1:
@@ -603,8 +681,9 @@ class Service:
         else:
             return
         new = validate_config(cfg)
-        if new[key] != cfg[key] or new["schwelle_min"] != cfg["schwelle_min"] or new["schwelle_max"] != cfg["schwelle_max"]:
-            log(f"rejected {key}={value!r} (range or min >= max)")
+        if new[key] != cfg[key] and not (
+                isinstance(cfg[key], float) and abs(new[key] - cfg[key]) < 0.005):
+            log(f"rejected {key}={value!r} (out of range)")
         else:
             self.controller.state["config"] = new
             save_state(self.controller.state)
@@ -613,7 +692,7 @@ class Service:
 
     def publish_config(self):
         cfg = self.controller.config
-        for key in ("schwelle_min", "schwelle_max", "verstaerkung", "max_korrektur", "aggregation"):
+        for key in ("toleranz_unten", "toleranz_oben", "verstaerkung", "max_korrektur", "aggregation"):
             self.client.publish(f"{self.topic}/{key}/state", str(cfg[key]), retain=True)
         self.client.publish(f"{self.topic}/enabled/state", "1" if cfg["enabled"] else "0", retain=True)
 
@@ -708,6 +787,8 @@ def release_only():
 
 def self_test():
     cfg = validate_config({"enabled": True})
+    assert parse_operating_state("0201000000006d0101000001b4000000006d0100b400") == ("reduziert", 18.0)
+    assert comfort_band(21, cfg) == (20.5, 21.5)
     assert band_correction(21.0, 20.5, 21.5, 1.0, 2) == 0.0
     assert band_correction(19.5, 20.5, 21.5, 1.0, 2) == 1.0
     assert band_correction(23.5, 20.5, 21.5, 1.0, 2) == -2.0
