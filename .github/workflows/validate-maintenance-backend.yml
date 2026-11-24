@@ -3,6 +3,7 @@ name: Validate Optolink Splitter HA
 on:
   push:
     branches:
+      - main
       - optolink-splitter-ha
   pull_request:
     paths:
@@ -33,7 +34,8 @@ jobs:
             tools/wb2a-schedule-probe.py \
             tools/optolink-debug.py \
             tools/optolink-apply-vs1-gfa-readonly-patch.py \
-            tools/optolink-apply-phased-poll-scheduler-patch.py
+            tools/optolink-apply-phased-poll-scheduler-patch.py \
+            tools/optolink-apply-link-recovery-patch.py
 
       - name: Validate dashboard YAML
         run: |
@@ -69,6 +71,11 @@ jobs:
       - name: Validate clock codec
         run: |
           python3 tools/optolink-clock-sync.py --self-test
+
+      - name: Validate Optolink link-recovery patcher
+        run: |
+          python3 tools/optolink-apply-link-recovery-patch.py --self-test
+          python3 -m unittest discover -s tests -p "test_link_recovery_patch.py" -v
 
       - name: Validate service-program mapping
         run: |

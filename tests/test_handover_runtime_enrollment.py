@@ -102,8 +102,17 @@ class EnrollmentEvidenceTests(unittest.TestCase):
         self.assertFalse(re._pinned_file(source,sha,marker=True))
         source.write_text(re.TOKEN+'\nprint(1)\n')
         sha2=hashlib.sha256(source.read_bytes()).hexdigest()
-        # Owner policy is root-only; this synthetic file is deliberately not.
-        self.assertFalse(re._pinned_file(source,sha2,marker=True))
+        # Owner policy is root-only; simulate a non-root owner explicitly so
+        # the assertion also holds when the suite itself runs as root.
+        original=Path.stat
+        def fake_user_stat(p,*a,**kw):
+            st=original(p,*a,**kw)
+            if p==source:
+                return types.SimpleNamespace(
+                    st_uid=1000,st_mode=st.st_mode,st_nlink=st.st_nlink)
+            return st
+        with patch.object(Path,'stat',fake_user_stat):
+            self.assertFalse(re._pinned_file(source,sha2,marker=True))
         self.assertFalse(re._pinned_file(source,'broken',marker=False))
 
     def test_maintenance_api_uses_its_own_exact_patch_marker(self):

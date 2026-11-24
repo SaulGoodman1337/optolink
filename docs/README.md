@@ -43,6 +43,7 @@ Für unterschiedliche Fragestellungen gelten bewusst unterschiedliche Dateien al
 | Wie wird das Profil sicher aktiviert? | `tools/optolink-apply-vdensho1-ha-profile.sh` |
 | Wo sind die zulässigen Hybridfenster und deren Sperren implementiert? | `tools/optolink-hybrid.py`, `tools/handover_acceleration/` |
 | Wie wird einmalig auf den Update-Zweig `main` umgestellt? | `tools/optolink-update-main-umstellen.sh` |
+| Welche Zweige sind aktiv, welche nur noch Archiv? | `docs/branches.md` |
 | Wie wird eine neue LXC-Installation aufgebaut? | `install/optolink-splitter-install.sh` |
 | Wie sieht die HA-Oberfläche aus? | `config/optolink-splitter/homeassistant-dashboard.yaml` |
 

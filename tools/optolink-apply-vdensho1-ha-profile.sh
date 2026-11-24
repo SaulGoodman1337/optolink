@@ -14,7 +14,7 @@ set -euo pipefail
 
 CS_REPO="${COMMUNITY_SCRIPTS_REPO:-SaulGoodman1337/optolink}"
 CS_REF="${COMMUNITY_SCRIPTS_REF:-optolink-splitter-ha}"
-HELPER_REV="2026-10-08-r13-mqtt-retain"
+HELPER_REV="2026-11-24-r14-link-recovery"
 APP_DIR="/opt/optolink"
 VALIDATED_UPSTREAM_REF="c1ee204a1421447721603c5f21c6da7337fdac97"
 
@@ -114,7 +114,8 @@ install -d -m 0755 "$APP_DIR/profiles"
 tmp="$(mktemp)"
 gfa_patcher_tmp="$(mktemp)"
 poll_patcher_tmp="$(mktemp)"
-trap 'rm -f "$tmp" "$gfa_patcher_tmp" "$poll_patcher_tmp"' EXIT
+link_patcher_tmp="$(mktemp)"
+trap 'rm -f "$tmp" "$gfa_patcher_tmp" "$poll_patcher_tmp" "$link_patcher_tmp"' EXIT
 
 cs_repo_fetch "$PROFILE_REL" "$tmp"
 python3 -m py_compile "$tmp"
@@ -125,11 +126,15 @@ python3 -m py_compile "$gfa_patcher_tmp"
 cs_repo_fetch tools/optolink-apply-phased-poll-scheduler-patch.py "$poll_patcher_tmp"
 python3 -m py_compile "$poll_patcher_tmp"
 
+cs_repo_fetch tools/optolink-apply-link-recovery-patch.py "$link_patcher_tmp"
+python3 -m py_compile "$link_patcher_tmp"
+
 # Run every patcher's pure self-test before touching the installed profile or
 # runtime tree. A broken test fixture must never leave a half-staged deploy.
-echo "Preflighting VS1/GFA and phased scheduler patchers..."
+echo "Preflighting VS1/GFA, phased scheduler and link-recovery patchers..."
 "$APP_DIR/venv/bin/python" "$gfa_patcher_tmp" --self-test
 "$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --self-test
+"$APP_DIR/venv/bin/python" "$link_patcher_tmp" --self-test
 echo "Patcher preflight OK."
 
 cp "$tmp" "$APP_DIR/profiles/$PROFILE_NAME"
@@ -256,6 +261,16 @@ fi
 echo "Applying phased poll scheduler..."
 if ! "$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --apply; then
   echo "Phased poll scheduler integration failed." >&2
+  rollback_profile
+  exit 1
+fi
+
+# Must run after the phased scheduler: it is pinned to that output layout.
+# Keeps the splitter alive while the boiler is unreachable (VS1 link watchdog
+# re-opens the serial port; re-start loop backs off instead of exiting).
+echo "Applying Optolink link recovery..."
+if ! "$APP_DIR/venv/bin/python" "$link_patcher_tmp" --apply; then
+  echo "Optolink link recovery integration failed." >&2
   rollback_profile
   exit 1
 fi
