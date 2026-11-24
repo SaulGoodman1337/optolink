@@ -36,7 +36,7 @@ import json
 import threading
 import time
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 
 RAM_BLOCK, RAM_E7_OFFSET = 0x20A0, 5          # 0x20A5
 HIGH = 100
@@ -46,6 +46,8 @@ VORBOOST_MAX_K = 10.0
 VORBOOST_HYST_K = 0.5          # release the pre-boost only 0.5 K below its trigger
 START_MARGIN_DEFAULT_K = 4.0   # coding plug "Einschaltdifferenz" 4 K until learned
 START_MARGIN_ALPHA = 0.3       # EMA weight of each observed burner start
+START_LOOKBACK_S = (3.0, 20.0) # use temperatures 3..20 s before the start: the firmware
+                               # drops the effective setpoint (e.g. 16.5) at the start
 
 READ_GFA = (0x01, 0x55D3, 9)     # byte5: 0x20 flame, 0x40 lockout; bytes6/7 GG1 sequence
 READ_WW = (0x01, 0x650A, 1)      # 1 = DHW charging active
@@ -94,6 +96,7 @@ class GuardLogic:
         self.vorboost_active = False
         self.starts = 0
         self._prev_burner = None
+        self._temp_hist = []               # (t, kessel, soll) for the start lookback
 
     def update(self, key, value, now):
         if key == "gfa":
@@ -112,6 +115,9 @@ class GuardLogic:
             if not -20.0 <= v <= 110.0:
                 return          # implausible: ignore, goes stale -> no pre-boost
             setattr(self, key, v)
+            if self.kessel is not None and self.soll is not None:
+                self._temp_hist = [h for h in self._temp_hist if now - h[0] <= START_LOOKBACK_S[1]]
+                self._temp_hist.append((now, self.kessel, self.soll))
         elif key == "ww":
             self.ww = value[0]
         elif key == "valve":
@@ -127,9 +133,14 @@ class GuardLogic:
     def _learn_start(self, now):
         """A burner start began: remember how far below the setpoint the boiler was."""
         self.starts += 1
-        if not self.temps_fresh(now) or self.ww or self.valve != 1:
+        if self.ww or self.valve != 1:
             return
-        margin = round(self.soll - self.kessel, 1)
+        before = [h for h in self._temp_hist
+                  if START_LOOKBACK_S[0] <= now - h[0] <= START_LOOKBACK_S[1]]
+        if not before:
+            return
+        _, kessel, soll = before[-1]
+        margin = round(soll - kessel, 1)
         if not 0.0 <= margin <= 30.0:
             return
         self.start_margins = (self.start_margins + [margin])[-10:]

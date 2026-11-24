@@ -153,9 +153,11 @@ class GuardTest(unittest.TestCase):
         run(g, b, 8)
         # burner start at 3 K below setpoint -> learned threshold moves towards 3 K
         b.kessel = 33.5
-        run(g, b, 3)
+        run(g, b, 6)
         b.gfa = SEQ_GFA
+        b.soll = 16.5                                 # firmware drops the setpoint at the start
         run(g, b, 3)
+        b.soll = 36.5
         b.gfa = IDLE_GFA
         b.kessel = 37.0
         run(g, b, 3)
