@@ -220,5 +220,25 @@ class ControllerTests(unittest.TestCase):
             self.assertEqual(rc.load_state(path), state)
 
 
+class HomeAssistantPackageTests(unittest.TestCase):
+    """Guard the HA package structure (a broken edit once dropped the actions)."""
+
+    def test_package_publishes_sensors(self):
+        try:
+            import yaml
+        except ImportError:
+            self.skipTest("pyyaml not installed")
+        path = SRC.parents[1] / "config" / "optolink-splitter" / "homeassistant-room-control-package.yaml"
+        pkg = yaml.safe_load(path.read_text(encoding="utf-8"))
+        auto = pkg["automation"][0]
+        self.assertEqual(auto["conditions"][0]["value_template"], "{{ kandidaten | count > 0 }}")
+        action = auto["actions"][0]
+        self.assertEqual(action["action"], "mqtt.publish")
+        self.assertEqual(action["data"]["topic"], "openv/room_control/sensors")
+        self.assertFalse(action["data"]["retain"])
+        self.assertIn("label_devices(label_id)", auto["variables"]["kandidaten"])
+        self.assertEqual(pkg["template"][0]["sensor"][0]["unique_id"], "optolink_raumregelung_sensoren")
+
+
 if __name__ == "__main__":
     unittest.main()
