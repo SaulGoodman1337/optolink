@@ -404,6 +404,108 @@ poll_list = {
         },
 
         # -----------------------------------------------------------------
+        # Fail-safe pump guard (permanent P300 only, pump_guard.py in the
+        # splitter). E7 stays coded to 100 %; while the burner is idle and the
+        # valve is on heating the guard lowers the RAM copy 0x20A5 to the
+        # normal speed. Off, error, MQTT/splitter failure => 100 % within ~3 s.
+        # -----------------------------------------------------------------
+        {
+            "domain": "switch",
+            "icon": "mdi:pump",
+            "payload_on": "ON",
+            "payload_off": "OFF",
+            "optimistic": False,
+            "nopoll": [
+                {
+                    "name": "pumpensteuerung_aktiv",
+                    "state_topic": "{mqtt_base}/pump_guard/enabled/state",
+                    "command_topic": "{mqtt_base}/pump_guard/enabled/set",
+                },
+            ],
+        },
+        {
+            "domain": "number",
+            "entity_category": "config",
+            "mode": "slider",
+            "units": [
+                {
+                    "min": 20,
+                    "max": 100,
+                    "step": 5,
+                    "unit_of_measurement": "%",
+                    "icon": "mdi:speedometer-slow",
+                    "nopoll": [
+                        {
+                            "name": "pumpensteuerung_normaldrehzahl",
+                            "state_topic": "{mqtt_base}/pump_guard/low/state",
+                            "command_topic": "{mqtt_base}/pump_guard/low/set",
+                        },
+                    ],
+                },
+                {
+                    "min": 0,
+                    "max": 30,
+                    "step": 1,
+                    "unit_of_measurement": "min",
+                    "icon": "mdi:timer-sand",
+                    "nopoll": [
+                        {
+                            "name": "pumpensteuerung_nachlauf",
+                            "state_topic": "{mqtt_base}/pump_guard/nachlauf/state",
+                            "command_topic": "{mqtt_base}/pump_guard/nachlauf/set",
+                        },
+                    ],
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "icon": "mdi:pump",
+            "nopoll": [
+                {
+                    "name": "pumpensteuerung_zustand",
+                    "state_topic": "{mqtt_base}/pump_guard/status",
+                    "value_template": "{% set s = value_json.state | default('unknown') %}{% if s == 'ABGESENKT' %}Abgesenkt{% elif s == 'BOOST' %}Boost 100 %{% elif s == 'AUS' %}Aus (100 %){% elif s == 'GESPERRT' %}Gesperrt (100 %){% elif s == 'FEHLER' %}Fehler (100 %){% else %}{{ s }}{% endif %}",
+                    "json_attributes_topic": "{mqtt_base}/pump_guard/status",
+                },
+                {
+                    "name": "pumpensteuerung_grund",
+                    "state_topic": "{mqtt_base}/pump_guard/status",
+                    "value_template": "{{ value_json.reason | default('') }}",
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "unit_of_measurement": "%",
+            "state_class": "measurement",
+            "icon": "mdi:memory",
+            "nopoll": [
+                {
+                    "name": "pumpensteuerung_ram_e7",
+                    "state_topic": "{mqtt_base}/pump_guard/status",
+                    "value_template": "{{ value_json.ram_e7 if value_json.ram_e7 is not none else 'unknown' }}",
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "state_class": "total_increasing",
+            "icon": "mdi:wrench-clock",
+            "nopoll": [
+                {
+                    "name": "pumpensteuerung_korrekturen",
+                    "state_topic": "{mqtt_base}/pump_guard/status",
+                    "value_template": "{{ value_json.repairs | default(0) }}",
+                },
+            ],
+        },
+
+        # -----------------------------------------------------------------
         # Binary status: numeric 0/1
         # -----------------------------------------------------------------
         {

@@ -368,6 +368,66 @@ update --clear-token
 update
 ```
 
+## 12a. Protokoll: VS1 oder Dauer-P300
+
+Standard ist VS1. Dauer-P300 ist die Grundlage für die ausfallsichere
+Pumpensteuerung per RAM-Override (E7-Arbeitskopie `0x20A5`), denn
+RAM-Schreibzugriffe gibt es nur unter P300.
+
+```bash
+# auf P300 umstellen (wirkt beim nächsten update)
+echo p300 | sudo tee /etc/optolink/protocol
+update
+
+# zurück auf VS1
+echo vs1 | sudo tee /etc/optolink/protocol   # oder Datei löschen
+update
+```
+
+Im P300-Betrieb gilt:
+
+- Die VS1-only-GFA-Werte P06 (Gebläse), P09, P80 und P87 werden nicht gepollt
+  (die WB2A weist GFA über P300 ab). Im Dashboard sind sie als „nur VS1“
+  markiert; ihr letzter Wert bleibt stehen.
+- Der Link-Watchdog (60 s ohne gültige Antwort → Port neu öffnen) gilt für
+  beide Protokolle, dazu kommt ein P300-Keep-Alive auf `0x00F8` nach 5 s
+  Leerlauf.
+- Alle anderen Datenpunkte, MQTT-/TCP-Befehle und Zusatzdienste laufen
+  unverändert. Gemessen am 24.11.2026: alle 81 unter VS1 laufend
+  aktualisierten Topics außer den 4 GFA-Werten auch unter P300, keine
+  Fehler, Write mit Readback OK.
+
+## 12b. Fail-safe Pumpensteuerung (nur Dauer-P300)
+
+Grundidee: E7 (0x27E7, Mindestdrehzahl Heizkreispumpe) bleibt **dauerhaft auf
+100 %** codiert. Der Pumpen-Wächter (`/opt/optolink/pump_guard.py`, im
+Splitter-Hauptloop) senkt nur die RAM-Arbeitskopie 0x20A5 auf die
+Normaldrehzahl, solange alles gesund ist. Die Firmware lädt den codierten Wert
+etwa alle 2,1–2,7 s neu; der Wächter schreibt dann sofort wieder den
+Normalwert. Hört er auf (Boost, Fehler, Splitter/MQTT/HA weg), läuft die Pumpe
+nach spätestens ~3 s wieder mit 100 %. E7 selbst wird nie geschrieben.
+
+| Bedingung | Zustand | Pumpe |
+| --- | --- | --- |
+| Schalter aus | AUS | 100 % |
+| Zustand älter als 5 s, E7 ≠ 100, Störung/Verriegelung | GESPERRT | 100 % |
+| Warmwasser, Ventil nicht Heizen, Startsequenz (0x55D3 Byte 6/7), Flamme, Nachlauf | BOOST | 100 % |
+| unerwarteter RAM-Wert, Ausnahme | FEHLER (bis Schalter aus/ein) | 100 % |
+| sonst | ABGESENKT | Normaldrehzahl |
+
+Hinweis: Ein Virtual_READ von 0x27E7 liefert die aktive RAM-Kopie, nicht den
+codierten Wert. Der Wächter liest E7 deshalb nur außerhalb der Absenkung; beim
+Absenken beweist jeder Firmware-Reload auf 100 die Codierung.
+
+MQTT (unter `openv/pump_guard/`): `enabled/set` ON|OFF, `low/set` 20–100,
+`nachlauf/set` 0–30 min, jeweils retained `…/state`; `status` (JSON),
+`zustand`, `protocol`. HA: Schalter „Pumpensteuerung aktiv“, Zahlen
+„Normaldrehzahl“ und „Nachlauf“, Sensoren Zustand/Grund/RAM-E7/Korrekturen.
+
+Installation: der Profil-Helfer installiert Modul und Hook
+(`tools/optolink-apply-pump-guard-patch.py`). Unter VS1 ist der Hook inaktiv.
+Sofort-Rückfall: Schalter aus, oder `systemctl stop optolink-splitter`.
+
 ## 12. Rollback
 
 Der Profil-Helper erzeugt vor Änderungen Zeitstempel-Backups unter `/opt/optolink`. Bei einem Aktivierungsfehler versucht er automatisch, den vorherigen Stand zurückzustellen.

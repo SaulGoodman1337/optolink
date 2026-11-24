@@ -14,7 +14,7 @@ PROFILE_HELPER = (
 )
 PROFILE_SOURCE = PROFILE_HELPER.read_text(encoding="utf-8")
 SETTINGS_PATCH = re.search(
-    r'if ! python3 - "\$APP_DIR/settings_ini.py" <<\'PY\'\n(.*?)\nPY\nthen',
+    r'if ! python3 - "\$APP_DIR/settings_ini.py" "\$optolink_protocol" <<\'PY\'\n(.*?)\nPY\nthen',
     PROFILE_SOURCE,
     re.DOTALL,
 )
@@ -37,12 +37,12 @@ class RetainedMqttSettingsTests(unittest.TestCase):
             raise AssertionError("Cannot locate guarded settings patch in profile helper")
         cls.patch = SETTINGS_PATCH.group(1)
 
-    def apply_settings(self, config):
+    def apply_settings(self, config, protocol="vs1"):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "settings_ini.py"
             path.write_text(config, encoding="utf-8")
             proc = subprocess.run(
-                [sys.executable, "-c", self.patch, str(path)],
+                [sys.executable, "-c", self.patch, str(path), protocol],
                 text=True,
                 capture_output=True,
                 check=False,
@@ -58,6 +58,12 @@ class RetainedMqttSettingsTests(unittest.TestCase):
         self.assertIn('mqtt_broker = "broker.example:1883"\n', updated)
         self.assertIn('mqtt_user = "example-user"\n', updated)
         self.assertIn('mqtt_topic = "openv"\n', updated)
+
+    def test_p300_selection_sets_vs1protocol_false(self):
+        proc, updated = self.apply_settings(CONFIG.replace("vs1protocol = False", "vs1protocol = True"), "p300")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("vs1protocol = False\n", updated)
+        self.assertIn("mqtt_retain = True\n", updated)
 
     def test_idempotent_when_rerun_by_update(self):
         first, updated = self.apply_settings(CONFIG)

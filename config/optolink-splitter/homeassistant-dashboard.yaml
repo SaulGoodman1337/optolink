@@ -2127,7 +2127,7 @@ views:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
-                  name: Gebläse
+                  name: Gebläse (nur VS1)
 
           - type: custom:button-card
             template: diag_group3_blue
@@ -4038,6 +4038,79 @@ views:
         column_span: 2
         cards:
           - type: heading
+            heading: Pumpensteuerung (fail-safe)
+            heading_style: title
+            icon: mdi:shield-sync-outline
+            badges:
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_pumpensteuerung_zustand
+                name: Zustand
+                show_state: true
+                show_icon: true
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_pumpensteuerung_ram_e7
+                name: RAM-E7
+                show_state: true
+                show_icon: false
+
+          - type: tile
+            entity: switch.vitodens_200_wb2a_pumpensteuerung_aktiv
+            name: Pumpensteuerung aktiv
+            icon: mdi:pump
+            vertical: false
+            features:
+              - type: toggle
+            features_position: inline
+            grid_options:
+              columns: full
+          - type: tile
+            entity: number.vitodens_200_wb2a_pumpensteuerung_normaldrehzahl
+            name: Normaldrehzahl (Brenner aus)
+            icon: mdi:speedometer-slow
+            features:
+              - type: numeric-input
+                style: slider
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
+            entity: number.vitodens_200_wb2a_pumpensteuerung_nachlauf
+            name: Boost-Nachlauf
+            icon: mdi:timer-sand
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.vitodens_200_wb2a_pumpensteuerung_grund
+                name: Grund
+              - entity: sensor.vitodens_200_wb2a_interne_pumpe_drehzahl
+                name: Interne Pumpe Drehzahl
+              - entity: sensor.vitodens_200_wb2a_pumpensteuerung_korrekturen
+                name: RAM-Korrekturen
+            grid_options:
+              columns: full
+          - type: markdown
+            content: >-
+              E7 bleibt fest auf **100 %** codiert. Bei Brenner aus und Ventil auf
+              Heizen senkt der Wächter nur die RAM-Kopie auf die Normaldrehzahl.
+              Boost (100 %) bei Warmwasser, Ventil nicht Heizen, Startsequenz
+              (Vorspülen), Flamme und im Nachlauf. Fällt Home Assistant, MQTT
+              oder der Splitter aus, läuft die Pumpe nach spätestens ~3 s wieder
+              mit 100 %. Nur im Dauer-P300-Betrieb aktiv.
+            grid_options:
+              columns: full
+
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
             heading: Heizkreis-Regelparameter
             heading_style: title
             icon: mdi:tune-variant
@@ -5199,14 +5272,14 @@ views:
                 entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
                 icon: mdi:fan
                 content: >-
-                  Gebläse {{ states('sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06') }} rpm
+                  Gebläse {{ states('sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06') }} rpm (nur VS1)
                 tap_action:
                   action: more-info
               - type: template
                 entity: sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09
                 icon: mdi:gauge-full
                 content: >-
-                  GFA Soll {{ states('sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09') }} %
+                  GFA Soll {{ states('sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09') }} % (nur VS1)
                 tap_action:
                   action: more-info
               - type: template
@@ -5268,7 +5341,7 @@ views:
                 entity: sensor.vitodens_200_wb2a_gfa_status3_p87
                 icon: mdi:code-tags
                 content: >-
-                  P87 {{ states('sensor.vitodens_200_wb2a_gfa_status3_p87') }}
+                  P87 {{ states('sensor.vitodens_200_wb2a_gfa_status3_p87') }} (nur VS1)
                 tap_action:
                   action: more-info
             card_mod:
@@ -5456,10 +5529,10 @@ views:
                 graph_min: 0
                 graph_max: 100
               - entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
-                name: Gebläse P06
+                name: Gebläse P06 (nur VS1)
                 icon: mdi:fan
                 extra_value_entity: sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09
-                extra_value_name: GFA Soll
+                extra_value_name: GFA Soll (nur VS1)
                 overwrite_graph_appearance: true
                 graph_min: 0
                 graph_max: 6000
@@ -7769,10 +7842,10 @@ views:
               curve: smooth
             series:
               - entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
-                name: Gebläse P06
+                name: Gebläse P06 (nur VS1)
                 yaxis_id: rpm
               - entity: sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09
-                name: GFA Soll P09
+                name: GFA Soll P09 (nur VS1)
                 yaxis_id: percent
               - entity: sensor.vitodens_200_wb2a_brenner_modulationsgrad
                 name: Modulation Ist
