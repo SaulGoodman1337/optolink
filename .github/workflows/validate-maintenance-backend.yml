@@ -33,7 +33,8 @@ jobs:
             tools/optolink-debug.py \
             tools/optolink-apply-vs1-gfa-readonly-patch.py \
             tools/optolink-apply-phased-poll-scheduler-patch.py \
-            tools/optolink-apply-link-recovery-patch.py
+            tools/optolink-apply-link-recovery-patch.py \
+            tools/optolink-apply-p300-runtime-patch.py
 
       - name: Validate dashboard YAML
         run: |
@@ -74,6 +75,11 @@ jobs:
         run: |
           python3 tools/optolink-apply-link-recovery-patch.py --self-test
           python3 -m unittest discover -s tests -p "test_link_recovery_patch.py" -v
+
+      - name: Validate P300 runtime patcher
+        run: |
+          python3 tools/optolink-apply-p300-runtime-patch.py --self-test
+          python3 -m unittest discover -s tests -p "test_p300_runtime_patch.py" -v
 
       - name: Validate service-program mapping
         run: |

@@ -115,7 +115,8 @@ tmp="$(mktemp)"
 gfa_patcher_tmp="$(mktemp)"
 poll_patcher_tmp="$(mktemp)"
 link_patcher_tmp="$(mktemp)"
-trap 'rm -f "$tmp" "$gfa_patcher_tmp" "$poll_patcher_tmp" "$link_patcher_tmp"' EXIT
+p300rt_patcher_tmp="$(mktemp)"
+trap 'rm -f "$tmp" "$gfa_patcher_tmp" "$poll_patcher_tmp" "$link_patcher_tmp" "$p300rt_patcher_tmp"' EXIT
 
 cs_repo_fetch "$PROFILE_REL" "$tmp"
 python3 -m py_compile "$tmp"
@@ -129,12 +130,31 @@ python3 -m py_compile "$poll_patcher_tmp"
 cs_repo_fetch tools/optolink-apply-link-recovery-patch.py "$link_patcher_tmp"
 python3 -m py_compile "$link_patcher_tmp"
 
+cs_repo_fetch tools/optolink-apply-p300-runtime-patch.py "$p300rt_patcher_tmp"
+python3 -m py_compile "$p300rt_patcher_tmp"
+
+# Optolink protocol: VS1 is the default. Permanent P300 (needed for the
+# inverted pump RAM override) is selected per host with
+#   echo p300 > /etc/optolink/protocol
+# Remove the file (or write vs1) and re-run the helper to return to VS1.
+OPTOLINK_PROTOCOL_FILE="${OPTOLINK_PROTOCOL_FILE:-/etc/optolink/protocol}"
+optolink_protocol="vs1"
+if [[ -f "$OPTOLINK_PROTOCOL_FILE" ]]; then
+  optolink_protocol="$(tr -d '[:space:]' <"$OPTOLINK_PROTOCOL_FILE" | tr '[:upper:]' '[:lower:]')"
+fi
+case "$optolink_protocol" in
+  vs1|p300) ;;
+  *) echo "Unsupported Optolink protocol '$optolink_protocol' in $OPTOLINK_PROTOCOL_FILE (use vs1 or p300)." >&2; exit 1 ;;
+esac
+echo "Optolink protocol selected: $optolink_protocol"
+
 # Run every patcher's pure self-test before touching the installed profile or
 # runtime tree. A broken test fixture must never leave a half-staged deploy.
 echo "Preflighting VS1/GFA, phased scheduler and link-recovery patchers..."
 "$APP_DIR/venv/bin/python" "$gfa_patcher_tmp" --self-test
 "$APP_DIR/venv/bin/python" "$poll_patcher_tmp" --self-test
 "$APP_DIR/venv/bin/python" "$link_patcher_tmp" --self-test
+"$APP_DIR/venv/bin/python" "$p300rt_patcher_tmp" --self-test
 echo "Patcher preflight OK."
 
 cp "$tmp" "$APP_DIR/profiles/$PROFILE_NAME"
@@ -275,13 +295,23 @@ if ! "$APP_DIR/venv/bin/python" "$link_patcher_tmp" --apply; then
   exit 1
 fi
 
-echo "Enabling permanent VS1 timing and retained MQTT states..."
-if ! python3 - "$APP_DIR/settings_ini.py" <<'PY'
+# Must run after link recovery: pinned to its output. Watchdog/keep-alive for
+# both protocols, VS1-only GFA items skipped under P300. VS1 is unchanged.
+echo "Applying P300 runtime compatibility..."
+if ! "$APP_DIR/venv/bin/python" "$p300rt_patcher_tmp" --apply; then
+  echo "P300 runtime integration failed." >&2
+  rollback_profile
+  exit 1
+fi
+
+echo "Enabling permanent $optolink_protocol timing and retained MQTT states..."
+if ! python3 - "$APP_DIR/settings_ini.py" "$optolink_protocol" <<'PY'
 import ast
 from pathlib import Path
 import sys
 
 path = Path(sys.argv[1])
+use_vs1 = sys.argv[2] == "vs1"
 src = path.read_text()
 tree = ast.parse(src)
 
@@ -302,12 +332,12 @@ for node in tree.body:
         nodes[name] = node
 
 if values.get("port_vitoconnect") is not None:
-    raise SystemExit("Permanent VS1 requires port_vitoconnect=None; refusing profile activation.")
+    raise SystemExit("Permanent VS1/P300 requires port_vitoconnect=None; refusing profile activation.")
 if set(nodes) != {"vs1protocol", "olbreath", "mqtt_retain"}:
     raise SystemExit("Could not uniquely locate vs1protocol, olbreath and mqtt_retain settings.")
 
 lines = src.splitlines(keepends=True)
-for name, value in (("vs1protocol", True), ("olbreath", 0.025), ("mqtt_retain", True)):
+for name, value in (("vs1protocol", use_vs1), ("olbreath", 0.025), ("mqtt_retain", True)):
     node = nodes[name]
     if node.lineno != getattr(node, "end_lineno", node.lineno):
         raise SystemExit(f"{name} must be a one-line top-level assignment.")
