@@ -674,7 +674,9 @@ def release_only():
     """ExecStopPost fallback: release an owned override after any stop/crash."""
     state = load_state()
     if not state["owned_command"]:
+        log("release: no owned external room setpoint, nothing to do")
         return 0
+    log(f"release: handing back owned external room setpoint {state['owned_command']}")
     settings = _load_settings()
     client, host, port = _make_client(settings, f"optolink-room-release-{os.getpid()}", None)
     io = SplitterIO(client, settings.mqtt_listen)
