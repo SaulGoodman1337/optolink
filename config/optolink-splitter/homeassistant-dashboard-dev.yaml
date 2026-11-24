@@ -4093,6 +4093,15 @@ views:
               columns: 6
               rows: 2
           - type: tile
+            entity: switch.vitodens_200_wb2a_pumpensteuerung_boost_in_taktsperre
+            name: Boost während Taktsperre
+            icon: mdi:timer-lock
+            features:
+              - type: toggle
+            features_position: inline
+            grid_options:
+              columns: full
+          - type: tile
             entity: number.vitodens_200_wb2a_pumpensteuerung_vorboost
             name: Vorboost vor Startschwelle
             icon: mdi:fast-forward-outline
@@ -4135,7 +4144,9 @@ views:
               Boost (100 %) bei Warmwasser, Ventil nicht Heizen, Startsequenz
               (Vorspülen), Flamme und im Nachlauf. Vorboost: schon 100 %, wenn
               der Kessel nur noch so viele K von der gelernten Startschwelle
-              (Kessel unter Soll beim Brennerstart) entfernt ist (0 = aus). Fällt Home Assistant, MQTT
+              (Kessel unter Soll beim Brennerstart) entfernt ist (0 = aus).
+              Boost während Taktsperre: 100 %, solange die Brenner-Taktsperre
+              einen Neustart blockiert (Wärme abführen, ohne die Pause zu verkürzen). Fällt Home Assistant, MQTT
               oder der Splitter aus, läuft die Pumpe nach spätestens ~3 s wieder
               mit 100 %. Nur im Dauer-P300-Betrieb aktiv.
             grid_options:

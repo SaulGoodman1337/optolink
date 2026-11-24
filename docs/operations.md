@@ -428,7 +428,13 @@ X K von dieser Schwelle entfernt ist (Freigabe 0,5 K darunter, 0 = aus).
 Veraltete Temperaturen (> 10 s) schalten nur den Vorboost ab, nicht die
 Absenkung.
 
-MQTT (unter `openv/pump_guard/`): `enabled/set` ON|OFF, `low/set` 20–100,
+**Boost während Taktsperre:** Mit `sperre_boost` = ON läuft die Pumpe mit
+100 %, solange die Brenner-Taktsperre aktiv ist (0x55E0 Byte 14, Bit 0 = 0).
+Die Sperre bestimmt dann die Pausenlänge, die Pumpe zieht in dieser Zeit so
+viel Wärme wie möglich aus dem Kessel. Der Brenner startet nach der Sperre mit
+kühlerem Kessel und hat mehr Luft bis zur Ausschaltschwelle.
+
+MQTT (unter `openv/pump_guard/`): `sperre_boost/set` ON|OFF, `enabled/set` ON|OFF, `low/set` 20–100,
 `nachlauf/set` 0–30 min, `vorboost/set` 0–10 K, jeweils retained `…/state`; `status` (JSON),
 `zustand`, `protocol`. HA: Schalter „Pumpensteuerung aktiv“, Zahlen
 „Normaldrehzahl“ und „Nachlauf“, Sensoren Zustand/Grund/RAM-E7/Korrekturen.

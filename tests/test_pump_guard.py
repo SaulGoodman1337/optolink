@@ -32,6 +32,8 @@ class FakeBoiler:
         self.gfa = IDLE_GFA
         self.ww, self.valve, self.fault, self.e7 = 0, 1, 0, 100
         self.kessel, self.soll = 36.0, 36.5
+        self.rkr = bytearray(17)
+        self.rkr[14] = 0x43               # Regelbetrieb / restart released (bit0 = 1)
         self.ram = bytearray(32)
         self.ram[5] = 100
         self.next_reload = 2.3
@@ -57,6 +59,7 @@ class FakeBoiler:
             (0x01, 0x0A10): bytes([self.valve]), (0x01, 0x5738): bytes([self.fault]),
             (0x01, 0x0810): int(round(self.kessel * 10)).to_bytes(2, "little", signed=True),
             (0x01, 0x555A): int(round(self.soll * 10)).to_bytes(2, "little", signed=True),
+            (0x01, 0x55E0): bytes(self.rkr),
             # live finding: 0x27E7 reads the active RAM copy, not the coded value
             (0x01, 0x27E7): bytes([self.ram[5]]), (0x03, 0x20A0): bytes(self.ram),
         }
@@ -189,6 +192,25 @@ class GuardTest(unittest.TestCase):
         self.assertEqual(g.logic.decide(b.t)[1], "Vorboost")
         g.logic.ts["kessel"] = b.t - 60                          # stale temperature
         self.assertFalse(g.logic.vorboost(b.t))
+
+    def test_taktsperre_boost(self):
+        b = FakeBoiler()
+        g = make_guard(b)
+        run(g, b, 8)
+        b.rkr[14] = 0x00                              # lock active
+        run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)   # switch off by default
+        g.logic.sperre_boost = True
+        run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Taktsperre"))
+        self.assertEqual(b.ram[5], 100)
+        b.rkr[14] = 0x01                              # restart released
+        run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+        b.rkr[14] = 0x00
+        run(g, b, 4)
+        g.logic.ts["rkr"] = b.t - 60                  # stale lock state -> no lock boost
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
 
     def test_implausible_temperature_ignored(self):
         lg = pg.GuardLogic()

@@ -421,6 +421,12 @@ poll_list = {
                     "state_topic": "{mqtt_base}/pump_guard/enabled/state",
                     "command_topic": "{mqtt_base}/pump_guard/enabled/set",
                 },
+                {
+                    "name": "pumpensteuerung_boost_in_taktsperre",
+                    "icon": "mdi:timer-lock",
+                    "state_topic": "{mqtt_base}/pump_guard/sperre_boost/state",
+                    "command_topic": "{mqtt_base}/pump_guard/sperre_boost/set",
+                },
             ],
         },
         {
