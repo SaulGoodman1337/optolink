@@ -89,12 +89,14 @@ poll_list = {
         "search": [
             "aussentemperatur", "kessel", "warmwasser", "heizkreis_m1",
             "brenner", "pumpe", "zirkulation", "betriebsart", "solltemperatur",
-            "temperatur", "geblaese", "ueber", "stoer", "geraete"
+            "temperatur", "geblaese", "ueber", "stoer", "geraete",
+            "verstaerkung",
         ],
         "replace": [
             "außentemperatur", "kessel", "warmwasser", "heizkreis m1",
             "brenner", "pumpe", "zirkulation", "betriebsart", "solltemperatur",
-            "temperatur", "gebläse", "über", "stör", "geräte"
+            "temperatur", "gebläse", "über", "stör", "geräte",
+            "verstärkung",
         ],
         "fixed": ["WW", "A1", "M1", "K12", "GFA", "SW", "BLR", "CFDM", "RKR", "API"],
     },
