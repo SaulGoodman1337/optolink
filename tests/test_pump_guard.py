@@ -54,7 +54,8 @@ class FakeBoiler:
         values = {
             (0x01, 0x55D3): self.gfa, (0x01, 0x650A): bytes([self.ww]),
             (0x01, 0x0A10): bytes([self.valve]), (0x01, 0x5738): bytes([self.fault]),
-            (0x01, 0x27E7): bytes([self.e7]), (0x03, 0x20A0): bytes(self.ram),
+            # live finding: 0x27E7 reads the active RAM copy, not the coded value
+            (0x01, 0x27E7): bytes([self.ram[5]]), (0x03, 0x20A0): bytes(self.ram),
         }
         return 0x01, addr, bytearray(values[(fc, addr)])
 
@@ -130,6 +131,18 @@ class GuardTest(unittest.TestCase):
         self.assertGreater(g.repairs, 20)
         self.assertIsNone(g.logic.error)
 
+    def test_lowering_is_stable_although_e7_mirrors_ram(self):
+        b = FakeBoiler()
+        g = make_guard(b)
+        run(g, b, 8)                       # first coded-E7 read happens before lowering
+        states = set()
+        end = b.t + 120
+        while b.t < end:
+            g.tick(b.t)
+            b.advance(0.06)
+            states.add(g.logic.decide(b.t)[0])
+        self.assertEqual(states, {pg.ABGESENKT})
+
     def test_only_allowed_telegrams(self):
         b = FakeBoiler()
         g = make_guard(b)
@@ -176,6 +189,7 @@ class GuardTest(unittest.TestCase):
     def test_coded_e7_not_100_blocks(self):
         b = FakeBoiler()
         b.e7 = 30
+        b.ram[5] = 30
         g = make_guard(b)
         run(g, b, 10)
         self.assertEqual(g.logic.decide(b.t)[0], pg.GESPERRT)

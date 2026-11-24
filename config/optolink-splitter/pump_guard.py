@@ -29,7 +29,7 @@ import json
 import threading
 import time
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 RAM_BLOCK, RAM_E7_OFFSET = 0x20A0, 5          # 0x20A5
 HIGH = 100
@@ -40,7 +40,8 @@ READ_GFA = (0x01, 0x55D3, 9)     # byte5: 0x20 flame, 0x40 lockout; bytes6/7 GG1
 READ_WW = (0x01, 0x650A, 1)      # 1 = DHW charging active
 READ_VALVE = (0x01, 0x0A10, 1)   # 1 = heating
 READ_FAULT = (0x01, 0x5738, 1)   # 0 = no fault
-READ_E7 = (0x01, 0x27E7, 1)      # coded heating-pump minimum
+READ_E7 = (0x01, 0x27E7, 1)      # heating-pump minimum; NOTE: reads the active RAM copy
+                                 # (0x20A5), so it is only meaningful while not lowering
 READ_RAM = (0x03, RAM_BLOCK, 32)
 ALLOWED_READS = {READ_GFA, READ_WW, READ_VALVE, READ_FAULT, READ_E7, READ_RAM}
 
@@ -308,8 +309,12 @@ class PumpGuard:
                 if ram == low:
                     return rc
                 if ram == HIGH or ram == self.last_low_written:
-                    if ram == HIGH and prev not in (None, HIGH):
-                        self.repairs += 1
+                    if ram == HIGH:
+                        # the firmware reload restored 100: proof that E7 is coded 100
+                        with self.lock:
+                            self.logic.update("e7", bytes([HIGH]), now)
+                        if prev not in (None, HIGH):
+                            self.repairs += 1
                     rc = self._write_ram(low)
                     if rc == 0x01:
                         self.ram, self.last_low_written = low, low
@@ -320,7 +325,10 @@ class PumpGuard:
             # 3) slow reads
             if now >= self.next_slow:
                 self.next_slow = now + SLOW_PERIOD_S / 2
-                spec, key = (READ_FAULT, "fault") if self.rr_slow % 2 == 0 else (READ_E7, "e7")
+                # 0x27E7 mirrors the RAM copy: while lowering it would read `low`,
+                # so the coded value is then proven by the reload to 100 instead.
+                use_e7 = self.rr_slow % 2 == 1 and not lowering and self.ram in (None, HIGH)
+                spec, key = (READ_E7, "e7") if use_e7 else (READ_FAULT, "fault")
                 self.rr_slow += 1
                 return self._read_update(spec, key, now)
             # 4) fast state reads (round robin)
