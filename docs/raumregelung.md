@@ -96,8 +96,10 @@ erhalten.
    **„Optolink Raumregelung“** (ID `optolink_raumregelung`) anlegen.
 3. Das Label allen Raumtemperatursensoren (`sensor.*`) oder Thermostaten
    (`climate.*`, verwendet `current_temperature`) zuweisen, die einfließen
-   sollen. Sensoren hinzufügen oder entfernen heißt später nur: Label setzen
-   oder entfernen.
+   sollen. Alternativ das Label an das **Gerät** hängen (z. B. Shelly H&T):
+   dann werden alle Temperatursensoren dieses Geräts (`device_class:
+   temperature`) verwendet, die Luftfeuchte nicht. Sensoren hinzufügen oder
+   entfernen heißt später nur: Label setzen oder entfernen.
 4. Home Assistant neu starten.
 5. Im Dashboard die Ansicht **Raumregelung** öffnen, Schwellen prüfen und
    die Regelung einschalten.
@@ -112,10 +114,10 @@ erhalten.
 | `number.vitodens_200_wb2a_raumregelung_verstaerkung` | K Sollwertkorrektur je K Abweichung (0,5..3) |
 | `number.vitodens_200_wb2a_raumregelung_max_korrektur` | maximale Korrektur (1..5 K) |
 | `select.vitodens_200_wb2a_raumregelung_mittelung` | Mittelwert / Minimum / Maximum |
-| `sensor.vitodens_200_wb2a_raumregelung_raumtemperatur` | kombinierte Raumtemperatur, Attribute: Einzelsensoren |
+| `sensor.vitodens_200_wb2a_raumregelung_raumtemperatur` | kombinierte Raumtemperatur, Attribute: Einzelsensoren und `anzahl` der frischen Werte, die beim Dienst angekommen sind |
 | `sensor.vitodens_200_wb2a_raumregelung_wirksamer_raumsollwert` | Raumsoll, mit dem die Therme gerade rechnet |
 | `sensor.vitodens_200_wb2a_raumregelung_status` | Aus / Aktiv / Im Komfortband / Keine Sensordaten / Extern belegt / Störung / Fehler |
-| `sensor.optolink_raumregelung_sensoren` | Anzahl Entities mit dem Label (aus dem HA-Paket) |
+| `sensor.optolink_raumregelung_sensoren` | Anzahl gefundener Sensoren (Entity- und Geräte-Label, aus dem HA-Paket), Attribut `entities` |
 
 MQTT-Themen unter `openv/room_control/`: `sensors` (Eingang),
 `<parameter>/set` und `<parameter>/state` für `enabled`, `schwelle_min`,

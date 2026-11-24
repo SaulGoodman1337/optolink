@@ -5119,8 +5119,12 @@ views:
               columns: 6
 
           - type: tile
-            entity: sensor.optolink_raumregelung_sensoren
-            name: Sensoren (Label)
+            entity: sensor.vitodens_200_wb2a_raumregelung_raumtemperatur
+            name: Sensoren
+            icon: mdi:thermometer-lines
+            state_content:
+              - anzahl
+              - state
             grid_options:
               columns: 6
 
