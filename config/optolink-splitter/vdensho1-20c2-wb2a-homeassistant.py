@@ -89,12 +89,14 @@ poll_list = {
         "search": [
             "aussentemperatur", "kessel", "warmwasser", "heizkreis_m1",
             "brenner", "pumpe", "zirkulation", "betriebsart", "solltemperatur",
-            "temperatur", "geblaese", "ueber", "stoer", "geraete"
+            "temperatur", "geblaese", "ueber", "stoer", "geraete",
+            "verstaerkung",
         ],
         "replace": [
             "außentemperatur", "kessel", "warmwasser", "heizkreis m1",
             "brenner", "pumpe", "zirkulation", "betriebsart", "solltemperatur",
-            "temperatur", "gebläse", "über", "stör", "geräte"
+            "temperatur", "gebläse", "über", "stör", "geräte",
+            "verstärkung",
         ],
         "fixed": ["WW", "A1", "M1", "K12", "GFA", "SW", "BLR", "CFDM", "RKR", "API"],
     },
@@ -599,6 +601,147 @@ poll_list = {
                     "state_topic": "{mqtt_base}/party_emulation/status",
                     "value_template": "{{ value_json.mode }}",
                     "json_attributes_topic": "{mqtt_base}/party_emulation/status",
+                },
+            ],
+        },
+
+        # -----------------------------------------------------------------
+        # Room-temperature feedback (optolink-room-control).
+        #
+        # Home Assistant publishes room sensors to {mqtt_base}/room_control/
+        # sensors; the helper service combines them, compares the result
+        # with the lower/upper threshold and adjusts the external normal
+        # room setpoint 0x2321 (0 = regular target 0x2306). Live-verified:
+        # external 20/21/22 C at target 21 C -> flow setpoint 35.0/35.5/37.4 C.
+        # These entities only change the helper's configuration; the helper
+        # owns the single controller write path. Availability follows the
+        # splitter LWT (the adapter sets it for every entity); whether the
+        # helper itself runs is visible in raumregelung_status.
+        # -----------------------------------------------------------------
+        {
+            "domain": "switch",
+            "icon": "mdi:home-thermometer",
+            "command_topic": "{mqtt_base}/room_control/enabled/set",
+            "state_topic": "{mqtt_base}/room_control/enabled/state",
+            "payload_on": "1",
+            "payload_off": "0",
+            "state_on": "1",
+            "state_off": "0",
+            "optimistic": False,
+            "nopoll": [
+                {
+                    "name": "raumregelung_aktiv",
+                },
+            ],
+        },
+        {
+            "domain": "number",
+            "entity_category": "config",
+            "mode": "box",
+            "units": [
+                {
+                    "min": 15,
+                    "max": 25,
+                    "step": 0.5,
+                    "unit_of_measurement": "°C",
+                    "icon": "mdi:thermometer-chevron-down",
+                    "nopoll": [
+                        {
+                            "name": "raumregelung_schwelle_min",
+                            "state_topic": "{mqtt_base}/room_control/schwelle_min/state",
+                            "command_topic": "{mqtt_base}/room_control/schwelle_min/set",
+                        },
+                    ],
+                },
+                {
+                    "min": 15,
+                    "max": 26,
+                    "step": 0.5,
+                    "unit_of_measurement": "°C",
+                    "icon": "mdi:thermometer-chevron-up",
+                    "nopoll": [
+                        {
+                            "name": "raumregelung_schwelle_max",
+                            "state_topic": "{mqtt_base}/room_control/schwelle_max/state",
+                            "command_topic": "{mqtt_base}/room_control/schwelle_max/set",
+                        },
+                    ],
+                },
+                {
+                    "min": 0.5,
+                    "max": 3,
+                    "step": 0.1,
+                    "unit_of_measurement": "K/K",
+                    "icon": "mdi:tune-variant",
+                    "nopoll": [
+                        {
+                            "name": "raumregelung_verstaerkung",
+                            "state_topic": "{mqtt_base}/room_control/verstaerkung/state",
+                            "command_topic": "{mqtt_base}/room_control/verstaerkung/set",
+                        },
+                    ],
+                },
+                {
+                    "min": 1,
+                    "max": 5,
+                    "step": 1,
+                    "unit_of_measurement": "K",
+                    "icon": "mdi:arrow-expand-vertical",
+                    "nopoll": [
+                        {
+                            "name": "raumregelung_max_korrektur",
+                            "state_topic": "{mqtt_base}/room_control/max_korrektur/state",
+                            "command_topic": "{mqtt_base}/room_control/max_korrektur/set",
+                        },
+                    ],
+                },
+            ],
+        },
+        {
+            "domain": "select",
+            "entity_category": "config",
+            "icon": "mdi:sigma",
+            "options": ["Mittelwert", "Minimum", "Maximum"],
+            "nopoll": [
+                {
+                    "name": "raumregelung_mittelung",
+                    "state_topic": "{mqtt_base}/room_control/aggregation/state",
+                    "command_topic": "{mqtt_base}/room_control/aggregation/set",
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "unit_of_measurement": "°C",
+            "device_class": "temperature",
+            "state_class": "measurement",
+            "suggested_display_precision": 1,
+            "nopoll": [
+                {
+                    "name": "raumregelung_raumtemperatur",
+                    "icon": "mdi:home-thermometer-outline",
+                    "state_topic": "{mqtt_base}/room_control/status",
+                    "value_template": "{{ value_json.room_c }}",
+                    "json_attributes_topic": "{mqtt_base}/room_control/status",
+                    "json_attributes_template": "{{ {'sensoren': value_json.sensors, 'anzahl': value_json.sensor_count, 'mittelung': value_json.aggregation} | tojson }}",
+                },
+                {
+                    "name": "raumregelung_wirksamer_raumsollwert",
+                    "icon": "mdi:thermostat-auto",
+                    "state_topic": "{mqtt_base}/room_control/status",
+                    "value_template": "{{ value_json.effective_target_c | default(None) }}",
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "icon": "mdi:home-thermometer",
+            "nopoll": [
+                {
+                    "name": "raumregelung_status",
+                    "state_topic": "{mqtt_base}/room_control/status",
+                    "value_template": "{% set m = {'aus':'Aus','aktiv':'Aktiv','neutral':'Im Komfortband','keine_sensoren':'Keine Sensordaten','fremdbelegt':'Extern belegt','stoerung':'Störung – freigegeben','raumeinfluss_codiert':'Raumeinfluss codiert','fehler':'Fehler','start':'Start'} %}{{ m.get(value_json.state, value_json.state) }}",
+                    "json_attributes_topic": "{mqtt_base}/room_control/status",
                 },
             ],
         },

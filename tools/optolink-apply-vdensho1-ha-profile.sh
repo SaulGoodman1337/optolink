@@ -553,6 +553,21 @@ if [[ "$mqtt_enabled" == "1" && "$serial_ready" == "1" ]]; then
     fi
   fi
 
+  if systemctl cat optolink-room-control.service >/dev/null 2>&1; then
+    # The service starts with control disabled until switched on in Home
+    # Assistant; its persisted configuration survives restarts.
+    echo "Starting room-temperature feedback service..."
+    systemctl enable optolink-room-control.service >/dev/null 2>&1 || true
+    systemctl restart optolink-room-control.service
+    sleep 2
+    if systemctl is-active --quiet optolink-room-control.service; then
+      echo "Room-temperature feedback service is active."
+    else
+      echo "WARNING: Room-temperature feedback service did not stay active." >&2
+      journalctl -u optolink-room-control.service -n 30 --no-pager >&2 || true
+    fi
+  fi
+
   echo "Publishing Home Assistant MQTT discovery (timeout 120s)..."
   # Discovery publishing is intentionally non-fatal: the Optolink service
   # remains useful even if Home Assistant/MQTT is temporarily unavailable.

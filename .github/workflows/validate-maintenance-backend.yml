@@ -29,6 +29,7 @@ jobs:
             tools/optolink-party-emulator.py \
             tools/optolink-clock-sync.py \
             tools/optolink-service-programs.py \
+            tools/optolink-room-control.py \
             tools/optolink-schedule-manager.py \
             tools/wb2a-schedule-probe.py \
             tools/optolink-debug.py \
@@ -79,6 +80,11 @@ jobs:
       - name: Validate service-program mapping
         run: |
           python3 tools/optolink-service-programs.py --self-test
+
+      - name: Test room-temperature feedback
+        run: |
+          python3 tools/optolink-room-control.py --self-test
+          python3 -m unittest discover -s tests -p "test_room_control.py" -v
 
       - name: Verify DEV dashboard isolation
         run: |

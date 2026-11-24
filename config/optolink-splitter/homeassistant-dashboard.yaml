@@ -4985,6 +4985,164 @@ views:
 
     cards: []
 
+  # Raumregelung: room-temperature feedback via optolink-room-control.
+  # Sensors are selected in Home Assistant with the label
+  # "Optolink Raumregelung" (see homeassistant-room-control-package.yaml).
+  - title: Raumregelung
+    path: raumregelung
+    icon: mdi:home-thermometer
+    visible:
+      - user: 59b20b82894748e3af2445e75255dc07
+    type: sections
+    max_columns: 4
+    sections:
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Raumregelung
+            heading_style: title
+            icon: mdi:home-thermometer
+            badges:
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_raumregelung_raumtemperatur
+                name: Raum
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_raumregelung_wirksamer_raumsollwert
+                name: Soll wirksam
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlaufsolltemperatur
+                name: Vorlauf-Soll
+                show_state: true
+                show_icon: false
+
+          - type: tile
+            entity: switch.vitodens_200_wb2a_raumregelung_aktiv
+            name: Vorlauf nach Raumtemperatur anpassen
+            icon: mdi:home-thermometer
+            tap_action:
+              action: toggle
+            features:
+              - type: toggle
+            features_position: bottom
+            grid_options:
+              columns: full
+
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_raumregelung_status
+            name: Status
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: sensor.optolink_raumregelung_sensoren
+            name: Sensoren (Label)
+            grid_options:
+              columns: 6
+
+          - type: heading
+            heading: Komfortband
+            heading_style: subtitle
+            icon: mdi:arrow-expand-vertical
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_schwelle_min
+            name: Untere Schwelle
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_schwelle_max
+            name: Obere Schwelle
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+
+          - type: markdown
+            content: >-
+              Liegt die Raumtemperatur **unter der unteren Schwelle**, wird der
+              Raumsollwert der Therme angehoben und damit die Vorlauftemperatur
+              erhöht. **Über der oberen Schwelle** wird abgesenkt. Innerhalb des
+              Bandes gilt der normale Raumsollwert. Die Korrektur ändert sich um
+              höchstens 1 K alle 5 Minuten.
+            grid_options:
+              columns: full
+
+          - type: heading
+            heading: Regelparameter
+            heading_style: subtitle
+            icon: mdi:tune-variant
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_verstaerkung
+            name: Verstärkung
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_max_korrektur
+            name: Max. Korrektur
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: select.vitodens_200_wb2a_raumregelung_mittelung
+            name: Mehrere Sensoren
+            features:
+              - type: select-options
+            features_position: bottom
+            grid_options:
+              columns: full
+
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Verlauf
+            heading_style: title
+            icon: mdi:chart-line
+          - type: history-graph
+            title: Raum und Vorlauf – 48 Stunden
+            hours_to_show: 48
+            entities:
+              - entity: sensor.vitodens_200_wb2a_raumregelung_raumtemperatur
+                name: Raum (kombiniert)
+              - entity: sensor.vitodens_200_wb2a_raumregelung_wirksamer_raumsollwert
+                name: Raumsoll wirksam
+              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlaufsolltemperatur
+                name: Vorlauf-Soll
+              - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
+                name: Vorlauf-Ist
+            grid_options:
+              columns: full
+          - type: history-graph
+            title: Status
+            hours_to_show: 48
+            entities:
+              - entity: sensor.vitodens_200_wb2a_raumregelung_status
+            grid_options:
+              columns: full
+    cards: []
+
   # Diagnose: native Sections are the responsive layout units.
   # HACS frontend dependencies:
   # - background-graph-entities (custom HACS Dashboard repository)

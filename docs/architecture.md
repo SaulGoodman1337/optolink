@@ -160,6 +160,10 @@ Home Assistant zeigt aus Bediengründen zwei Schalter. Der Manager übersetzt di
 
 **Live verifiziert am 06.10.2026:** Entlüftung (`0x572F=1`) und Befüllung (`0x572F=2`) funktionieren auf der produktiven 20C2/WB2A und wurden jeweils wieder auf `0` zurückgeführt.
 
+### `tools/optolink-room-control.py`
+
+Raumtemperatur-Aufschaltung für Heizkreis A1/M1. Kombiniert die von Home Assistant gesendeten Raumtemperaturen (`openv/room_control/sensors`), vergleicht sie mit einem Komfortband und setzt den externen Raumsollwert Normal **`0x2321`** (0 = normaler Sollwert `0x2306`). Einziger Schreibpunkt ist `0x2321`, mit Readback, Besitznachweis in `/var/lib/optolink-room-control/state.json` und Freigabe per `ExecStopPost`. Details: [raumregelung.md](raumregelung.md).
+
 ### `tools/optolink-clock-sync.py`
 
 Synchronisiert die Regler-Systemzeit `0x088E` mit der lokalen Systemzeit des Splitter-Hosts.
@@ -205,6 +209,7 @@ automatischen P300-Prozess. Einzelheiten siehe
 | `optolink-clock-sync.service` | oneshot | ein Zeitabgleich |
 | `optolink-clock-sync.timer` | Timer | startet Clock-Sync alle 15 Minuten |
 | `optolink-service-programs.service` | dauerhaft | geschützter Befüll-/Entlüftungsmanager für 2F / 0x572F |
+| `optolink-room-control.service` | dauerhaft | Raumtemperatur-Aufschaltung über externen Raumsollwert 0x2321 |
 | `optolink-hybrid-continuous-canary.service` | nur temporär | root-eigener, ausdrücklich angeforderter und zeitlich begrenzter read-only Hybrid-Canary mit unabhängigem Rückfallpfad |
 
 ## 6. Schreibpfade und Sicherheitsmodell

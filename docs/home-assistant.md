@@ -236,6 +236,15 @@ HA Editor
 
 Die `select`-/`time`-/`switch`-Entities im Editor sind daher Staging-State und keine direkten Controllerregister.
 
+## 9a. Raumregelung
+
+Die Ansicht **Raumregelung** im Dashboard steuert `optolink-room-control`:
+Ein/Aus, untere und obere Schwelle, Verstärkung, maximale Korrektur und
+die Mittelung mehrerer Sensoren. Welche Sensoren einfließen, legt das
+HA-Label „Optolink Raumregelung“ fest; das zugehörige Paket ist
+`config/optolink-splitter/homeassistant-room-control-package.yaml`.
+Vollständige Beschreibung: [raumregelung.md](raumregelung.md).
+
 ## 10. Dashboard
 
 Die vollständige Dashboard-Konfiguration liegt in:
