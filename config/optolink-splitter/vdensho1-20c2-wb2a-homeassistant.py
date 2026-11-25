@@ -421,6 +421,18 @@ poll_list = {
                     "state_topic": "{mqtt_base}/pump_guard/enabled/state",
                     "command_topic": "{mqtt_base}/pump_guard/enabled/set",
                 },
+                {
+                    "name": "pumpensteuerung_nachlauf_aktiv",
+                    "icon": "mdi:timer-sand",
+                    "state_topic": "{mqtt_base}/pump_guard/nachlauf_aktiv/state",
+                    "command_topic": "{mqtt_base}/pump_guard/nachlauf_aktiv/set",
+                },
+                {
+                    "name": "pumpensteuerung_vorboost_aktiv",
+                    "icon": "mdi:fast-forward-outline",
+                    "state_topic": "{mqtt_base}/pump_guard/vorboost_aktiv/state",
+                    "command_topic": "{mqtt_base}/pump_guard/vorboost_aktiv/set",
+                },
             ],
         },
         {
@@ -456,6 +468,20 @@ poll_list = {
                         },
                     ],
                 },
+                {
+                    "min": 0,
+                    "max": 10,
+                    "step": 0.5,
+                    "unit_of_measurement": "K",
+                    "icon": "mdi:fast-forward-outline",
+                    "nopoll": [
+                        {
+                            "name": "pumpensteuerung_vorboost",
+                            "state_topic": "{mqtt_base}/pump_guard/vorboost/state",
+                            "command_topic": "{mqtt_base}/pump_guard/vorboost/set",
+                        },
+                    ],
+                },
             ],
         },
         {
@@ -472,6 +498,27 @@ poll_list = {
                     "name": "pumpensteuerung_grund",
                     "state_topic": "{mqtt_base}/pump_guard/status",
                     "value_template": "{{ value_json.reason | default('') }}",
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "unit_of_measurement": "K",
+            "state_class": "measurement",
+            "icon": "mdi:thermometer-minus",
+            "suggested_display_precision": 1,
+            "nopoll": [
+                {
+                    "name": "pumpensteuerung_kessel_unter_soll",
+                    "state_topic": "{mqtt_base}/pump_guard/status",
+                    "value_template": "{{ value_json.unter_soll if value_json.unter_soll is not none else 'unknown' }}",
+                },
+                {
+                    "name": "pumpensteuerung_gelernte_startschwelle",
+                    "state_topic": "{mqtt_base}/pump_guard/status",
+                    "value_template": "{{ value_json.start_schwelle | default('unknown') }}",
+                    "json_attributes_topic": "{mqtt_base}/pump_guard/status",
+                    "json_attributes_template": "{{ {'start_werte': value_json.start_werte | default([]), 'starts': value_json.starts | default(0)} | tojson }}",
                 },
             ],
         },

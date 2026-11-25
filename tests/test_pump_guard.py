@@ -31,6 +31,9 @@ class FakeBoiler:
         self.t = 0.0
         self.gfa = IDLE_GFA
         self.ww, self.valve, self.fault, self.e7 = 0, 1, 0, 100
+        self.kessel, self.soll = 36.0, 36.5
+        self.rkr = bytearray(17)
+        self.rkr[14] = 0x43               # Regelbetrieb / restart released (bit0 = 1)
         self.ram = bytearray(32)
         self.ram[5] = 100
         self.next_reload = 2.3
@@ -54,6 +57,9 @@ class FakeBoiler:
         values = {
             (0x01, 0x55D3): self.gfa, (0x01, 0x650A): bytes([self.ww]),
             (0x01, 0x0A10): bytes([self.valve]), (0x01, 0x5738): bytes([self.fault]),
+            (0x01, 0x0810): int(round(self.kessel * 10)).to_bytes(2, "little", signed=True),
+            (0x01, 0x555A): int(round(self.soll * 10)).to_bytes(2, "little", signed=True),
+            (0x01, 0x55E0): bytes(self.rkr),
             # live finding: 0x27E7 reads the active RAM copy, not the coded value
             (0x01, 0x27E7): bytes([self.ram[5]]), (0x03, 0x20A0): bytes(self.ram),
         }
@@ -62,7 +68,7 @@ class FakeBoiler:
 
 def make_guard(boiler, enabled=True, low=30):
     settings = types.SimpleNamespace(vs1protocol=False, mqtt_topic="openv", mqtt_broker=None)
-    g = pg.PumpGuard(settings, logging.getLogger("pg-test"), boiler.request)
+    g = pg.PumpGuard(settings, logging.getLogger("pg-test"), boiler.request, boost_after_start=False)
     g.logic.enabled = enabled
     g.logic.low = low
     return g
@@ -142,6 +148,93 @@ class GuardTest(unittest.TestCase):
             b.advance(0.06)
             states.add(g.logic.decide(b.t)[0])
         self.assertEqual(states, {pg.ABGESENKT})
+
+    def test_vorboost_learns_threshold_and_boosts_early(self):
+        b = FakeBoiler()
+        g = make_guard(b)
+        g.logic.nachlauf_s = 0.0
+        run(g, b, 8)
+        # burner start at 3 K below setpoint -> learned threshold moves towards 3 K
+        b.kessel = 33.5
+        run(g, b, 6)
+        b.gfa = SEQ_GFA
+        b.soll = 16.5                                 # firmware drops the setpoint at the start
+        run(g, b, 3)
+        b.soll = 36.5
+        b.gfa = IDLE_GFA
+        b.kessel = 37.0
+        run(g, b, 3)
+        self.assertEqual(g.logic.start_margins, [3.0])
+        self.assertAlmostEqual(g.logic.start_margin, 0.7 * 4.0 + 0.3 * 3.0)
+        g.logic.vorboost_aktiv = True
+        g.logic.vorboost_k = 1.0                      # trigger at 3.7 - 1.0 = 2.7 K below
+        b.kessel = 34.0                               # 2.5 K below: still lowered
+        run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+        b.kessel = 33.7                               # 2.8 K below: pre-boost
+        run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Vorboost"))
+        self.assertEqual(b.ram[5], 100)
+        b.kessel = 33.9                               # hysteresis keeps it on
+        run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Vorboost"))
+        b.kessel = 34.4                               # 2.1 K below: released
+        run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+
+    def test_vorboost_off_by_default_and_stale_temps(self):
+        b = FakeBoiler()
+        b.kessel = 20.0
+        g = make_guard(b)
+        run(g, b, 8)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)   # vorboost_aktiv = False
+        g.logic.vorboost_aktiv = True
+        g.logic.vorboost_k = 0.0                                 # 0 K also means off
+        run(g, b, 3)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+        g.logic.vorboost_k = 2.0
+        run(g, b, 3)
+        self.assertEqual(g.logic.decide(b.t)[1], "Vorboost")
+        g.logic.ts["kessel"] = b.t - 60                          # stale temperature
+        self.assertFalse(g.logic.vorboost(b.t))
+
+    def test_nachlauf_switch(self):
+        b = FakeBoiler()
+        g = make_guard(b)
+        g.logic.nachlauf_s = 60.0
+        run(g, b, 8)
+        b.gfa = FLAME_GFA
+        run(g, b, 3)
+        b.gfa = IDLE_GFA
+        run(g, b, 3)
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Nachlauf"))
+        g.logic.nachlauf_aktiv = False
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+
+    def test_defaults_follow_normal_burner_cycle(self):
+        lg = pg.GuardLogic()
+        self.assertTrue(lg.nachlauf_aktiv)
+        self.assertEqual(lg.nachlauf_s, 180.0)
+        self.assertFalse(lg.vorboost_aktiv)
+        self.assertEqual(lg.vorboost_k, 1.0)
+        self.assertNotIn((0x01, 0x55E0, 17), pg.ALLOWED_READS)
+
+    def test_restart_starts_with_nachlauf_boost(self):
+        b = FakeBoiler()
+        settings = types.SimpleNamespace(vs1protocol=False, mqtt_topic="openv", mqtt_broker=None)
+        g = pg.PumpGuard(settings, logging.getLogger("pg-test"), b.request)
+        g.logic.enabled = True
+        g.logic.nachlauf_s = 60.0
+        run(g, b, 8)
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Nachlauf"))
+        run(g, b, 60)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+
+    def test_implausible_temperature_ignored(self):
+        lg = pg.GuardLogic()
+        lg.update("kessel", (3000).to_bytes(2, "little", signed=True), 0.0)
+        self.assertIsNone(lg.kessel)
+        self.assertNotIn("kessel", lg.ts)
 
     def test_only_allowed_telegrams(self):
         b = FakeBoiler()
@@ -263,6 +356,11 @@ class MqttTest(unittest.TestCase):
         self.assertEqual(g.logic.low, 45)
         g._on_message(client, None, msg("nachlauf/set", "5"))
         self.assertEqual(g.logic.nachlauf_s, 300.0)
+        g._on_message(client, None, msg("nachlauf_aktiv/set", "OFF"))
+        self.assertFalse(g.logic.nachlauf_aktiv)
+        self.assertIn(("openv/pump_guard/nachlauf_aktiv/state", "OFF", True), published)
+        g._on_message(client, None, msg("vorboost_aktiv/state", "ON", True))
+        self.assertTrue(g.logic.vorboost_aktiv)
         g._on_message(client, None, msg("enabled/state", "OFF"))  # non-retained echo ignored
         self.assertTrue(g.logic.enabled)
 

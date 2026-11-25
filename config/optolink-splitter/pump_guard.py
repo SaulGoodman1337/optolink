@@ -20,7 +20,21 @@ E7 value is never written by this module.
 Home Assistant interface (MQTT, below <mqtt_topic>/pump_guard):
   enabled/set  ON|OFF        -> enabled/state (retained, restores after restart)
   low/set      20..100       -> low/state
-  nachlauf/set 0..30 minutes -> nachlauf/state
+  nachlauf_aktiv/set ON|OFF  -> nachlauf_aktiv/state (default ON)
+  nachlauf/set 0..30 minutes -> nachlauf/state (default 3)
+  vorboost_aktiv/set ON|OFF  -> vorboost_aktiv/state (default OFF)
+  vorboost/set 0..10 K       -> vorboost/state (default 1.0)
+
+The boost follows the normal burner cycle only: DHW, valve not on heating,
+start sequence, flame and the optional Nachlauf after the burner stopped.
+(v1.2 also boosted during the anti-cycling lock; removed again in 1.3.0 on
+the user's request.)
+
+Pre-boost (Vorboost, Phase 3): the guard learns at every burner start how far
+the boiler temperature (0x0810) was below the effective setpoint (0x555A) when
+the firmware started the burner. It boosts already when the boiler is within
+`vorboost` K of that learned threshold, so the pump moves heat out of the
+boiler before the burner fires at full power for flame stabilisation.
   status       JSON (retained), zustand = state word, protocol = P300|VS1
 """
 from __future__ import annotations
@@ -29,12 +43,18 @@ import json
 import threading
 import time
 
-VERSION = "1.0.1"
+VERSION = "1.3.0"
 
 RAM_BLOCK, RAM_E7_OFFSET = 0x20A0, 5          # 0x20A5
 HIGH = 100
 LOW_MIN, LOW_MAX = 20, 100
 NACHLAUF_MAX_MIN = 30
+VORBOOST_MAX_K = 10.0
+VORBOOST_HYST_K = 0.5          # release the pre-boost only 0.5 K below its trigger
+START_MARGIN_DEFAULT_K = 4.0   # coding plug "Einschaltdifferenz" 4 K until learned
+START_MARGIN_ALPHA = 0.3       # EMA weight of each observed burner start
+START_LOOKBACK_S = (3.0, 20.0) # use temperatures 3..20 s before the start: the firmware
+                               # drops the effective setpoint (e.g. 16.5) at the start
 
 READ_GFA = (0x01, 0x55D3, 9)     # byte5: 0x20 flame, 0x40 lockout; bytes6/7 GG1 sequence
 READ_WW = (0x01, 0x650A, 1)      # 1 = DHW charging active
@@ -42,11 +62,16 @@ READ_VALVE = (0x01, 0x0A10, 1)   # 1 = heating
 READ_FAULT = (0x01, 0x5738, 1)   # 0 = no fault
 READ_E7 = (0x01, 0x27E7, 1)      # heating-pump minimum; NOTE: reads the active RAM copy
                                  # (0x20A5), so it is only meaningful while not lowering
+READ_KESSEL = (0x01, 0x0810, 2)  # boiler temperature, int16 LE / 10
+READ_SOLL = (0x01, 0x555A, 2)    # effective boiler setpoint, int16 LE / 10
 READ_RAM = (0x03, RAM_BLOCK, 32)
-ALLOWED_READS = {READ_GFA, READ_WW, READ_VALVE, READ_FAULT, READ_E7, READ_RAM}
+ALLOWED_READS = {READ_GFA, READ_WW, READ_VALVE, READ_FAULT, READ_E7, READ_KESSEL, READ_SOLL,
+                 READ_RAM}
 
 STATE_PERIOD_S = 1.0       # every state key once per second (round robin)
 SLOW_PERIOD_S = 10.0       # fault + coded E7, each once per period
+TEMP_PERIOD_S = 2.0        # boiler temperature + setpoint, each once per period
+TEMP_STALE_S = 10.0        # older -> no pre-boost (lowering itself is not blocked)
 RAM_PERIOD_S = 0.1         # RAM supervision while lowering (in practice: every tick)
 RAM_QUIET_S = 1.4          # firmware reload seen 1.7-2.7 s after a write: no reads before
 STALE_S = 5.0              # state older than this -> no lowering
@@ -60,6 +85,7 @@ class GuardLogic:
     def __init__(self):
         self.enabled = False
         self.low = 30
+        self.nachlauf_aktiv = True
         self.nachlauf_s = 180.0
         self.flame = self.lockout = False
         self.sequence = False
@@ -70,6 +96,17 @@ class GuardLogic:
         self.ts = {}
         self.burner_last_active = None
         self.error = None
+        # pre-boost (Vorboost): boost already when the boiler is close to its start threshold
+        self.vorboost_aktiv = False
+        self.vorboost_k = 1.0              # K before the learned start threshold
+        self.kessel = None
+        self.soll = None
+        self.start_margin = START_MARGIN_DEFAULT_K   # learned (soll - kessel) at burner starts
+        self.start_margins = []            # last observed values (for HA/diagnosis)
+        self.vorboost_active = False
+        self.starts = 0
+        self._prev_burner = None
+        self._temp_hist = []               # (t, kessel, soll) for the start lookback
 
     def update(self, key, value, now):
         if key == "gfa":
@@ -77,8 +114,20 @@ class GuardLogic:
             self.flame = bool(b[5] & 0x20)
             self.lockout = bool(b[5] & 0x40)
             self.sequence = bool(b[6] or b[7])
-            if self.flame or self.sequence:
+            burner = self.flame or self.sequence
+            if burner and self._prev_burner is False:
+                self._learn_start(now)
+            self._prev_burner = burner
+            if burner:
                 self.burner_last_active = now
+        elif key in ("kessel", "soll"):
+            v = int.from_bytes(bytes(value[:2]), "little", signed=True) / 10.0
+            if not -20.0 <= v <= 110.0:
+                return          # implausible: ignore, goes stale -> no pre-boost
+            setattr(self, key, v)
+            if self.kessel is not None and self.soll is not None:
+                self._temp_hist = [h for h in self._temp_hist if now - h[0] <= START_LOOKBACK_S[1]]
+                self._temp_hist.append((now, self.kessel, self.soll))
         elif key == "ww":
             self.ww = value[0]
         elif key == "valve":
@@ -90,6 +139,40 @@ class GuardLogic:
         else:
             raise KeyError(key)
         self.ts[key] = now
+
+    def _learn_start(self, now):
+        """A burner start began: remember how far below the setpoint the boiler was."""
+        self.starts += 1
+        if self.ww or self.valve != 1:
+            return
+        before = [h for h in self._temp_hist
+                  if START_LOOKBACK_S[0] <= now - h[0] <= START_LOOKBACK_S[1]]
+        if not before:
+            return
+        _, kessel, soll = before[-1]
+        margin = round(soll - kessel, 1)
+        if not 0.0 <= margin <= 30.0:
+            return
+        self.start_margins = (self.start_margins + [margin])[-10:]
+        self.start_margin = round((1 - START_MARGIN_ALPHA) * self.start_margin
+                                  + START_MARGIN_ALPHA * margin, 2)
+
+    def temps_fresh(self, now):
+        return all(k in self.ts and now - self.ts[k] <= TEMP_STALE_S for k in ("kessel", "soll")) \
+            and self.kessel is not None and self.soll is not None
+
+    def vorboost(self, now):
+        """True when the boiler is within `vorboost_k` of the learned start threshold."""
+        if not self.vorboost_aktiv or self.vorboost_k <= 0 or not self.temps_fresh(now):
+            self.vorboost_active = False
+            return False
+        below = self.soll - self.kessel            # grows while the boiler cools down
+        trigger = self.start_margin - self.vorboost_k
+        if self.vorboost_active:
+            self.vorboost_active = below >= trigger - VORBOOST_HYST_K
+        else:
+            self.vorboost_active = below >= trigger
+        return self.vorboost_active
 
     def fresh(self, now):
         need = {"gfa": STALE_S, "ww": STALE_S, "valve": STALE_S,
@@ -116,8 +199,11 @@ class GuardLogic:
             return BOOST, "Flamme"
         if self.sequence:
             return BOOST, "Startsequenz"
-        if self.burner_last_active is not None and now - self.burner_last_active < self.nachlauf_s:
+        if self.nachlauf_aktiv and self.burner_last_active is not None \
+                and now - self.burner_last_active < self.nachlauf_s:
             return BOOST, "Nachlauf"
+        if self.vorboost(now):
+            return BOOST, "Vorboost"
         if self.low >= HIGH:
             return BOOST, "Normalwert 100"
         return ABGESENKT, "Normalbetrieb"
@@ -126,8 +212,11 @@ class GuardLogic:
 class PumpGuard:
     """Serial side. `do_request(fc, addr, n, data) -> (rc, addr, data)`."""
 
-    def __init__(self, settings, logger, do_request, mqtt_factory=None):
+    def __init__(self, settings, logger, do_request, mqtt_factory=None, boost_after_start=True):
         self.settings = settings
+        # after a (re)start the burner history is unknown: treat it as "just active" so the
+        # Nachlauf boost covers a pause that was already running (fail-safe direction)
+        self._boost_after_start = boost_after_start
         self.log = logger
         self.do_request = do_request
         self.logic = GuardLogic()
@@ -138,6 +227,8 @@ class PumpGuard:
         self.next_ram = 0.0
         self.rr_state = 0
         self.rr_slow = 0
+        self.next_temp = 0.0
+        self.rr_temp = 0
         self.ram = None
         self.last_low_written = None
         self.repairs = 0
@@ -193,7 +284,7 @@ class PumpGuard:
             self._on_connect(c, None, None, 0)
 
     def _on_connect(self, client, userdata, flags, rc, properties=None):
-        topics = ["enabled", "low", "nachlauf"]
+        topics = ["enabled", "low", "nachlauf", "nachlauf_aktiv", "vorboost", "vorboost_aktiv"]
         client.subscribe([(f"{self.base}/{t}/set", 0) for t in topics]
                          + [(f"{self.base}/{t}/state", 0) for t in topics])
         client.publish(f"{self.base}/protocol", "P300" if self.active else "VS1", retain=True)
@@ -222,6 +313,16 @@ class PumpGuard:
                     if not LOW_MIN <= v <= LOW_MAX:
                         return
                     self.logic.low = v
+                    out = str(v)
+                elif name in ("nachlauf_aktiv", "vorboost_aktiv"):
+                    val = payload.upper() in ("ON", "1", "TRUE", "EIN")
+                    setattr(self.logic, name, val)
+                    out = "ON" if val else "OFF"
+                elif name == "vorboost":
+                    v = round(float(payload), 1)
+                    if not 0 <= v <= VORBOOST_MAX_K:
+                        return
+                    self.logic.vorboost_k = v
                     out = str(v)
                 elif name == "nachlauf":
                     v = float(payload)
@@ -253,6 +354,13 @@ class PumpGuard:
                   "enabled": lg.enabled, "repairs": self.repairs, "writes": self.writes,
                   "flame": lg.flame, "sequence": lg.sequence, "lockout": lg.lockout,
                   "ww": lg.ww, "valve": lg.valve, "e7": lg.e7, "fault": lg.fault,
+                  "vorboost_k": lg.vorboost_k, "vorboost": lg.vorboost_active,
+                  "vorboost_aktiv": lg.vorboost_aktiv, "nachlauf_aktiv": lg.nachlauf_aktiv,
+                  "kessel": lg.kessel, "soll": lg.soll,
+                  "unter_soll": (round(lg.soll - lg.kessel, 1)
+                                 if lg.kessel is not None and lg.soll is not None else None),
+                  "start_schwelle": lg.start_margin, "start_werte": lg.start_margins,
+                  "starts": lg.starts,
                   "protocol": "P300" if self.active else "VS1", "version": VERSION,
                   "timestamp": int(time.time())}
         try:
@@ -285,6 +393,10 @@ class PumpGuard:
         now = time.monotonic() if now is None else now
         try:
             with self.lock:
+                if self._boost_after_start:
+                    self._boost_after_start = False
+                    if self.logic.burner_last_active is None:
+                        self.logic.burner_last_active = now
                 state, reason = self.logic.decide(now)
                 low = self.logic.low
             self._publish_status(state, reason, now)
@@ -331,7 +443,13 @@ class PumpGuard:
                 spec, key = (READ_E7, "e7") if use_e7 else (READ_FAULT, "fault")
                 self.rr_slow += 1
                 return self._read_update(spec, key, now)
-            # 4) fast state reads (round robin)
+            # 4) boiler temperature / setpoint (pre-boost + learning the start threshold)
+            if now >= self.next_temp:
+                self.next_temp = now + TEMP_PERIOD_S / 2
+                spec, key = ((READ_KESSEL, "kessel"), (READ_SOLL, "soll"))[self.rr_temp % 2]
+                self.rr_temp += 1
+                return self._read_update(spec, key, now)
+            # 5) fast state reads (round robin)
             if now >= self.next_state:
                 self.next_state = now + STATE_PERIOD_S / 3
                 spec, key = ((READ_GFA, "gfa"), (READ_WW, "ww"), (READ_VALVE, "valve"))[self.rr_state % 3]
@@ -357,7 +475,7 @@ class PumpGuard:
             self.do_request = do_request
         self.ram = None
         self.last_low_written = None
-        self.next_ram = self.next_slow = self.next_state = 0.0
+        self.next_ram = self.next_slow = self.next_state = self.next_temp = 0.0
         with self.lock:
             self.logic.ts = {}
             self.logic.error = None
