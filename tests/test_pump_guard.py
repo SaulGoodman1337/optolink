@@ -166,6 +166,7 @@ class GuardTest(unittest.TestCase):
         run(g, b, 3)
         self.assertEqual(g.logic.start_margins, [3.0])
         self.assertAlmostEqual(g.logic.start_margin, 0.7 * 4.0 + 0.3 * 3.0)
+        g.logic.vorboost_aktiv = True
         g.logic.vorboost_k = 1.0                      # trigger at 3.7 - 1.0 = 2.7 K below
         b.kessel = 34.0                               # 2.5 K below: still lowered
         run(g, b, 4)
@@ -186,31 +187,37 @@ class GuardTest(unittest.TestCase):
         b.kessel = 20.0
         g = make_guard(b)
         run(g, b, 8)
-        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)   # vorboost_k = 0
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)   # vorboost_aktiv = False
+        g.logic.vorboost_aktiv = True
+        g.logic.vorboost_k = 0.0                                 # 0 K also means off
+        run(g, b, 3)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
         g.logic.vorboost_k = 2.0
         run(g, b, 3)
         self.assertEqual(g.logic.decide(b.t)[1], "Vorboost")
         g.logic.ts["kessel"] = b.t - 60                          # stale temperature
         self.assertFalse(g.logic.vorboost(b.t))
 
-    def test_taktsperre_boost(self):
+    def test_nachlauf_switch(self):
         b = FakeBoiler()
         g = make_guard(b)
+        g.logic.nachlauf_s = 60.0
         run(g, b, 8)
-        b.rkr[14] = 0x00                              # lock active
-        run(g, b, 4)
-        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)   # switch off by default
-        g.logic.sperre_boost = True
-        run(g, b, 4)
-        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Taktsperre"))
-        self.assertEqual(b.ram[5], 100)
-        b.rkr[14] = 0x01                              # restart released
-        run(g, b, 4)
+        b.gfa = FLAME_GFA
+        run(g, b, 3)
+        b.gfa = IDLE_GFA
+        run(g, b, 3)
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Nachlauf"))
+        g.logic.nachlauf_aktiv = False
         self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
-        b.rkr[14] = 0x00
-        run(g, b, 4)
-        g.logic.ts["rkr"] = b.t - 60                  # stale lock state -> no lock boost
-        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+
+    def test_defaults_follow_normal_burner_cycle(self):
+        lg = pg.GuardLogic()
+        self.assertTrue(lg.nachlauf_aktiv)
+        self.assertEqual(lg.nachlauf_s, 180.0)
+        self.assertFalse(lg.vorboost_aktiv)
+        self.assertEqual(lg.vorboost_k, 1.0)
+        self.assertNotIn((0x01, 0x55E0, 17), pg.ALLOWED_READS)
 
     def test_restart_starts_with_nachlauf_boost(self):
         b = FakeBoiler()
@@ -349,6 +356,11 @@ class MqttTest(unittest.TestCase):
         self.assertEqual(g.logic.low, 45)
         g._on_message(client, None, msg("nachlauf/set", "5"))
         self.assertEqual(g.logic.nachlauf_s, 300.0)
+        g._on_message(client, None, msg("nachlauf_aktiv/set", "OFF"))
+        self.assertFalse(g.logic.nachlauf_aktiv)
+        self.assertIn(("openv/pump_guard/nachlauf_aktiv/state", "OFF", True), published)
+        g._on_message(client, None, msg("vorboost_aktiv/state", "ON", True))
+        self.assertTrue(g.logic.vorboost_aktiv)
         g._on_message(client, None, msg("enabled/state", "OFF"))  # non-retained echo ignored
         self.assertTrue(g.logic.enabled)
 

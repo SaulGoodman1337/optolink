@@ -411,7 +411,7 @@ nach spätestens ~3 s wieder mit 100 %. E7 selbst wird nie geschrieben.
 | --- | --- | --- |
 | Schalter aus | AUS | 100 % |
 | Zustand älter als 5 s, E7 ≠ 100, Störung/Verriegelung | GESPERRT | 100 % |
-| Warmwasser, Ventil nicht Heizen, Startsequenz (0x55D3 Byte 6/7), Flamme, Nachlauf, Vorboost | BOOST | 100 % |
+| Warmwasser, Ventil nicht Heizen, Startsequenz (0x55D3 Byte 6/7), Flamme, Nachlauf (optional), Vorboost (optional) | BOOST | 100 % |
 | unerwarteter RAM-Wert, Ausnahme | FEHLER (bis Schalter aus/ein) | 100 % |
 | sonst | ABGESENKT | Normaldrehzahl |
 
@@ -423,8 +423,13 @@ Absenken beweist jeder Firmware-Reload auf 100 die Codierung.
 (0x0810) und effektives Kesselsoll (0x555A). Bei jedem Brennerstart merkt er
 sich, wie weit der Kessel unter dem Soll lag (gelernte Startschwelle, gleitender
 Mittelwert, Startwert 4 K = Codierstecker „Einschaltdifferenz“). Mit
-`vorboost` = X K geht die Pumpe schon auf 100 %, sobald der Kessel weniger als
-X K von dieser Schwelle entfernt ist (Freigabe 0,5 K darunter, 0 = aus).
+`vorboost_aktiv` = ON und `vorboost` = X K (Standard 1 K) geht die Pumpe schon
+auf 100 %, sobald der Kessel weniger als X K von dieser Schwelle entfernt ist
+(Freigabe 0,5 K darunter). Standard: aus.
+
+**Nachlauf:** Mit `nachlauf_aktiv` = ON (Standard) bleibt die Pumpe nach
+Brenner aus noch `nachlauf` Minuten (Standard 3) auf 100 %. Aus = sofort
+zurück auf die Normaldrehzahl.
 Veraltete Temperaturen (> 10 s) schalten nur den Vorboost ab, nicht die
 Absenkung.
 
@@ -433,21 +438,22 @@ Abwechselnd nach jedem Brennerstopp Nachlauf 3 min bzw. 12 min (Pumpe 100 %
 über die ganze Pause). Brenndauer in beiden Fällen ~34 s, Kessel beim Start
 immer 32,5 °C (Soll − 4 K). Die Pause war mit 100 % Pumpe im Mittel ~80 s
 länger (≈ 516 s statt 435 s in den ersten 20 Zyklen), also rund 15 % weniger
-Brennerstarts. Daher Standard-Nachlauf 12 min. Die kurze Brenndauer selbst
+Brennerstarts. Der Nutzer wollte das aber nicht dauerhaft (Pumpe fast immer
+auf 100 %); seit 1.3.0 gilt wieder Nachlauf 3 min, der Boost folgt nur dem
+normalen Brennerzyklus. Die kurze Brenndauer selbst
 kommt von der Volllast-Startphase und lässt sich über die Pumpe nicht beheben.
 Die Taktsperre (0x55E0 Byte 14) dauert nur ~4 min (Codierstecker
 Mindestpausenzeit = 4), der Rest der Pause ist temperaturbegrenzt.
 
-**Boost während Taktsperre:** Mit `sperre_boost` = ON läuft die Pumpe mit
-100 %, solange die Brenner-Taktsperre aktiv ist (0x55E0 Byte 14, Bit 0 = 0).
-Die Sperre bestimmt dann die Pausenlänge, die Pumpe zieht in dieser Zeit so
-viel Wärme wie möglich aus dem Kessel. Der Brenner startet nach der Sperre mit
-kühlerem Kessel und hat mehr Luft bis zur Ausschaltschwelle.
+**Boost während Taktsperre** (1.2.x) wurde in 1.3.0 wieder entfernt; der
+Wächter liest 0x55E0 nicht mehr.
 
-MQTT (unter `openv/pump_guard/`): `sperre_boost/set` ON|OFF, `enabled/set` ON|OFF, `low/set` 20–100,
-`nachlauf/set` 0–30 min, `vorboost/set` 0–10 K, jeweils retained `…/state`; `status` (JSON),
-`zustand`, `protocol`. HA: Schalter „Pumpensteuerung aktiv“, Zahlen
-„Normaldrehzahl“ und „Nachlauf“, Sensoren Zustand/Grund/RAM-E7/Korrekturen.
+MQTT (unter `openv/pump_guard/`): `enabled/set` ON|OFF, `low/set` 20–100,
+`nachlauf_aktiv/set` ON|OFF, `nachlauf/set` 0–30 min, `vorboost_aktiv/set`
+ON|OFF, `vorboost/set` 0–10 K, jeweils retained `…/state`; `status` (JSON),
+`zustand`, `protocol`. HA: Schalter „Pumpensteuerung aktiv“, „Nachlauf aktiv“,
+„Vorboost aktiv“, Zahlen „Normaldrehzahl“, „Nachlauf“, „Vorboost“, Sensoren
+Zustand/Grund/RAM-E7/Korrekturen/Kessel unter Soll/Startschwelle.
 
 Installation: der Profil-Helfer installiert Modul und Hook
 (`tools/optolink-apply-pump-guard-patch.py`). Unter VS1 ist der Hook inaktiv.

@@ -20,9 +20,15 @@ E7 value is never written by this module.
 Home Assistant interface (MQTT, below <mqtt_topic>/pump_guard):
   enabled/set  ON|OFF        -> enabled/state (retained, restores after restart)
   low/set      20..100       -> low/state
-  nachlauf/set 0..30 minutes -> nachlauf/state
-  vorboost/set 0..10 K       -> vorboost/state (0 = off)
-  sperre_boost/set ON|OFF    -> boost while the burner anti-cycling lock (0x55E0 b14) is active
+  nachlauf_aktiv/set ON|OFF  -> nachlauf_aktiv/state (default ON)
+  nachlauf/set 0..30 minutes -> nachlauf/state (default 3)
+  vorboost_aktiv/set ON|OFF  -> vorboost_aktiv/state (default OFF)
+  vorboost/set 0..10 K       -> vorboost/state (default 1.0)
+
+The boost follows the normal burner cycle only: DHW, valve not on heating,
+start sequence, flame and the optional Nachlauf after the burner stopped.
+(v1.2 also boosted during the anti-cycling lock; removed again in 1.3.0 on
+the user's request.)
 
 Pre-boost (Vorboost, Phase 3): the guard learns at every burner start how far
 the boiler temperature (0x0810) was below the effective setpoint (0x555A) when
@@ -37,7 +43,7 @@ import json
 import threading
 import time
 
-VERSION = "1.2.1"
+VERSION = "1.3.0"
 
 RAM_BLOCK, RAM_E7_OFFSET = 0x20A0, 5          # 0x20A5
 HIGH = 100
@@ -58,10 +64,9 @@ READ_E7 = (0x01, 0x27E7, 1)      # heating-pump minimum; NOTE: reads the active 
                                  # (0x20A5), so it is only meaningful while not lowering
 READ_KESSEL = (0x01, 0x0810, 2)  # boiler temperature, int16 LE / 10
 READ_SOLL = (0x01, 0x555A, 2)    # effective boiler setpoint, int16 LE / 10
-READ_RKR = (0x01, 0x55E0, 17)    # RKR status block; byte14 bit0 = 0 -> Taktsperre active
 READ_RAM = (0x03, RAM_BLOCK, 32)
 ALLOWED_READS = {READ_GFA, READ_WW, READ_VALVE, READ_FAULT, READ_E7, READ_KESSEL, READ_SOLL,
-                 READ_RKR, READ_RAM}
+                 READ_RAM}
 
 STATE_PERIOD_S = 1.0       # every state key once per second (round robin)
 SLOW_PERIOD_S = 10.0       # fault + coded E7, each once per period
@@ -80,7 +85,8 @@ class GuardLogic:
     def __init__(self):
         self.enabled = False
         self.low = 30
-        self.nachlauf_s = 720.0            # A/B 2026-11-25: 100 % over the whole pause = fewer starts
+        self.nachlauf_aktiv = True
+        self.nachlauf_s = 180.0
         self.flame = self.lockout = False
         self.sequence = False
         self.ww = None
@@ -91,16 +97,14 @@ class GuardLogic:
         self.burner_last_active = None
         self.error = None
         # pre-boost (Vorboost): boost already when the boiler is close to its start threshold
-        self.vorboost_k = 0.0              # 0 = off
+        self.vorboost_aktiv = False
+        self.vorboost_k = 1.0              # K before the learned start threshold
         self.kessel = None
         self.soll = None
         self.start_margin = START_MARGIN_DEFAULT_K   # learned (soll - kessel) at burner starts
         self.start_margins = []            # last observed values (for HA/diagnosis)
         self.vorboost_active = False
         self.starts = 0
-        # Taktsperre boost: while the anti-cycling lock blocks a restart, pull heat out
-        self.sperre_boost = False
-        self.taktsperre = None
         self._prev_burner = None
         self._temp_hist = []               # (t, kessel, soll) for the start lookback
 
@@ -124,8 +128,6 @@ class GuardLogic:
             if self.kessel is not None and self.soll is not None:
                 self._temp_hist = [h for h in self._temp_hist if now - h[0] <= START_LOOKBACK_S[1]]
                 self._temp_hist.append((now, self.kessel, self.soll))
-        elif key == "rkr":
-            self.taktsperre = (value[14] & 0x01) == 0
         elif key == "ww":
             self.ww = value[0]
         elif key == "valve":
@@ -161,7 +163,7 @@ class GuardLogic:
 
     def vorboost(self, now):
         """True when the boiler is within `vorboost_k` of the learned start threshold."""
-        if self.vorboost_k <= 0 or not self.temps_fresh(now):
+        if not self.vorboost_aktiv or self.vorboost_k <= 0 or not self.temps_fresh(now):
             self.vorboost_active = False
             return False
         below = self.soll - self.kessel            # grows while the boiler cools down
@@ -197,11 +199,9 @@ class GuardLogic:
             return BOOST, "Flamme"
         if self.sequence:
             return BOOST, "Startsequenz"
-        if self.burner_last_active is not None and now - self.burner_last_active < self.nachlauf_s:
+        if self.nachlauf_aktiv and self.burner_last_active is not None \
+                and now - self.burner_last_active < self.nachlauf_s:
             return BOOST, "Nachlauf"
-        if self.sperre_boost and self.taktsperre and "rkr" in self.ts \
-                and now - self.ts["rkr"] <= TEMP_STALE_S:
-            return BOOST, "Taktsperre"
         if self.vorboost(now):
             return BOOST, "Vorboost"
         if self.low >= HIGH:
@@ -284,7 +284,7 @@ class PumpGuard:
             self._on_connect(c, None, None, 0)
 
     def _on_connect(self, client, userdata, flags, rc, properties=None):
-        topics = ["enabled", "low", "nachlauf", "vorboost", "sperre_boost"]
+        topics = ["enabled", "low", "nachlauf", "nachlauf_aktiv", "vorboost", "vorboost_aktiv"]
         client.subscribe([(f"{self.base}/{t}/set", 0) for t in topics]
                          + [(f"{self.base}/{t}/state", 0) for t in topics])
         client.publish(f"{self.base}/protocol", "P300" if self.active else "VS1", retain=True)
@@ -314,9 +314,9 @@ class PumpGuard:
                         return
                     self.logic.low = v
                     out = str(v)
-                elif name == "sperre_boost":
+                elif name in ("nachlauf_aktiv", "vorboost_aktiv"):
                     val = payload.upper() in ("ON", "1", "TRUE", "EIN")
-                    self.logic.sperre_boost = val
+                    setattr(self.logic, name, val)
                     out = "ON" if val else "OFF"
                 elif name == "vorboost":
                     v = round(float(payload), 1)
@@ -355,7 +355,7 @@ class PumpGuard:
                   "flame": lg.flame, "sequence": lg.sequence, "lockout": lg.lockout,
                   "ww": lg.ww, "valve": lg.valve, "e7": lg.e7, "fault": lg.fault,
                   "vorboost_k": lg.vorboost_k, "vorboost": lg.vorboost_active,
-                  "sperre_boost": lg.sperre_boost, "taktsperre": lg.taktsperre,
+                  "vorboost_aktiv": lg.vorboost_aktiv, "nachlauf_aktiv": lg.nachlauf_aktiv,
                   "kessel": lg.kessel, "soll": lg.soll,
                   "unter_soll": (round(lg.soll - lg.kessel, 1)
                                  if lg.kessel is not None and lg.soll is not None else None),
@@ -445,8 +445,8 @@ class PumpGuard:
                 return self._read_update(spec, key, now)
             # 4) boiler temperature / setpoint (pre-boost + learning the start threshold)
             if now >= self.next_temp:
-                self.next_temp = now + TEMP_PERIOD_S / 3
-                spec, key = ((READ_KESSEL, "kessel"), (READ_SOLL, "soll"), (READ_RKR, "rkr"))[self.rr_temp % 3]
+                self.next_temp = now + TEMP_PERIOD_S / 2
+                spec, key = ((READ_KESSEL, "kessel"), (READ_SOLL, "soll"))[self.rr_temp % 2]
                 self.rr_temp += 1
                 return self._read_update(spec, key, now)
             # 5) fast state reads (round robin)

@@ -4075,6 +4075,16 @@ views:
               columns: 6
               rows: 2
           - type: tile
+            entity: switch.vitodens_200_wb2a_pumpensteuerung_nachlauf_aktiv
+            name: Nachlauf aktiv
+            icon: mdi:timer-sand
+            features:
+              - type: toggle
+            features_position: inline
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
             entity: number.vitodens_200_wb2a_pumpensteuerung_nachlauf
             name: Boost-Nachlauf
             icon: mdi:timer-sand
@@ -4086,14 +4096,15 @@ views:
               columns: 6
               rows: 2
           - type: tile
-            entity: switch.vitodens_200_wb2a_pumpensteuerung_boost_in_taktsperre
-            name: Boost während Taktsperre
-            icon: mdi:timer-lock
+            entity: switch.vitodens_200_wb2a_pumpensteuerung_vorboost_aktiv
+            name: Vorboost aktiv
+            icon: mdi:fast-forward-outline
             features:
               - type: toggle
             features_position: inline
             grid_options:
-              columns: full
+              columns: 6
+              rows: 2
           - type: tile
             entity: number.vitodens_200_wb2a_pumpensteuerung_vorboost
             name: Vorboost vor Startschwelle
@@ -4134,12 +4145,12 @@ views:
             content: >-
               E7 bleibt fest auf **100 %** codiert. Bei Brenner aus und Ventil auf
               Heizen senkt der Wächter nur die RAM-Kopie auf die Normaldrehzahl.
-              Boost (100 %) bei Warmwasser, Ventil nicht Heizen, Startsequenz
-              (Vorspülen), Flamme und im Nachlauf. Vorboost: schon 100 %, wenn
-              der Kessel nur noch so viele K von der gelernten Startschwelle
-              (Kessel unter Soll beim Brennerstart) entfernt ist (0 = aus).
-              Boost während Taktsperre: 100 %, solange die Brenner-Taktsperre
-              einen Neustart blockiert (Wärme abführen, ohne die Pause zu verkürzen). Fällt Home Assistant, MQTT
+              Boost (100 %) nur im normalen Brennerzyklus: Warmwasser, Ventil
+              nicht Heizen, Startsequenz (Vorspülen), Flamme. Optional:
+              **Nachlauf** hält 100 % für die eingestellten Minuten nach
+              Brenner aus, **Vorboost** geht schon auf 100 %, wenn der Kessel nur
+              noch so viele K von der gelernten Startschwelle (Kessel unter Soll
+              beim Brennerstart) entfernt ist. Fällt Home Assistant, MQTT
               oder der Splitter aus, läuft die Pumpe nach spätestens ~3 s wieder
               mit 100 %. Nur im Dauer-P300-Betrieb aktiv.
             grid_options:
