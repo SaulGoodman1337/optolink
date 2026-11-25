@@ -139,11 +139,18 @@ class PureLogicTests(unittest.TestCase):
 
     def test_hysteresis(self):
         cfg = rc.validate_config({"enabled": True})
-        # 0.6 K below lower threshold -> raw 21.6, within hysteresis of 21 -> stay neutral
-        self.assertEqual(rc.next_command(target_c=21, room_c=19.9, current_cmd=0, config=cfg,
-                                         now=0, last_step_at=None), 0)
-        self.assertEqual(rc.next_command(target_c=21, room_c=19.7, current_cmd=0, config=cfg,
-                                         now=0, last_step_at=None), 22)
+        kw = dict(target_c=21, config=cfg, now=0, last_step_at=None)
+        # any deviation outside the band acts with at least 1 K (live case 19.8 C)
+        self.assertEqual(rc.next_command(room_c=20.4, current_cmd=0, **kw), 22)
+        self.assertEqual(rc.next_command(room_c=19.8, current_cmd=0, **kw), 22)
+        self.assertEqual(rc.next_command(room_c=21.6, current_cmd=0, **kw), 20)
+        # between levels: 1.6 K deviation stays at +1 while owning 22
+        self.assertEqual(rc.next_command(room_c=18.9, current_cmd=22, **kw), 22)
+        # exit margin: just back inside the band keeps the correction
+        self.assertEqual(rc.next_command(room_c=20.6, current_cmd=22, **kw), 22)
+        self.assertEqual(rc.next_command(room_c=20.8, current_cmd=22, **kw), 0)
+        self.assertEqual(rc.next_command(room_c=21.4, current_cmd=20, **kw), 20)
+        self.assertEqual(rc.next_command(room_c=21.2, current_cmd=20, **kw), 0)
 
 
 class ControllerTests(unittest.TestCase):

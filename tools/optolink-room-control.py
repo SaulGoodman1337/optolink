@@ -77,7 +77,8 @@ SENSOR_MAX_C = 35.0
 CYCLE_SECONDS = 60.0
 SENSOR_MAX_AGE_S = 600.0
 MIN_STEP_INTERVAL_S = 300.0
-HYSTERESIS_K = 0.75
+HYSTERESIS_K = 0.75   # between correction levels
+EXIT_MARGIN_K = 0.2   # how far back inside the band before releasing
 INFLUENCE_CHECK_S = 1800.0
 REQUEST_TIMEOUT = 8.0
 
@@ -228,8 +229,9 @@ def next_command(*, target_c, room_c, current_cmd, config, now, last_step_at):
     """Next external setpoint to write (0 = regular room target).
 
     ``current_cmd`` is the value this service owns (0 if none). Changes are
-    limited to 1 K per step and ``MIN_STEP_INTERVAL_S`` between steps; a
-    hysteresis avoids toggling at rounding boundaries.
+    limited to 1 K per step and ``MIN_STEP_INTERVAL_S`` between steps. Any
+    room temperature outside the band gives at least 1 K; hysteresis between
+    levels and an exit margin inside the band avoid toggling.
     """
     lower, upper = comfort_band(target_c, config)
     corr = band_correction(
@@ -242,11 +244,21 @@ def next_command(*, target_c, room_c, current_cmd, config, now, last_step_at):
     raw = target_c + corr
     effective = current_cmd if current_cmd else target_c
     if corr == 0.0:
-        wanted = target_c
-    elif abs(raw - effective) < HYSTERESIS_K:
-        wanted = effective
+        # Back inside the band: keep an active correction until the room is
+        # clearly inside (EXIT_MARGIN_K), so it does not toggle at the edge.
+        raising = current_cmd and current_cmd > target_c
+        lowering = current_cmd and current_cmd < target_c
+        if (raising and room_c < lower + EXIT_MARGIN_K) or (lowering and room_c > upper - EXIT_MARGIN_K):
+            wanted = effective
+        else:
+            wanted = target_c
     else:
-        wanted = int(math.floor(raw + 0.5))
+        # Outside the band always means at least 1 K correction.
+        magnitude = max(1, int(math.floor(abs(corr) + 0.5)))
+        wanted = target_c + (magnitude if corr > 0 else -magnitude)
+        same_side = (effective - target_c) * corr > 0
+        if current_cmd and same_side and abs(raw - effective) < HYSTERESIS_K:
+            wanted = effective
     wanted = max(EXTERNAL_MIN_C, min(EXTERNAL_MAX_C, wanted))
     if wanted == effective:
         return current_cmd

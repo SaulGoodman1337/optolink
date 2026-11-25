@@ -79,7 +79,9 @@ externer Sollwert = runden(Basis + Korrektur), 10..30 °C
 
 * Änderungen erfolgen in Schritten von höchstens **1 K**, frühestens alle
   **5 Minuten**. Damit springt der Vorlauf nicht.
-* Eine Hysterese von 0,75 K verhindert Pendeln an der Rundungsgrenze.
+* Liegt der Raum außerhalb des Bandes, korrigiert die Regelung immer um
+  mindestens 1 K. Zurückgenommen wird erst, wenn der Raum 0,2 K innerhalb des
+  Bandes liegt. Zwischen den Korrekturstufen gilt eine Hysterese von 0,75 K.
 * Phase, Tages- und Nachttemperatur werden jeden Zyklus neu gelesen. Eine
   Änderung am Regler, im Dashboard, im Zeitprogramm oder durch die
   Party-Emulation wird also übernommen.
