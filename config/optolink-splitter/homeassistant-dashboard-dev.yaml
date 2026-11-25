@@ -2134,7 +2134,7 @@ views:
                   type: custom:button-card
                   template: diag_mini
                   entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
-                  name: Gebläse (nur VS1)
+                  name: Gebläse (VS1-Fenster)
 
           - type: custom:button-card
             template: diag_group3_blue
@@ -5524,14 +5524,14 @@ views:
                 entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
                 icon: mdi:fan
                 content: >-
-                  Gebläse {{ states('sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06') }} rpm (nur VS1)
+                  Gebläse {{ states('sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06') }} rpm (VS1-Fenster)
                 tap_action:
                   action: more-info
               - type: template
                 entity: sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09
                 icon: mdi:gauge-full
                 content: >-
-                  GFA Soll {{ states('sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09') }} % (nur VS1)
+                  GFA Soll {{ states('sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09') }} % (VS1-Fenster)
                 tap_action:
                   action: more-info
               - type: template
@@ -5593,7 +5593,7 @@ views:
                 entity: sensor.vitodens_200_wb2a_gfa_status3_p87
                 icon: mdi:code-tags
                 content: >-
-                  P87 {{ states('sensor.vitodens_200_wb2a_gfa_status3_p87') }} (nur VS1)
+                  P87 {{ states('sensor.vitodens_200_wb2a_gfa_status3_p87') }} (VS1-Fenster)
                 tap_action:
                   action: more-info
             card_mod:
@@ -5781,10 +5781,10 @@ views:
                 graph_min: 0
                 graph_max: 100
               - entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
-                name: Gebläse P06 (nur VS1)
+                name: Gebläse P06 (VS1-Fenster)
                 icon: mdi:fan
                 extra_value_entity: sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09
-                extra_value_name: GFA Soll (nur VS1)
+                extra_value_name: GFA Soll (VS1-Fenster)
                 overwrite_graph_appearance: true
                 graph_min: 0
                 graph_max: 6000
@@ -8636,14 +8636,54 @@ views:
               curve: smooth
             series:
               - entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
-                name: Gebläse P06 (nur VS1)
+                name: Gebläse P06 (VS1-Fenster)
                 yaxis_id: rpm
               - entity: sensor.vitodens_200_wb2a_gfa_modulationssollwert_p09
-                name: GFA Soll P09 (nur VS1)
+                name: GFA Soll P09 (VS1-Fenster)
                 yaxis_id: percent
               - entity: sensor.vitodens_200_wb2a_brenner_modulationsgrad
                 name: Modulation Ist
                 yaxis_id: percent
+            grid_options:
+              columns: full
+          - type: entities
+            title: Gebläsedrehzahl-Messung (VS1-Fenster)
+            show_header_toggle: false
+            entities:
+              - entity: switch.vitodens_200_wb2a_geblaesedrehzahl_messung_aktiv
+                name: Messung aktiv
+              - entity: number.vitodens_200_wb2a_geblaesedrehzahl_messintervall
+                name: Intervall bei laufendem Brenner
+              - entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_messung_zustand
+                name: Zustand
+              - entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_gfa_p06
+                name: Gebläse P06 (letzte Messung)
+              - entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_messzeit
+                name: Gemessen
+                format: relative
+              - entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_fensterdauer
+                name: Dauer des VS1-Fensters
+              - type: section
+              - type: attribute
+                entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_messung_zustand
+                attribute: reason
+                name: Grund
+              - type: attribute
+                entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_messung_zustand
+                attribute: windows
+                name: Fenster seit Start
+              - type: attribute
+                entity: sensor.vitodens_200_wb2a_geblaesedrehzahl_messung_zustand
+                attribute: failures
+                name: Fehlversuche seit Start
+            footer:
+              type: markdown
+              content: >-
+                Die WB2A liefert die Gebläsedrehzahl nur über VS1. Bei laufendem
+                Brenner schaltet der Splitter dafür kurz (5–8 s) auf VS1: erste
+                Messung 40 s nach Flammenstart, dann im eingestellten Intervall.
+                In der Zeit gilt die Pumpe 100 % (E7). 60 s nach Brenner aus wird
+                0 gemeldet.
             grid_options:
               columns: full
     cards: []

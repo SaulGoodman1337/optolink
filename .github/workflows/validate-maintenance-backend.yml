@@ -38,7 +38,9 @@ jobs:
             tools/optolink-apply-link-recovery-patch.py \
             tools/optolink-apply-p300-runtime-patch.py \
             tools/optolink-apply-pump-guard-patch.py \
-            config/optolink-splitter/pump_guard.py
+            config/optolink-splitter/pump_guard.py \
+            tools/optolink-apply-fan-p06-patch.py \
+            config/optolink-splitter/fan_p06.py
 
       - name: Validate dashboard YAML
         run: |
@@ -89,6 +91,11 @@ jobs:
         run: |
           python3 tools/optolink-apply-pump-guard-patch.py --self-test
           python3 -m unittest discover -s tests -p "test_pump_guard.py" -v
+
+      - name: Validate VS1-window fan speed reader
+        run: |
+          python3 tools/optolink-apply-fan-p06-patch.py --self-test
+          python3 -m unittest discover -s tests -p "test_fan_p06.py" -v
 
       - name: Validate service-program mapping
         run: |

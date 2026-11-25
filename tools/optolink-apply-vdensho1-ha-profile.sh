@@ -118,7 +118,9 @@ link_patcher_tmp="$(mktemp)"
 p300rt_patcher_tmp="$(mktemp)"
 pumpguard_patcher_tmp="$(mktemp)"
 pumpguard_module_tmp="$(mktemp)"
-trap 'rm -f "$tmp" "$gfa_patcher_tmp" "$poll_patcher_tmp" "$link_patcher_tmp" "$p300rt_patcher_tmp" "$pumpguard_patcher_tmp" "$pumpguard_module_tmp"' EXIT
+fanp06_patcher_tmp="$(mktemp)"
+fanp06_module_tmp="$(mktemp)"
+trap 'rm -f "$tmp" "$gfa_patcher_tmp" "$poll_patcher_tmp" "$link_patcher_tmp" "$p300rt_patcher_tmp" "$pumpguard_patcher_tmp" "$pumpguard_module_tmp" "$fanp06_patcher_tmp" "$fanp06_module_tmp"' EXIT
 
 cs_repo_fetch "$PROFILE_REL" "$tmp"
 python3 -m py_compile "$tmp"
@@ -139,6 +141,11 @@ cs_repo_fetch tools/optolink-apply-pump-guard-patch.py "$pumpguard_patcher_tmp"
 python3 -m py_compile "$pumpguard_patcher_tmp"
 cs_repo_fetch config/optolink-splitter/pump_guard.py "$pumpguard_module_tmp"
 python3 -m py_compile "$pumpguard_module_tmp"
+
+cs_repo_fetch tools/optolink-apply-fan-p06-patch.py "$fanp06_patcher_tmp"
+python3 -m py_compile "$fanp06_patcher_tmp"
+cs_repo_fetch config/optolink-splitter/fan_p06.py "$fanp06_module_tmp"
+python3 -m py_compile "$fanp06_module_tmp"
 
 # Optolink protocol: VS1 is the default. Permanent P300 (needed for the
 # inverted pump RAM override) is selected per host with
@@ -163,6 +170,7 @@ echo "Preflighting VS1/GFA, phased scheduler and link-recovery patchers..."
 "$APP_DIR/venv/bin/python" "$link_patcher_tmp" --self-test
 "$APP_DIR/venv/bin/python" "$p300rt_patcher_tmp" --self-test
 "$APP_DIR/venv/bin/python" "$pumpguard_patcher_tmp" --self-test
+"$APP_DIR/venv/bin/python" "$fanp06_patcher_tmp" --self-test
 echo "Patcher preflight OK."
 
 cp "$tmp" "$APP_DIR/profiles/$PROFILE_NAME"
@@ -185,6 +193,11 @@ had_pumpguard=0
 if [[ -f "$APP_DIR/pump_guard.py" ]]; then
   had_pumpguard=1
   cp -a "$APP_DIR/pump_guard.py" "$APP_DIR/pump_guard.py.bak-$STAMP"
+fi
+had_fanp06=0
+if [[ -f "$APP_DIR/fan_p06.py" ]]; then
+  had_fanp06=1
+  cp -a "$APP_DIR/fan_p06.py" "$APP_DIR/fan_p06.py.bak-$STAMP"
 fi
 
 had_poll=0
@@ -224,6 +237,9 @@ rollback_profile() {
   done
   if [[ "$had_pumpguard" == "1" ]]; then
     cp -a "$APP_DIR/pump_guard.py.bak-$STAMP" "$APP_DIR/pump_guard.py"
+  fi
+  if [[ "$had_fanp06" == "1" ]]; then
+    cp -a "$APP_DIR/fan_p06.py.bak-$STAMP" "$APP_DIR/fan_p06.py"
   fi
 }
 
@@ -328,6 +344,18 @@ echo "Installing fail-safe pump guard..."
 install -m 0644 -o optolink -g optolink "$pumpguard_module_tmp" "$APP_DIR/pump_guard.py"
 if ! "$APP_DIR/venv/bin/python" "$pumpguard_patcher_tmp" --apply; then
   echo "Pump guard integration failed." >&2
+  rollback_profile
+  exit 1
+fi
+
+# Must run after the pump guard patch: pinned to its output. Real GFA P06 fan
+# speed in permanent P300 via short read-only VS1 windows while the flame is
+# on (fan_p06.py). Under VS1 the hook is inert; HA can switch it off
+# (openv/fan_p06/enabled/set OFF).
+echo "Installing VS1-window fan speed reader..."
+install -m 0644 -o optolink -g optolink "$fanp06_module_tmp" "$APP_DIR/fan_p06.py"
+if ! "$APP_DIR/venv/bin/python" "$fanp06_patcher_tmp" --apply; then
+  echo "Fan P06 integration failed." >&2
   rollback_profile
   exit 1
 fi
