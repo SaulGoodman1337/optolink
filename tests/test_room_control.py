@@ -111,7 +111,7 @@ class PureLogicTests(unittest.TestCase):
         self.assertEqual(rc.comfort_band(18, cfg), (17.5, 19.0))
 
     def test_config_validation(self):
-        cfg = rc.validate_config({"toleranz_unten": 9, "toleranz_oben": 0.1, "max_korrektur": 9,
+        cfg = rc.validate_config({"toleranz_unten": 9, "toleranz_oben": 0.1, "max_korrektur": 99,
                                   "aggregation": "foo", "schwelle_min": 20})
         self.assertEqual((cfg["toleranz_unten"], cfg["toleranz_oben"]), (0.5, 0.5))
         self.assertNotIn("schwelle_min", cfg)
@@ -207,6 +207,58 @@ class ControllerTests(unittest.TestCase):
         feed(ctl, clock, a=19.0)
         self.assertEqual(ctl.tick()["state"], "aktiv")
         self.assertEqual(io.mem[rc.ADDR_EXTERNAL_SETPOINT], 22)
+
+    def test_morning_boost_after_cold_night(self):
+        ctl, io, clock = make(morgenboost=2, morgenboost_ausloesung=1.0, morgenboost_dauer=60)
+        io.phase = 1
+        feed(ctl, clock, a=18.5)
+        self.assertEqual(ctl.tick()["state"], "nachtabsenkung")
+        io.phase = 2  # schedule switches to day, room far below 20.5 - 1.0
+        clock.t += 60
+        feed(ctl, clock, a=18.5)
+        status = ctl.tick()
+        self.assertEqual(status["state"], "morgenboost")
+        # regular +2 (gain 1 x 2 K, max 2) plus boost 2, written at once
+        self.assertEqual(io.mem[rc.ADDR_EXTERNAL_SETPOINT], 25)
+        # room reaches the band: boost ends, regular control steps down 1 K
+        clock.t += 1200
+        feed(ctl, clock, a=20.6)
+        status = ctl.tick()
+        self.assertEqual(status["state"], "aktiv")
+        self.assertEqual(io.mem[rc.ADDR_EXTERNAL_SETPOINT], 25)  # rate limit right after boost
+        clock.t += 400
+        feed(ctl, clock, a=20.8)
+        ctl.tick()
+        self.assertEqual(io.mem[rc.ADDR_EXTERNAL_SETPOINT], 24)
+
+    def test_morning_boost_time_limit_and_once(self):
+        ctl, io, clock = make(morgenboost=1, morgenboost_dauer=10)
+        io.phase = 1
+        ctl.tick()
+        io.phase = 2
+        clock.t += 60
+        feed(ctl, clock, a=18.0)
+        self.assertEqual(ctl.tick()["state"], "morgenboost")
+        clock.t += 11 * 60
+        feed(ctl, clock, a=18.0)
+        self.assertNotEqual(ctl.tick()["state"], "morgenboost")
+        clock.t += 60
+        feed(ctl, clock, a=18.0)
+        self.assertNotEqual(ctl.tick()["state"], "morgenboost")
+
+    def test_no_morning_boost_when_off_or_mild_night(self):
+        for cfg, room in (({"morgenboost": 0}, 18.0), ({"morgenboost": 2}, 19.8)):
+            ctl, io, clock = make(**cfg)
+            io.phase = 1
+            ctl.tick()
+            io.phase = 2
+            clock.t += 60
+            feed(ctl, clock, a=room)
+            self.assertNotEqual(ctl.tick()["state"], "morgenboost")
+        # no boost without an observed night -> day transition (service restart)
+        ctl, io, clock = make(morgenboost=2)
+        feed(ctl, clock, a=18.0)
+        self.assertNotEqual(ctl.tick()["state"], "morgenboost")
 
     def test_off_mode_and_native_party_release(self):
         ctl, io, clock = make()

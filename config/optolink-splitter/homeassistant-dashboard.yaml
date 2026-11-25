@@ -2277,6 +2277,11 @@ views:
                 name: Nacht
                 show_state: true
                 show_icon: false
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_raumregelung_wirksamer_raumsollwert
+                name: Wirksam
+                show_state: true
+                show_icon: false
 
           # Desktop/tablet: compact side-by-side controls.
           - type: conditional
@@ -2376,6 +2381,27 @@ views:
                         border: 1px solid color-mix(in srgb, #5c6bc0 40%, var(--divider-color));
                         background: color-mix(in srgb, #5c6bc0 6%, var(--ha-card-background, var(--card-background-color)));
                       }
+
+          # Read-only: room target the boiler is using right now (schedule
+          # day/night, shifted by optolink-room-control if active).
+          - type: custom:mushroom-entity-card
+            entity: sensor.vitodens_200_wb2a_raumregelung_wirksamer_raumsollwert
+            name: Raumsoll wirksam (Raumregelung)
+            icon: mdi:thermostat-auto
+            icon_color: teal
+            layout: horizontal
+            fill_container: true
+            primary_info: name
+            secondary_info: state
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  border-radius: 16px;
+                  border: 1px solid color-mix(in srgb, #26a69a 40%, var(--divider-color));
+                  background: color-mix(in srgb, #26a69a 6%, var(--ha-card-background, var(--card-background-color)));
+                }
 
           - type: heading
             heading: Warmwasser
@@ -5188,7 +5214,7 @@ views:
               **Therme rechnet mit:** {{ a.get('effective_target_c', '–') }} °C Raumsoll<br><br>
               {% set st = states('sensor.vitodens_200_wb2a_raumregelung_status') %}
               {% if st == 'Aus' %}Die Regelung ist ausgeschaltet. Die Therme folgt nur ihrem Zeitprogramm.
-              {% elif st == 'Aktiv' %}Der Raum liegt außerhalb des Bandes. Der Raumsoll ist um
+              {% elif st == 'Morgenboost' %}Morgenboost läuft noch etwa {{ a.get('boost_remaining_min', '?') }} min: Nach der Nacht ist es zu kalt, der Raumsoll ist kräftig angehoben, bis der Raum die untere Schwelle erreicht. {% elif st == 'Aktiv' %}Der Raum liegt außerhalb des Bandes. Der Raumsoll ist um
               **{{ '%+.0f' | format((a.get('effective_target_c', 0) - a.get('base_target_c', 0))) }} K**
               verschoben, dadurch ändert sich der Vorlauf-Soll.
               {% elif st == 'Im Komfortband' %}Der Raum liegt im Komfortband. Es wird nichts verändert.
@@ -5233,26 +5259,6 @@ views:
             grid_options:
               columns: 6
 
-          - type: tile
-            entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_normal
-            name: Tagestemperatur
-            features:
-              - type: numeric-input
-                style: buttons
-            features_position: bottom
-            grid_options:
-              columns: 6
-
-          - type: tile
-            entity: number.vitodens_200_wb2a_heizkreis_m1_raumsolltemperatur_reduziert
-            name: Nachttemperatur
-            features:
-              - type: numeric-input
-                style: buttons
-            features_position: bottom
-            grid_options:
-              columns: 6
-
           - type: heading
             heading: Komfortband um den Basis-Sollwert
             heading_style: subtitle
@@ -5293,7 +5299,7 @@ views:
             content: >-
               Basis ist immer der Raumsollwert, den dein **Zeitprogramm** gerade
               vorgibt: in den Heizzeiten die Tagestemperatur, sonst die
-              Nachttemperatur. Liegt der Raum **mehr als die Toleranz darunter**,
+              Nachttemperatur (einstellbar auf der Hauptseite). Liegt der Raum **mehr als die Toleranz darunter**,
               hebt die Regelung den Raumsollwert an und damit den Vorlauf.
               **Darüber** senkt sie ab. Die Korrektur ändert sich um höchstens
               1 K alle 5 Minuten. In der **Nachtabsenkung** wird nur angezeigt,
@@ -5341,11 +5347,62 @@ views:
               verschoben wird. Beispiel bei 1,0 K/K: Band ab 20,5 °C, Raum 19,5 °C →
               Raumsoll +1 K. Höher heißt kräftiger, aber unruhiger.<br>
               **Max. Korrektur:** größte Verschiebung des Raumsolls in beide Richtungen.
-              Begrenzt, wie stark der Vorlauf angehoben oder abgesenkt werden kann.<br>
+              Begrenzt, wie stark der Vorlauf angehoben oder abgesenkt werden kann.
+              Beides kannst du frei wählen. Die einzige feste Grenze ist der Bereich des
+              externen Sollwerts der Therme (10–30 °C).<br>
               **Mehrere Sensoren:** *Mittelwert* für das ganze Haus, *Minimum* wenn der
               kälteste Raum warm werden soll, *Maximum* wenn kein Raum überheizen soll.<br>
               Der Vorlauf ändert sich entlang deiner Heizkennlinie (Neigung/Niveau, Ansicht
               „Heizkurve“). 1 K Raumsoll entspricht je nach Außentemperatur etwa 0,5–2 K Vorlauf.
+            grid_options:
+              columns: full
+
+          - type: heading
+            heading: Morgenboost
+            heading_style: subtitle
+            icon: mdi:weather-sunset-up
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_morgenboost
+            name: Zusätzlich (0 = aus)
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_morgenboost_ausloesung
+            name: Auslösen ab K unter Band
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_morgenboost_dauer
+            name: Höchstens
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: full
+
+          - type: markdown
+            content: >-
+              Ist es nach der Nachtabsenkung zu kalt geworden, legt der Morgenboost
+              **zusätzlich** zur normalen Korrektur noch etwas drauf. Er startet nur
+              in den ersten 30 Minuten nach Beginn der Heizzeit und nur, wenn der Raum
+              mehr als „Auslösen ab“ unter der unteren Schwelle liegt. Der Sollwert
+              springt dann sofort, ohne 1-K-Schritte. Der Boost endet, sobald der Raum
+              die untere Schwelle erreicht oder die Höchstdauer um ist. Danach regelt
+              die Raumregelung wie gewohnt in 1-K-Schritten zurück. Beispiel: Basis
+              21 °C, Band ab 20,5 °C, Auslösen ab 1 K, Raum morgens 18,5 °C →
+              normale Korrektur +2 K, Morgenboost +2 K → Raumsoll 25 °C.
             grid_options:
               columns: full
 
@@ -5355,6 +5412,7 @@ views:
               | Status | Bedeutung |
               |---|---|
               | Aktiv | Raumsoll wird gerade korrigiert |
+              | Morgenboost | nach kalter Nacht zusätzlich angehoben |
               | Im Komfortband | Raum passt, Zeitprogramm-Sollwert gilt |
               | Nachtabsenkung – nur Anzeige | reduzierte Phase, keine Korrektur möglich |
               | Abschaltbetrieb / Party | Therme läuft im Sondermodus, keine Korrektur |
