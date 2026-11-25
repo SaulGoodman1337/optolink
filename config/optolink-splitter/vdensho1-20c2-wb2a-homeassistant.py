@@ -433,6 +433,12 @@ poll_list = {
                     "state_topic": "{mqtt_base}/pump_guard/vorboost_aktiv/state",
                     "command_topic": "{mqtt_base}/pump_guard/vorboost_aktiv/set",
                 },
+                {
+                    "name": "pumpensteuerung_brenner_kennlinie_aktiv",
+                    "icon": "mdi:chart-bell-curve-cumulative",
+                    "state_topic": "{mqtt_base}/pump_guard/kurve_aktiv/state",
+                    "command_topic": "{mqtt_base}/pump_guard/kurve_aktiv/set",
+                },
             ],
         },
         {
@@ -482,6 +488,48 @@ poll_list = {
                         },
                     ],
                 },
+                {
+                    "min": 20,
+                    "max": 100,
+                    "step": 5,
+                    "unit_of_measurement": "%",
+                    "icon": "mdi:chart-bell-curve-cumulative",
+                    "nopoll": [
+                        {
+                            "name": "pumpensteuerung_kennlinie_mindestdrehzahl",
+                            "state_topic": "{mqtt_base}/pump_guard/kurve_min/state",
+                            "command_topic": "{mqtt_base}/pump_guard/kurve_min/set",
+                        },
+                    ],
+                },
+                {
+                    "min": 0,
+                    "max": 15,
+                    "step": 0.5,
+                    "unit_of_measurement": "K",
+                    "icon": "mdi:thermometer-chevron-up",
+                    "nopoll": [
+                        {
+                            "name": "pumpensteuerung_kennlinie_voll_vor_aus",
+                            "state_topic": "{mqtt_base}/pump_guard/kurve_voll_k/state",
+                            "command_topic": "{mqtt_base}/pump_guard/kurve_voll_k/set",
+                        },
+                    ],
+                },
+                {
+                    "min": 0,
+                    "max": 300,
+                    "step": 10,
+                    "unit_of_measurement": "s",
+                    "icon": "mdi:timer-play-outline",
+                    "nopoll": [
+                        {
+                            "name": "pumpensteuerung_kennlinie_starthaltezeit",
+                            "state_topic": "{mqtt_base}/pump_guard/kurve_start_s/state",
+                            "command_topic": "{mqtt_base}/pump_guard/kurve_start_s/set",
+                        },
+                    ],
+                },
             ],
         },
         {
@@ -491,7 +539,7 @@ poll_list = {
                 {
                     "name": "pumpensteuerung_zustand",
                     "state_topic": "{mqtt_base}/pump_guard/status",
-                    "value_template": "{% set s = value_json.state | default('unknown') %}{% if s == 'ABGESENKT' %}Abgesenkt{% elif s == 'BOOST' %}Boost 100 %{% elif s == 'AUS' %}Aus (100 %){% elif s == 'GESPERRT' %}Gesperrt (100 %){% elif s == 'FEHLER' %}Fehler (100 %){% else %}{{ s }}{% endif %}",
+                    "value_template": "{% set s = value_json.state | default('unknown') %}{% if s == 'ABGESENKT' %}Abgesenkt{% elif s == 'BOOST' %}Boost 100 %{% elif s == 'KENNLINIE' %}Kennlinie {{ value_json.kurve_wert }} %{% elif s == 'AUS' %}Aus (100 %){% elif s == 'GESPERRT' %}Gesperrt (100 %){% elif s == 'FEHLER' %}Fehler (100 %){% else %}{{ s }}{% endif %}",
                     "json_attributes_topic": "{mqtt_base}/pump_guard/status",
                 },
                 {
@@ -519,6 +567,23 @@ poll_list = {
                     "value_template": "{{ value_json.start_schwelle | default('unknown') }}",
                     "json_attributes_topic": "{mqtt_base}/pump_guard/status",
                     "json_attributes_template": "{{ {'start_werte': value_json.start_werte | default([]), 'starts': value_json.starts | default(0)} | tojson }}",
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "unit_of_measurement": "°C",
+            "device_class": "temperature",
+            "state_class": "measurement",
+            "icon": "mdi:thermometer-off",
+            "suggested_display_precision": 1,
+            "nopoll": [
+                {
+                    "name": "pumpensteuerung_gelernte_ausschalttemperatur",
+                    "state_topic": "{mqtt_base}/pump_guard/status",
+                    "value_template": "{{ value_json.aus_temp if value_json.aus_temp is not none else 'unknown' }}",
+                    "json_attributes_topic": "{mqtt_base}/pump_guard/status",
+                    "json_attributes_template": "{{ {'aus_werte': value_json.aus_werte | default([]), 'kurve_wert': value_json.kurve_wert} | tojson }}",
                 },
             ],
         },

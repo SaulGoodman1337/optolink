@@ -219,6 +219,52 @@ class GuardTest(unittest.TestCase):
         self.assertEqual(lg.vorboost_k, 1.0)
         self.assertNotIn((0x01, 0x55E0, 17), pg.ALLOWED_READS)
 
+    def test_burner_curve(self):
+        b = FakeBoiler()
+        g = make_guard(b)
+        g.logic.nachlauf_s = 0.0
+        g.logic.kurve_aktiv = True
+        g.logic.kurve_start_s = 5.0
+        run(g, b, 8)
+        # first heating burn: nothing learned yet -> 100 %; stops at 45.0 -> switch-off learned
+        b.gfa = FLAME_GFA
+        run(g, b, 8)
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Flamme"))
+        b.kessel = 45.0
+        run(g, b, 3)
+        b.gfa = IDLE_GFA
+        b.kessel = 33.0
+        run(g, b, 3)
+        self.assertEqual(g.logic.aus_temp, 45.0)
+        # next burn: start hold 100 %, then curve value by headroom
+        b.gfa = FLAME_GFA
+        run(g, b, 2)
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Flamme"))
+        b.kessel = 36.0                               # headroom 9 K >= 3 + 5 -> kurve_min
+        samples = run(g, b, 8)
+        self.assertEqual(g.logic.decide(b.t), (pg.KENNLINIE, "Brenner-Kennlinie 60 %"))
+        self.assertGreater(samples[-60:].count(60), 40)
+        b.kessel = 39.5                               # headroom 5.5 -> 100 - 0.5*40 = 80
+        samples = run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t)[1], "Brenner-Kennlinie 80 %")
+        self.assertGreater(samples[-30:].count(80), 15)
+        b.kessel = 42.5                               # within 3 K of switch-off -> 100 %
+        run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Flamme"))
+        self.assertEqual(b.ram[5], 100)
+        b.ww = 1                                      # DHW always 100 %
+        b.kessel = 36.0
+        run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Warmwasser"))
+        self.assertIsNone(g.logic.error)
+
+    def test_burner_curve_off_by_default(self):
+        lg = pg.GuardLogic()
+        self.assertFalse(lg.kurve_aktiv)
+        lg.flame, lg.flame_since, lg.aus_temp, lg.kessel = True, 0.0, 45.0, 30.0
+        lg.ts["kessel"] = 100.0
+        self.assertIsNone(lg.kurve(100.0))
+
     def test_restart_starts_with_nachlauf_boost(self):
         b = FakeBoiler()
         settings = types.SimpleNamespace(vs1protocol=False, mqtt_topic="openv", mqtt_broker=None)

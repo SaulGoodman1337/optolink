@@ -445,6 +445,21 @@ kommt von der Volllast-Startphase und lässt sich über die Pumpe nicht beheben.
 Die Taktsperre (0x55E0 Byte 14) dauert nur ~4 min (Codierstecker
 Mindestpausenzeit = 4), der Rest der Pause ist temperaturbegrenzt.
 
+**Brenner-Kennlinie (1.4.0, optional, Standard aus):** Messung 25.11.2026
+(57 Brennerläufe): nach der Startphase moduliert der Brenner praktisch immer an
+der Untergrenze (33 %), eine Kennlinie über die Modulation wäre daher konstant.
+Die Kennlinie richtet sich deshalb nach dem Abstand zur gelernten
+Ausschalttemperatur (Kesseltemperatur bei den letzten Heiz-Brennerstopps):
+nach `kurve_start_s` (Standard 60 s) läuft die Pumpe mit `kurve_min`
+(Standard 60 %), ab `kurve_voll_k` + 5 K vor Aus steigt sie linear (5-%-Schritte)
+und erreicht `kurve_voll_k` (Standard 3 K) vor Aus 100 %. Warmwasser, Ventil
+nicht Heizen, veraltete Temperatur oder noch keine gelernte Ausschalttemperatur
+ergeben 100 %. Zustand `KENNLINIE` zählt wie `ABGESENKT` als Absenkung
+(gleicher fail-safe RAM-Mechanismus). Achtung: weniger Durchfluss in der
+Brennphase lässt den Kessel schneller die Ausschalttemperatur erreichen, die
+Brenndauer wird also eher kürzer. Nur per A/B-Vergleich einsetzen.
+MQTT: `kurve_aktiv`, `kurve_min`, `kurve_voll_k`, `kurve_start_s` (…/set, …/state).
+
 **Boost während Taktsperre** (1.2.x) wurde in 1.3.0 wieder entfernt; der
 Wächter liest 0x55E0 nicht mehr.
 
