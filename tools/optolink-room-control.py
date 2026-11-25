@@ -77,6 +77,7 @@ SENSOR_MAX_C = 35.0
 CYCLE_SECONDS = 60.0
 SENSOR_MAX_AGE_S = 600.0
 MIN_STEP_INTERVAL_S = 300.0
+MORNING_WINDOW_S = 1800.0  # boost may start within 30 min after the day phase began
 HYSTERESIS_K = 0.75   # between correction levels
 EXIT_MARGIN_K = 0.2   # how far back inside the band before releasing
 INFLUENCE_CHECK_S = 1800.0
@@ -92,8 +93,14 @@ PARAMETERS = {
     # comfort band relative to the currently scheduled room target
     "toleranz_unten": (float, 0.2, 3.0, 0.5),
     "toleranz_oben": (float, 0.2, 3.0, 0.5),
-    "verstaerkung": (float, 0.5, 3.0, 1.0),
-    "max_korrektur": (int, 1, 5, 2),
+    # user decides; the hard bound is the external setpoint range 10..30 C
+    "verstaerkung": (float, 0.1, 20.0, 1.0),
+    "max_korrektur": (int, 1, 20, 2),
+    # morning boost: extra K on top of the regular correction after the
+    # night setback if the room cooled down too much (0 = off)
+    "morgenboost": (int, 0, 20, 0),
+    "morgenboost_ausloesung": (float, 0.2, 10.0, 1.0),
+    "morgenboost_dauer": (int, 10, 480, 90),
 }
 
 DEFAULT_CONFIG = {
@@ -225,6 +232,14 @@ def band_correction(room_c, lower_c, upper_c, gain, max_k):
     return max(-max_k, min(max_k, gain * deviation))
 
 
+def morning_boost_command(target_c, room_c, config):
+    """External setpoint during the morning boost (jumps, no 1 K steps)."""
+    lower, upper = comfort_band(target_c, config)
+    corr = band_correction(room_c, lower, upper, config["verstaerkung"], config["max_korrektur"])
+    regular = max(1, int(math.floor(corr + 0.5))) if corr > 0 else 0
+    return max(EXTERNAL_MIN_C, min(EXTERNAL_MAX_C, target_c + regular + config["morgenboost"]))
+
+
 def next_command(*, target_c, room_c, current_cmd, config, now, last_step_at):
     """Next external setpoint to write (0 = regular room target).
 
@@ -325,6 +340,10 @@ class RoomController:
         self.status = {"state": "start"}
         self.resumed = False
         self.schedule_info = {}
+        self.last_phase = None
+        self.day_started_at = None   # observed reduced/off -> normal transition
+        self.boost_until = None      # morning boost active until (clock)
+        self.boost_done = False      # at most one boost per morning
 
     @property
     def config(self):
@@ -419,6 +438,28 @@ class RoomController:
         self.schedule_info = info
         return phase, base
 
+    def morning_boost(self, now, room, target):
+        """External setpoint for an active morning boost, else 0."""
+        cfg = self.config
+        lower, _upper = comfort_band(target, cfg)
+        if self.boost_until is not None:
+            if now >= self.boost_until or room >= lower or not cfg["morgenboost"]:
+                reason = "time limit" if now >= self.boost_until else (
+                    "room reached the band" if room >= lower else "disabled")
+                log(f"morning boost ended ({reason}), room {room:.2f} °C")
+                self.boost_until = None
+                self.last_step_at = now  # regular control steps down from here
+                return 0
+            return morning_boost_command(target, room, cfg)
+        if (cfg["morgenboost"] and not self.boost_done and self.day_started_at is not None
+                and now - self.day_started_at <= MORNING_WINDOW_S
+                and room < lower - cfg["morgenboost_ausloesung"]):
+            self.boost_done = True
+            self.boost_until = now + cfg["morgenboost_dauer"] * 60
+            log(f"morning boost started: room {room:.2f} °C < {lower - cfg['morgenboost_ausloesung']:.2f} °C")
+            return morning_boost_command(target, room, cfg)
+        return 0
+
     def tick(self):
         now = self.clock()
         cfg = self.config
@@ -443,6 +484,14 @@ class RoomController:
             return self._status("fremdbelegt", foreign_value_c=current, **info)
 
         phase, base = self.read_schedule()
+        day = phase in ("normal", "dauernd_normal")
+        if day and self.last_phase in ("reduziert", "abschalt"):
+            self.day_started_at = now
+            self.boost_done = False
+        if not day:
+            self.day_started_at = None
+            self.boost_until = None
+        self.last_phase = phase
 
         if not cfg["enabled"]:
             self.release("disabled")
@@ -478,6 +527,26 @@ class RoomController:
             return self._status("fehler", error=f"0x2306={self.schedule_info.get('normal_target_c')}", **info)
 
         target = base
+        boost = self.morning_boost(now, room, target)
+        if boost:
+            if boost != self.owned:
+                previous = self.owned
+                self.set_owned(boost if boost else previous)
+                try:
+                    self.write_verified(boost)
+                except Exception:
+                    self.release("boost write failed", also_owned=(previous,))
+                    raise
+                self.set_owned(boost)
+                self.last_step_at = now
+                log(f"morning boost: room {room:.2f} °C, target {target} °C: 0x2321 {previous} -> {boost}")
+            return self._status(
+                "morgenboost",
+                effective_target_c=boost,
+                boost_remaining_min=round((self.boost_until - now) / 60),
+                **info,
+            )
+
         cmd = next_command(
             target_c=target,
             room_c=room,
@@ -704,7 +773,8 @@ class Service:
 
     def publish_config(self):
         cfg = self.controller.config
-        for key in ("toleranz_unten", "toleranz_oben", "verstaerkung", "max_korrektur", "aggregation"):
+        for key in ("toleranz_unten", "toleranz_oben", "verstaerkung", "max_korrektur",
+                    "morgenboost", "morgenboost_ausloesung", "morgenboost_dauer", "aggregation"):
             self.client.publish(f"{self.topic}/{key}/state", str(cfg[key]), retain=True)
         self.client.publish(f"{self.topic}/enabled/state", "1" if cfg["enabled"] else "0", retain=True)
 

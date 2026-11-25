@@ -819,8 +819,8 @@ poll_list = {
                     ],
                 },
                 {
-                    "min": 0.5,
-                    "max": 3,
+                    "min": 0.1,
+                    "max": 20,
                     "step": 0.1,
                     "unit_of_measurement": "K/K",
                     "icon": "mdi:tune-variant",
@@ -834,7 +834,7 @@ poll_list = {
                 },
                 {
                     "min": 1,
-                    "max": 5,
+                    "max": 20,
                     "step": 1,
                     "unit_of_measurement": "K",
                     "icon": "mdi:arrow-expand-vertical",
@@ -843,6 +843,48 @@ poll_list = {
                             "name": "raumregelung_max_korrektur",
                             "state_topic": "{mqtt_base}/room_control/max_korrektur/state",
                             "command_topic": "{mqtt_base}/room_control/max_korrektur/set",
+                        },
+                    ],
+                },
+                {
+                    "min": 0,
+                    "max": 20,
+                    "step": 1,
+                    "unit_of_measurement": "K",
+                    "icon": "mdi:weather-sunset-up",
+                    "nopoll": [
+                        {
+                            "name": "raumregelung_morgenboost",
+                            "state_topic": "{mqtt_base}/room_control/morgenboost/state",
+                            "command_topic": "{mqtt_base}/room_control/morgenboost/set",
+                        },
+                    ],
+                },
+                {
+                    "min": 0.2,
+                    "max": 10,
+                    "step": 0.1,
+                    "unit_of_measurement": "K",
+                    "icon": "mdi:thermometer-alert",
+                    "nopoll": [
+                        {
+                            "name": "raumregelung_morgenboost_ausloesung",
+                            "state_topic": "{mqtt_base}/room_control/morgenboost_ausloesung/state",
+                            "command_topic": "{mqtt_base}/room_control/morgenboost_ausloesung/set",
+                        },
+                    ],
+                },
+                {
+                    "min": 10,
+                    "max": 480,
+                    "step": 10,
+                    "unit_of_measurement": "min",
+                    "icon": "mdi:timer-outline",
+                    "nopoll": [
+                        {
+                            "name": "raumregelung_morgenboost_dauer",
+                            "state_topic": "{mqtt_base}/room_control/morgenboost_dauer/state",
+                            "command_topic": "{mqtt_base}/room_control/morgenboost_dauer/set",
                         },
                     ],
                 },
@@ -909,7 +951,7 @@ poll_list = {
                 {
                     "name": "raumregelung_status",
                     "state_topic": "{mqtt_base}/room_control/status",
-                    "value_template": "{% set m = {'aus':'Aus','aktiv':'Aktiv','neutral':'Im Komfortband','nachtabsenkung':'Nachtabsenkung – nur Anzeige','abschaltbetrieb':'Abschaltbetrieb','party':'Party','keine_sensoren':'Keine Sensordaten','fremdbelegt':'Extern belegt','stoerung':'Störung – freigegeben','raumeinfluss_codiert':'Raumeinfluss codiert','fehler':'Fehler','start':'Start'} %}{{ m.get(value_json.state, value_json.state) }}",
+                    "value_template": "{% set m = {'aus':'Aus','aktiv':'Aktiv','neutral':'Im Komfortband','morgenboost':'Morgenboost','nachtabsenkung':'Nachtabsenkung – nur Anzeige','abschaltbetrieb':'Abschaltbetrieb','party':'Party','keine_sensoren':'Keine Sensordaten','fremdbelegt':'Extern belegt','stoerung':'Störung – freigegeben','raumeinfluss_codiert':'Raumeinfluss codiert','fehler':'Fehler','start':'Start'} %}{{ m.get(value_json.state, value_json.state) }}",
                     "json_attributes_topic": "{mqtt_base}/room_control/status",
                 },
                 {

@@ -93,6 +93,23 @@ Die Regelung startet **ausgeschaltet** und wird im Dashboard aktiviert.
 Die Einstellungen bleiben in `/var/lib/optolink-room-control/state.json`
 erhalten.
 
+## Morgenboost
+
+Ist der Raum nach der Nachtabsenkung zu stark ausgekühlt, hebt der
+Morgenboost den Raumsoll **zusätzlich** zur normalen Korrektur an:
+
+```text
+Start:  nur in den ersten 30 min nach Wechsel Reduziert → Normal,
+        Raum < untere Schwelle − Auslösung, höchstens einmal pro Morgen
+Wert:   Basis + normale Korrektur (mind. 1 K) + Morgenboost, sofort geschrieben
+Ende:   Raum ≥ untere Schwelle, Höchstdauer erreicht oder Morgenboost = 0
+danach: normale Regelung, zurück in 1-K-Schritten alle 5 min
+```
+
+Standard: Morgenboost 0 K (aus), Auslösung 1,0 K, Höchstdauer 90 min. Nach
+einem Neustart des Dienstes während der Heizzeit gibt es an diesem Morgen
+keinen Boost, weil der Phasenwechsel nicht beobachtet wurde.
+
 ## Sicherheitsregeln
 
 * Der Dienst öffnet keine serielle Schnittstelle. Er schreibt
@@ -141,17 +158,21 @@ erhalten.
 | `sensor.vitodens_200_wb2a_raumregelung_phase` | Tag (Normal) / Nacht (Reduziert) / Abschaltbetrieb / Party, laut Zeitprogramm |
 | `sensor.vitodens_200_wb2a_raumregelung_basis_sollwert` | Tages- bzw. Nachttemperatur, je nach Phase |
 | `sensor.vitodens_200_wb2a_raumregelung_untere_schwelle` / `_obere_schwelle` | daraus berechnetes Komfortband in °C |
-| `number.vitodens_200_wb2a_raumregelung_verstaerkung` | K Sollwertkorrektur je K Abweichung (0,5..3) |
-| `number.vitodens_200_wb2a_raumregelung_max_korrektur` | maximale Korrektur (1..5 K) |
+| `number.vitodens_200_wb2a_raumregelung_verstaerkung` | K Sollwertkorrektur je K Abweichung (0,1..20, frei wählbar) |
+| `number.vitodens_200_wb2a_raumregelung_max_korrektur` | maximale Korrektur (1..20 K, frei wählbar; harte Grenze bleibt 0x2321 = 10..30 °C) |
+| `number.vitodens_200_wb2a_raumregelung_morgenboost` | zusätzliche K beim Morgenboost (0 = aus) |
+| `number.vitodens_200_wb2a_raumregelung_morgenboost_ausloesung` | Boost startet, wenn der Raum so viele K unter der unteren Schwelle liegt |
+| `number.vitodens_200_wb2a_raumregelung_morgenboost_dauer` | Höchstdauer des Boosts (10..480 min) |
 | `select.vitodens_200_wb2a_raumregelung_mittelung` | Mittelwert / Minimum / Maximum |
 | `sensor.vitodens_200_wb2a_raumregelung_raumtemperatur` | kombinierte Raumtemperatur, Attribute: Einzelsensoren und `anzahl` der frischen Werte, die beim Dienst angekommen sind |
 | `sensor.vitodens_200_wb2a_raumregelung_wirksamer_raumsollwert` | Raumsoll, mit dem die Therme gerade rechnet |
-| `sensor.vitodens_200_wb2a_raumregelung_status` | Aus / Aktiv / Im Komfortband / Nachtabsenkung – nur Anzeige / Abschaltbetrieb / Party / Keine Sensordaten / Extern belegt / Störung / Fehler |
+| `sensor.vitodens_200_wb2a_raumregelung_status` | Aus / Aktiv / Morgenboost / Im Komfortband / Nachtabsenkung – nur Anzeige / Abschaltbetrieb / Party / Keine Sensordaten / Extern belegt / Störung / Fehler |
 | `sensor.optolink_raumregelung_sensoren` | optional, nur mit dem HA-Paket: Anzahl gefundener Sensoren, Attribut `entities` |
 
 MQTT-Themen unter `openv/room_control/`: `sensors` (Eingang),
 `<parameter>/set` und `<parameter>/state` für `enabled`, `toleranz_unten`,
-`toleranz_oben`, `verstaerkung`, `max_korrektur`, `aggregation`, sowie
+`toleranz_oben`, `verstaerkung`, `morgenboost`, `morgenboost_ausloesung`,
+`morgenboost_dauer`, `max_korrektur`, `aggregation`, sowie
 `status` (JSON, retained) und `availability`.
 
 ## Betrieb
