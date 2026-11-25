@@ -80,7 +80,7 @@ class GuardLogic:
     def __init__(self):
         self.enabled = False
         self.low = 30
-        self.nachlauf_s = 180.0
+        self.nachlauf_s = 720.0            # A/B 2026-11-25: 100 % over the whole pause = fewer starts
         self.flame = self.lockout = False
         self.sequence = False
         self.ww = None

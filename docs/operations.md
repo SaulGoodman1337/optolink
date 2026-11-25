@@ -428,6 +428,16 @@ X K von dieser Schwelle entfernt ist (Freigabe 0,5 K darunter, 0 = aus).
 Veraltete Temperaturen (> 10 s) schalten nur den Vorboost ab, nicht die
 Absenkung.
 
+**Messergebnis A/B-Test (25.11.2026, 00:10–03:50, Soll 36,5 °C, 28 Zyklen):**
+Abwechselnd nach jedem Brennerstopp Nachlauf 3 min bzw. 12 min (Pumpe 100 %
+über die ganze Pause). Brenndauer in beiden Fällen ~34 s, Kessel beim Start
+immer 32,5 °C (Soll − 4 K). Die Pause war mit 100 % Pumpe im Mittel ~80 s
+länger (≈ 516 s statt 435 s in den ersten 20 Zyklen), also rund 15 % weniger
+Brennerstarts. Daher Standard-Nachlauf 12 min. Die kurze Brenndauer selbst
+kommt von der Volllast-Startphase und lässt sich über die Pumpe nicht beheben.
+Die Taktsperre (0x55E0 Byte 14) dauert nur ~4 min (Codierstecker
+Mindestpausenzeit = 4), der Rest der Pause ist temperaturbegrenzt.
+
 **Boost während Taktsperre:** Mit `sperre_boost` = ON läuft die Pumpe mit
 100 %, solange die Brenner-Taktsperre aktiv ist (0x55E0 Byte 14, Bit 0 = 0).
 Die Sperre bestimmt dann die Pausenlänge, die Pumpe zieht in dieser Zeit so
