@@ -3,8 +3,9 @@
 `optolink-room-control` passt die Vorlauftemperatur des Heizkreises A1/M1
 an die gemessene Raumtemperatur an. Dazu kombiniert der Dienst einen oder
 mehrere Raumtemperatursensoren aus Home Assistant, vergleicht das Ergebnis
-mit einem einstellbaren Komfortband (untere und obere Schwelle) und setzt
-den **externen Raumsollwert Normal** der WB2A an Adresse `0x2321`.
+mit einem Komfortband um den Raumsollwert, den das **Zeitprogramm der
+Therme gerade vorgibt**, und setzt den **externen Raumsollwert Normal** der
+WB2A an Adresse `0x2321`.
 Die Therme verschiebt den Vorlauf-Sollwert dann entlang der eingestellten
 Heizkennlinie (D3/D4), genau so, als wäre der Raumsollwert geändert worden.
 Mit `0x2321 = 0` gilt wieder der normale Raumsollwert `0x2306`.
@@ -27,6 +28,28 @@ wurde per A/B/A durchgeführt und auf `0x2321 = 0` zurückgestellt.
 
 Die Kennlinie ist nicht linear und hängt von Außentemperatur und Heizkurve ab.
 
+## Tag und Nacht nach Wochenplan
+
+Der Dienst liest jeden Zyklus aus `0x2500` (22 Byte), in welcher Phase die
+Therme laut ihrem Zeitprogramm gerade ist (Byte 1: 0 Abschaltbetrieb,
+1 Reduziert, 2 Normal, 3 Dauernd Normal; Byte 12/13: aktueller Raumsoll
+× 0,1). Daraus ergibt sich der **Basis-Sollwert**:
+
+| Phase | Basis | Regelung |
+| --- | --- | --- |
+| Normal / Dauernd Normal (Heizzeit) | Tagestemperatur `0x2306` | korrigiert über `0x2321` |
+| Reduziert (außerhalb der Heizzeit) | Nachttemperatur `0x2307` | nur Anzeige, `0x2321` freigegeben |
+| Abschaltbetrieb, native Party (`0x2303`) | – | nur Anzeige, `0x2321` freigegeben |
+
+Die Heizzeiten pflegst du wie bisher im Zeitprogramm (Dashboard
+„Zeitprogramme“ oder am Gerät); die Regelung folgt automatisch.
+
+Live geprüft am 24.11.2026 um 22:00 (Absenkphase, Nachttemperatur 18 °C,
+außen −0,3 °C): `0x2321 = 23` ließ den aktuellen Raumsoll bei 18,0 °C und den
+Vorlauf-Soll bei 36,5 °C. Der externe Sollwert wirkt also nur in der
+Normalphase. Eine Nachtkorrektur ginge nur über Schreiben von `0x2307`
+(EEPROM, deine Einstellung) und ist bewusst nicht eingebaut.
+
 ## Datenfluss
 
 ```text
@@ -45,22 +68,26 @@ Optolink-Splitter ──► WB2A: Raumsoll wirksam ──► Vorlauf-Soll
 ## Regelgesetz
 
 ```text
+untere Schwelle = Basis − Toleranz unten,  obere Schwelle = Basis + Toleranz oben
 Raum < untere Schwelle:  Korrektur = +Verstärkung × (untere Schwelle − Raum)
 Raum > obere Schwelle:   Korrektur = −Verstärkung × (Raum − obere Schwelle)
-sonst:                   Korrektur = 0  → 0x2321 = 0 (normaler Sollwert)
+sonst:                   Korrektur = 0  → 0x2321 = 0 (Sollwert laut Zeitprogramm)
 
 Korrektur auf ± "max. Korrektur" begrenzt
-externer Sollwert = runden(Raumsoll normal + Korrektur), 10..30 °C
+externer Sollwert = runden(Basis + Korrektur), 10..30 °C
 ```
 
 * Änderungen erfolgen in Schritten von höchstens **1 K**, frühestens alle
   **5 Minuten**. Damit springt der Vorlauf nicht.
-* Eine Hysterese von 0,75 K verhindert Pendeln an der Rundungsgrenze.
-* Der Raumsollwert normal (`0x2306`) wird jeden Zyklus neu gelesen. Eine
-  Änderung am Regler, im Dashboard oder durch die Party-Emulation wird also
-  übernommen.
+* Liegt der Raum außerhalb des Bandes, korrigiert die Regelung immer um
+  mindestens 1 K. Zurückgenommen wird erst, wenn der Raum 0,2 K innerhalb des
+  Bandes liegt. Zwischen den Korrekturstufen gilt eine Hysterese von 0,75 K.
+* Phase, Tages- und Nachttemperatur werden jeden Zyklus neu gelesen. Eine
+  Änderung am Regler, im Dashboard, im Zeitprogramm oder durch die
+  Party-Emulation wird also übernommen.
 
-Standardwerte: untere Schwelle 20,5 °C, obere Schwelle 21,5 °C,
+Standardwerte: Toleranz unten 0,5 K, Toleranz oben 0,5 K (bei 21 °C also
+20,5..21,5 °C),
 Verstärkung 1,0 K/K, max. Korrektur 2 K, Mittelung „Mittelwert“.
 Die Regelung startet **ausgeschaltet** und wird im Dashboard aktiviert.
 Die Einstellungen bleiben in `/var/lib/optolink-room-control/state.json`
@@ -83,7 +110,7 @@ erhalten.
   und wird freigegeben, sobald sie wieder antwortet und ein Freigabegrund
   vorliegt.
 * Der externe Sollwert wirkt nur auf den Normalbetrieb. In der reduzierten
-  Phase (Nachtabsenkung) gilt der reduzierte Sollwert.
+  Phase (Nachtabsenkung) gibt der Dienst `0x2321` frei und zeigt nur an.
 
 ## Home Assistant einrichten
 
@@ -109,19 +136,22 @@ erhalten.
 | Entity | Bedeutung |
 | --- | --- |
 | `switch.vitodens_200_wb2a_raumregelung_aktiv` | Regelung ein/aus |
-| `number.vitodens_200_wb2a_raumregelung_schwelle_min` | untere Raumtemperatur-Schwelle (15..25 °C) |
-| `number.vitodens_200_wb2a_raumregelung_schwelle_max` | obere Raumtemperatur-Schwelle (15..26 °C) |
+| `number.vitodens_200_wb2a_raumregelung_toleranz_unten` | Abstand der unteren Schwelle unter dem Basis-Sollwert (0,2..3 K) |
+| `number.vitodens_200_wb2a_raumregelung_toleranz_oben` | Abstand der oberen Schwelle über dem Basis-Sollwert (0,2..3 K) |
+| `sensor.vitodens_200_wb2a_raumregelung_phase` | Tag (Normal) / Nacht (Reduziert) / Abschaltbetrieb / Party, laut Zeitprogramm |
+| `sensor.vitodens_200_wb2a_raumregelung_basis_sollwert` | Tages- bzw. Nachttemperatur, je nach Phase |
+| `sensor.vitodens_200_wb2a_raumregelung_untere_schwelle` / `_obere_schwelle` | daraus berechnetes Komfortband in °C |
 | `number.vitodens_200_wb2a_raumregelung_verstaerkung` | K Sollwertkorrektur je K Abweichung (0,5..3) |
 | `number.vitodens_200_wb2a_raumregelung_max_korrektur` | maximale Korrektur (1..5 K) |
 | `select.vitodens_200_wb2a_raumregelung_mittelung` | Mittelwert / Minimum / Maximum |
 | `sensor.vitodens_200_wb2a_raumregelung_raumtemperatur` | kombinierte Raumtemperatur, Attribute: Einzelsensoren und `anzahl` der frischen Werte, die beim Dienst angekommen sind |
 | `sensor.vitodens_200_wb2a_raumregelung_wirksamer_raumsollwert` | Raumsoll, mit dem die Therme gerade rechnet |
-| `sensor.vitodens_200_wb2a_raumregelung_status` | Aus / Aktiv / Im Komfortband / Keine Sensordaten / Extern belegt / Störung / Fehler |
-| `sensor.optolink_raumregelung_sensoren` | Anzahl gefundener Sensoren (Entity- und Geräte-Label, aus dem HA-Paket), Attribut `entities` |
+| `sensor.vitodens_200_wb2a_raumregelung_status` | Aus / Aktiv / Im Komfortband / Nachtabsenkung – nur Anzeige / Abschaltbetrieb / Party / Keine Sensordaten / Extern belegt / Störung / Fehler |
+| `sensor.optolink_raumregelung_sensoren` | optional, nur mit dem HA-Paket: Anzahl gefundener Sensoren, Attribut `entities` |
 
 MQTT-Themen unter `openv/room_control/`: `sensors` (Eingang),
-`<parameter>/set` und `<parameter>/state` für `enabled`, `schwelle_min`,
-`schwelle_max`, `verstaerkung`, `max_korrektur`, `aggregation`, sowie
+`<parameter>/set` und `<parameter>/state` für `enabled`, `toleranz_unten`,
+`toleranz_oben`, `verstaerkung`, `max_korrektur`, `aggregation`, sowie
 `status` (JSON, retained) und `availability`.
 
 ## Betrieb

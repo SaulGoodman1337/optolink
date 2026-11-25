@@ -239,7 +239,7 @@ Die `select`-/`time`-/`switch`-Entities im Editor sind daher Staging-State und k
 ## 9a. Raumregelung
 
 Die Ansicht **Raumregelung** im Dashboard steuert `optolink-room-control`:
-Ein/Aus, untere und obere Schwelle, Verstärkung, maximale Korrektur und
+Ein/Aus, Phase laut Zeitprogramm mit Tages-/Nachttemperatur, Toleranz nach unten/oben um diesen Sollwert, Verstärkung, maximale Korrektur und
 die Mittelung mehrerer Sensoren. Welche Sensoren einfließen, legt das
 HA-Label „Optolink Raumregelung“ fest; das zugehörige Paket ist
 `config/optolink-splitter/homeassistant-room-control-package.yaml`.
