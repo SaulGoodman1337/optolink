@@ -753,9 +753,11 @@ poll_list = {
         #
         # Home Assistant publishes room sensors to {mqtt_base}/room_control/
         # sensors; the helper service combines them, compares the result
-        # with the lower/upper threshold and adjusts the external normal
-        # room setpoint 0x2321 (0 = regular target 0x2306). Live-verified:
-        # external 20/21/22 C at target 21 C -> flow setpoint 35.0/35.5/37.4 C.
+        # with a comfort band around the room target the weekly schedule
+        # currently applies (0x2500 phase: normal 0x2306 / reduced 0x2307)
+        # and adjusts the external normal room setpoint 0x2321 (0 = regular
+        # target). Live-verified: external 20/21/22 C at target 21 C ->
+        # flow setpoint 35.0/35.5/37.4 C; no effect in the reduced phase.
         # These entities only change the helper's configuration; the helper
         # owns the single controller write path. Availability follows the
         # splitter LWT (the adapter sets it for every entity); whether the
@@ -783,30 +785,30 @@ poll_list = {
             "mode": "box",
             "units": [
                 {
-                    "min": 15,
-                    "max": 25,
-                    "step": 0.5,
-                    "unit_of_measurement": "°C",
+                    "min": 0.2,
+                    "max": 3,
+                    "step": 0.1,
+                    "unit_of_measurement": "K",
                     "icon": "mdi:thermometer-chevron-down",
                     "nopoll": [
                         {
-                            "name": "raumregelung_schwelle_min",
-                            "state_topic": "{mqtt_base}/room_control/schwelle_min/state",
-                            "command_topic": "{mqtt_base}/room_control/schwelle_min/set",
+                            "name": "raumregelung_toleranz_unten",
+                            "state_topic": "{mqtt_base}/room_control/toleranz_unten/state",
+                            "command_topic": "{mqtt_base}/room_control/toleranz_unten/set",
                         },
                     ],
                 },
                 {
-                    "min": 15,
-                    "max": 26,
-                    "step": 0.5,
-                    "unit_of_measurement": "°C",
+                    "min": 0.2,
+                    "max": 3,
+                    "step": 0.1,
+                    "unit_of_measurement": "K",
                     "icon": "mdi:thermometer-chevron-up",
                     "nopoll": [
                         {
-                            "name": "raumregelung_schwelle_max",
-                            "state_topic": "{mqtt_base}/room_control/schwelle_max/state",
-                            "command_topic": "{mqtt_base}/room_control/schwelle_max/set",
+                            "name": "raumregelung_toleranz_oben",
+                            "state_topic": "{mqtt_base}/room_control/toleranz_oben/state",
+                            "command_topic": "{mqtt_base}/room_control/toleranz_oben/set",
                         },
                     ],
                 },
@@ -874,6 +876,24 @@ poll_list = {
                     "state_topic": "{mqtt_base}/room_control/status",
                     "value_template": "{{ value_json.effective_target_c | default(None) }}",
                 },
+                {
+                    "name": "raumregelung_basis_sollwert",
+                    "icon": "mdi:calendar-clock",
+                    "state_topic": "{mqtt_base}/room_control/status",
+                    "value_template": "{{ value_json.base_target_c | default(None) }}",
+                },
+                {
+                    "name": "raumregelung_untere_schwelle",
+                    "icon": "mdi:thermometer-chevron-down",
+                    "state_topic": "{mqtt_base}/room_control/status",
+                    "value_template": "{{ value_json.schwelle_unten_c | default(None) }}",
+                },
+                {
+                    "name": "raumregelung_obere_schwelle",
+                    "icon": "mdi:thermometer-chevron-up",
+                    "state_topic": "{mqtt_base}/room_control/status",
+                    "value_template": "{{ value_json.schwelle_oben_c | default(None) }}",
+                },
             ],
         },
         {
@@ -883,8 +903,14 @@ poll_list = {
                 {
                     "name": "raumregelung_status",
                     "state_topic": "{mqtt_base}/room_control/status",
-                    "value_template": "{% set m = {'aus':'Aus','aktiv':'Aktiv','neutral':'Im Komfortband','keine_sensoren':'Keine Sensordaten','fremdbelegt':'Extern belegt','stoerung':'Störung – freigegeben','raumeinfluss_codiert':'Raumeinfluss codiert','fehler':'Fehler','start':'Start'} %}{{ m.get(value_json.state, value_json.state) }}",
+                    "value_template": "{% set m = {'aus':'Aus','aktiv':'Aktiv','neutral':'Im Komfortband','nachtabsenkung':'Nachtabsenkung – nur Anzeige','abschaltbetrieb':'Abschaltbetrieb','party':'Party','keine_sensoren':'Keine Sensordaten','fremdbelegt':'Extern belegt','stoerung':'Störung – freigegeben','raumeinfluss_codiert':'Raumeinfluss codiert','fehler':'Fehler','start':'Start'} %}{{ m.get(value_json.state, value_json.state) }}",
                     "json_attributes_topic": "{mqtt_base}/room_control/status",
+                },
+                {
+                    "name": "raumregelung_phase",
+                    "icon": "mdi:calendar-clock",
+                    "state_topic": "{mqtt_base}/room_control/status",
+                    "value_template": "{% set m = {'normal':'Tag (Normal)','dauernd_normal':'Dauernd Normal','reduziert':'Nacht (Reduziert)','abschalt':'Abschaltbetrieb','party':'Party'} %}{{ m.get(value_json.phase, value_json.phase | default('unbekannt')) }}",
                 },
             ],
         },

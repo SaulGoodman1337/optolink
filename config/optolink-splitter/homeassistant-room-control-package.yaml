@@ -65,7 +65,16 @@ automation:
         {{ {'sensors': ns.d} }}
     conditions:
       - condition: template
-        value_template:
+        value_template: "{{ kandidaten | count > 0 }}"
+    actions:
+      - action: mqtt.publish
+        data:
+          topic: openv/room_control/sensors
+          payload: "{{ payload | tojson }}"
+          qos: 0
+          retain: false
+
+template:
   - sensor:
       - name: "Optolink Raumregelung Sensoren"
         unique_id: optolink_raumregelung_sensoren

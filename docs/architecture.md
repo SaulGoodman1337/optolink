@@ -162,7 +162,7 @@ Home Assistant zeigt aus Bediengründen zwei Schalter. Der Manager übersetzt di
 
 ### `tools/optolink-room-control.py`
 
-Raumtemperatur-Aufschaltung für Heizkreis A1/M1. Kombiniert die von Home Assistant gesendeten Raumtemperaturen (`openv/room_control/sensors`), vergleicht sie mit einem Komfortband und setzt den externen Raumsollwert Normal **`0x2321`** (0 = normaler Sollwert `0x2306`). Einziger Schreibpunkt ist `0x2321`, mit Readback, Besitznachweis in `/var/lib/optolink-room-control/state.json` und Freigabe per `ExecStopPost`. Details: [raumregelung.md](raumregelung.md).
+Raumtemperatur-Aufschaltung für Heizkreis A1/M1. Kombiniert die von Home Assistant gesendeten Raumtemperaturen (`openv/room_control/sensors`), vergleicht sie mit einem Komfortband um den Raumsollwert, den das Zeitprogramm gerade vorgibt (Phase aus `0x2500`: Tag `0x2306`, Nacht `0x2307`, nachts nur Anzeige), und setzt den externen Raumsollwert Normal **`0x2321`** (0 = normaler Sollwert `0x2306`). Einziger Schreibpunkt ist `0x2321`, mit Readback, Besitznachweis in `/var/lib/optolink-room-control/state.json` und Freigabe per `ExecStopPost`. Details: [raumregelung.md](raumregelung.md).
 
 ### `tools/optolink-clock-sync.py`
 
