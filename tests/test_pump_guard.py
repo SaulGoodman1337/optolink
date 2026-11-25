@@ -68,7 +68,7 @@ class FakeBoiler:
 
 def make_guard(boiler, enabled=True, low=30):
     settings = types.SimpleNamespace(vs1protocol=False, mqtt_topic="openv", mqtt_broker=None)
-    g = pg.PumpGuard(settings, logging.getLogger("pg-test"), boiler.request)
+    g = pg.PumpGuard(settings, logging.getLogger("pg-test"), boiler.request, boost_after_start=False)
     g.logic.enabled = enabled
     g.logic.low = low
     return g
@@ -210,6 +210,17 @@ class GuardTest(unittest.TestCase):
         b.rkr[14] = 0x00
         run(g, b, 4)
         g.logic.ts["rkr"] = b.t - 60                  # stale lock state -> no lock boost
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+
+    def test_restart_starts_with_nachlauf_boost(self):
+        b = FakeBoiler()
+        settings = types.SimpleNamespace(vs1protocol=False, mqtt_topic="openv", mqtt_broker=None)
+        g = pg.PumpGuard(settings, logging.getLogger("pg-test"), b.request)
+        g.logic.enabled = True
+        g.logic.nachlauf_s = 60.0
+        run(g, b, 8)
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Nachlauf"))
+        run(g, b, 60)
         self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
 
     def test_implausible_temperature_ignored(self):

@@ -37,7 +37,7 @@ import json
 import threading
 import time
 
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 
 RAM_BLOCK, RAM_E7_OFFSET = 0x20A0, 5          # 0x20A5
 HIGH = 100
@@ -212,8 +212,11 @@ class GuardLogic:
 class PumpGuard:
     """Serial side. `do_request(fc, addr, n, data) -> (rc, addr, data)`."""
 
-    def __init__(self, settings, logger, do_request, mqtt_factory=None):
+    def __init__(self, settings, logger, do_request, mqtt_factory=None, boost_after_start=True):
         self.settings = settings
+        # after a (re)start the burner history is unknown: treat it as "just active" so the
+        # Nachlauf boost covers a pause that was already running (fail-safe direction)
+        self._boost_after_start = boost_after_start
         self.log = logger
         self.do_request = do_request
         self.logic = GuardLogic()
@@ -390,6 +393,10 @@ class PumpGuard:
         now = time.monotonic() if now is None else now
         try:
             with self.lock:
+                if self._boost_after_start:
+                    self._boost_after_start = False
+                    if self.logic.burner_last_active is None:
+                        self.logic.burner_last_active = now
                 state, reason = self.logic.decide(now)
                 low = self.logic.low
             self._publish_status(state, reason, now)
