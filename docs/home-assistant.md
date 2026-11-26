@@ -245,6 +245,14 @@ HA-Label „Optolink Raumregelung“ fest; das zugehörige Paket ist
 `config/optolink-splitter/homeassistant-room-control-package.yaml`.
 Vollständige Beschreibung: [raumregelung.md](raumregelung.md).
 
+## 9a2. Therme bei CO-/Gasalarm abschalten
+
+Blueprint `config/optolink-splitter/homeassistant-blueprints/therme_gas_co_alarm.yaml`:
+Push aufs Handy, Betriebsart Abschalt, Sperre bis zum manuellen Aufheben,
+Feld für ein späteres Gas-Absperrventil. Dashboard: Hinweis in der
+Kopfzeile, Abschnitt „Gas-/CO-Schutz“ in der Diagnose.
+Vollständige Beschreibung: [gasalarm.md](gasalarm.md).
+
 ## 9b. MAG-Druck per BLE-Reifendruckkappe
 
 Eine Bluetooth-TPMS-Ventilkappe (Spedal / Shenzhen Xlink, ITPMS-Format)
