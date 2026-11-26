@@ -55,6 +55,7 @@ This mapping was derived from the supplied vcontrold/vito configuration for devi
 ## Source conflicts intentionally retained as legacy topics
 
 - `getTempRL17A` resolves to `0x0808` for device `20CB`, the same address as `getTempAbgas` in the supplied source.
+  Live check on the WB2A (2026-11-26): `0x0808` reads identical to the exhaust sensor `0x0816` (used by the profile topic `abgastemperatur`). It is **not** a return-flow sensor; the boiler has no return sensor. See `docs/home-assistant.md`, section "Abgastemperatur und fehlender Rücklaufsensor".
 - `getTempMaxVorlauf` uses `0x2306`, which is also used by `getTempRaumNorSollM1` with a different unit/scale in the supplied source.
 
 

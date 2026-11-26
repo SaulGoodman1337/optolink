@@ -264,6 +264,32 @@ Sie verwendet unter anderem folgende HACS-Abhängigkeiten:
 
 Das Dashboard ist eine Darstellungsschicht. Die fachliche Quelle für Entitäten und Register bleibt die Python-Profil-Datei.
 
+### Abgastemperatur und fehlender Rücklaufsensor
+
+`sensor.vitodens_200_wb2a_abgastemperatur` (Topic `abgastemperatur`,
+P300/VS2 `0x0816`, NORMAL-Poll) wird im Dashboard angezeigt:
+
+- Diagnose: Chips „Abgas“ und „Kessel − Abgas“;
+- Diagnose: Graph „Temperaturen / Hydraulik“ (Abgas mit Kessel als Zusatzwert);
+- Graphen: 48-h-Temperaturverlauf.
+
+Die Anzeige „Kessel − Abgas“ ist **nur bei Flamme** aussagekräftig. Während
+der Verbrennung liegt die Abgastemperatur beim WB2A etwa 2 K unter der
+Kesseltemperatur und folgt ihr. In der Brennerpause gleicht sie sich nur an
+den Kessel an; der Chip zeigt dann „– (nur bei Flamme)“.
+
+> **Hinweis: Die Anlage hat keinen echten Rücklauftemperatursensor.**
+> Die alte vcontrold-Adresse `0x0808` („Rücklauftemperatur 17A“,
+> Topic `legacy_ruecklauftemperatur_17a`) liefert live (26.11.2026, 89
+> Messpunkte) exakt denselben Wert wie `0x0816` – es ist der Abgassensor,
+> kein Rücklauf. `0x080A` ist ebenfalls kein Rücklauf. Eine echte
+> Vorlauf-/Rücklaufspreizung ist deshalb aktuell nicht messbar; die
+> Spreizung „Kessel − Abgas“ ist nur ein Ersatzwert während der Flamme.
+> Ein echter Rücklaufsensor (z. B. Anlegefühler DS18B20 am Rücklaufrohr)
+> wird später nachgerüstet. Ältere HA-Template-Sensoren wie
+> `sensor.vorlaufrucklaufspreizung` / `vl_rl_spreizung` haben keine gültige
+> Datenquelle.
+
 ## 10a. Produktions-Dashboard nach DEV-Promotion
 
 Der bis 07.10.2026 getestete DEV-Dashboardstand wurde in
