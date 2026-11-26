@@ -8849,7 +8849,7 @@ views:
               content: >-
                 Die WB2A liefert die Gebläsedrehzahl nur über VS1. Bei laufendem
                 Brenner schaltet der Splitter dafür kurz (5–8 s) auf VS1: erste
-                Messung 40 s nach Flammenstart, dann im eingestellten Intervall.
+                Messung 15 s nach Flammenstart, dann im eingestellten Intervall.
                 In der Zeit gilt die Pumpe 100 % (E7). 60 s nach Brenner aus wird
                 0 gemeldet.
             grid_options:

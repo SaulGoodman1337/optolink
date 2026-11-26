@@ -19,7 +19,7 @@ guard cannot write during that time, so the firmware's coded E7 = 100 %
 applies (fail-safe direction). Windows only happen with the flame on, where
 the pump guard boosts anyway.
 
-Schedule: first window START_DELAY_S after flame-on (start ramp), then every
+Schedule: first window START_DELAY_S (15 s) after flame-on (start ramp), then every
 `interval` minutes while the flame stays on. After the flame has been off for
 OFF_ZERO_S the fan has stopped (post-purge is over) and 0 is published with
 source "Brenner aus" (no telegram).
@@ -53,7 +53,8 @@ GFA_P80, GFA_P06, GFA_P09, GFA_P87 = 0x4050, 0x4006, 0x4009, 0x4057
 P80_EXPECTED = 0x20
 READ_STATUS = (0x01, 0x55D3, 9)      # byte5 0x20 = flame (own read only without flame_fn)
 
-START_DELAY_S = 40.0      # first window after flame-on (start ramp is over by then)
+START_DELAY_S = 15.0      # first window after flame-on: inside the start ramp (high load);
+                          # night burns last only 35-40 s
 OFF_ZERO_S = 60.0         # flame off this long -> fan stopped, publish 0
 STATUS_PERIOD_S = 5.0     # own 0x55D3 read period when no flame_fn is given
 INTERVAL_MIN, INTERVAL_MAX, INTERVAL_DEFAULT = 1, 30, 5

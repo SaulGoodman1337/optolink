@@ -39,7 +39,7 @@ Ablauf eines Fensters, nur bei brennender Flamme:
    Nachweis; bei Fehler ein zweiter Versuch, danach greift der Link-Watchdog
    (60 s)
 
-Zeitplan: erstes Fenster 40 s nach Flammenstart, danach alle *Intervall*
+Zeitplan: erstes Fenster 15 s nach Flammenstart (noch in der Startrampe; nachts dauern Brennerläufe oft nur 35–40 s), danach alle *Intervall*
 Minuten (Standard 5, 1–30) solange die Flamme brennt. 60 s nach Flamme aus
 wird 0 gemeldet (ohne Buszugriff). Den Flammenzustand liefert der
 Pumpenwächter (keine zusätzlichen Lesezugriffe).
@@ -69,3 +69,15 @@ HA-Entities: `switch.…_geblaesedrehzahl_messung_aktiv`,
 
 Abschalten: Schalter „Messung aktiv“ aus oder
 `mosquitto_pub -t openv/fan_p06/enabled/set -m OFF -r`.
+
+## Live-Ergebnis 26.11.2026
+
+Deploy 07:43 MEZ. Die ersten drei Fenster (07:52, 07:57, 08:04) liefen fehlerfrei:
+P06 = 2.490 U/min bei P09 = 32,6 % (Mindestlast), Fensterdauer 4,5–4,6 s. Danach
+meldet der Pumpenwächter für 1–2 s „GESPERRT (Zustand unbekannt)“, bis seine
+Reads wieder frisch sind, dann wieder „BOOST (Flamme)“. Keine Link-Fehler.
+
+Nebenbefund: 2.490 U/min entspricht P06-Rohwert 83 = `0x0F20` − 1. Bei Mindestlast
+stimmt der RAM-Kandidat also numerisch, in der Startrampe aber nicht (er bleibt
+84, während die Last fällt). Das erste Fenster liegt deshalb jetzt bei 15 s nach
+Flammenstart, in der Startrampe.
