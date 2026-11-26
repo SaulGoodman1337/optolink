@@ -135,8 +135,10 @@ Standard: aus; 1,5 K / 0,5 K über Nachtsoll, ab −5 °C außen, 30 min Vorlauf
 höchstens 3 Abschaltungen pro Nacht. Die Heizzeiten liest der Dienst aus dem
 Zeitprogramm M1 (`0x2000` + 8 × Wochentag, Montag zuerst) mit der Uhrzeit des
 Hosts, die `optolink-clock-sync` mit der Therme abgleicht. Während „Nur WW“
-meldet `0x2500` vermutlich Phase 0 (Abschaltbetrieb), deshalb zählt für die
-Nachterkennung das Zeitprogramm. Nach dem Zurückschalten vor der Heizzeit
+meldet `0x2500` Phase 0 (Abschaltbetrieb) mit Raumsoll 0, der Vorlauf-Soll
+`0x2544` fällt auf 0 (Live-Test 26.11.2026 06:46: 0x2323 2 → 1 → 2 mit
+Readback, sofort wirksam), deshalb zählt für die Nachterkennung das
+Zeitprogramm. Nach dem Zurückschalten vor der Heizzeit
 erkennt der Morgenboost den Wechsel Reduziert → Normal wie gewohnt.
 
 Besonderheiten:

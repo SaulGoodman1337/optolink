@@ -29,7 +29,8 @@ Write verification on this exact appliance:
   0x2306 normal room target: R/W
   0x2307 reduced room target: R/W
   0x2308 party room target: R/W
-  0x2323 operating mode: R/W verified for values 2 and 4; synthetic Party
+  0x2323 operating mode: R/W verified for values 1, 2 and 4 (1 = Nur WW:
+    0x2500 phase 0, flow setpoint 0; live test 2026-11-26); synthetic Party
     uses value 4 (Dauernd Normal) and restores the previous value afterwards
   synthetic Party end-to-end: verified with distinct setpoints (0x2306=21 C,
     0x2308=22 C): ON mirrored 22 C to 0x2306 and set 0x2323=4; OFF restored
