@@ -5770,6 +5770,28 @@ views:
                 tap_action:
                   action: more-info
               - type: template
+                entity: sensor.vitodens_200_wb2a_abgastemperatur
+                icon: mdi:thermometer-high
+                content: >-
+                  Abgas {{ states('sensor.vitodens_200_wb2a_abgastemperatur') }} °C
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.vitodens_200_wb2a_abgastemperatur
+                icon: mdi:arrow-expand-vertical
+                content: >-
+                  {% set k = states('sensor.vitodens_200_wb2a_kesseltemperatur') %}
+                  {% set a = states('sensor.vitodens_200_wb2a_abgastemperatur') %}
+                  {% if is_state('binary_sensor.vitodens_200_wb2a_brenner_flamme', 'on') and is_number(k) and is_number(a) %}
+                  Kessel − Abgas {{ '%.1f' | format(k | float - a | float) }} K
+                  {% else %}
+                  Kessel − Abgas – (nur bei Flamme)
+                  {% endif %}
+                icon_color: >-
+                  {{ 'orange' if is_state('binary_sensor.vitodens_200_wb2a_brenner_flamme', 'on') else 'grey' }}
+                tap_action:
+                  action: more-info
+              - type: template
                 entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur
                 icon: mdi:target
                 content: >-
@@ -6050,6 +6072,11 @@ views:
                 icon: mdi:water-boiler
                 extra_value_entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur_normal
                 extra_value_name: Soll
+              - entity: sensor.vitodens_200_wb2a_abgastemperatur
+                name: Abgas
+                icon: mdi:thermometer-high
+                extra_value_entity: sensor.vitodens_200_wb2a_kesseltemperatur
+                extra_value_name: Kessel
               - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
                 name: Vorlauf
                 icon: mdi:thermometer-chevron-up
@@ -8363,6 +8390,8 @@ views:
                 name: Vorlauf Ist
               - entity: sensor.vitodens_200_wb2a_kesseltemperatur
                 name: Kessel
+              - entity: sensor.vitodens_200_wb2a_abgastemperatur
+                name: Abgas
               - entity: sensor.vitodens_200_wb2a_warmwasser_temperatur
                 name: Warmwasser
             grid_options:
