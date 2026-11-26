@@ -1,0 +1,474 @@
+blueprint:
+  name: Therme bei CO-/Gasalarm abschalten (Optolink)
+  description: >-
+    Schaltet die Vitodens bei Alarm eines CO- oder Gasmelders über den
+    Optolink-Splitter in den Abschaltbetrieb (0x2323 = 0), schließt optional
+    ein elektrisches Gas-Absperrventil und schickt eine Alarm-Push aufs Handy.
+
+    Eine Sperre (input_boolean) hält die Therme aus, bis sie von Hand
+    aufgehoben wird: jede Änderung der Betriebsart und Partybetrieb werden
+    während der Sperre sofort wieder auf Abschalt gestellt (zusätzlich jede
+    Minute geprüft). Aufheben geht nur, wenn kein Melder mehr Alarm meldet;
+    dann wird die vorherige Betriebsart wiederhergestellt. Ein Absperrventil
+    wird NIE automatisch wieder geöffnet.
+
+    Hinweis: Der Abschaltbetrieb ist eine Software-Abschaltung über die
+    Regelung (Frostschutz der Regelung bleibt aktiv). Er ersetzt kein
+    Gas-Absperrventil.
+  domain: automation
+  source_url: https://github.com/SaulGoodman1337/optolink/blob/main/config/optolink-splitter/homeassistant-blueprints/therme_gas_co_alarm.yaml
+  input:
+    melder:
+      name: CO-/Gasmelder
+      description: Binärsensoren, die bei Alarm "on" melden (Gas, Kohlenmonoxid).
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: binary_sensor
+    handys:
+      name: Handys für die Alarm-Push
+      description: Geräte der Home-Assistant-App (mobile_app).
+      selector:
+        device:
+          multiple: true
+          filter:
+            - integration: mobile_app
+    sperre:
+      name: Sperre (input_boolean)
+      description: An = Therme gesperrt. Von Hand ausschalten hebt die Sperre auf.
+      selector:
+        entity:
+          filter:
+            - domain: input_boolean
+    vorherige_betriebsart:
+      name: Speicher vorherige Betriebsart (input_text)
+      selector:
+        entity:
+          filter:
+            - domain: input_text
+    test_button:
+      name: Test-Taster (input_button)
+      description: Schickt nur eine Test-Push, die Therme bleibt an.
+      selector:
+        entity:
+          filter:
+            - domain: input_button
+    betriebsart:
+      name: Betriebsart der Therme
+      default: select.vitodens_200_wb2a_heizkreis_m1_betriebsart
+      selector:
+        entity:
+          filter:
+            - domain: select
+    abschalt_option:
+      name: Option für "aus"
+      default: Abschalt
+      selector:
+        text: {}
+    standard_betriebsart:
+      name: Betriebsart nach dem Aufheben, falls keine gespeichert ist
+      default: Heizen + WW
+      selector:
+        text: {}
+    party_schalter:
+      name: Partybetrieb-Schalter
+      description: Wird vor dem Abschalten ausgeschaltet, sonst stellt die Party-Emulation die Betriebsart zurück.
+      default: switch.vitodens_200_wb2a_heizkreis_m1_partybetrieb
+      selector:
+        entity:
+          filter:
+            - domain: switch
+    absperrventil:
+      name: Gas-Absperrventil (optional, später)
+      description: >-
+        valve-Entitäten werden mit valve.close_valve geschlossen,
+        switch-Entitäten je nach Einstellung unten ein- oder ausgeschaltet.
+        Leer lassen, solange kein Ventil verbaut ist.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: valve
+            - domain: switch
+    ventil_schalter_zu:
+      name: Schalter-Ventil schließt bei
+      default: turn_off
+      selector:
+        select:
+          options:
+            - label: Ausschalten (stromlos geschlossen)
+              value: turn_off
+            - label: Einschalten
+              value: turn_on
+    wiederherstellen:
+      name: Vorherige Betriebsart beim Aufheben wiederherstellen
+      default: true
+      selector:
+        boolean: {}
+    offline_minuten:
+      name: Warnung wenn ein Melder so lange nicht erreichbar ist (Minuten)
+      default: 30
+      selector:
+        number:
+          min: 5
+          max: 720
+          unit_of_measurement: min
+
+mode: queued
+max: 10
+max_exceeded: silent
+
+triggers:
+  - trigger: state
+    entity_id: !input melder
+    to: "on"
+    id: alarm
+  - trigger: state
+    entity_id: !input sperre
+    from: "off"
+    to: "on"
+    id: sperre_ein
+  - trigger: state
+    entity_id: !input sperre
+    from: "on"
+    to: "off"
+    id: aufheben
+  - trigger: state
+    entity_id: !input betriebsart
+    id: pruefen_meldung
+  - trigger: state
+    entity_id: !input party_schalter
+    to: "on"
+    id: pruefen_meldung
+  - trigger: time_pattern
+    minutes: /1
+    id: pruefen
+  - trigger: homeassistant
+    event: start
+    id: pruefen
+  - trigger: state
+    entity_id: !input test_button
+    id: test
+  - trigger: state
+    entity_id: !input melder
+    to: unavailable
+    for:
+      minutes: !input offline_minuten
+    id: offline
+
+variables:
+  melder: !input melder
+  handys: !input handys
+  sperre: !input sperre
+  vorherige: !input vorherige_betriebsart
+  betriebsart: !input betriebsart
+  aus: !input abschalt_option
+  standard: !input standard_betriebsart
+  party: !input party_schalter
+  ventile: !input absperrventil
+  ventil_schalter_zu: !input ventil_schalter_zu
+  wiederherstellen: !input wiederherstellen
+  notify_actions: >-
+    {{ handys | map('device_attr', 'name') | map('slugify')
+       | map('regex_replace', '^', 'notify.mobile_app_') | list }}
+  aktive_melder: >-
+    {{ melder | select('is_state', 'on') | map('state_attr', 'friendly_name') | list }}
+
+actions:
+  - choose:
+      # ------------------------------------------------------------------
+      # Alarm oder Sperre von Hand eingeschaltet: Therme aus, Ventil zu.
+      # ------------------------------------------------------------------
+      - conditions:
+          - condition: trigger
+            id: [alarm, sperre_ein]
+        sequence:
+          - variables:
+              ist_alarm: "{{ trigger.id == 'alarm' or aktive_melder | count > 0 }}"
+              ausloeser: >-
+                {{ aktive_melder | join(', ') if aktive_melder else 'Sperre von Hand' }}
+          # Betriebsart vor dem Abschalten merken (nur einmal pro Sperre).
+          - if:
+              - condition: template
+                value_template: >-
+                  {{ states(betriebsart) not in [aus, 'unknown', 'unavailable']
+                     and (trigger.id == 'alarm' and is_state(sperre, 'off')
+                          or trigger.id == 'sperre_ein') }}
+            then:
+              - action: input_text.set_value
+                target:
+                  entity_id: "{{ vorherige }}"
+                data:
+                  value: "{{ states(betriebsart) }}"
+          # Gas-Absperrventil(e) schließen (falls eingetragen).
+          - repeat:
+              for_each: "{{ ventile }}"
+              sequence:
+                - if:
+                    - condition: template
+                      value_template: "{{ repeat.item.startswith('valve.') }}"
+                  then:
+                    - action: valve.close_valve
+                      target:
+                        entity_id: "{{ repeat.item }}"
+                      continue_on_error: true
+                  else:
+                    - action: "switch.{{ ventil_schalter_zu }}"
+                      target:
+                        entity_id: "{{ repeat.item }}"
+                      continue_on_error: true
+          - action: input_boolean.turn_on
+            target:
+              entity_id: "{{ sperre }}"
+          # Erste Push sofort, bevor die Therme quittiert.
+          - if:
+              - condition: template
+                value_template: "{{ ist_alarm and trigger.id == 'alarm' }}"
+            then:
+              - repeat:
+                  for_each: "{{ notify_actions }}"
+                  sequence:
+                    - action: "{{ repeat.item }}"
+                      continue_on_error: true
+                      data:
+                        title: "🚨 GAS-/CO-ALARM Hauswirtschaftsraum"
+                        message: >-
+                          {{ ausloeser }} meldet Alarm. Therme wird abgeschaltet{{
+                          ', Gas-Absperrventil wird geschlossen' if ventile else '' }}.
+                          Raum nicht betreten, keine Schalter betätigen, lüften,
+                          Gebäude verlassen und Notruf 112 bzw. Gasversorger-Notruf anrufen.
+                        data:
+                          tag: therme_gasalarm
+                          ttl: 0
+                          priority: high
+                          channel: alarm_stream
+                          importance: high
+                          sticky: "true"
+                          color: "#d32f2f"
+                          push:
+                            interruption-level: critical
+                            sound:
+                              name: default
+                              critical: 1
+                              volume: 1.0
+          # Partybetrieb aus, sonst setzt die Party-Emulation 0x2323 zurück.
+          - if:
+              - condition: template
+                value_template: "{{ is_state(party, 'on') }}"
+            then:
+              - action: switch.turn_off
+                target:
+                  entity_id: "{{ party }}"
+                continue_on_error: true
+              - delay: 5
+          - repeat:
+              sequence:
+                - action: select.select_option
+                  target:
+                    entity_id: "{{ betriebsart }}"
+                  data:
+                    option: "{{ aus }}"
+                  continue_on_error: true
+                - wait_template: "{{ is_state(betriebsart, aus) }}"
+                  timeout: 60
+              until:
+                - condition: template
+                  value_template: "{{ is_state(betriebsart, aus) or repeat.index >= 3 }}"
+          - variables:
+              ist_aus: "{{ is_state(betriebsart, aus) }}"
+          - if:
+              - condition: template
+                value_template: "{{ ist_alarm and trigger.id == 'alarm' or not ist_aus }}"
+            then:
+              - repeat:
+                  for_each: "{{ notify_actions }}"
+                  sequence:
+                    - action: "{{ repeat.item }}"
+                      continue_on_error: true
+                      data:
+                        title: >-
+                          {{ '🔥 Therme ist AUS (Gas-/CO-Sperre)' if ist_aus
+                             else '‼️ Therme konnte NICHT abgeschaltet werden' }}
+                        message: >-
+                          {% if ist_aus %}Betriebsart steht auf {{ aus }} und bleibt gesperrt,
+                          bis du die Sperre von Hand aufhebst (nur ohne aktiven Melder).
+                          {% else %}Betriebsart ist "{{ states(betriebsart) }}". Splitter/Optolink prüfen,
+                          Therme notfalls am Gerät bzw. Gashahn von Hand absperren.{% endif %}
+                        data:
+                          tag: therme_gasalarm_status
+                          ttl: 0
+                          priority: high
+                          channel: alarm_stream
+                          push:
+                            interruption-level: critical
+                            sound:
+                              name: default
+                              critical: 1
+                              volume: 1.0
+          - if:
+              - condition: template
+                value_template: "{{ not ist_alarm }}"
+            then:
+              - repeat:
+                  for_each: "{{ notify_actions }}"
+                  sequence:
+                    - action: "{{ repeat.item }}"
+                      continue_on_error: true
+                      data:
+                        title: Gas-/CO-Sperre von Hand aktiviert
+                        message: >-
+                          Therme {{ 'ist aus' if ist_aus else 'konnte nicht abgeschaltet werden' }}.
+                          Sperre ausschalten, um die Betriebsart "{{ states(vorherige) }}" wiederherzustellen.
+                        data:
+                          tag: therme_gasalarm_status
+
+      # ------------------------------------------------------------------
+      # Während der Sperre: Betriebsart / Party sofort zurückstellen.
+      # ------------------------------------------------------------------
+      - conditions:
+          - condition: trigger
+            id: [pruefen, pruefen_meldung]
+          - condition: template
+            value_template: >-
+              {{ is_state(sperre, 'on')
+                 and (is_state(party, 'on')
+                      or states(betriebsart) not in [aus, 'unknown', 'unavailable']) }}
+        sequence:
+          - variables:
+              gefunden: "{{ states(betriebsart) }}"
+          - if:
+              - condition: template
+                value_template: "{{ is_state(party, 'on') }}"
+            then:
+              - action: switch.turn_off
+                target:
+                  entity_id: "{{ party }}"
+                continue_on_error: true
+              - delay: 5
+          - action: select.select_option
+            target:
+              entity_id: "{{ betriebsart }}"
+            data:
+              option: "{{ aus }}"
+            continue_on_error: true
+          - if:
+              - condition: trigger
+                id: pruefen_meldung
+            then:
+              - repeat:
+                  for_each: "{{ notify_actions }}"
+                  sequence:
+                    - action: "{{ repeat.item }}"
+                      continue_on_error: true
+                      data:
+                        title: Gas-/CO-Sperre aktiv
+                        message: >-
+                          Betriebsart wurde während der Sperre auf "{{ gefunden }}" gestellt
+                          (oder Party ein). Wieder auf {{ aus }} gesetzt.
+                        data:
+                          tag: therme_gasalarm_status
+
+      # ------------------------------------------------------------------
+      # Sperre von Hand aufgehoben.
+      # ------------------------------------------------------------------
+      - conditions:
+          - condition: trigger
+            id: aufheben
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ aktive_melder | count > 0 }}"
+            then:
+              - action: input_boolean.turn_on
+                target:
+                  entity_id: "{{ sperre }}"
+              - repeat:
+                  for_each: "{{ notify_actions }}"
+                  sequence:
+                    - action: "{{ repeat.item }}"
+                      continue_on_error: true
+                      data:
+                        title: Sperre bleibt aktiv
+                        message: "{{ aktive_melder | join(', ') }} meldet noch Alarm. Therme bleibt aus."
+                        data:
+                          tag: therme_gasalarm_status
+            else:
+              - variables:
+                  ziel: >-
+                    {% set v = states(vorherige) %}
+                    {{ v if v in (state_attr(betriebsart, 'options') or []) and v != aus else standard }}
+              - if:
+                  - condition: template
+                    value_template: "{{ wiederherstellen }}"
+                then:
+                  - action: select.select_option
+                    target:
+                      entity_id: "{{ betriebsart }}"
+                    data:
+                      option: "{{ ziel }}"
+                    continue_on_error: true
+              - repeat:
+                  for_each: "{{ notify_actions }}"
+                  sequence:
+                    - action: "{{ repeat.item }}"
+                      continue_on_error: true
+                      data:
+                        title: Gas-/CO-Sperre aufgehoben
+                        message: >-
+                          {{ 'Therme geht zurück auf "' ~ ziel ~ '".' if wiederherstellen
+                             else 'Betriebsart bitte von Hand wählen.' }}{{
+                          ' Gas-Absperrventil bleibt zu und muss von Hand geöffnet werden.' if ventile else '' }}
+                        data:
+                          tag: therme_gasalarm_status
+
+      # ------------------------------------------------------------------
+      # Test: nur Benachrichtigung, Therme bleibt an.
+      # ------------------------------------------------------------------
+      - conditions:
+          - condition: trigger
+            id: test
+          - condition: template
+            value_template: >-
+              {{ trigger.to_state is not none
+                 and trigger.to_state.state not in ['unknown', 'unavailable']
+                 and (trigger.from_state is none or trigger.from_state.state != 'unavailable') }}
+        sequence:
+          - repeat:
+              for_each: "{{ notify_actions }}"
+              sequence:
+                - action: "{{ repeat.item }}"
+                  continue_on_error: true
+                  data:
+                    title: "🧪 TEST Gas-/CO-Alarm"
+                    message: >-
+                      Testmeldung – die Therme wurde NICHT abgeschaltet.
+                      Melder: {% for m in melder %}{{ state_attr(m, 'friendly_name') }} = {{ states(m) }}{{ ', ' if not loop.last }}{% endfor %}.
+                      Betriebsart: {{ states(betriebsart) }}, Sperre: {{ states(sperre) }}.
+                    data:
+                      tag: therme_gasalarm_test
+                      ttl: 0
+                      priority: high
+                      channel: alarm_stream
+
+      # ------------------------------------------------------------------
+      # Melder lange nicht erreichbar.
+      # ------------------------------------------------------------------
+      - conditions:
+          - condition: trigger
+            id: offline
+        sequence:
+          - repeat:
+              for_each: "{{ notify_actions }}"
+              sequence:
+                - action: "{{ repeat.item }}"
+                  continue_on_error: true
+                  data:
+                    title: Gas-/CO-Melder nicht erreichbar
+                    message: >-
+                      {{ state_attr(trigger.entity_id, 'friendly_name') or trigger.entity_id }}
+                      ist seit {{ trigger.for }} offline. Ohne Melder schaltet die Automatik
+                      die Therme nicht ab.
+                    data:
+                      tag: therme_gasalarm_offline

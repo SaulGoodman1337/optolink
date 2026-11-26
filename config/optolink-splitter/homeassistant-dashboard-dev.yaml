@@ -2072,6 +2072,47 @@ views:
                     box-shadow: 0 0 0 1px color-mix(in srgb, var(--error-color) 10%, transparent);
                   }
 
+          # Gas-/CO-Sperre (Blueprint therme_gas_co_alarm): roter Hinweis,
+          # solange ein Melder Alarm meldet oder die Therme gesperrt ist.
+          - type: conditional
+            conditions:
+              - condition: or
+                conditions:
+                  - condition: state
+                    entity: input_boolean.therme_gas_co_sperre
+                    state: "on"
+                  - condition: state
+                    entity: binary_sensor.kohlenmonoxid_explosivgasmelder_mit_farbdisplay_kohlenmonoxid
+                    state: "on"
+                  - condition: state
+                    entity: binary_sensor.kohlenmonoxid_explosivgasmelder_mit_farbdisplay_gas
+                    state: "on"
+                  - condition: state
+                    entity: binary_sensor.hw_gas_sensor_gas
+                    state: "on"
+            card:
+              type: markdown
+              content: >-
+                {% set m = ['binary_sensor.kohlenmonoxid_explosivgasmelder_mit_farbdisplay_kohlenmonoxid',
+                            'binary_sensor.kohlenmonoxid_explosivgasmelder_mit_farbdisplay_gas',
+                            'binary_sensor.hw_gas_sensor_gas'] | select('is_state', 'on')
+                            | map('state_attr', 'friendly_name') | list %}
+                ## 🚨 Gas-/CO-Sperre {{ 'AKTIV' if is_state('input_boolean.therme_gas_co_sperre', 'on') else 'wird gesetzt' }}
+
+                {% if m %}**Alarm:** {{ m | join(', ') }}. Raum nicht betreten, keine Schalter betätigen,
+                lüften, Gebäude verlassen, Notruf 112 bzw. Gasversorger-Notruf.{% else %}Kein Melder meldet
+                mehr Alarm. Sperre unten unter *Gas-/CO-Schutz* (Diagnose) aufheben, wenn alles geprüft ist.{% endif %}
+
+                **Betriebsart:** {{ states('select.vitodens_200_wb2a_heizkreis_m1_betriebsart') }}
+                (vorher: {{ states('input_text.therme_gasalarm_vorherige_betriebsart') }})
+              card_mod:
+                style: |
+                  ha-card {
+                    border-radius: 16px;
+                    border-left: 6px solid var(--error-color);
+                    background: color-mix(in srgb, var(--error-color) 16%, var(--ha-card-background, var(--card-background-color)));
+                  }
+
           - type: heading
             heading: Vitodens 200-W WB2A
             heading_style: title
@@ -2096,6 +2137,18 @@ views:
                 visibility:
                   - condition: state
                     entity: binary_sensor.vitodens_200_wb2a_feuerungsautomat_verriegelt
+                    state: "on"
+              - type: entity
+                entity: input_boolean.therme_gas_co_sperre
+                name: Gas-/CO-Sperre
+                icon: mdi:shield-alert
+                color: red
+                show_state: false
+                show_icon: true
+                show_name: true
+                visibility:
+                  - condition: state
+                    entity: input_boolean.therme_gas_co_sperre
                     state: "on"
 
 
@@ -6107,6 +6160,85 @@ views:
             grid_options:
               columns: full
 
+
+      # Gas-/CO-Schutz: Blueprint therme_gas_co_alarm schaltet die Therme bei
+      # Melder-Alarm in den Abschaltbetrieb und hält sie gesperrt.
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Gas-/CO-Schutz
+            heading_style: subtitle
+            icon: mdi:shield-alert
+            badges:
+              - type: entity
+                entity: automation.therme_bei_co_gasalarm_abschalten
+                name: Automatik
+                show_state: true
+                show_icon: false
+          - type: tile
+            entity: input_boolean.therme_gas_co_sperre
+            name: Sperre (Therme aus)
+            icon: mdi:shield-alert
+            color: red
+            features_position: inline
+            features:
+              - type: toggle
+          - type: tile
+            entity: binary_sensor.kohlenmonoxid_explosivgasmelder_mit_farbdisplay_kohlenmonoxid
+            name: Kombimelder CO
+            state_content:
+              - state
+              - last_changed
+          - type: tile
+            entity: binary_sensor.kohlenmonoxid_explosivgasmelder_mit_farbdisplay_gas
+            name: Kombimelder Gas
+            state_content:
+              - state
+              - last_changed
+          - type: tile
+            entity: binary_sensor.hw_gas_sensor_gas
+            name: Gasmelder HW
+            state_content:
+              - state
+              - last_changed
+          - type: entities
+            entities:
+              - entity: sensor.kohlenmonoxid_explosivgasmelder_mit_farbdisplay_kohlenmonoxid
+                name: CO-Messwert (Kombimelder)
+              - entity: sensor.kohlenmonoxid_explosivgasmelder_mit_farbdisplay_gas
+                name: Gas-Messwert (Kombimelder)
+              - entity: sensor.hw_gas_sensor_gas
+                name: Gas-Messwert HW (ppm)
+              - entity: select.vitodens_200_wb2a_heizkreis_m1_betriebsart
+                name: Betriebsart
+              - entity: input_text.therme_gasalarm_vorherige_betriebsart
+                name: Vor der Sperre
+              - entity: input_button.therme_gasalarm_test
+                name: Test (nur Push, Therme bleibt an)
+          - type: markdown
+            content: >-
+              Bei Alarm: Push aufs Handy, Partybetrieb aus, Betriebsart **Abschalt**.
+              Solange die Sperre an ist, wird jede Änderung der Betriebsart sofort
+              zurückgestellt. Aufheben geht nur ohne aktiven Melder; dann kommt die
+              vorherige Betriebsart zurück. Ein Gas-Absperrventil kann später in der
+              Automatik (Blueprint-Feld *Gas-Absperrventil*) eingetragen werden und
+              wird nie automatisch geöffnet.
+
+              <small>Abschaltbetrieb ist eine Software-Abschaltung über die Regelung
+              (Frostschutz bleibt aktiv) und ersetzt kein Absperrventil.</small>
+          - type: history-graph
+            title: Melder und Sperre – 7 Tage
+            hours_to_show: 168
+            entities:
+              - entity: input_boolean.therme_gas_co_sperre
+                name: Sperre
+              - entity: binary_sensor.kohlenmonoxid_explosivgasmelder_mit_farbdisplay_kohlenmonoxid
+                name: CO
+              - entity: binary_sensor.kohlenmonoxid_explosivgasmelder_mit_farbdisplay_gas
+                name: Gas (Kombi)
+              - entity: binary_sensor.hw_gas_sensor_gas
+                name: Gas HW
 
       # Ausdehnungsgefäß (MAG): BLE-TPMS-Kappe am Gas-Schraderventil,
       # dekodiert von optolink-mag-tpms. Druck = max(Anlagendruck, Vordruck).
