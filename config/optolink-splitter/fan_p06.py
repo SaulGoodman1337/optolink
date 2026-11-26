@@ -59,6 +59,7 @@ OFF_ZERO_S = 60.0         # flame off this long -> fan stopped, publish 0
 STATUS_PERIOD_S = 5.0     # own 0x55D3 read period when no flame_fn is given
 INTERVAL_MIN, INTERVAL_MAX, INTERVAL_DEFAULT = 1, 30, 5
 MAX_FAILS = 3
+CFG_DEFAULT_AFTER_S = 10.0   # publish default config states if none were retained
 BLOCK_S = 1800.0
 
 OK, WARTET, AUS, FEHLER, GESPERRT = "OK", "WARTET", "AUS", "FEHLER", "GESPERRT"
@@ -117,6 +118,9 @@ class FanP06:
         self.state, self.reason = WARTET, "noch keine Messung"
         self.lock = threading.Lock()
         self.client = None
+        self.cfg_seen = set()           # config names restored from retained state or /set
+        self.cfg_published = False
+        self.started = self.clock()
         if mqtt_factory is None and getattr(settings, "mqtt_broker", None):
             mqtt_factory = self._paho_client
         if mqtt_factory is not None:
@@ -172,6 +176,7 @@ class FanP06:
                 return
             if kind not in ("set", "state"):
                 return
+            self.cfg_seen.add(name)
             with self.lock:
                 if name == "enabled":
                     self.enabled = payload.upper() in ("ON", "1", "TRUE", "EIN")
@@ -242,6 +247,14 @@ class FanP06:
         now = self.clock() if now is None else now
         try:
             rc = None
+            if not self.cfg_published and now - self.started >= CFG_DEFAULT_AFTER_S:
+                # nothing retained yet (first install): publish the defaults so HA
+                # shows the switch/number state instead of "unknown"
+                self.cfg_published = True
+                if "enabled" not in self.cfg_seen:
+                    self._pub(f"{self.base}/enabled/state", "ON" if self.enabled else "OFF")
+                if "interval" not in self.cfg_seen:
+                    self._pub(f"{self.base}/interval/state", str(int(self.interval_s // 60)))
             if self.flame_fn is not None:
                 f = self.flame_fn()
                 if f is not None:

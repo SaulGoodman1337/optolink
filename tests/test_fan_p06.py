@@ -218,6 +218,30 @@ class FanP06Tests(unittest.TestCase):
         self.assertEqual(mq.last("openv/fan_p06/enabled/state"), "OFF")
 
 
+class ConfigDefaultsTests(unittest.TestCase):
+    def test_defaults_published_once_when_nothing_retained(self):
+        obj, be, mq, clock = make(flame_fn=lambda: False)
+        obj.tick()
+        self.assertIsNone(mq.last("openv/fan_p06/enabled/state"))
+        clock.t += fp.CFG_DEFAULT_AFTER_S + 1
+        obj.tick()
+        self.assertEqual(mq.last("openv/fan_p06/enabled/state"), "ON")
+        self.assertEqual(mq.last("openv/fan_p06/interval/state"), "5")
+        n = len(mq.pub)
+        clock.t += 100
+        obj.tick()
+        self.assertEqual([p for p in mq.pub[n:] if p[0].endswith("/state")], [])
+
+    def test_retained_value_is_not_overwritten(self):
+        obj, be, mq, clock = make(flame_fn=lambda: False)
+        msg = types.SimpleNamespace(topic="openv/fan_p06/enabled/state", payload=b"OFF", retain=True)
+        obj._on_message(mq, None, msg)
+        clock.t += fp.CFG_DEFAULT_AFTER_S + 1
+        obj.tick()
+        self.assertIsNone(mq.last("openv/fan_p06/enabled/state"))
+        self.assertFalse(obj.enabled)
+
+
 class PatchTests(unittest.TestCase):
     def test_self_test(self):
         self.assertEqual(patcher.self_test(), 0)
