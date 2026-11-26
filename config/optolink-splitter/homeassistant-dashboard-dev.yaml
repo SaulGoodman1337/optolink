@@ -2251,6 +2251,32 @@ views:
                   entity: sensor.vitodens_200_wb2a_brenner_betriebsstunden
                   name: Stunden
 
+          # Anlagendruck über die BLE-Reifendruckkappe am MAG-Schraderventil
+          # (optolink-mag-tpms). Zeigt den Anlagendruck, solange er über dem
+          # MAG-Vordruck liegt, sonst den Vordruck.
+          - type: custom:button-card
+            template: diag_group3_cyan
+            name: Druck (MAG)
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.mag_druck
+                  name: Druck
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.mag_temperatur
+                  name: MAG
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.mag_batterie
+                  name: Batterie
+
       # ================================================================
       # Left desktop column: controls.
       # ================================================================
@@ -6017,6 +6043,109 @@ views:
                 icon: mdi:thermometer-lines
             grid_options:
               columns: full
+
+
+      # Ausdehnungsgefäß (MAG): BLE-TPMS-Kappe am Gas-Schraderventil,
+      # dekodiert von optolink-mag-tpms. Druck = max(Anlagendruck, Vordruck).
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Ausdehnungsgefäß (MAG)
+            heading_style: subtitle
+            icon: mdi:gauge
+            badges:
+              - type: entity
+                entity: sensor.mag_zuletzt
+                name: Empfang
+                show_state: true
+                show_icon: false
+          - type: conditional
+            conditions:
+              - condition: or
+                conditions:
+                  - condition: numeric_state
+                    entity: sensor.mag_druck
+                    below: 1.0
+                  - condition: state
+                    entity: sensor.mag_druck
+                    state: unavailable
+                  - condition: numeric_state
+                    entity: sensor.mag_batterie
+                    below: 20
+            card:
+              type: markdown
+              content: >-
+                <ha-alert alert-type="warning">
+                {% if is_state('sensor.mag_druck', 'unavailable') %}MAG-Sensor seit Stunden ohne Empfang.
+                {% elif states('sensor.mag_druck') | float(9) < 1.0 %}Druck {{ states('sensor.mag_druck') }} bar: Anlagendruck niedrig, Wasser nachfüllen und MAG-Vordruck prüfen.
+                {% else %}Batterie der MAG-Kappe schwach ({{ states('sensor.mag_batterie') }} %).{% endif %}
+                </ha-alert>
+          - type: history-graph
+            title: Druck – 7 Tage
+            hours_to_show: 168
+            entities:
+              - entity: sensor.mag_druck
+                name: Druck
+          - type: statistics-graph
+            title: Druck – Tagesminimum / -maximum (30 Tage)
+            chart_type: line
+            period: day
+            days_to_show: 30
+            stat_types:
+              - min
+              - max
+            entities:
+              - entity: sensor.mag_druck
+                name: Druck
+          - type: entities
+            title: Kalt/Warm-Check (24 h)
+            entities:
+              - entity: sensor.mag_druck_kalt
+                name: Druck kalt
+              - entity: sensor.mag_druck_warm
+                name: Druck warm
+              - entity: sensor.mag_druckhub
+                name: Druckhub
+              - entity: sensor.mag_hub_pro_10k
+                name: Hub pro 10 K
+              - entity: sensor.mag_temp_kalt
+                name: MAG-Temperatur kalt
+              - entity: sensor.mag_temp_warm
+                name: MAG-Temperatur warm
+          - type: markdown
+            content: >-
+              {% set h = states('sensor.mag_hub_pro_10k') | float(-1) %}
+              {% set hub = states('sensor.mag_druckhub') | float(-1) %}
+              {% if hub < 0 %}Noch zu wenig Daten (mindestens 1 Stunde).
+              {% elif h < 0 %}Druckhub {{ hub }} bar, die Temperatur hat sich in 24 h aber um weniger als 10 K
+              geändert. Aussagekräftig nach einem vollen Aufheizen.
+              {% elif h <= 0.15 %}✅ MAG arbeitet unauffällig ({{ h }} bar je 10 K).
+              {% elif h <= 0.3 %}⚠️ Druckhub erhöht ({{ h }} bar je 10 K). Vordruck bei Gelegenheit prüfen.
+              {% else %}❌ Druckhub hoch ({{ h }} bar je 10 K): MAG-Vordruck fehlt wahrscheinlich oder das MAG ist zu klein.
+              {% endif %}
+
+              <small>Richtwerte: Ein gesundes MAG hält den Druckanstieg beim Aufheizen klein.
+              Die Kappentemperatur ist die MAG-Temperatur, nicht die Vorlauftemperatur.</small>
+          - type: entities
+            entities:
+              - entity: sensor.mag_druck
+                name: Druck
+              - entity: sensor.mag_temperatur
+                name: Temperatur am MAG
+              - entity: sensor.mag_batterie
+                name: Batterie
+              - entity: sensor.mag_rssi
+                name: Signal
+              - entity: sensor.mag_empfaenger
+                name: Empfangender Proxy
+          - type: markdown
+            content: >-
+              Die Kappe misst die Gasseite des MAG. Liegt der Wasserdruck über
+              dem Vordruck, zeigt sie den **Anlagendruck**. Den **Vordruck**
+              sieht man nur bei geschlossenem Kappenventil und drucklos
+              gemachter MAG-Wasserseite. Fällt das Tagesminimum über Wochen,
+              verliert die Anlage Wasser oder das MAG Gas.
 
       - type: grid
         column_span: 1

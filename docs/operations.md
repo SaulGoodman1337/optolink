@@ -107,6 +107,7 @@ systemctl --no-pager --full status optolink-maintenance-api
 systemctl --no-pager --full status optolink-clock-sync.timer
 systemctl --no-pager --full status optolink-service-programs
 systemctl --no-pager --full status optolink-room-control
+systemctl --no-pager --full status optolink-mag-tpms
 optolink-maintenance status
 ```
 
@@ -164,6 +165,13 @@ Raumregelung (Vorlauf nach Raumtemperatur, siehe [raumregelung.md](raumregelung.
 ```bash
 journalctl -u optolink-room-control -n 100 --no-pager
 optolink-debug request "read;0x2321;1"   # 00 = normaler Raumsollwert
+```
+
+MAG-Druck (BLE-Reifendruckkappe, siehe [home-assistant.md](home-assistant.md#9b-mag-druck-per-ble-reifendruckkappe)):
+
+```bash
+journalctl -u optolink-mag-tpms -n 50 --no-pager
+optolink-mag-tpms --self-test
 ```
 
 ### Therme nicht erreichbar (Link-Recovery)

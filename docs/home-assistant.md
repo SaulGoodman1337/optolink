@@ -245,6 +245,77 @@ HA-Label „Optolink Raumregelung“ fest; das zugehörige Paket ist
 `config/optolink-splitter/homeassistant-room-control-package.yaml`.
 Vollständige Beschreibung: [raumregelung.md](raumregelung.md).
 
+## 9b. MAG-Druck per BLE-Reifendruckkappe
+
+Eine Bluetooth-TPMS-Ventilkappe (Spedal / Shenzhen Xlink, ITPMS-Format)
+sitzt auf dem Gas-Schraderventil des Ausdehnungsgefäßes. Die Kappe misst die
+Gasseite: Liegt der Wasserdruck über dem MAG-Vordruck, zeigt sie den
+**Anlagendruck**, sonst den **Vordruck**. Die Drücke addieren sich nicht, die
+Membran gleicht beide Seiten aus. Die WB2A selbst hat keinen
+Anlagendrucksensor, die Kappe ist damit der einzige Druckwert in HA.
+
+Empfang über die Bluetooth-Proxys von Home Assistant. Der Dienst
+`optolink-mag-tpms` (Splitter-Host) abonniert per HA-Websocket
+`bluetooth/subscribe_advertisements`, dekodiert die konfigurierten Kappen und
+legt per MQTT-Discovery ein eigenes Gerät an:
+
+| Entity | Inhalt |
+|---|---|
+| `sensor.mag_druck` | Druck in bar (Überdruck) |
+| `sensor.mag_temperatur` | Temperatur an der Kappe |
+| `sensor.mag_batterie`, `sensor.mag_batterie_spannung` | Knopfzelle (Diagnose) |
+| `sensor.mag_rssi`, `sensor.mag_empfaenger`, `sensor.mag_zuletzt` | Empfang (Diagnose) |
+| `sensor.mag_status` | Statusbyte roh (Diagnose) |
+
+Auswertung (eigenes Topic `…/tpms/mag/auswertung`, rollendes 24-h-Fenster,
+eine Probe pro Minute, gespeichert in `/var/lib/optolink-mag-tpms`):
+
+| Entity | Inhalt |
+|---|---|
+| `sensor.mag_druck_min`, `sensor.mag_druck_max` | Druck-Minimum/-Maximum 24 h |
+| `sensor.mag_druck_kalt`, `sensor.mag_druck_warm` | Median-Druck bei der tiefsten bzw. höchsten Kappentemperatur (±1 K) |
+| `sensor.mag_druckhub` | Druck warm − Druck kalt |
+| `sensor.mag_hub_pro_10k` | Druckhub je 10 K Temperaturänderung (erst ab 10 K Spanne) |
+| `sensor.mag_temp_kalt`, `sensor.mag_temp_warm`, `sensor.mag_proben` | Diagnose |
+
+Erst nach einer Stunde Daten gibt es Werte. Ein gesundes MAG hält den
+Druckanstieg beim Aufheizen klein; das Dashboard wertet `hub_pro_10k` grob aus
+(bis 0,15 bar/10 K unauffällig, bis 0,3 erhöht, darüber Vordruck prüfen).
+Das sind Richtwerte, keine Herstellerangabe; die Kappentemperatur ist die
+MAG-Temperatur, nicht der Vorlauf.
+
+Ohne Empfang für `stale_minutes` (Standard 360) werden die Entities
+`unavailable`.
+
+Konfiguration `/etc/optolink/mag-tpms.json` (fehlt sie, bleibt der Dienst aus):
+
+```json
+{
+  "sensors": [{"address": "61:41:00:02:FF:B2", "id": "mag", "name": "MAG Ausdehnungsgefäß"}],
+  "stale_minutes": 360
+}
+```
+
+`ha_url` ist optional (Standard: Port 8123 auf dem MQTT-Broker-Host). Das
+HA-Token bleibt in `/etc/optolink/ha-token` (root 600) und wird per systemd
+`LoadCredential` übergeben.
+
+Format (Herstellerkennung 0x00AC, Service-UUID 0xFBB0, 15 Byte):
+Byte 0 Batterie `b0 * 0,01 + 1,22 V`, Byte 1 Druck `roh * 0,03144 bar`,
+Byte 2 Temperatur `b2 − 55 °C`, Byte 3 Status, Byte 9–14 MAC rückwärts.
+Live geeicht am 2026-11-26: Kappe 1,23 bar, Manometer ca. 1,3 bar. Die
+HACS-Integration „TPMS_BLE“ zeigt bei diesen Kappen 0 bar, weil Byte 6
+`0xFF` statt 0/1 ist und sie dann auf eine Altformel ausweicht.
+
+Dashboard: Kachel **Druck (MAG)** in der Statuszeile der Hauptseite, Abschnitt
+**Ausdehnungsgefäß (MAG)** in der Ansicht Diagnose (7-Tage-Verlauf,
+Tagesminimum/-maximum über 30 Tage, Kalt/Warm-Check mit Bewertung, Warnung unter 1,0 bar, ohne Empfang oder
+bei schwacher Batterie).
+
+Vordruck prüfen: Kappenventil unter dem MAG schließen, MAG-Wasserseite
+drucklos machen, dann zeigt die Kappe den echten Vordruck. Faustwert:
+statische Höhe in m / 10 + 0,2 bar; Fülldruck kalt etwa 0,3 bar darüber.
+
 ## 10. Dashboard
 
 Die vollständige Dashboard-Konfiguration liegt in:

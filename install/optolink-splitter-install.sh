@@ -87,7 +87,7 @@ git clone --depth=1 https://github.com/philippoo66/optolink-splitter.git /opt/op
 chown -R optolink:optolink /opt/optolink
 runuser -u optolink -- python3 -m venv /opt/optolink/venv
 runuser -u optolink -- /opt/optolink/venv/bin/pip install --upgrade pip setuptools wheel
-runuser -u optolink -- /opt/optolink/venv/bin/pip install pyserial paho-mqtt
+runuser -u optolink -- /opt/optolink/venv/bin/pip install pyserial paho-mqtt websockets
 msg_ok "Installed Optolink-Splitter"
 
 msg_info "Preparing configuration"
@@ -151,6 +151,10 @@ cs_repo_fetch tools/optolink-room-control.py /usr/local/bin/optolink-room-contro
 chmod 755 /usr/local/bin/optolink-room-control
 chown root:root /usr/local/bin/optolink-room-control
 /usr/local/bin/optolink-room-control --self-test
+cs_repo_fetch tools/optolink-mag-tpms.py /usr/local/bin/optolink-mag-tpms
+chmod 755 /usr/local/bin/optolink-mag-tpms
+chown root:root /usr/local/bin/optolink-mag-tpms
+/usr/local/bin/optolink-mag-tpms --self-test
 
 
 
@@ -181,6 +185,9 @@ chown root:root /etc/systemd/system/optolink-service-programs.service
 cs_repo_fetch config/optolink-splitter/optolink-room-control.service /etc/systemd/system/optolink-room-control.service
 chmod 644 /etc/systemd/system/optolink-room-control.service
 chown root:root /etc/systemd/system/optolink-room-control.service
+cs_repo_fetch config/optolink-splitter/optolink-mag-tpms.service /etc/systemd/system/optolink-mag-tpms.service
+chmod 644 /etc/systemd/system/optolink-mag-tpms.service
+chown root:root /etc/systemd/system/optolink-mag-tpms.service
 
 cs_repo_fetch config/optolink-splitter/vcontrol-mapping.md /root/optolink-vcontrol-mapping.md
 
