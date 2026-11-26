@@ -1,0 +1,26 @@
+# BLE TPMS valve cap on the expansion vessel (MAG): decodes the cap's
+# advertisements from Home Assistant's Bluetooth proxies (websocket
+# bluetooth/subscribe_advertisements) and publishes pressure, temperature and
+# battery as an MQTT-discovery device. Independent of the Optolink port.
+# Only runs when /etc/optolink/mag-tpms.json exists. The Home Assistant token
+# stays root-only and is handed over through systemd credentials.
+
+[Unit]
+Description=Optolink MAG pressure via BLE TPMS cap (Home Assistant Bluetooth)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/optolink/mag-tpms.json
+
+[Service]
+Type=simple
+User=optolink
+Group=optolink
+WorkingDirectory=/opt/optolink
+Environment=PYTHONUNBUFFERED=1
+LoadCredential=ha-token:/etc/optolink/ha-token
+ExecStart=/usr/local/bin/optolink-mag-tpms
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

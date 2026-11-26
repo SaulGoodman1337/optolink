@@ -58,7 +58,7 @@ apt-get upgrade -y
 ok "Base system updated"
 
 info "Updating Python dependencies"
-runuser -u optolink -- "$APP_DIR/venv/bin/pip" install --upgrade pip setuptools wheel pyserial paho-mqtt
+runuser -u optolink -- "$APP_DIR/venv/bin/pip" install --upgrade pip setuptools wheel pyserial paho-mqtt websockets
 ok "Python dependencies updated"
 
 # Copy immutable repository artifacts into their runtime locations. No helper
@@ -79,6 +79,8 @@ install_repo_file tools/optolink-service-programs.py /usr/local/bin/optolink-ser
 /usr/local/bin/optolink-service-programs --self-test
 install_repo_file tools/optolink-room-control.py /usr/local/bin/optolink-room-control 0755
 /usr/local/bin/optolink-room-control --self-test
+install_repo_file tools/optolink-mag-tpms.py /usr/local/bin/optolink-mag-tpms 0755
+/usr/local/bin/optolink-mag-tpms --self-test
 
 ln -sf /usr/local/bin/optolink-debug /usr/bin/optolink-debug
 ln -sf /usr/local/bin/optolink-party-test /usr/bin/optolink-party-test
@@ -95,6 +97,7 @@ install_repo_file config/optolink-splitter/optolink-clock-sync.service /etc/syst
 install_repo_file config/optolink-splitter/optolink-clock-sync.timer /etc/systemd/system/optolink-clock-sync.timer 0644
 install_repo_file config/optolink-splitter/optolink-service-programs.service /etc/systemd/system/optolink-service-programs.service 0644
 install_repo_file config/optolink-splitter/optolink-room-control.service /etc/systemd/system/optolink-room-control.service 0644
+install_repo_file config/optolink-splitter/optolink-mag-tpms.service /etc/systemd/system/optolink-mag-tpms.service 0644
 install_repo_file config/optolink-splitter/vcontrol-mapping.md /root/optolink-vcontrol-mapping.md 0644
 
 touch "$APP_DIR/.maintenance.lock"
@@ -185,6 +188,21 @@ else
   warn "Clock sync disabled because mqtt_broker is not configured"
 fi
 
+# Optional BLE TPMS cap on the expansion vessel (MAG). Runs only when a cap is
+# configured in /etc/optolink/mag-tpms.json and the HA token exists.
+info "Configuring MAG pressure (BLE TPMS via Home Assistant)"
+if [[ -f /etc/optolink/mag-tpms.json && -f /etc/optolink/ha-token ]]; then
+  systemctl enable optolink-mag-tpms.service >/dev/null 2>&1 || true
+  if systemctl restart optolink-mag-tpms.service; then
+    ok "MAG pressure service active"
+  else
+    warn "MAG pressure service failed to start"
+  fi
+else
+  systemctl disable --now optolink-mag-tpms.service >/dev/null 2>&1 || true
+  info "MAG pressure service not configured (/etc/optolink/mag-tpms.json)"
+fi
+
 # Make future `update` invocations stay on this production branch.
 info "Persisting production update channel"
 install_repo_file tools/private-update.sh /usr/local/lib/community-scripts/private-update.sh 0755
@@ -205,5 +223,6 @@ printf '  systemctl status optolink-maintenance-api --no-pager\n' >&2
 printf '  systemctl status optolink-clock-sync.timer --no-pager\n' >&2
 printf '  systemctl status optolink-service-programs --no-pager\n' >&2
 printf '  systemctl status optolink-room-control --no-pager\n' >&2
+printf '  systemctl status optolink-mag-tpms --no-pager\n' >&2
 printf '  journalctl -u optolink-clock-sync.service -n 20 --no-pager\n' >&2
 printf '  optolink-maintenance status\n' >&2
