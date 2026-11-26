@@ -27,7 +27,8 @@ Safety model:
 
 * all controller traffic goes through the running splitter (MQTT
   request/response); this service never opens the serial port;
-* only ``0x2321`` is ever written, only with 0 or 10..30 °C, always with
+* only ``0x2321`` (0 or 10..30 °C) and, for the optional night shutdown,
+  ``0x2323`` (only 2 -> 1 and back 1 -> 2) are ever written, always with
   readback verification;
 * the service only releases a value it wrote itself (ownership is persisted
   in ``/var/lib/optolink-room-control/state.json``); a foreign value is
@@ -40,11 +41,26 @@ Safety model:
   service hands control back to the regular room target;
 * unreachable boiler or splitter only produce an error status; the service
   keeps running and retries.
+
+Dynamic night shutdown (``nachtabschaltung``, default off): in the reduced
+phase the heating circuit is switched from "Heizen + WW" (``0x2323 = 2``) to
+"Nur WW" (``1``) while the room is at least ``nacht_ein`` K above the night
+target ``0x2307`` and the outside temperature ``0x0800`` is not below
+``nacht_min_aussen``. It goes back to 2 as soon as the room has cooled to
+night target + ``nacht_aus``, it gets colder outside (1 K hysteresis),
+``nacht_vorlauf`` minutes before the next day window of the M1 time program
+(``0x2000`` + 8 * weekday, host clock which optolink-clock-sync keeps in
+step with the boiler), on missing sensors, fault, disabled control, a
+foreign mode change and on service stop (``--release`` in ExecStopPost).
+``0x2323`` is a persistent setting, so the number of shutdowns per night is
+limited (``nacht_max_schaltungen``, two writes each). The boiler's own frost
+protection stays active in "Nur WW".
 """
 from __future__ import annotations
 
 import argparse
 import ast
+import datetime
 import json
 import math
 import os
@@ -68,6 +84,11 @@ OPERATING_STATE_LEN = 22
 ADDR_FLOW_SETPOINT = 0x2544
 ADDR_CURRENT_FAULT = 0x5738
 ADDR_ROOM_INFLUENCE = (0x27A0, 0x27B0)
+ADDR_OPERATING_MODE = 0x2323    # 0 off, 1 DHW only, 2 heating + DHW, 3/4 permanent
+ADDR_OUTSIDE_TEMP = 0x0800      # 2 bytes signed, 0.1 °C
+ADDR_SCHEDULE_M1 = 0x2000       # 8 bytes per weekday, Monday first
+MODE_DHW_ONLY = 1
+MODE_HEATING_DHW = 2
 
 EXTERNAL_MIN_C = 10
 EXTERNAL_MAX_C = 30
@@ -81,6 +102,10 @@ MORNING_WINDOW_S = 1800.0  # boost may start within 30 min after the day phase b
 HYSTERESIS_K = 0.75   # between correction levels
 EXIT_MARGIN_K = 0.2   # how far back inside the band before releasing
 INFLUENCE_CHECK_S = 1800.0
+SCHEDULE_CACHE_S = 900.0
+NIGHT_OUTSIDE_HYSTERESIS_K = 1.0
+NIGHT_MIN_WINDOW_MIN = 30   # do not shut down for less than this
+NIGHT_RELEASE_AFTER_ERRORS = 3
 REQUEST_TIMEOUT = 8.0
 
 AGGREGATIONS = ("Mittelwert", "Minimum", "Maximum")
@@ -101,10 +126,18 @@ PARAMETERS = {
     "morgenboost": (int, 0, 20, 0),
     "morgenboost_ausloesung": (float, 0.2, 10.0, 1.0),
     "morgenboost_dauer": (int, 10, 480, 90),
+    # dynamic night shutdown (0x2323 -> Nur WW), see module docstring
+    "nacht_ein": (float, 0.5, 5.0, 1.5),
+    "nacht_aus": (float, 0.0, 4.5, 0.5),
+    "nacht_min_aussen": (float, -20.0, 15.0, -5.0),
+    "nacht_vorlauf": (int, 0, 240, 30),
+    "nacht_max_schaltungen": (int, 1, 10, 3),
 }
+NIGHT_MIN_GAP_K = 0.5  # nacht_aus must stay at least this far below nacht_ein
 
 DEFAULT_CONFIG = {
     "enabled": False,
+    "nachtabschaltung": False,
     "aggregation": "Mittelwert",
     **{name: spec[3] for name, spec in PARAMETERS.items()},
 }
@@ -182,6 +215,7 @@ def validate_config(config):
     cfg = dict(DEFAULT_CONFIG)
     cfg.update({k: v for k, v in (config or {}).items() if k in DEFAULT_CONFIG})
     cfg["enabled"] = bool(cfg["enabled"])
+    cfg["nachtabschaltung"] = bool(cfg["nachtabschaltung"])
     if cfg["aggregation"] not in AGGREGATIONS:
         cfg["aggregation"] = DEFAULT_CONFIG["aggregation"]
     for name, (kind, lo, hi, default) in PARAMETERS.items():
@@ -192,7 +226,80 @@ def validate_config(config):
         if not (lo <= value <= hi):
             value = default
         cfg[name] = round(value, 2) if kind is float else value
+    if cfg["nacht_aus"] > cfg["nacht_ein"] - NIGHT_MIN_GAP_K:
+        cfg["nacht_aus"] = round(max(0.0, cfg["nacht_ein"] - NIGHT_MIN_GAP_K), 2)
     return cfg
+
+
+def decode_schedule_block(raw_hex):
+    """M1 time program day block (8 bytes) -> sorted ``[(start_min, end_min)]``.
+
+    Byte = hour << 3 | minute / 10, ``0xFF`` = unused slot, pairs on/off.
+    """
+    try:
+        data = bytes.fromhex(raw_hex.strip())
+    except ValueError as exc:
+        raise RoomControlError(f"schedule block is not hex: {raw_hex[:40]!r}") from exc
+    if len(data) != 8:
+        raise RoomControlError(f"schedule block has {len(data)} bytes, expected 8")
+    intervals = []
+    for i in range(0, 8, 2):
+        on, off = data[i], data[i + 1]
+        if on == 0xFF or off == 0xFF:
+            continue
+        start = (on >> 3) * 60 + (on & 7) * 10
+        end = (off >> 3) * 60 + (off & 7) * 10
+        if (on & 7) > 5 or (off & 7) > 5 or start >= end or end > 1440:
+            raise RoomControlError(f"implausible schedule slot {on:#04x}/{off:#04x}")
+        intervals.append((start, end))
+    return sorted(intervals)
+
+
+def schedule_position(days, weekday, minute):
+    """Where ``minute`` of ``weekday`` (0 = Monday) lies in the time program.
+
+    ``days`` maps weekday -> intervals. Returns ``(in_day, minutes_to_day,
+    day_offset)``: ``minutes_to_day`` is the time to the next day window
+    start (None if the program has none), ``day_offset`` how many days ahead
+    that start lies (identifies the night).
+    """
+    for start, end in days.get(weekday, ()):
+        if start <= minute < end:
+            return True, 0, 0
+    for offset in range(0, 8):
+        for start, _end in days.get((weekday + offset) % 7, ()):
+            delta = offset * 1440 + start - minute
+            if delta > 0:
+                return False, delta, offset
+    return False, None, None
+
+
+def night_decision(*, active, room_c, reduced_c, outside_c, in_day, minutes_to_day,
+                   config, switches_used):
+    """Should the heating circuit be off ("Nur WW") right now? -> (bool, reason)."""
+    if in_day or minutes_to_day is None:
+        return False, "Tagphase laut Zeitprogramm" if in_day else "kein Tagfenster im Zeitprogramm"
+    if minutes_to_day <= config["nacht_vorlauf"]:
+        return False, "Vorlauf vor Tagbeginn"
+    if room_c is None or reduced_c is None:
+        return False, "keine Raum- oder Solldaten"
+    if outside_c is None:
+        return False, "keine Außentemperatur"
+    if active:
+        if room_c <= reduced_c + config["nacht_aus"]:
+            return False, "Raum abgekühlt"
+        if outside_c < config["nacht_min_aussen"] - NIGHT_OUTSIDE_HYSTERESIS_K:
+            return False, "zu kalt draußen"
+        return True, "Raum warm genug"
+    if switches_used >= config["nacht_max_schaltungen"]:
+        return False, "Schaltlimit dieser Nacht erreicht"
+    if outside_c < config["nacht_min_aussen"]:
+        return False, "zu kalt draußen"
+    if minutes_to_day <= config["nacht_vorlauf"] + NIGHT_MIN_WINDOW_MIN:
+        return False, "zu kurz bis Tagbeginn"
+    if room_c >= reduced_c + config["nacht_ein"]:
+        return True, "Raum warm genug"
+    return False, "Raum nicht warm genug"
 
 
 def parse_operating_state(raw_hex):
@@ -302,9 +409,17 @@ def load_state(path=None):
     owned = data.get("owned_command", 0)
     if type(owned) is not int or not (owned == 0 or EXTERNAL_MIN_C <= owned <= EXTERNAL_MAX_C):
         owned = 0
+    night = data.get("night") if isinstance(data.get("night"), dict) else {}
+    switches = night.get("switches", 0)
     return {
         "version": 1,
         "owned_command": owned,
+        # True while this service switched 0x2323 from 2 to 1
+        "owned_mode": data.get("owned_mode") is True,
+        "night": {
+            "id": str(night.get("id", ""))[:20],
+            "switches": switches if type(switches) is int and 0 <= switches <= 100 else 0,
+        },
         "config": validate_config(data.get("config")),
     }
 
@@ -328,8 +443,11 @@ def save_state(state, path=None):
 class RoomController:
     """One control cycle per ``tick``. ``io`` provides read_int/write_int."""
 
-    def __init__(self, io, state, *, save=save_state, clock=time.monotonic):
+    def __init__(self, io, state, *, save=save_state, clock=time.monotonic,
+                 wallclock=None):
         self.io = io
+        # (weekday 0=Monday, minute of day, datetime.date) in local time
+        self.wallclock = wallclock or _local_wallclock
         self.state = state
         self.save = save
         self.clock = clock
@@ -344,6 +462,12 @@ class RoomController:
         self.day_started_at = None   # observed reduced/off -> normal transition
         self.boost_until = None      # morning boost active until (clock)
         self.boost_done = False      # at most one boost per morning
+        self.schedule_cache = {}     # weekday -> (read_at, intervals)
+        self.night_info = {}
+        self.night_handled = False
+        self.error_streak = 0
+        state.setdefault("owned_mode", False)
+        state.setdefault("night", {"id": "", "switches": 0})
 
     @property
     def config(self):
@@ -366,15 +490,118 @@ class RoomController:
             k: v for k, v in self.samples.items() if now - v[1] <= SENSOR_MAX_AGE_S * 2
         }
 
-    def write_verified(self, value):
-        self.io.write_int(ADDR_EXTERNAL_SETPOINT, 1, value)
+    @property
+    def owned_mode(self):
+        return self.state["owned_mode"]
+
+    def set_owned_mode(self, value):
+        if value != self.state["owned_mode"]:
+            self.state["owned_mode"] = value
+            self.save(self.state)
+
+    def write_verified(self, value, addr=ADDR_EXTERNAL_SETPOINT):
+        self.io.write_int(addr, 1, value)
         last = None
         for delay in (0.3, 0.9, 1.8):
             self.io.sleep(delay)
-            last = self.io.read_int(ADDR_EXTERNAL_SETPOINT, 1)
+            last = self.io.read_int(addr, 1)
             if last == value:
                 return
-        raise RoomControlError(f"0x2321 readback {last}, expected {value}")
+        raise RoomControlError(f"0x{addr:04X} readback {last}, expected {value}")
+
+    # -- dynamic night shutdown ------------------------------------------
+
+    def night_release(self, reason):
+        """Back to "Heizen + WW" if (and only if) we switched to "Nur WW"."""
+        if not self.owned_mode:
+            return False
+        mode = self.io.read_int(ADDR_OPERATING_MODE, 1)
+        if mode != MODE_DHW_ONLY:
+            log(f"0x2323={mode} was changed externally; not touching it ({reason})")
+            self.set_owned_mode(False)
+            return False
+        self.write_verified(MODE_HEATING_DHW, ADDR_OPERATING_MODE)
+        self.set_owned_mode(False)
+        log(f"night shutdown ended ({reason}): 0x2323 1 -> 2")
+        return True
+
+    def schedule_now(self, now):
+        weekday, minute, date = self.wallclock()
+        days = {}
+        for offset in range(8):
+            wd = (weekday + offset) % 7
+            if wd in days:
+                continue
+            cached = self.schedule_cache.get(wd)
+            if cached is None or now - cached[0] > SCHEDULE_CACHE_S:
+                raw = self.io.read_bytes(ADDR_SCHEDULE_M1 + 8 * wd, 8)
+                cached = (now, decode_schedule_block(raw))
+                self.schedule_cache[wd] = cached
+            days[wd] = cached[1]
+            if any(start > (minute if offset == 0 else -1) for start, _e in days[wd]):
+                break
+        in_day, minutes, offset = schedule_position(days, weekday, minute)
+        # The night is named after the date its day window starts on, so the
+        # switch budget does not reset at midnight.
+        night_id = (date + datetime.timedelta(days=offset or 0)).isoformat()
+        return in_day, minutes, night_id
+
+    def night_step(self, now, room):
+        """Run the night shutdown logic during the reduced phase."""
+        self.night_handled = True
+        cfg = self.config
+        info = {"nachtabschaltung": cfg["nachtabschaltung"]}
+        mode = self.io.read_int(ADDR_OPERATING_MODE, 1)
+        if self.owned_mode and mode != MODE_DHW_ONLY:
+            log(f"0x2323={mode} was changed externally during night shutdown; ownership dropped")
+            self.set_owned_mode(False)
+        if not cfg["nachtabschaltung"]:
+            self.night_release("night shutdown disabled")
+            self.night_info = {**info, "nacht_grund": "ausgeschaltet"}
+            return self.night_info
+        if not self.owned_mode and mode != MODE_HEATING_DHW:
+            self.night_info = {**info, "nacht_grund": f"Betriebsart {mode} statt Heizen + WW"}
+            return self.night_info
+        in_day, minutes, night_id = self.schedule_now(now)
+        night = self.state["night"]
+        if night.get("id") != night_id:
+            self.state["night"] = night = {"id": night_id, "switches": 0}
+            self.save(self.state)
+        outside = self.io.read_scaled(ADDR_OUTSIDE_TEMP, 2, 0.1, True)
+        if not -40.0 <= outside <= 50.0:
+            outside = None
+        reduced = self.schedule_info.get("reduced_target_c")
+        if reduced is not None and not 3 <= reduced <= 37:
+            reduced = None
+        want, reason = night_decision(
+            active=self.owned_mode, room_c=room, reduced_c=reduced, outside_c=outside,
+            in_day=in_day, minutes_to_day=minutes, config=cfg,
+            switches_used=night["switches"])
+        if want and not self.owned_mode:
+            # Treat a begun write as possibly applied (release checks the value).
+            self.set_owned_mode(True)
+            night["switches"] += 1
+            self.save(self.state)
+            try:
+                self.write_verified(MODE_DHW_ONLY, ADDR_OPERATING_MODE)
+            except Exception:
+                self.night_release("write failed")
+                raise
+            log(f"night shutdown started: room {room:.2f} °C >= {reduced} + {cfg['nacht_ein']} K, "
+                f"outside {outside} °C, {minutes} min to day: 0x2323 2 -> 1")
+        elif not want and self.owned_mode:
+            self.night_release(reason)
+        self.night_info = {
+            **info,
+            "nachtabschaltung_aktiv": self.owned_mode,
+            "nacht_grund": reason,
+            "nacht_schaltungen": night["switches"],
+            "minuten_bis_tag": minutes,
+            "aussen_c": outside,
+            "nacht_ein_c": None if reduced is None else round(reduced + cfg["nacht_ein"], 2),
+            "nacht_aus_c": None if reduced is None else round(reduced + cfg["nacht_aus"], 2),
+        }
+        return self.night_info
 
     def release(self, reason, also_owned=()):
         """Hand back to the regular room target if (and only if) we own 0x2321."""
@@ -397,6 +624,7 @@ class RoomController:
             "state": state,
             "enabled": self.config["enabled"],
             "external_setpoint_c": self.owned or None,
+            "nachtabschaltung_aktiv": self.owned_mode,
             **extra,
         }
         # The boiler always works with some room target: the external one we
@@ -461,6 +689,28 @@ class RoomController:
         return 0
 
     def tick(self):
+        """One control cycle; the night shutdown is released on every path
+        that does not run its logic (day, disabled, fault, no sensors, ...)."""
+        self.night_handled = False
+        try:
+            status = self._tick()
+            self.error_streak = 0
+        except Exception:
+            self.error_streak += 1
+            if self.owned_mode and self.error_streak >= NIGHT_RELEASE_AFTER_ERRORS:
+                try:
+                    self.night_release(f"{self.error_streak} failed cycles")
+                except Exception as exc:
+                    log(f"WARNING: night shutdown release failed: {exc}")
+            raise
+        if not self.night_handled:
+            self.night_info = {}
+            if self.owned_mode:
+                self.night_release(f"state {status.get('state')}")
+                status["nachtabschaltung_aktiv"] = self.owned_mode
+        return status
+
+    def _tick(self):
         now = self.clock()
         cfg = self.config
         values = fresh_values(self.samples, now)
@@ -514,6 +764,13 @@ class RoomController:
             # 0x2321 only acts on the normal phase: night setback, off mode
             # and native party run on their own target; hand back and watch.
             self.release(f"phase {phase}")
+            night_phase = phase == "reduziert" or (phase == "abschalt" and self.owned_mode)
+            if night_phase and room is not None:
+                night = self.night_step(now, room)
+                state = "nachtabschaltung" if self.owned_mode else "nachtabsenkung"
+                return self._status(state, **night, **info)
+            if night_phase:
+                return self._status("keine_sensoren", **info)
             state = {"reduziert": "nachtabsenkung", "abschalt": "abschaltbetrieb",
                      "party": "party"}.get(phase, "fehler")
             return self._status(state, **info)
@@ -649,12 +906,26 @@ class SplitterIO:
         """Raw read; the splitter answers ``read`` with a hex string."""
         return self.request(f"read;0x{addr:04X};{length}", addr)
 
+    def read_scaled(self, addr, length, scale, signed):
+        raw = self.request(f"r;0x{addr:04X};{length};{scale};{bool(signed)}", addr)
+        return float(raw)
+
     def write_int(self, addr, length, value):
-        if addr != ADDR_EXTERNAL_SETPOINT or length != 1:
-            raise RoomControlError("only 0x2321 may be written")
-        if type(value) is not int or not (value == 0 or EXTERNAL_MIN_C <= value <= EXTERNAL_MAX_C):
+        if length != 1 or addr not in (ADDR_EXTERNAL_SETPOINT, ADDR_OPERATING_MODE):
+            raise RoomControlError("only 0x2321 and 0x2323 may be written")
+        if type(value) is not int:
+            raise RoomControlError(f"refusing value {value!r}")
+        if addr == ADDR_EXTERNAL_SETPOINT and not (
+                value == 0 or EXTERNAL_MIN_C <= value <= EXTERNAL_MAX_C):
             raise RoomControlError(f"refusing external setpoint {value}")
+        if addr == ADDR_OPERATING_MODE and value not in (MODE_DHW_ONLY, MODE_HEATING_DHW):
+            raise RoomControlError(f"refusing operating mode {value}")
         self.request(f"w;0x{addr:04X};{length};{value}", addr)
+
+
+def _local_wallclock():
+    t = datetime.datetime.now()
+    return t.weekday(), t.hour * 60 + t.minute, t.date()
 
 
 def _load_settings():
@@ -746,8 +1017,8 @@ class Service:
 
     def apply_setting(self, key, value):
         cfg = dict(self.controller.config)
-        if key == "enabled":
-            cfg["enabled"] = value.lower() in ("1", "on", "true", "ein")
+        if key in ("enabled", "nachtabschaltung"):
+            cfg[key] = value.lower() in ("1", "on", "true", "ein")
         elif key == "aggregation":
             if value not in AGGREGATIONS:
                 log(f"ignoring aggregation {value!r}")
@@ -774,9 +1045,12 @@ class Service:
     def publish_config(self):
         cfg = self.controller.config
         for key in ("toleranz_unten", "toleranz_oben", "verstaerkung", "max_korrektur",
-                    "morgenboost", "morgenboost_ausloesung", "morgenboost_dauer", "aggregation"):
+                    "morgenboost", "morgenboost_ausloesung", "morgenboost_dauer",
+                    "nacht_ein", "nacht_aus", "nacht_min_aussen", "nacht_vorlauf",
+                    "nacht_max_schaltungen", "aggregation"):
             self.client.publish(f"{self.topic}/{key}/state", str(cfg[key]), retain=True)
-        self.client.publish(f"{self.topic}/enabled/state", "1" if cfg["enabled"] else "0", retain=True)
+        for key in ("enabled", "nachtabschaltung"):
+            self.client.publish(f"{self.topic}/{key}/state", "1" if cfg[key] else "0", retain=True)
 
     def publish_status(self, status):
         payload = dict(status)
@@ -833,6 +1107,7 @@ class Service:
             try:
                 if self.connected.is_set():
                     self.controller.release("service stop")
+                    self.controller.night_release("service stop")
                     self.publish_status(self.controller._status("aus", stopped=True))
             except Exception as exc:
                 log(f"WARNING: release on stop failed: {exc}; ExecStopPost retries")
@@ -845,10 +1120,11 @@ class Service:
 def release_only():
     """ExecStopPost fallback: release an owned override after any stop/crash."""
     state = load_state()
-    if not state["owned_command"]:
-        log("release: no owned external room setpoint, nothing to do")
+    if not state["owned_command"] and not state["owned_mode"]:
+        log("release: no owned external room setpoint or night shutdown, nothing to do")
         return 0
-    log(f"release: handing back owned external room setpoint {state['owned_command']}")
+    log(f"release: handing back owned external room setpoint {state['owned_command']}, "
+        f"night shutdown {state['owned_mode']}")
     settings = _load_settings()
     client, host, port = _make_client(settings, f"optolink-room-release-{os.getpid()}", None)
     io = SplitterIO(client, settings.mqtt_listen)
@@ -860,7 +1136,14 @@ def release_only():
         time.sleep(0.5)
         controller = RoomController(io, state)
         controller.resumed = True
-        controller.release("ExecStopPost")
+        failed = None
+        try:
+            controller.release("ExecStopPost")
+        except Exception as exc:
+            failed = exc
+        controller.night_release("ExecStopPost")
+        if failed:
+            raise failed
         return 0
     finally:
         client.loop_stop()
@@ -879,6 +1162,11 @@ def self_test():
     assert next_command(target_c=21, room_c=21.0, current_cmd=22, config=cfg,
                         now=1000, last_step_at=0) == 0
     assert aggregate([20.0, 22.0], "Mittelwert") == 21.0
+    assert decode_schedule_block("2ac0ffffffffffff") == [(320, 1440)]
+    assert schedule_position({0: [(320, 1440)], 1: [(320, 1440)]}, 0, 60) == (False, 260, 0)
+    want, _ = night_decision(active=False, room_c=20.0, reduced_c=18, outside_c=0.0,
+                             in_day=False, minutes_to_day=300, config=cfg, switches_used=0)
+    assert want
     print("optolink-room-control self-test OK")
     return 0
 

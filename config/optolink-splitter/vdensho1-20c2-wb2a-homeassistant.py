@@ -29,7 +29,8 @@ Write verification on this exact appliance:
   0x2306 normal room target: R/W
   0x2307 reduced room target: R/W
   0x2308 party room target: R/W
-  0x2323 operating mode: R/W verified for values 2 and 4; synthetic Party
+  0x2323 operating mode: R/W verified for values 1, 2 and 4 (1 = Nur WW:
+    0x2500 phase 0, flow setpoint 0; live test 2026-11-26); synthetic Party
     uses value 4 (Dauernd Normal) and restores the previous value afterwards
   synthetic Party end-to-end: verified with distinct setpoints (0x2306=21 C,
     0x2308=22 C): ON mirrored 22 C to 0x2306 and set 0x2323=4; OFF restored
@@ -785,6 +786,39 @@ poll_list = {
                 },
             ],
         },
+        # Dynamic night shutdown: in the reduced phase the helper switches
+        # 0x2323 from "Heizen + WW" (2) to "Nur WW" (1) while the room is
+        # warm enough and it is not too cold outside, and back before the
+        # day window / on cooling / on any fault (see docs/raumregelung.md).
+        {
+            "domain": "switch",
+            "icon": "mdi:weather-night",
+            "command_topic": "{mqtt_base}/room_control/nachtabschaltung/set",
+            "state_topic": "{mqtt_base}/room_control/nachtabschaltung/state",
+            "payload_on": "1",
+            "payload_off": "0",
+            "state_on": "1",
+            "state_off": "0",
+            "optimistic": False,
+            "nopoll": [
+                {
+                    "name": "raumregelung_nachtabschaltung",
+                },
+            ],
+        },
+        {
+            "domain": "binary_sensor",
+            "payload_on": "1",
+            "payload_off": "0",
+            "icon": "mdi:power-sleep",
+            "nopoll": [
+                {
+                    "name": "raumregelung_nachtabschaltung_aktiv",
+                    "state_topic": "{mqtt_base}/room_control/status",
+                    "value_template": "{{ 1 if value_json.nachtabschaltung_aktiv | default(false) else 0 }}",
+                },
+            ],
+        },
         {
             "domain": "number",
             "entity_category": "config",
@@ -888,6 +922,75 @@ poll_list = {
                         },
                     ],
                 },
+                {
+                    "min": 0.5,
+                    "max": 5,
+                    "step": 0.1,
+                    "unit_of_measurement": "K",
+                    "icon": "mdi:thermometer-plus",
+                    "nopoll": [
+                        {
+                            "name": "raumregelung_nacht_ein",
+                            "state_topic": "{mqtt_base}/room_control/nacht_ein/state",
+                            "command_topic": "{mqtt_base}/room_control/nacht_ein/set",
+                        },
+                    ],
+                },
+                {
+                    "min": 0,
+                    "max": 4.5,
+                    "step": 0.1,
+                    "unit_of_measurement": "K",
+                    "icon": "mdi:thermometer-minus",
+                    "nopoll": [
+                        {
+                            "name": "raumregelung_nacht_aus",
+                            "state_topic": "{mqtt_base}/room_control/nacht_aus/state",
+                            "command_topic": "{mqtt_base}/room_control/nacht_aus/set",
+                        },
+                    ],
+                },
+                {
+                    "min": -20,
+                    "max": 15,
+                    "step": 0.5,
+                    "unit_of_measurement": "°C",
+                    "icon": "mdi:snowflake-thermometer",
+                    "nopoll": [
+                        {
+                            "name": "raumregelung_nacht_min_aussen",
+                            "state_topic": "{mqtt_base}/room_control/nacht_min_aussen/state",
+                            "command_topic": "{mqtt_base}/room_control/nacht_min_aussen/set",
+                        },
+                    ],
+                },
+                {
+                    "min": 0,
+                    "max": 240,
+                    "step": 10,
+                    "unit_of_measurement": "min",
+                    "icon": "mdi:clock-start",
+                    "nopoll": [
+                        {
+                            "name": "raumregelung_nacht_vorlauf",
+                            "state_topic": "{mqtt_base}/room_control/nacht_vorlauf/state",
+                            "command_topic": "{mqtt_base}/room_control/nacht_vorlauf/set",
+                        },
+                    ],
+                },
+                {
+                    "min": 1,
+                    "max": 10,
+                    "step": 1,
+                    "icon": "mdi:counter",
+                    "nopoll": [
+                        {
+                            "name": "raumregelung_nacht_max_schaltungen",
+                            "state_topic": "{mqtt_base}/room_control/nacht_max_schaltungen/state",
+                            "command_topic": "{mqtt_base}/room_control/nacht_max_schaltungen/set",
+                        },
+                    ],
+                },
             ],
         },
         {
@@ -937,6 +1040,18 @@ poll_list = {
                     "value_template": "{{ value_json.schwelle_unten_c | default(None) }}",
                 },
                 {
+                    "name": "raumregelung_nacht_einschaltschwelle",
+                    "icon": "mdi:thermometer-plus",
+                    "state_topic": "{mqtt_base}/room_control/status",
+                    "value_template": "{{ value_json.nacht_ein_c | default(None) }}",
+                },
+                {
+                    "name": "raumregelung_nacht_ausschaltschwelle",
+                    "icon": "mdi:thermometer-minus",
+                    "state_topic": "{mqtt_base}/room_control/status",
+                    "value_template": "{{ value_json.nacht_aus_c | default(None) }}",
+                },
+                {
                     "name": "raumregelung_obere_schwelle",
                     "icon": "mdi:thermometer-chevron-up",
                     "state_topic": "{mqtt_base}/room_control/status",
@@ -951,8 +1066,14 @@ poll_list = {
                 {
                     "name": "raumregelung_status",
                     "state_topic": "{mqtt_base}/room_control/status",
-                    "value_template": "{% set m = {'aus':'Aus','aktiv':'Aktiv','neutral':'Im Komfortband','morgenboost':'Morgenboost','nachtabsenkung':'Nachtabsenkung – nur Anzeige','abschaltbetrieb':'Abschaltbetrieb','party':'Party','keine_sensoren':'Keine Sensordaten','fremdbelegt':'Extern belegt','stoerung':'Störung – freigegeben','raumeinfluss_codiert':'Raumeinfluss codiert','fehler':'Fehler','start':'Start'} %}{{ m.get(value_json.state, value_json.state) }}",
+                    "value_template": "{% set m = {'aus':'Aus','aktiv':'Aktiv','neutral':'Im Komfortband','morgenboost':'Morgenboost','nachtabsenkung':'Nachtabsenkung','nachtabschaltung':'Nachtabschaltung (Nur WW)','abschaltbetrieb':'Abschaltbetrieb','party':'Party','keine_sensoren':'Keine Sensordaten','fremdbelegt':'Extern belegt','stoerung':'Störung – freigegeben','raumeinfluss_codiert':'Raumeinfluss codiert','fehler':'Fehler','start':'Start'} %}{{ m.get(value_json.state, value_json.state) }}",
                     "json_attributes_topic": "{mqtt_base}/room_control/status",
+                },
+                {
+                    "name": "raumregelung_nacht_grund",
+                    "icon": "mdi:weather-night",
+                    "state_topic": "{mqtt_base}/room_control/status",
+                    "value_template": "{{ value_json.nacht_grund | default('–') }}",
                 },
                 {
                     "name": "raumregelung_phase",

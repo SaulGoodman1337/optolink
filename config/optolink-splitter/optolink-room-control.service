@@ -1,7 +1,8 @@
 # Room-temperature feedback: adjusts the WB2A external room setpoint 0x2321
+# (and, with the optional night shutdown, operating mode 0x2323 2 <-> 1)
 # from Home Assistant room sensors. Ownership lives in
 # /var/lib/optolink-room-control via StateDirectory. ExecStopPost hands
-# control back to the regular room target even after a crash. Wants= (not
+# control back to the regular room target (and mode 2) even after a crash. Wants= (not
 # Requires=) keeps the service alive while the splitter restarts; requests
 # simply time out and the next cycle retries.
 

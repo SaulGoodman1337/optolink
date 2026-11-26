@@ -110,10 +110,53 @@ Standard: Morgenboost 0 K (aus), Auslösung 1,0 K, Höchstdauer 90 min. Nach
 einem Neustart des Dienstes während der Heizzeit gibt es an diesem Morgen
 keinen Boost, weil der Phasenwechsel nicht beobachtet wurde.
 
+## Dynamische Nachtabschaltung
+
+Bleibt das Haus nachts lange warm, taktet der Brenner in der Nachtabsenkung
+trotzdem weiter (Messung 24./25.11.2026: Nachtsoll 18 °C, Raum 20,6 → 19,8 °C,
+außen etwa −1 °C, rund 6 bis 7 Starts pro Stunde). Eine eigene Taktsperre im
+RAM gibt es dafür nicht: `0x55E0` Byte 14 ist nur ein Statusbit, die
+Mindestpausenzeit (4 min) steht im Codierstecker. Der Dienst schaltet deshalb
+in der reduzierten Phase den Heizkreis über die Betriebsart ab.
+
+```text
+Ein:  Phase reduziert, Betriebsart 0x2323 = 2 (Heizen + WW),
+      Raum ≥ Nachtsoll 0x2307 + nacht_ein, außen 0x0800 ≥ nacht_min_aussen,
+      mehr als nacht_vorlauf + 30 min bis zur nächsten Heizzeit,
+      weniger als nacht_max_schaltungen Abschaltungen in dieser Nacht
+      → 0x2323 = 1 (Nur WW), Readback
+Aus:  Raum ≤ Nachtsoll + nacht_aus, außen < nacht_min_aussen − 1 K,
+      nacht_vorlauf min vor der Heizzeit, Tagphase, keine Sensordaten,
+      Störung, Regelung oder Nachtabschaltung aus, 3 Fehlzyklen, Dienststopp
+      → 0x2323 = 2, Readback
+```
+
+Standard: aus; 1,5 K / 0,5 K über Nachtsoll, ab −5 °C außen, 30 min Vorlauf,
+höchstens 3 Abschaltungen pro Nacht. Die Heizzeiten liest der Dienst aus dem
+Zeitprogramm M1 (`0x2000` + 8 × Wochentag, Montag zuerst) mit der Uhrzeit des
+Hosts, die `optolink-clock-sync` mit der Therme abgleicht. Während „Nur WW“
+meldet `0x2500` Phase 0 (Abschaltbetrieb) mit Raumsoll 0, der Vorlauf-Soll
+`0x2544` fällt auf 0 (Live-Test 26.11.2026 06:46: 0x2323 2 → 1 → 2 mit
+Readback, sofort wirksam), deshalb zählt für die Nachterkennung das
+Zeitprogramm. Nach dem Zurückschalten vor der Heizzeit
+erkennt der Morgenboost den Wechsel Reduziert → Normal wie gewohnt.
+
+Besonderheiten:
+
+* `0x2323` ist eine gespeicherte Einstellung (EEPROM). Pro Abschaltung
+  fallen zwei Schreibzugriffe an, das Limit pro Nacht hält das klein.
+* Der Dienst schaltet nur von 2 auf 1 und nur einen selbst gesetzten Wert
+  zurück (`owned_mode` in `state.json`). Ändert jemand die Betriebsart
+  (Hand, Party-Emulation), fasst er sie nicht mehr an.
+* Der Frostschutz der Therme bleibt in „Nur WW“ aktiv.
+* Fällt der ganze Host aus, bleibt „Nur WW“ stehen, bis der Dienst wieder
+  läuft oder die Betriebsart von Hand zurückgestellt wird.
+
 ## Sicherheitsregeln
 
 * Der Dienst öffnet keine serielle Schnittstelle. Er schreibt
-  ausschließlich `0x2321`, nur mit 0 oder 10..30 °C und immer mit Readback.
+  ausschließlich `0x2321`, nur mit 0 oder 10..30 °C, und für die
+  Nachtabschaltung `0x2323` nur mit 1 oder 2, immer mit Readback.
 * Er gibt nur einen Wert frei, den er selbst geschrieben hat. Steht in
   `0x2321` ein fremder Wert, meldet er „Extern belegt“ und schreibt nichts.
 * Sofortige Freigabe (`0x2321 = 0`) bei: Regelung aus, keine frischen
@@ -163,16 +206,26 @@ keinen Boost, weil der Phasenwechsel nicht beobachtet wurde.
 | `number.vitodens_200_wb2a_raumregelung_morgenboost` | zusätzliche K beim Morgenboost (0 = aus) |
 | `number.vitodens_200_wb2a_raumregelung_morgenboost_ausloesung` | Boost startet, wenn der Raum so viele K unter der unteren Schwelle liegt |
 | `number.vitodens_200_wb2a_raumregelung_morgenboost_dauer` | Höchstdauer des Boosts (10..480 min) |
+| `switch.vitodens_200_wb2a_raumregelung_nachtabschaltung` | dynamische Nachtabschaltung ein/aus (Standard aus) |
+| `number.vitodens_200_wb2a_raumregelung_nacht_ein` / `_nacht_aus` | Abschalten ab / wieder heizen bei K über Nachtsoll (Abstand mind. 0,5 K) |
+| `number.vitodens_200_wb2a_raumregelung_nacht_min_aussen` | nur abschalten ab dieser Außentemperatur (−20..15 °C) |
+| `number.vitodens_200_wb2a_raumregelung_nacht_vorlauf` | Minuten vor der Heizzeit wieder einschalten (0..240) |
+| `number.vitodens_200_wb2a_raumregelung_nacht_max_schaltungen` | höchstens so viele Abschaltungen pro Nacht (1..10) |
+| `binary_sensor.vitodens_200_wb2a_raumregelung_nachtabschaltung_aktiv` | Heizkreis gerade vom Dienst auf „Nur WW“ gestellt |
+| `sensor.vitodens_200_wb2a_raumregelung_nacht_grund` | Begründung der letzten Entscheidung |
+| `sensor.vitodens_200_wb2a_raumregelung_nacht_einschaltschwelle` / `_nacht_ausschaltschwelle` | daraus berechnete Raumtemperaturen in °C |
 | `select.vitodens_200_wb2a_raumregelung_mittelung` | Mittelwert / Minimum / Maximum |
 | `sensor.vitodens_200_wb2a_raumregelung_raumtemperatur` | kombinierte Raumtemperatur, Attribute: Einzelsensoren und `anzahl` der frischen Werte, die beim Dienst angekommen sind |
 | `sensor.vitodens_200_wb2a_raumregelung_wirksamer_raumsollwert` | Raumsoll, mit dem die Therme gerade rechnet |
-| `sensor.vitodens_200_wb2a_raumregelung_status` | Aus / Aktiv / Morgenboost / Im Komfortband / Nachtabsenkung – nur Anzeige / Abschaltbetrieb / Party / Keine Sensordaten / Extern belegt / Störung / Fehler |
+| `sensor.vitodens_200_wb2a_raumregelung_status` | Aus / Aktiv / Morgenboost / Im Komfortband / Nachtabsenkung / Nachtabschaltung (Nur WW) / Abschaltbetrieb / Party / Keine Sensordaten / Extern belegt / Störung / Fehler |
 | `sensor.optolink_raumregelung_sensoren` | optional, nur mit dem HA-Paket: Anzahl gefundener Sensoren, Attribut `entities` |
 
 MQTT-Themen unter `openv/room_control/`: `sensors` (Eingang),
 `<parameter>/set` und `<parameter>/state` für `enabled`, `toleranz_unten`,
 `toleranz_oben`, `verstaerkung`, `morgenboost`, `morgenboost_ausloesung`,
-`morgenboost_dauer`, `max_korrektur`, `aggregation`, sowie
+`morgenboost_dauer`, `max_korrektur`, `nachtabschaltung`, `nacht_ein`,
+`nacht_aus`, `nacht_min_aussen`, `nacht_vorlauf`, `nacht_max_schaltungen`,
+`aggregation`, sowie
 `status` (JSON, retained) und `availability`.
 
 ## Betrieb
@@ -182,6 +235,7 @@ systemctl status optolink-room-control --no-pager
 journalctl -u optolink-room-control -n 100 --no-pager
 cat /var/lib/optolink-room-control/state.json
 optolink-debug request "read;0x2321;1"      # 00 = normaler Sollwert
+optolink-debug request "read;0x2323;1"      # 02 = Heizen + WW, 01 = Nur WW
 ```
 
 Manuell freigeben (nur wenn der Dienst den Wert besitzt):
