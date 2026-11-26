@@ -4186,6 +4186,34 @@ views:
               columns: 6
               rows: 2
           - type: tile
+            entity: switch.vitodens_200_wb2a_pumpensteuerung_abgas_spreizung_aktiv
+            name: Abgas-Spreizung regeln
+            icon: mdi:arrow-expand-vertical
+            features:
+              - type: toggle
+            features_position: inline
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
+            entity: number.vitodens_200_wb2a_pumpensteuerung_abgas_spreizung_soll
+            name: Ziel-Spreizung Kessel − Abgas
+            icon: mdi:arrow-expand-vertical
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_pumpensteuerung_abgas_spreizung
+            name: Spreizung Kessel − Abgas
+            icon: mdi:arrow-expand-vertical
+            grid_options:
+              columns: 6
+              rows: 1
+          - type: tile
             entity: sensor.vitodens_200_wb2a_pumpensteuerung_gelernte_ausschalttemperatur
             name: Gelernte Ausschalttemperatur
             icon: mdi:thermometer-off
@@ -4230,7 +4258,13 @@ views:
               aus): nach der Start-Haltezeit läuft die Pumpe während der Flamme mit
               der Mindestdrehzahl, steigt linear an und erreicht 100 % so viele K vor
               der gelernten Ausschalttemperatur. Weniger Pumpe heißt kürzere
-              Brennzeit, daher nur zum Vergleich. Fällt Home Assistant, MQTT
+              Brennzeit, daher nur zum Vergleich. **Abgas-Spreizung**: das Gerät hat
+              keinen Rücklauffühler; während der Flamme dient Kessel − Abgas als
+              Ersatz-Spreizung (bei 100 % Pumpe ca. 2 K). Ist sie aktiv, regelt die
+              Pumpe nach der Start-Haltezeit in 5-%-Schritten (alle 20 s) auf die
+              Ziel-Spreizung, zwischen Kennlinie-Mindestdrehzahl und 100 %. Ein
+              echter Rücklauffühler ist geplant und ersetzt später diesen Ersatzwert.
+              Fällt Home Assistant, MQTT
               oder der Splitter aus, läuft die Pumpe nach spätestens ~3 s wieder
               mit 100 %. Nur im Dauer-P300-Betrieb aktiv.
             grid_options:
