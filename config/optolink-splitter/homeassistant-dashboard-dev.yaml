@@ -5692,6 +5692,8 @@ views:
             hours_to_show: 48
             entities:
               - entity: sensor.vitodens_200_wb2a_raumregelung_status
+              - entity: binary_sensor.vitodens_200_wb2a_raumregelung_nachtabschaltung_aktiv
+                name: Nachtabschaltung
             grid_options:
               columns: full
     cards: []
