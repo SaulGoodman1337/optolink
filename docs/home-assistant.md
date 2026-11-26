@@ -267,6 +267,23 @@ legt per MQTT-Discovery ein eigenes Gerät an:
 | `sensor.mag_rssi`, `sensor.mag_empfaenger`, `sensor.mag_zuletzt` | Empfang (Diagnose) |
 | `sensor.mag_status` | Statusbyte roh (Diagnose) |
 
+Auswertung (eigenes Topic `…/tpms/mag/auswertung`, rollendes 24-h-Fenster,
+eine Probe pro Minute, gespeichert in `/var/lib/optolink-mag-tpms`):
+
+| Entity | Inhalt |
+|---|---|
+| `sensor.mag_druck_min`, `sensor.mag_druck_max` | Druck-Minimum/-Maximum 24 h |
+| `sensor.mag_druck_kalt`, `sensor.mag_druck_warm` | Median-Druck bei der tiefsten bzw. höchsten Kappentemperatur (±1 K) |
+| `sensor.mag_druckhub` | Druck warm − Druck kalt |
+| `sensor.mag_hub_pro_10k` | Druckhub je 10 K Temperaturänderung (erst ab 10 K Spanne) |
+| `sensor.mag_temp_kalt`, `sensor.mag_temp_warm`, `sensor.mag_proben` | Diagnose |
+
+Erst nach einer Stunde Daten gibt es Werte. Ein gesundes MAG hält den
+Druckanstieg beim Aufheizen klein; das Dashboard wertet `hub_pro_10k` grob aus
+(bis 0,15 bar/10 K unauffällig, bis 0,3 erhöht, darüber Vordruck prüfen).
+Das sind Richtwerte, keine Herstellerangabe; die Kappentemperatur ist die
+MAG-Temperatur, nicht der Vorlauf.
+
 Ohne Empfang für `stale_minutes` (Standard 360) werden die Entities
 `unavailable`.
 
@@ -292,7 +309,7 @@ HACS-Integration „TPMS_BLE“ zeigt bei diesen Kappen 0 bar, weil Byte 6
 
 Dashboard: Kachel **Druck (MAG)** in der Statuszeile der Hauptseite, Abschnitt
 **Ausdehnungsgefäß (MAG)** in der Ansicht Diagnose (7-Tage-Verlauf,
-Tagesminimum/-maximum über 30 Tage, Warnung unter 1,0 bar, ohne Empfang oder
+Tagesminimum/-maximum über 30 Tage, Kalt/Warm-Check mit Bewertung, Warnung unter 1,0 bar, ohne Empfang oder
 bei schwacher Batterie).
 
 Vordruck prüfen: Kappenventil unter dem MAG schließen, MAG-Wasserseite
