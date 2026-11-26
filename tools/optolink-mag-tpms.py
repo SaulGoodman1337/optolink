@@ -40,6 +40,15 @@ Configuration ``/etc/optolink/mag-tpms.json``::
       "stale_minutes": 360                                 # optional
     }
 
+Evaluation (``<base>/tpms/<id>/auswertung``): a rolling 24 h window of
+pressure and cap temperature (one sample per minute, persisted in
+``/var/lib/optolink-mag-tpms``) gives min/max pressure and the classic
+expansion-vessel check: pressure "cold" (median at the lowest cap
+temperatures) vs. "warm" (median at the highest). A healthy vessel keeps the
+cold/warm swing small (a few tenths of a bar for a full heat-up); a large
+swing means missing precharge or an undersized vessel. ``hub_pro_10k``
+normalises the swing to 10 K of temperature change (needs >= 10 K spread).
+
 ``ha_url`` defaults to port 8123 on the MQTT broker host. The Home Assistant
 long-lived token is read from ``$CREDENTIALS_DIRECTORY/ha-token`` (systemd
 LoadCredential) or ``/etc/optolink/ha-token``.
@@ -51,12 +60,16 @@ import asyncio
 import datetime
 import json
 import os
+import signal
 import sys
 import time
 
 APP_DIR = "/opt/optolink"
 CONFIG_FILE = os.environ.get("OPTOLINK_MAG_TPMS_CONFIG", "/etc/optolink/mag-tpms.json")
 TOKEN_FILE = "/etc/optolink/ha-token"
+STATE_DIR = os.environ.get("OPTOLINK_MAG_TPMS_STATE_DIR", "/var/lib/optolink-mag-tpms")
+WINDOW_S = 24 * 3600
+SAMPLE_S = 60
 MANUFACTURER_ID = 172
 SERVICE_UUID = "0000fbb0-0000-1000-8000-00805f9b34fb"
 PRESSURE_STEP_BAR = 0.03144
@@ -116,6 +129,73 @@ def extract(adv: dict, addresses: set[str]) -> tuple[str, dict] | None:
     return addr, values
 
 
+def _median(values: list[float]) -> float:
+    v = sorted(values)
+    n = len(v)
+    return v[n // 2] if n % 2 else (v[n // 2 - 1] + v[n // 2]) / 2
+
+
+class PressureWindow:
+    """Rolling window of (ts, bar, degC) samples for the cold/warm check."""
+
+    def __init__(self, window_s: float = WINDOW_S, sample_s: float = SAMPLE_S):
+        self.window_s = window_s
+        self.sample_s = sample_s
+        self.samples: list[list[float]] = []
+
+    def add(self, ts: float, bar: float, temp: float) -> bool:
+        if self.samples and ts - self.samples[-1][0] < self.sample_s:
+            return False
+        self.samples.append([ts, bar, temp])
+        self.prune(ts)
+        return True
+
+    def prune(self, now: float):
+        cut = now - self.window_s
+        while self.samples and self.samples[0][0] < cut:
+            self.samples.pop(0)
+
+    def summary(self, now: float | None = None) -> dict:
+        if now is not None:
+            self.prune(now)
+        out = {k: None for k in ("druck_min", "druck_max", "druck_kalt", "druck_warm",
+                                 "temp_kalt", "temp_warm", "druckhub", "hub_pro_10k")}
+        out["proben"] = len(self.samples)
+        if len(self.samples) < 10 or self.samples[-1][0] - self.samples[0][0] < 3600:
+            return out
+        bars = [s[1] for s in self.samples]
+        temps = [s[2] for s in self.samples]
+        t_min, t_max = min(temps), max(temps)
+        p_cold = _median([s[1] for s in self.samples if s[2] <= t_min + 1])
+        p_warm = _median([s[1] for s in self.samples if s[2] >= t_max - 1])
+        spread = t_max - t_min
+        out.update({
+            "druck_min": round(min(bars), 2),
+            "druck_max": round(max(bars), 2),
+            "druck_kalt": round(p_cold, 2),
+            "druck_warm": round(p_warm, 2),
+            "temp_kalt": t_min,
+            "temp_warm": t_max,
+            "druckhub": round(p_warm - p_cold, 2),
+            "hub_pro_10k": round((p_warm - p_cold) / spread * 10, 3) if spread >= 10 else None,
+        })
+        return out
+
+    def load(self, path: str):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                data = json.load(fh)
+            self.samples = [list(map(float, s[:3])) for s in data if len(s) >= 3]
+        except (OSError, ValueError, TypeError):
+            self.samples = []
+
+    def save(self, path: str):
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(self.samples, fh)
+        os.replace(tmp, path)
+
+
 ENTITIES = [
     # key, name, extra discovery fields
     ("druck", "Druck", {"device_class": "pressure", "unit_of_measurement": "bar",
@@ -134,6 +214,33 @@ ENTITIES = [
     ("zuletzt", "Zuletzt empfangen", {"device_class": "timestamp", "entity_category": "diagnostic"}),
     ("empfaenger", "Empfänger", {"entity_category": "diagnostic", "icon": "mdi:bluetooth"}),
     ("status", "Status roh", {"entity_category": "diagnostic", "icon": "mdi:information-outline"}),
+]
+
+
+EVAL_ENTITIES = [
+    ("druck_min", "Druck Minimum 24 h", {"device_class": "pressure", "unit_of_measurement": "bar",
+                                         "state_class": "measurement", "suggested_display_precision": 2}),
+    ("druck_max", "Druck Maximum 24 h", {"device_class": "pressure", "unit_of_measurement": "bar",
+                                         "state_class": "measurement", "suggested_display_precision": 2}),
+    ("druck_kalt", "Druck kalt 24 h", {"device_class": "pressure", "unit_of_measurement": "bar",
+                                       "state_class": "measurement", "suggested_display_precision": 2,
+                                       "icon": "mdi:snowflake-thermometer"}),
+    ("druck_warm", "Druck warm 24 h", {"device_class": "pressure", "unit_of_measurement": "bar",
+                                       "state_class": "measurement", "suggested_display_precision": 2,
+                                       "icon": "mdi:sun-thermometer"}),
+    ("temp_kalt", "Temperatur kalt 24 h", {"device_class": "temperature", "unit_of_measurement": "°C",
+                                           "entity_category": "diagnostic"}),
+    ("temp_warm", "Temperatur warm 24 h", {"device_class": "temperature", "unit_of_measurement": "°C",
+                                           "entity_category": "diagnostic"}),
+    ("druckhub", "Druckhub kalt/warm 24 h", {"device_class": "pressure", "unit_of_measurement": "bar",
+                                             "state_class": "measurement",
+                                             "suggested_display_precision": 2,
+                                             "icon": "mdi:arrow-expand-vertical"}),
+    ("hub_pro_10k", "Druckhub pro 10 K", {"unit_of_measurement": "bar/10K", "state_class": "measurement",
+                                          "suggested_display_precision": 3,
+                                          "icon": "mdi:chart-bell-curve"}),
+    ("proben", "Proben 24 h", {"state_class": "measurement", "entity_category": "diagnostic",
+                               "icon": "mdi:counter"}),
 ]
 
 
@@ -157,6 +264,18 @@ def discovery_messages(base: str, sensor: dict) -> list[tuple[str, dict]]:
             "unique_id": f"{uid}_{key}",
             "default_entity_id": f"sensor.{sid}_{key}",
             "state_topic": state,
+            "value_template": "{{ value_json.%s }}" % key,
+            "availability_topic": avail,
+            "device": device,
+        }
+        cfg.update(extra)
+        out.append((f"homeassistant/sensor/{uid}/{key}/config", cfg))
+    for key, name, extra in EVAL_ENTITIES:
+        cfg = {
+            "name": name,
+            "unique_id": f"{uid}_{key}",
+            "default_entity_id": f"sensor.{sid}_{key}",
+            "state_topic": f"{base}/tpms/{sid}/auswertung",
             "value_template": "{{ value_json.%s }}" % key,
             "availability_topic": avail,
             "device": device,
@@ -223,12 +342,21 @@ class Service:
         self.sensors = {s["address"]: s for s in cfg["sensors"]}
         self.last_seen: dict[str, float] = {}
         self.online: dict[str, bool] = {}
+        self.windows: dict[str, PressureWindow] = {}
+        self.last_save = 0.0
+        for addr in self.sensors:
+            w = PressureWindow()
+            w.load(self._window_file(addr))
+            self.windows[addr] = w
         self.client, host, port = _make_client(self.settings)
         self.mqtt_host = host
         self.client.on_connect = self._on_connect
         self.client.connect_async(host, port, keepalive=60)
         self.client.loop_start()
         self.ha_url = cfg.get("ha_url") or f"ws://{host}:8123/api/websocket"
+
+    def _window_file(self, addr: str) -> str:
+        return os.path.join(STATE_DIR, f"window-{addr.replace(':', '').lower()}.json")
 
     def _sid(self, addr: str) -> str:
         s = self.sensors[addr]
@@ -241,6 +369,7 @@ class Service:
             addr = s["address"]
             if addr in self.online:
                 self._set_online(addr, self.online[addr], force=True)
+            self._publish_eval(addr)
         print(f"MQTT connected ({reason_code}), discovery published", flush=True)
 
     def _set_online(self, addr: str, online: bool, force: bool = False):
@@ -259,6 +388,24 @@ class Service:
         self.client.publish(f"{self.base}/tpms/{self._sid(addr)}/state",
                             json.dumps(values, ensure_ascii=False), qos=1, retain=True)
         self._set_online(addr, True)
+        now = time.time()
+        if self.windows[addr].add(now, values["druck"], values["temperatur"]):
+            self._publish_eval(addr)
+            if now - self.last_save > 600:
+                self._save_windows()
+                self.last_save = now
+
+    def _publish_eval(self, addr: str):
+        summary = self.windows[addr].summary(time.time())
+        self.client.publish(f"{self.base}/tpms/{self._sid(addr)}/auswertung",
+                            json.dumps(summary), qos=1, retain=True)
+
+    def _save_windows(self):
+        for addr, w in self.windows.items():
+            try:
+                w.save(self._window_file(addr))
+            except OSError as exc:
+                print(f"cannot save window: {exc}", flush=True)
 
     def check_stale(self):
         limit = float(self.cfg["stale_minutes"]) * 60
@@ -322,6 +469,12 @@ def self_test() -> int:
     msgs = discovery_messages("openv", {"address": addr, "id": "mag", "name": "MAG"})
     assert msgs[0][0] == "homeassistant/sensor/optolink_tpms_614100" "02ffb2/druck/config"
     assert msgs[0][1]["state_topic"] == "openv/tpms/mag/state"
+    w = PressureWindow()
+    for i in range(120):  # 2 h: 30 degC/1.20 bar heating up to 60 degC/1.50 bar
+        w.add(1000.0 + i * 60, 1.20 + i * 0.0025, 30 + i * 0.25)
+    sm = w.summary()
+    assert sm["druck_kalt"] == 1.2 and sm["druckhub"] == 0.29 and 0.09 < sm["hub_pro_10k"] < 0.11, sm
+    assert PressureWindow().summary()["druckhub"] is None
     print("optolink-mag-tpms self-test OK")
     return 0
 
@@ -336,6 +489,12 @@ def main() -> int:
         print(f"{CONFIG_FILE} missing; nothing to do", flush=True)
         return 0
     service = Service(load_config())
+
+    def _stop(signum, frame):
+        service._save_windows()
+        raise SystemExit(0)
+
+    signal.signal(signal.SIGTERM, _stop)
     asyncio.run(service.run())
     return 0
 

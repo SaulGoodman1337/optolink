@@ -17,6 +17,8 @@ User=optolink
 Group=optolink
 WorkingDirectory=/opt/optolink
 Environment=PYTHONUNBUFFERED=1
+StateDirectory=optolink-mag-tpms
+StateDirectoryMode=0750
 LoadCredential=ha-token:/etc/optolink/ha-token
 ExecStart=/usr/local/bin/optolink-mag-tpms
 Restart=always

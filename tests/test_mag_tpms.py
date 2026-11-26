@@ -74,6 +74,60 @@ class ExtractTest(unittest.TestCase):
         self.assertIsNone(mt.extract(self.adv(manufacturer_data={"172": "zz"}), {ADDR}))
 
 
+class WindowTest(unittest.TestCase):
+    def test_needs_an_hour_of_data(self):
+        w = mt.PressureWindow()
+        for i in range(30):
+            w.add(i * 60.0, 1.2, 30)
+        self.assertIsNone(w.summary()["druckhub"])
+        self.assertEqual(w.summary()["proben"], 30)
+
+    def test_one_sample_per_minute(self):
+        w = mt.PressureWindow()
+        self.assertTrue(w.add(0.0, 1.2, 30))
+        self.assertFalse(w.add(30.0, 1.3, 31))
+        self.assertTrue(w.add(60.0, 1.3, 31))
+
+    def test_cold_warm_swing(self):
+        w = mt.PressureWindow()
+        # night cold 1.20 bar at 25 degC, day warm 1.60 bar at 55 degC
+        for i in range(60):
+            w.add(i * 60.0, 1.20, 25)
+        for i in range(60, 120):
+            w.add(i * 60.0, 1.60, 55)
+        sm = w.summary()
+        self.assertEqual(sm["druck_kalt"], 1.2)
+        self.assertEqual(sm["druck_warm"], 1.6)
+        self.assertEqual(sm["druckhub"], 0.4)
+        self.assertAlmostEqual(sm["hub_pro_10k"], 0.133, places=3)
+
+    def test_small_temperature_spread_gives_no_rate(self):
+        w = mt.PressureWindow()
+        for i in range(120):
+            w.add(i * 60.0, 1.2 + (i % 2) * 0.03, 30 + (i % 2) * 5)
+        self.assertIsNone(w.summary()["hub_pro_10k"])
+
+    def test_window_pruned(self):
+        w = mt.PressureWindow()
+        w.add(0.0, 1.0, 20)
+        w.add(mt.WINDOW_S + 120.0, 1.2, 30)
+        self.assertEqual(len(w.samples), 1)
+
+    def test_persistence(self):
+        import tempfile, os
+        w = mt.PressureWindow()
+        w.add(0.0, 1.2, 30)
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "w.json")
+            w.save(path)
+            w2 = mt.PressureWindow()
+            w2.load(path)
+            self.assertEqual(w2.samples, [[0.0, 1.2, 30.0]])
+            w3 = mt.PressureWindow()
+            w3.load(os.path.join(d, "missing.json"))
+            self.assertEqual(w3.samples, [])
+
+
 class DiscoveryTest(unittest.TestCase):
     def test_entities(self):
         msgs = dict(mt.discovery_messages("openv", {"address": ADDR, "id": "mag", "name": "MAG"}))
@@ -81,7 +135,9 @@ class DiscoveryTest(unittest.TestCase):
         self.assertEqual(druck["unit_of_measurement"], "bar")
         self.assertEqual(druck["default_entity_id"], "sensor.mag_druck")
         self.assertEqual(druck["availability_topic"], "openv/tpms/mag/availability")
-        self.assertEqual(len(msgs), len(mt.ENTITIES))
+        self.assertEqual(len(msgs), len(mt.ENTITIES) + len(mt.EVAL_ENTITIES))
+        hub = msgs["homeassistant/sensor/optolink_tpms_61410002ffb2/druckhub/config"]
+        self.assertEqual(hub["state_topic"], "openv/tpms/mag/auswertung")
         ids = {m["unique_id"] for m in msgs.values()}
         self.assertEqual(len(ids), len(msgs))
 
