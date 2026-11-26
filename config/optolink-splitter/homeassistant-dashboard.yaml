@@ -4143,6 +4143,56 @@ views:
               columns: 6
               rows: 2
           - type: tile
+            entity: switch.vitodens_200_wb2a_pumpensteuerung_brenner_kennlinie_aktiv
+            name: Brenner-Kennlinie aktiv
+            icon: mdi:chart-bell-curve-cumulative
+            features:
+              - type: toggle
+            features_position: inline
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
+            entity: number.vitodens_200_wb2a_pumpensteuerung_kennlinie_mindestdrehzahl
+            name: Kennlinie Mindestdrehzahl
+            icon: mdi:chart-bell-curve-cumulative
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
+            entity: number.vitodens_200_wb2a_pumpensteuerung_kennlinie_voll_vor_aus
+            name: 100 % ab K vor Aus
+            icon: mdi:thermometer-chevron-up
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
+            entity: number.vitodens_200_wb2a_pumpensteuerung_kennlinie_starthaltezeit
+            name: Start-Haltezeit
+            icon: mdi:timer-play-outline
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_pumpensteuerung_gelernte_ausschalttemperatur
+            name: Gelernte Ausschalttemperatur
+            icon: mdi:thermometer-off
+            grid_options:
+              columns: 6
+              rows: 1
+          - type: tile
             entity: sensor.vitodens_200_wb2a_pumpensteuerung_kessel_unter_soll
             name: Kessel unter Soll
             icon: mdi:thermometer-minus
@@ -4176,7 +4226,11 @@ views:
               **Nachlauf** hält 100 % für die eingestellten Minuten nach
               Brenner aus, **Vorboost** geht schon auf 100 %, wenn der Kessel nur
               noch so viele K von der gelernten Startschwelle (Kessel unter Soll
-              beim Brennerstart) entfernt ist. Fällt Home Assistant, MQTT
+              beim Brennerstart) entfernt ist. **Brenner-Kennlinie** (Test, Standard
+              aus): nach der Start-Haltezeit läuft die Pumpe während der Flamme mit
+              der Mindestdrehzahl, steigt linear an und erreicht 100 % so viele K vor
+              der gelernten Ausschalttemperatur. Weniger Pumpe heißt kürzere
+              Brennzeit, daher nur zum Vergleich. Fällt Home Assistant, MQTT
               oder der Splitter aus, läuft die Pumpe nach spätestens ~3 s wieder
               mit 100 %. Nur im Dauer-P300-Betrieb aktiv.
             grid_options:
@@ -5218,9 +5272,15 @@ views:
               **{{ '%+.0f' | format((a.get('effective_target_c', 0) - a.get('base_target_c', 0))) }} K**
               verschoben, dadurch ändert sich der Vorlauf-Soll.
               {% elif st == 'Im Komfortband' %}Der Raum liegt im Komfortband. Es wird nichts verändert.
+              {% elif st.startswith('Nachtabschaltung') %}Nachtabschaltung: Der Raum ist warm genug, der
+              Heizkreis steht auf „Nur WW“. Zurück auf „Heizen + WW“ bei
+              {{ a.get('nacht_aus_c', '–') }} °C Raum, bei Kälte draußen oder
+              {{ states('number.vitodens_200_wb2a_raumregelung_nacht_vorlauf') }} min vor der Heizzeit
+              (noch {{ a.get('minuten_bis_tag', '–') }} min).
               {% elif st.startswith('Nachtabsenkung') %}Nachtabsenkung laut Zeitprogramm. Die Therme übernimmt
-              dort keinen externen Sollwert, deshalb wird nur angezeigt. Zur nächsten Heizzeit regelt
-              der Dienst wieder.
+              dort keinen externen Sollwert. Zur nächsten Heizzeit regelt der Dienst wieder.
+              {% if a.get('nachtabschaltung') %}Nachtabschaltung: {{ a.get('nacht_grund', '–') }}
+              (abschalten ab {{ a.get('nacht_ein_c', '–') }} °C Raum).{% endif %}
               {% elif st == 'Keine Sensordaten' %}Seit über 10 Minuten kam kein Sensorwert an. Prüfe das
               Label „Optolink Raumregelung“ und die Automation in Home Assistant.
               {% elif st == 'Extern belegt' %}Im externen Sollwert 0x2321 steht ein fremder Wert
@@ -5406,6 +5466,112 @@ views:
             grid_options:
               columns: full
 
+          - type: heading
+            heading: Nachtabschaltung
+            heading_style: subtitle
+            icon: mdi:weather-night
+            badges:
+              - type: entity
+                entity: binary_sensor.vitodens_200_wb2a_raumregelung_nachtabschaltung_aktiv
+                name: Heizkreis aus
+                show_state: true
+                show_icon: true
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_raumregelung_nacht_einschaltschwelle
+                name: aus ab
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_raumregelung_nacht_ausschaltschwelle
+                name: wieder an bei
+                show_state: true
+                show_icon: false
+
+          - type: tile
+            entity: switch.vitodens_200_wb2a_raumregelung_nachtabschaltung
+            name: Nachts abschalten, wenn der Raum warm genug ist
+            icon: mdi:weather-night
+            tap_action:
+              action: toggle
+            features:
+              - type: toggle
+            features_position: bottom
+            grid_options:
+              columns: full
+
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_raumregelung_nacht_grund
+            name: Entscheidung
+            grid_options:
+              columns: full
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_nacht_ein
+            name: Abschalten ab K über Nachtsoll
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_nacht_aus
+            name: Wieder heizen bei K über Nachtsoll
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_nacht_min_aussen
+            name: Nur ab Außentemperatur
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_nacht_vorlauf
+            name: Wieder an vor Heizzeit
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_nacht_max_schaltungen
+            name: Höchstens Abschaltungen pro Nacht
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: full
+
+          - type: markdown
+            content: >-
+              In der **Nachtabsenkung** schaltet der Dienst den Heizkreis auf
+              **„Nur WW“**, solange der Raum mindestens „Abschalten ab“ über dem
+              Nachtsoll liegt und es draußen nicht kälter als „Nur ab Außentemperatur“
+              ist. Warmwasser und der Frostschutz der Therme laufen weiter. Zurück auf
+              **„Heizen + WW“** geht es, sobald der Raum auf „Wieder heizen bei“
+              abgekühlt ist, es draußen 1 K kälter als die Grenze wird, „Wieder an vor
+              Heizzeit“ Minuten vor der nächsten Heizzeit des Zeitprogramms, bei
+              fehlenden Sensoren, Störung, Ausschalten oder Dienststopp. Beispiel:
+              Nachtsoll 18 °C, 1,5 K / 0,5 K → aus ab 19,5 °C, wieder an bei 18,5 °C.
+              Die Betriebsart ist eine gespeicherte Einstellung der Therme, deshalb
+              ist die Zahl der Abschaltungen pro Nacht begrenzt. Hast du die
+              Betriebsart selbst geändert, fasst der Dienst sie nicht an.
+            grid_options:
+              columns: full
+
           - type: markdown
             title: Status-Übersicht
             content: |-
@@ -5414,7 +5580,8 @@ views:
               | Aktiv | Raumsoll wird gerade korrigiert |
               | Morgenboost | nach kalter Nacht zusätzlich angehoben |
               | Im Komfortband | Raum passt, Zeitprogramm-Sollwert gilt |
-              | Nachtabsenkung – nur Anzeige | reduzierte Phase, keine Korrektur möglich |
+              | Nachtabsenkung | reduzierte Phase, keine Korrektur möglich |
+              | Nachtabschaltung (Nur WW) | Raum warm genug, Heizkreis nachts aus |
               | Abschaltbetrieb / Party | Therme läuft im Sondermodus, keine Korrektur |
               | Keine Sensordaten | länger als 10 min kein Wert aus HA, freigegeben |
               | Extern belegt | 0x2321 von anderer Stelle gesetzt, wird nicht angefasst |
@@ -5423,7 +5590,8 @@ views:
               | Fehler | Therme/Splitter nicht erreichbar, neuer Versuch im nächsten Zyklus |
 
               Sicherheit: Die Korrektur ändert sich höchstens um 1 K alle 5 Minuten. Bei
-              Ausschalten, Dienststopp oder Absturz wird sie sofort zurückgenommen.
+              Ausschalten, Dienststopp oder Absturz wird sie sofort zurückgenommen, eine
+              Nachtabschaltung ebenso (Betriebsart zurück auf „Heizen + WW“).
             grid_options:
               columns: full
 

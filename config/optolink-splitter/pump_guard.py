@@ -36,6 +36,18 @@ the firmware started the burner. It boosts already when the boiler is within
 `vorboost` K of that learned threshold, so the pump moves heat out of the
 boiler before the burner fires at full power for flame stabilisation.
   status       JSON (retained), zustand = state word, protocol = P300|VS1
+
+Burner curve (Brenner-Kennlinie, optional, 1.4.0): during a heating burn the
+pump does not have to run at 100 % all the time. After a start hold
+(`kurve_start_s`, full start power) the guard sets the pump minimum from the
+headroom to the learned switch-off temperature (boiler temperature at the
+last heating burner stops): `kurve_min` % far below, rising linearly over
+KURVE_SPAN_K to 100 % at `kurve_voll_k` K before switch-off. DHW, valve not
+on heating, unknown/stale temperatures or no learned switch-off -> 100 %.
+Less flow while firing means the boiler reaches switch-off sooner, so this is
+meant for an A/B comparison and is off by default.
+  kurve_aktiv/set ON|OFF, kurve_min/set 20..100 %, kurve_voll_k/set 0..15 K,
+  kurve_start_s/set 0..300 s
 """
 from __future__ import annotations
 
@@ -43,7 +55,7 @@ import json
 import threading
 import time
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 
 RAM_BLOCK, RAM_E7_OFFSET = 0x20A0, 5          # 0x20A5
 HIGH = 100
@@ -53,6 +65,9 @@ VORBOOST_MAX_K = 10.0
 VORBOOST_HYST_K = 0.5          # release the pre-boost only 0.5 K below its trigger
 START_MARGIN_DEFAULT_K = 4.0   # coding plug "Einschaltdifferenz" 4 K until learned
 START_MARGIN_ALPHA = 0.3       # EMA weight of each observed burner start
+KURVE_SPAN_K = 5.0             # linear ramp width below the full-speed point
+KURVE_STEP = 5                 # pump value granularity (fewer distinct writes)
+AUS_ALPHA = 0.3                # EMA weight of each observed switch-off temperature
 START_LOOKBACK_S = (3.0, 20.0) # use temperatures 3..20 s before the start: the firmware
                                # drops the effective setpoint (e.g. 16.5) at the start
 
@@ -77,6 +92,8 @@ RAM_QUIET_S = 1.4          # firmware reload seen 1.7-2.7 s after a write: no re
 STALE_S = 5.0              # state older than this -> no lowering
 
 ABGESENKT, BOOST, AUS, GESPERRT, FEHLER = "ABGESENKT", "BOOST", "AUS", "GESPERRT", "FEHLER"
+KENNLINIE = "KENNLINIE"    # lowered to the burner curve value while firing
+LOWERING = (ABGESENKT, KENNLINIE)
 
 
 class GuardLogic:
@@ -105,6 +122,16 @@ class GuardLogic:
         self.start_margins = []            # last observed values (for HA/diagnosis)
         self.vorboost_active = False
         self.starts = 0
+        # burner curve (Brenner-Kennlinie)
+        self.kurve_aktiv = False
+        self.kurve_min = 60
+        self.kurve_voll_k = 3.0
+        self.kurve_start_s = 60.0
+        self.aus_temp = None               # learned boiler temperature at heating burner stop
+        self.aus_werte = []
+        self.flame_since = None
+        self.kurve_wert = None             # last computed curve value (diagnosis)
+        self._prev_flame = None
         self._prev_burner = None
         self._temp_hist = []               # (t, kessel, soll) for the start lookback
 
@@ -115,6 +142,12 @@ class GuardLogic:
             self.lockout = bool(b[5] & 0x40)
             self.sequence = bool(b[6] or b[7])
             burner = self.flame or self.sequence
+            if self.flame and not self._prev_flame:
+                self.flame_since = now
+            elif not self.flame and self._prev_flame:
+                self._learn_stop(now)
+                self.flame_since = None
+            self._prev_flame = self.flame
             if burner and self._prev_burner is False:
                 self._learn_start(now)
             self._prev_burner = burner
@@ -157,6 +190,40 @@ class GuardLogic:
         self.start_margin = round((1 - START_MARGIN_ALPHA) * self.start_margin
                                   + START_MARGIN_ALPHA * margin, 2)
 
+    def _learn_stop(self, now):
+        """Heating burner stopped: remember the boiler temperature (switch-off point)."""
+        if self.ww or self.valve != 1 or self.kessel is None:
+            return
+        if "kessel" not in self.ts or now - self.ts["kessel"] > TEMP_STALE_S:
+            return
+        if self.flame_since is None or now - self.flame_since < self.kurve_start_s:
+            return      # very short burns are dominated by the start phase
+        k = round(self.kessel, 1)
+        self.aus_werte = (self.aus_werte + [k])[-10:]
+        self.aus_temp = k if self.aus_temp is None else round(
+            (1 - AUS_ALPHA) * self.aus_temp + AUS_ALPHA * k, 2)
+
+    def kurve(self, now):
+        """Pump value for the burner curve, or None (-> 100 %)."""
+        self.kurve_wert = None
+        if not self.kurve_aktiv or not self.flame or self.flame_since is None:
+            return None
+        if now - self.flame_since < self.kurve_start_s or self.aus_temp is None:
+            return None
+        if "kessel" not in self.ts or now - self.ts["kessel"] > TEMP_STALE_S or self.kessel is None:
+            return None
+        headroom = self.aus_temp - self.kessel
+        if headroom <= self.kurve_voll_k:
+            return None
+        frac = min(1.0, (headroom - self.kurve_voll_k) / KURVE_SPAN_K)
+        v = HIGH - frac * (HIGH - self.kurve_min)
+        v = int(-(-v // KURVE_STEP) * KURVE_STEP)      # round up to the step
+        v = max(LOW_MIN, min(HIGH, v))
+        if v >= HIGH:
+            return None
+        self.kurve_wert = v
+        return v
+
     def temps_fresh(self, now):
         return all(k in self.ts and now - self.ts[k] <= TEMP_STALE_S for k in ("kessel", "soll")) \
             and self.kessel is not None and self.soll is not None
@@ -180,7 +247,7 @@ class GuardLogic:
         return all(k in self.ts and now - self.ts[k] <= lim for k, lim in need.items())
 
     def decide(self, now):
-        """Return (state, reason). Only ABGESENKT allows writing `low`."""
+        """Return (state, reason). Only ABGESENKT (`low`) and KENNLINIE (`kurve_wert`) lower."""
         if self.error:
             return FEHLER, self.error
         if not self.enabled:
@@ -196,6 +263,9 @@ class GuardLogic:
         if self.valve != 1:
             return BOOST, "Ventil nicht Heizen"
         if self.flame:
+            v = self.kurve(now)
+            if v is not None:
+                return KENNLINIE, f"Brenner-Kennlinie {v} %"
             return BOOST, "Flamme"
         if self.sequence:
             return BOOST, "Startsequenz"
@@ -233,6 +303,7 @@ class PumpGuard:
         self.last_low_written = None
         self.repairs = 0
         self.writes = 0
+        self._target = None
         self.last_pub = 0.0
         self.last_state = None
         self.lock = threading.Lock()
@@ -284,7 +355,8 @@ class PumpGuard:
             self._on_connect(c, None, None, 0)
 
     def _on_connect(self, client, userdata, flags, rc, properties=None):
-        topics = ["enabled", "low", "nachlauf", "nachlauf_aktiv", "vorboost", "vorboost_aktiv"]
+        topics = ["enabled", "low", "nachlauf", "nachlauf_aktiv", "vorboost", "vorboost_aktiv",
+                  "kurve_aktiv", "kurve_min", "kurve_voll_k", "kurve_start_s"]
         client.subscribe([(f"{self.base}/{t}/set", 0) for t in topics]
                          + [(f"{self.base}/{t}/state", 0) for t in topics])
         client.publish(f"{self.base}/protocol", "P300" if self.active else "VS1", retain=True)
@@ -314,7 +386,25 @@ class PumpGuard:
                         return
                     self.logic.low = v
                     out = str(v)
-                elif name in ("nachlauf_aktiv", "vorboost_aktiv"):
+                elif name == "kurve_min":
+                    v = int(float(payload))
+                    if not LOW_MIN <= v <= LOW_MAX:
+                        return
+                    self.logic.kurve_min = v
+                    out = str(v)
+                elif name == "kurve_voll_k":
+                    v = round(float(payload), 1)
+                    if not 0 <= v <= 15:
+                        return
+                    self.logic.kurve_voll_k = v
+                    out = str(v)
+                elif name == "kurve_start_s":
+                    v = int(float(payload))
+                    if not 0 <= v <= 300:
+                        return
+                    self.logic.kurve_start_s = float(v)
+                    out = str(v)
+                elif name in ("nachlauf_aktiv", "vorboost_aktiv", "kurve_aktiv"):
                     val = payload.upper() in ("ON", "1", "TRUE", "EIN")
                     setattr(self.logic, name, val)
                     out = "ON" if val else "OFF"
@@ -356,6 +446,9 @@ class PumpGuard:
                   "ww": lg.ww, "valve": lg.valve, "e7": lg.e7, "fault": lg.fault,
                   "vorboost_k": lg.vorboost_k, "vorboost": lg.vorboost_active,
                   "vorboost_aktiv": lg.vorboost_aktiv, "nachlauf_aktiv": lg.nachlauf_aktiv,
+                  "kurve_aktiv": lg.kurve_aktiv, "kurve_min": lg.kurve_min,
+                  "kurve_voll_k": lg.kurve_voll_k, "kurve_start_s": lg.kurve_start_s,
+                  "kurve_wert": lg.kurve_wert, "aus_temp": lg.aus_temp, "aus_werte": lg.aus_werte,
                   "kessel": lg.kessel, "soll": lg.soll,
                   "unter_soll": (round(lg.soll - lg.kessel, 1)
                                  if lg.kessel is not None and lg.soll is not None else None),
@@ -380,7 +473,7 @@ class PumpGuard:
         return rc, bytes(data)
 
     def _write_ram(self, value):
-        if not (value == HIGH or (value == self.logic.low and LOW_MIN <= value < HIGH)):
+        if not (value == HIGH or (value == self._target and LOW_MIN <= value < HIGH)):
             raise RuntimeError(f"blocked RAM value {value}")
         rc, _, _ = self.do_request(0x04, RAM_BLOCK + RAM_E7_OFFSET, 1, bytes([value]))
         self.writes += 1
@@ -398,9 +491,10 @@ class PumpGuard:
                     if self.logic.burner_last_active is None:
                         self.logic.burner_last_active = now
                 state, reason = self.logic.decide(now)
-                low = self.logic.low
+                low = self.logic.kurve_wert if state == KENNLINIE else self.logic.low
+                self._target = low
             self._publish_status(state, reason, now)
-            lowering = state == ABGESENKT
+            lowering = state in LOWERING
             # 1) leaving ABGESENKT: write 100 once right away (faster boost)
             if not lowering and self.ram not in (None, HIGH):
                 rc = self._write_ram(HIGH)
