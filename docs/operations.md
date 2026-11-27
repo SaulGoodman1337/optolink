@@ -499,6 +499,16 @@ Codierung übernommen. Externer Vortest (E6 40 % gehalten): Pumpe 50 % statt
 63 %. MQTT: `e6_aktiv` (…/set, …/state); Status-JSON `ram_e6`; HA: Schalter
 „E6 mitsenken“, Sensor „RAM-E6“.
 
+**Extern-Boost (1.7.0):** andere Dienste auf dem Host können für eine
+begrenzte Zeit 100 % anfordern: `openv/pump_guard/extern/set` mit
+`<Sekunden 0..1800>[;<Grund>]`, nicht retained, `0` beendet. Die Anforderung
+läuft von selbst ab, ein abgestürzter Auftraggeber hält die Pumpe also höchstens
+bis zum Ablauf hoch (100 % ist ohnehin die sichere Richtung). Sperrgründe
+(Störung, Zustand unbekannt, E6/E7 nicht 100) haben Vorrang. Nutzer: der
+Pumpennachlauf der Nachtabschaltung (siehe `docs/raumregelung.md`, Grund
+„Nachlauf Nachtabschaltung“, 90 s, alle 10 s erneuert). Status-JSON `extern_s`
+= Restsekunden.
+
 **Boost während Taktsperre** (1.2.x) wurde in 1.3.0 wieder entfernt; der
 Wächter liest 0x55E0 nicht mehr.
 

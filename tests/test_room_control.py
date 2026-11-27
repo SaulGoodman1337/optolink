@@ -641,6 +641,15 @@ class NightRunOnTests(unittest.TestCase):
         self.assertIsNone(ctl.nachlauf)
         self.assertEqual(ctl.state["night"]["switches"], 1)
 
+    def test_fast_cycle_starts_with_the_run_on(self):
+        ctl, io, clock = self.night()
+        self.assertEqual(ctl.next_delay(), rc.CYCLE_SECONDS)
+        ctl.tick()                                # run-on begins in this very tick
+        self.assertEqual(ctl.next_delay(), rc.NACHLAUF_CYCLE_S)
+        io.kessel = 30.0
+        self.step(ctl, clock)
+        self.assertEqual(ctl.next_delay(), rc.CYCLE_SECONDS)
+
     def test_ends_early_before_burner_restart(self):
         ctl, io, clock = self.night()
         ctl.tick()

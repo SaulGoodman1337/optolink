@@ -141,6 +141,50 @@ Readback, sofort wirksam), deshalb zählt für die Nachterkennung das
 Zeitprogramm. Nach dem Zurückschalten vor der Heizzeit
 erkennt der Morgenboost den Wechsel Reduziert → Normal wie gewohnt.
 
+### Pumpennachlauf vor der Abschaltung
+
+„Nur WW“ stoppt die Heizkreispumpe sofort. Die Wärme, die gerade noch im
+Kessel steckt, bliebe dann dort stehen: Messung 27.11.2026 20:00, Brenner
+abgebrochen bei ~50 °C, danach stieg der Kessel ohne Durchfluss auf 59 °C und
+stand 15+ min bei 56–58 °C. Deshalb läuft vor dem Umschalten ein Nachlauf
+(`nacht_nachlauf`, Standard 10 min, 0 = sofort umschalten wie früher):
+
+```text
+Abschaltung gewünscht (Bedingungen oben erfüllt)
+  Flamme an (0x55D3 Byte 5 Bit 0x20) oder WW-Ladung (0x650A = 1)
+        → warten, Betriebsart bleibt 2
+  Flamme aus, Heizkreispumpe an (0x7663 Bit 0)
+        → Nachlauf: Pumpenwächter-Boost 100 % (MQTT pump_guard/extern/set,
+          90 s, alle 10 s erneuert, Grund „Nachlauf Nachtabschaltung“)
+  Ende: Nachlaufzeit um, oder Kessel 0x0810 ≤ Kesselsoll 0x555A − 2,5 K
+        (Brenner startet erst bei Soll − 4 K) → 0x2323 = 1, Boost 0
+  Heizkreispumpe von der Therme abgestellt (z. B. A9) → sofort umschalten
+  Brenner startet während des Nachlaufs → nach dem Stopp beginnt er neu
+  spätestens nach 20 min + nacht_nachlauf insgesamt → umschalten
+  Abschaltgrund fällt weg (Raum abgekühlt, Tag, Störung …) → Nachlauf abbrechen
+```
+
+Während des Nachlaufs taktet der Dienst alle 10 s statt alle 60 s. Status
+`nachlauf` (HA: „Pumpennachlauf vor Nachtabschaltung“), JSON-Felder
+`nachlauf_phase` (`warten`/`laeuft`), `nachlauf_rest_min`,
+`nachlauf_kessel_c`, `nachlauf_soll_c`; HA-Sensor
+`sensor.vitodens_200_wb2a_raumregelung_nachlauf`. Gezählt wird eine
+Abschaltung erst beim tatsächlichen Umschalten. Ist der Pumpenwächter aus,
+läuft die Pumpe mit der Drehzahl, die die Therme wählt.
+
+**A9 muss 0 sein.** Codierung A9 (`0x27A9`, Pumpenstillstand nach
+Sollwertabsenkung) schaltet beim Wechsel in den reduzierten Betrieb die
+Heizkreispumpe und den Wärmebedarf ab, auch mitten im Brennerlauf (Kesselsoll
+0x555A → 5 °C, Vorlauf-Soll → 0). Mit A9:5 dauerte das am 25.11.2026 von
+20:00:42 bis 20:25:17. In dieser Zeit kann kein Nachlauf laufen; die
+Nachtabschaltung kam ohnehin erst um 20:01 und stellte nur noch dauerhaft auf
+„Nur WW“. Am 27.11.2026 20:25 wurde A9 deshalb auf 0 gesetzt (HA,
+`number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_a9_einstellung`,
+Readback 0x27A9 = 0). Mit A9:0 läuft in der reduzierten Phase die normale
+Heizkurve mit Nachtsoll weiter, bis die Nachtabschaltung nach dem Nachlauf
+umschaltet; ist sie aus oder der Raum nicht warm genug, gibt es einfach keinen
+Stillstand mehr beim Absenken.
+
 Besonderheiten:
 
 * `0x2323` ist eine gespeicherte Einstellung (EEPROM). Pro Abschaltung
@@ -211,13 +255,15 @@ Besonderheiten:
 | `number.vitodens_200_wb2a_raumregelung_nacht_min_aussen` | nur abschalten ab dieser Außentemperatur (−20..15 °C) |
 | `number.vitodens_200_wb2a_raumregelung_nacht_vorlauf` | Minuten vor der Heizzeit wieder einschalten (0..240) |
 | `number.vitodens_200_wb2a_raumregelung_nacht_max_schaltungen` | höchstens so viele Abschaltungen pro Nacht (1..10) |
+| `number.vitodens_200_wb2a_raumregelung_nacht_nachlauf` | Pumpennachlauf vor dem Umschalten auf „Nur WW“ (0..30 min, Standard 10, 0 = aus) |
+| `sensor.vitodens_200_wb2a_raumregelung_nachlauf` | Aus / Bereit (x min) / Wartet auf Brenner aus / Läuft, noch x min |
 | `binary_sensor.vitodens_200_wb2a_raumregelung_nachtabschaltung_aktiv` | Heizkreis gerade vom Dienst auf „Nur WW“ gestellt |
 | `sensor.vitodens_200_wb2a_raumregelung_nacht_grund` | Begründung der letzten Entscheidung |
 | `sensor.vitodens_200_wb2a_raumregelung_nacht_einschaltschwelle` / `_nacht_ausschaltschwelle` | daraus berechnete Raumtemperaturen in °C |
 | `select.vitodens_200_wb2a_raumregelung_mittelung` | Mittelwert / Minimum / Maximum |
 | `sensor.vitodens_200_wb2a_raumregelung_raumtemperatur` | kombinierte Raumtemperatur, Attribute: Einzelsensoren und `anzahl` der frischen Werte, die beim Dienst angekommen sind |
 | `sensor.vitodens_200_wb2a_raumregelung_wirksamer_raumsollwert` | Raumsoll, mit dem die Therme gerade rechnet |
-| `sensor.vitodens_200_wb2a_raumregelung_status` | Aus / Aktiv / Morgenboost / Im Komfortband / Nachtabsenkung / Nachtabschaltung (Nur WW) / Abschaltbetrieb / Party / Keine Sensordaten / Extern belegt / Störung / Fehler |
+| `sensor.vitodens_200_wb2a_raumregelung_status` | Aus / Aktiv / Morgenboost / Im Komfortband / Nachtabsenkung / Pumpennachlauf vor Nachtabschaltung / Nachtabschaltung (Nur WW) / Abschaltbetrieb / Party / Keine Sensordaten / Extern belegt / Störung / Fehler |
 | `sensor.optolink_raumregelung_sensoren` | optional, nur mit dem HA-Paket: Anzahl gefundener Sensoren, Attribut `entities` |
 
 MQTT-Themen unter `openv/room_control/`: `sensors` (Eingang),
@@ -225,6 +271,7 @@ MQTT-Themen unter `openv/room_control/`: `sensors` (Eingang),
 `toleranz_oben`, `verstaerkung`, `morgenboost`, `morgenboost_ausloesung`,
 `morgenboost_dauer`, `max_korrektur`, `nachtabschaltung`, `nacht_ein`,
 `nacht_aus`, `nacht_min_aussen`, `nacht_vorlauf`, `nacht_max_schaltungen`,
+`nacht_nachlauf`,
 `aggregation`, sowie
 `status` (JSON, retained) und `availability`.
 

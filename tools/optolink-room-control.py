@@ -685,6 +685,10 @@ class RoomController:
             return True, f"Nachlauf beendet, Kessel {nl['kessel']:.1f} °C abgekühlt"
         return False, "Nachlauf läuft"
 
+    def next_delay(self):
+        """Seconds until the next control cycle."""
+        return NACHLAUF_CYCLE_S if self.nachlauf is not None else CYCLE_SECONDS
+
     def nachlauf_info(self, now):
         nl = self.nachlauf
         rest = None
@@ -1198,16 +1202,19 @@ class Service:
                     next_tick = min(next_tick, time.monotonic() + 1)
                 if time.monotonic() < next_tick:
                     continue
-                next_tick = time.monotonic() + (
-                    NACHLAUF_CYCLE_S if self.controller.nachlauf is not None else CYCLE_SECONDS)
+                started = time.monotonic()
+                next_tick = started + CYCLE_SECONDS
                 if not self.connected.is_set():
                     continue
                 try:
                     status = self.controller.tick()
+                    # decided after the tick: a run-on that just began needs 10 s cycles
+                    next_tick = started + self.controller.next_delay()
                 except Exception as exc:  # boiler/splitter unreachable etc.
                     log(f"WARNING: control cycle failed: {exc}")
                     status = self.controller._status("fehler", error=str(exc)[:200])
-                    next_tick = time.monotonic() + 30
+                    next_tick = time.monotonic() + (
+                        NACHLAUF_CYCLE_S if self.controller.nachlauf is not None else 30)
                 self.publish_status(status)
         finally:
             try:
