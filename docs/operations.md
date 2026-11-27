@@ -395,8 +395,10 @@ update
 Im P300-Betrieb gilt:
 
 - Die VS1-only-GFA-Werte P06 (Gebläse), P09, P80 und P87 werden nicht gepollt
-  (die WB2A weist GFA über P300 ab). Im Dashboard sind sie als „nur VS1“
-  markiert; ihr letzter Wert bleibt stehen.
+  (die WB2A weist GFA über P300 ab). Stattdessen liest `fan_p06.py` sie bei
+  laufendem Brenner in kurzen VS1-Fenstern (siehe
+  [Gebläsedrehzahl im P300-Betrieb](geblaesedrehzahl-p300.md)). Im Dashboard
+  sind sie als „VS1-Fenster“ markiert.
 - Der Link-Watchdog (60 s ohne gültige Antwort → Port neu öffnen) gilt für
   beide Protokolle, dazu kommt ein P300-Keep-Alive auf `0x00F8` nach 5 s
   Leerlauf.

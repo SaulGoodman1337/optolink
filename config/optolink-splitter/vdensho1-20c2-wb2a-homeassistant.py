@@ -644,6 +644,87 @@ poll_list = {
         },
 
         # -----------------------------------------------------------------
+        # Real fan speed in permanent P300 (fan_p06.py in the splitter): while
+        # the flame is on, a short read-only VS1 window reads GFA P80/P06/P09/
+        # P87 and publishes them to the normal GFA topics above. Each window
+        # pauses the link for ~5-8 s (pump guard falls back to E7 = 100 %).
+        # -----------------------------------------------------------------
+        {
+            "domain": "switch",
+            "icon": "mdi:fan-clock",
+            "payload_on": "ON",
+            "payload_off": "OFF",
+            "optimistic": False,
+            "nopoll": [
+                {
+                    "name": "geblaesedrehzahl_messung_aktiv",
+                    "state_topic": "{mqtt_base}/fan_p06/enabled/state",
+                    "command_topic": "{mqtt_base}/fan_p06/enabled/set",
+                },
+            ],
+        },
+        {
+            "domain": "number",
+            "entity_category": "config",
+            "mode": "box",
+            "units": [
+                {
+                    "min": 1,
+                    "max": 30,
+                    "step": 1,
+                    "unit_of_measurement": "min",
+                    "icon": "mdi:timer-outline",
+                    "nopoll": [
+                        {
+                            "name": "geblaesedrehzahl_messintervall",
+                            "state_topic": "{mqtt_base}/fan_p06/interval/state",
+                            "command_topic": "{mqtt_base}/fan_p06/interval/set",
+                        },
+                    ],
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "icon": "mdi:fan-clock",
+            "nopoll": [
+                {
+                    "name": "geblaesedrehzahl_messung_zustand",
+                    "state_topic": "{mqtt_base}/fan_p06/status",
+                    "value_template": "{% set s = value_json.state | default('unknown') %}{% if s == 'OK' %}OK{% elif s == 'WARTET' %}Wartet auf Brenner{% elif s == 'AUS' %}Aus{% elif s == 'FEHLER' %}Fehler{% elif s == 'GESPERRT' %}Pausiert nach Fehlern{% else %}{{ s }}{% endif %}",
+                    "json_attributes_topic": "{mqtt_base}/fan_p06/status",
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "device_class": "timestamp",
+            "icon": "mdi:clock-check-outline",
+            "nopoll": [
+                {
+                    "name": "geblaesedrehzahl_messzeit",
+                    "state_topic": "{mqtt_base}/fan_p06/status",
+                    "value_template": "{{ value_json.measured_at if value_json.measured_at else 'unknown' }}",
+                },
+            ],
+        },
+        {
+            "domain": "sensor",
+            "entity_category": "diagnostic",
+            "enabled_by_default": True,
+            "unit_of_measurement": "ms",
+            "state_class": "measurement",
+            "icon": "mdi:timer-sand",
+            "nopoll": [
+                {
+                    "name": "geblaesedrehzahl_fensterdauer",
+                    "state_topic": "{mqtt_base}/fan_p06/status",
+                    "value_template": "{{ value_json.window_ms if value_json.window_ms is not none else 'unknown' }}",
+                },
+            ],
+        },
+
+        # -----------------------------------------------------------------
         # Binary status: numeric 0/1
         # -----------------------------------------------------------------
         {
