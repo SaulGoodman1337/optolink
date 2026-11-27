@@ -4164,6 +4164,11 @@ views:
                 name: RAM-E7
                 show_state: true
                 show_icon: false
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_pumpensteuerung_ram_e6
+                name: RAM-E6
+                show_state: true
+                show_icon: false
 
           - type: tile
             entity: switch.vitodens_200_wb2a_pumpensteuerung_aktiv
@@ -4183,6 +4188,16 @@ views:
               - type: numeric-input
                 style: slider
             features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
+            entity: switch.vitodens_200_wb2a_pumpensteuerung_e6_mitsenken
+            name: E6 (Maximum) mitsenken
+            icon: mdi:arrow-collapse-down
+            features:
+              - type: toggle
+            features_position: inline
             grid_options:
               columns: 6
               rows: 2
@@ -4335,6 +4350,9 @@ views:
             content: >-
               E7 bleibt fest auf **100 %** codiert. Bei Brenner aus und Ventil auf
               Heizen senkt der Wächter nur die RAM-Kopie auf die Normaldrehzahl.
+              E7 ist nur die Untergrenze (Firmware wählt sonst ca. 60 %); mit
+              **E6 mitsenken** wird auch die RAM-Kopie von E6 (Maximum) im selben
+              Schreibbefehl auf denselben Wert gesetzt.
               Boost (100 %) nur im normalen Brennerzyklus: Warmwasser, Ventil
               nicht Heizen, Startsequenz (Vorspülen), Flamme. Optional:
               **Nachlauf** hält 100 % für die eingestellten Minuten nach

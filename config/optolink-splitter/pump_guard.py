@@ -13,7 +13,9 @@ Principle (inverted RAM override, proven live 2026-11-24, Phase 0):
 The guard runs inside the splitter's main loop (single serial owner). Each
 tick performs at most one Optolink telegram; the only exception is a RAM read
 that finds the firmware's reload, which is followed by the repair write right
-away. Strict allowlist: Physical_WRITE only 0x20A5 with values {low, 100};
+away. Strict allowlist: Physical_WRITE only 0x20A5 with values {low, 100}, or
+(option "E6 mitsenken", 1.6.0) 0x20A4..0x20A5 as one 2-byte write with each byte
+in {low, 100};
 reads only the addresses below. The coded
 E7 value is never written by this module.
 
@@ -59,6 +61,13 @@ the start hold: spread below `spreizung_soll` - 0.5 K -> pump -5 %, above
 protection (100 % within kurve_voll_k of the learned switch-off temperature)
 stays active. Stale flue-gas value -> 100 %.
   spreizung_aktiv/set ON|OFF, spreizung_soll/set 1..20 K
+
+E6 mitsenken (1.6.0, default OFF): E7 is only the lower bound; with burner off the
+firmware picks ~60-68 % between E7 and E6 (measured 2026-11-27). With e6_aktiv the
+guard also lowers the RAM copy of E6 (0x20A4, coded 100, reloaded together with E7)
+to the same target, so the pump really runs at the target. Boost/failure: both
+return to 100 exactly like E7.
+  e6_aktiv/set ON|OFF
 """
 from __future__ import annotations
 
@@ -66,9 +75,12 @@ import json
 import threading
 import time
 
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 
-RAM_BLOCK, RAM_E7_OFFSET = 0x20A0, 5          # 0x20A5
+RAM_E6_ADDR, RAM_E7_ADDR = 0x20A4, 0x20A5      # RAM copies of E6 (max) and E7 (min)
+# 1.6.0: read only these 2 bytes (was a 32-byte block from 0x20A0): the telegram is
+# ~3x shorter, so the 100 % restored by each firmware reload is replaced faster
+RAM_E6_OFFSET, RAM_E7_OFFSET = 0, 1
 HIGH = 100
 LOW_MIN, LOW_MAX = 20, 100
 NACHLAUF_MAX_MIN = 30
@@ -90,11 +102,13 @@ READ_VALVE = (0x01, 0x0A10, 1)   # 1 = heating
 READ_FAULT = (0x01, 0x5738, 1)   # 0 = no fault
 READ_E7 = (0x01, 0x27E7, 1)      # heating-pump minimum; NOTE: reads the active RAM copy
                                  # (0x20A5), so it is only meaningful while not lowering
+READ_E6 = (0x01, 0x27E6, 1)      # heating-pump maximum (1.6.0); like 0x27E7 it mirrors the
+                                 # RAM copy (0x20A4), so it is only read while E6 is not lowered
 READ_KESSEL = (0x01, 0x0810, 2)  # boiler temperature, int16 LE / 10
 READ_SOLL = (0x01, 0x555A, 2)    # effective boiler setpoint, int16 LE / 10
 READ_ABGAS = (0x01, 0x0816, 2)   # flue-gas temperature (== 0x0808), int16 LE / 10
-READ_RAM = (0x03, RAM_BLOCK, 32)
-ALLOWED_READS = {READ_GFA, READ_WW, READ_VALVE, READ_FAULT, READ_E7, READ_KESSEL, READ_SOLL, READ_ABGAS,
+READ_RAM = (0x03, RAM_E6_ADDR, 2)
+ALLOWED_READS = {READ_GFA, READ_WW, READ_VALVE, READ_FAULT, READ_E7, READ_E6, READ_KESSEL, READ_SOLL, READ_ABGAS,
                  READ_RAM}
 
 STATE_PERIOD_S = 1.0       # every state key once per second (round robin)
@@ -103,6 +117,11 @@ TEMP_PERIOD_S = 2.0        # boiler temperature + setpoint, each once per period
 TEMP_STALE_S = 10.0        # older -> no pre-boost (lowering itself is not blocked)
 RAM_PERIOD_S = 0.1         # RAM supervision while lowering (in practice: every tick)
 RAM_QUIET_S = 1.4          # firmware reload seen 1.7-2.7 s after a write: no reads before
+RAM_OK_PERIOD_S = 0.25     # 1.6.0: only once the reload is overdue, leave room for state reads
+RAM_OVERDUE_S = 3.0        # (27.11.2026 the firmware once delayed its reload to ~5.5 s and
+                           # back-to-back RAM reads starved the state reads -> GESPERRT);
+                           # inside the normal reload window poll every tick, so the 100 %
+                           # restored by the firmware is replaced as fast as possible
 STALE_S = 5.0              # state older than this -> no lowering
 
 ABGESENKT, BOOST, AUS, GESPERRT, FEHLER = "ABGESENKT", "BOOST", "AUS", "GESPERRT", "FEHLER"
@@ -124,6 +143,7 @@ class GuardLogic:
         self.valve = None
         self.fault = None
         self.e7 = None
+        self.e6 = None                     # coded E6 (1.6.0): proven by read or firmware reload
         self.ts = {}
         self.burner_last_active = None
         self.error = None
@@ -138,6 +158,7 @@ class GuardLogic:
         self.starts = 0
         # burner curve (Brenner-Kennlinie)
         self.kurve_aktiv = False
+        self.e6_aktiv = False              # 1.6.0: also lower the RAM copy of E6 (max)
         self.kurve_min = 60
         self.kurve_voll_k = 3.0
         self.kurve_start_s = 60.0
@@ -199,6 +220,8 @@ class GuardLogic:
             self.fault = value[0]
         elif key == "e7":
             self.e7 = value[0]
+        elif key == "e6":
+            self.e6 = value[0]
         else:
             raise KeyError(key)
         self.ts[key] = now
@@ -320,6 +343,10 @@ class GuardLogic:
             return GESPERRT, "Zustand unbekannt"
         if self.e7 != HIGH:
             return GESPERRT, f"E7 codiert {self.e7} statt 100"
+        if self.e6 is not None and self.e6 != HIGH:
+            # 27.11.2026 the coded E7 once took over the lowered RAM value by itself;
+            # the same must never go unnoticed for E6 (maximum)
+            return GESPERRT, f"E6 codiert {self.e6} statt 100"
         if self.fault or self.lockout:
             return GESPERRT, "Stoerung"
         if self.ww:
@@ -366,7 +393,10 @@ class PumpGuard:
         self.next_temp = 0.0
         self.rr_temp = 0
         self.ram = None
+        self.ram_e6 = None
         self.last_low_written = None
+        self.last_e6_written = None
+        self.last_repair_t = 0.0
         self.repairs = 0
         self.writes = 0
         self._target = None
@@ -423,7 +453,7 @@ class PumpGuard:
     def _on_connect(self, client, userdata, flags, rc, properties=None):
         topics = ["enabled", "low", "nachlauf", "nachlauf_aktiv", "vorboost", "vorboost_aktiv",
                   "kurve_aktiv", "kurve_min", "kurve_voll_k", "kurve_start_s",
-                  "spreizung_aktiv", "spreizung_soll"]
+                  "spreizung_aktiv", "spreizung_soll", "e6_aktiv"]
         client.subscribe([(f"{self.base}/{t}/set", 0) for t in topics]
                          + [(f"{self.base}/{t}/state", 0) for t in topics])
         client.publish(f"{self.base}/protocol", "P300" if self.active else "VS1", retain=True)
@@ -477,7 +507,7 @@ class PumpGuard:
                         return
                     self.logic.spreizung_soll = v
                     out = str(v)
-                elif name in ("nachlauf_aktiv", "vorboost_aktiv", "kurve_aktiv", "spreizung_aktiv"):
+                elif name in ("nachlauf_aktiv", "vorboost_aktiv", "kurve_aktiv", "spreizung_aktiv", "e6_aktiv"):
                     val = payload.upper() in ("ON", "1", "TRUE", "EIN")
                     setattr(self.logic, name, val)
                     out = "ON" if val else "OFF"
@@ -512,11 +542,12 @@ class PumpGuard:
         if self.client is None:
             return
         lg = self.logic
-        status = {"state": state, "reason": reason, "ram_e7": self.ram, "low": lg.low,
+        status = {"state": state, "reason": reason, "ram_e7": self.ram, "ram_e6": self.ram_e6,
+                  "e6_aktiv": lg.e6_aktiv, "low": lg.low,
                   "nachlauf_min": round(lg.nachlauf_s / 60.0, 1),
                   "enabled": lg.enabled, "repairs": self.repairs, "writes": self.writes,
                   "flame": lg.flame, "sequence": lg.sequence, "lockout": lg.lockout,
-                  "ww": lg.ww, "valve": lg.valve, "e7": lg.e7, "fault": lg.fault,
+                  "ww": lg.ww, "valve": lg.valve, "e7": lg.e7, "e6": lg.e6, "fault": lg.fault,
                   "vorboost_k": lg.vorboost_k, "vorboost": lg.vorboost_active,
                   "vorboost_aktiv": lg.vorboost_aktiv, "nachlauf_aktiv": lg.nachlauf_aktiv,
                   "kurve_aktiv": lg.kurve_aktiv, "kurve_min": lg.kurve_min,
@@ -547,10 +578,17 @@ class PumpGuard:
             return rc, None
         return rc, bytes(data)
 
-    def _write_ram(self, value):
-        if not (value == HIGH or (value == self._target and LOW_MIN <= value < HIGH)):
-            raise RuntimeError(f"blocked RAM value {value}")
-        rc, _, _ = self.do_request(0x04, RAM_BLOCK + RAM_E7_OFFSET, 1, bytes([value]))
+    def _allowed(self, value):
+        return value == HIGH or (value == self._target and LOW_MIN <= value < HIGH)
+
+    def _write_ram(self, value, e6=None):
+        """E7 only, or (e6 given) E6+E7 as one 2-byte write at 0x20A4."""
+        if not self._allowed(value) or (e6 is not None and not self._allowed(e6)):
+            raise RuntimeError(f"blocked RAM value {value}/{e6}")
+        if e6 is None:
+            rc, _, _ = self.do_request(0x04, RAM_E7_ADDR, 1, bytes([value]))
+        else:
+            rc, _, _ = self.do_request(0x04, RAM_E6_ADDR, 2, bytes([e6, value]))
         self.writes += 1
         return rc
 
@@ -568,15 +606,21 @@ class PumpGuard:
                 state, reason = self.logic.decide(now)
                 low = self.logic.kurve_wert if state == KENNLINIE else self.logic.low
                 self._target = low
+                # E6 is only lowered once its coded 100 is proven
+                e6_aktiv = self.logic.e6_aktiv and self.logic.e6 == HIGH
             self._publish_status(state, reason, now)
             lowering = state in LOWERING
             # 1) leaving ABGESENKT: write 100 once right away (faster boost)
-            if not lowering and self.ram not in (None, HIGH):
-                rc = self._write_ram(HIGH)
+            if not lowering and (self.ram not in (None, HIGH) or self.ram_e6 not in (None, HIGH)):
+                both = self.ram_e6 not in (None, HIGH)
+                rc = self._write_ram(HIGH, HIGH if both else None)
                 if rc == 0x01:
                     self.ram = HIGH
+                    if both:
+                        self.ram_e6 = HIGH
                 else:
                     self.ram = None     # unknown; the firmware reload restores 100 anyway
+                    self.ram_e6 = None
                 return rc
             # 2) RAM supervision while lowering: read, and repair in the same tick
             #    (read + write back-to-back, exactly like the Phase-0 probe)
@@ -586,30 +630,51 @@ class PumpGuard:
                 if data is None:
                     return rc
                 ram = data[RAM_E7_OFFSET]
+                ram6 = data[RAM_E6_OFFSET]
                 prev, self.ram = self.ram, ram
-                if ram == low:
+                self.ram_e6 = ram6
+                want6 = low if e6_aktiv else HIGH
+                if ram == low and ram6 == want6:
+                    if now - self.last_repair_t > RAM_OVERDUE_S:
+                        self.next_ram = now + RAM_OK_PERIOD_S
                     return rc
-                if ram == HIGH or ram == self.last_low_written:
+                # E6 is only touched with the option on, or to undo a leftover lowered E6
+                ok7 = ram in (HIGH, low, self.last_low_written)
+                ok6 = ram6 in (HIGH, low, self.last_e6_written)
+                if ok7 and ok6:
                     if ram == HIGH:
-                        # the firmware reload restored 100: proof that E7 is coded 100
+                        # the firmware reload restored 100: proof that E7 is coded 100;
+                        # E6 is reloaded in the same moment, so ram6 is the coded E6
                         with self.lock:
                             self.logic.update("e7", bytes([HIGH]), now)
+                            if prev not in (None, HIGH) and self.last_e6_written is not None:
+                                self.logic.update("e6", bytes([ram6]), now)
+                        if ram6 != HIGH and prev not in (None, HIGH) and self.last_e6_written is not None:
+                            return rc       # E6 drifted: decide() blocks on the next tick
                         if prev not in (None, HIGH):
                             self.repairs += 1
-                    rc = self._write_ram(low)
+                    pair = e6_aktiv or ram6 != HIGH
+                    rc = self._write_ram(low, want6 if pair else None)
                     if rc == 0x01:
                         self.ram, self.last_low_written = low, low
+                        if pair:
+                            self.ram_e6 = want6
+                            if want6 != HIGH:
+                                self.last_e6_written = want6
                         self.next_ram = now + RAM_QUIET_S
+                        self.last_repair_t = now
                     return rc
-                self.logic.error = f"unerwarteter RAM-Wert {ram}"
+                self.logic.error = f"unerwarteter RAM-Wert {ram}/{ram6}"
                 return rc
             # 3) slow reads
             if now >= self.next_slow:
                 self.next_slow = now + SLOW_PERIOD_S / 2
                 # 0x27E7 mirrors the RAM copy: while lowering it would read `low`,
                 # so the coded value is then proven by the reload to 100 instead.
-                use_e7 = self.rr_slow % 2 == 1 and not lowering and self.ram in (None, HIGH)
-                spec, key = (READ_E7, "e7") if use_e7 else (READ_FAULT, "fault")
+                use_e7 = self.rr_slow % 4 == 1 and not lowering and self.ram in (None, HIGH)
+                use_e6 = self.rr_slow % 4 == 3 and self.ram_e6 in (None, HIGH)
+                spec, key = ((READ_E7, "e7") if use_e7 else (READ_E6, "e6") if use_e6
+                             else (READ_FAULT, "fault"))
                 self.rr_slow += 1
                 return self._read_update(spec, key, now)
             # 4) boiler temperature / setpoint (pre-boost + learning the start threshold)
@@ -644,7 +709,9 @@ class PumpGuard:
         if do_request is not None:
             self.do_request = do_request
         self.ram = None
+        self.ram_e6 = None
         self.last_low_written = None
+        self.last_e6_written = None
         self.next_ram = self.next_slow = self.next_state = self.next_temp = 0.0
         with self.lock:
             self.logic.ts = {}
