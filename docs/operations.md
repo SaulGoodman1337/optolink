@@ -107,6 +107,7 @@ systemctl --no-pager --full status optolink-maintenance-api
 systemctl --no-pager --full status optolink-clock-sync.timer
 systemctl --no-pager --full status optolink-service-programs
 systemctl --no-pager --full status optolink-room-control
+systemctl --no-pager --full status optolink-mag-tpms
 optolink-maintenance status
 ```
 
@@ -164,6 +165,13 @@ Raumregelung (Vorlauf nach Raumtemperatur, siehe [raumregelung.md](raumregelung.
 ```bash
 journalctl -u optolink-room-control -n 100 --no-pager
 optolink-debug request "read;0x2321;1"   # 00 = normaler Raumsollwert
+```
+
+MAG-Druck (BLE-Reifendruckkappe, siehe [home-assistant.md](home-assistant.md#9b-mag-druck-per-ble-reifendruckkappe)):
+
+```bash
+journalctl -u optolink-mag-tpms -n 50 --no-pager
+optolink-mag-tpms --self-test
 ```
 
 ### Therme nicht erreichbar (Link-Recovery)
@@ -461,6 +469,19 @@ ergeben 100 %. Zustand `KENNLINIE` zählt wie `ABGESENKT` als Absenkung
 Brennphase lässt den Kessel schneller die Ausschalttemperatur erreichen, die
 Brenndauer wird also eher kürzer. Nur per A/B-Vergleich einsetzen.
 MQTT: `kurve_aktiv`, `kurve_min`, `kurve_voll_k`, `kurve_start_s` (…/set, …/state).
+
+**Abgas-Spreizung (1.5.0, optional, Standard aus):** Der WB2A hat keinen
+Rücklauffühler. Messung 26.11.2026: 0x0808 (vcontrold „RL17A“) ist derselbe
+Fühler wie die Abgastemperatur 0x0816; während der Flamme liegt das Abgas
+konstant ~2 K unter dem Kessel (Pumpe 100 %) und folgt ihm, in der Pause
+gleicht es sich dem Kessel an. Mit `spreizung_aktiv` regelt der Wächter nach
+`kurve_start_s` die Pumpe in 5-%-Schritten (höchstens alle 20 s) auf
+`spreizung_soll` (Standard 5 K, Totband ±0,5 K), begrenzt auf `kurve_min`..100 %.
+Der Abschaltschutz (100 % ab `kurve_voll_k` vor der gelernten
+Ausschalttemperatur = Spitzenwert des Kessels je Brennerlauf) bleibt aktiv;
+veraltetes Abgas → 100 %. Ein echter Rücklauffühler ist geplant (Nutzer rüstet
+nach) und soll den Ersatzwert ablösen.
+MQTT: `spreizung_aktiv`, `spreizung_soll` (…/set, …/state).
 
 **Boost während Taktsperre** (1.2.x) wurde in 1.3.0 wieder entfernt; der
 Wächter liest 0x55E0 nicht mehr.

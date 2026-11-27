@@ -440,6 +440,12 @@ poll_list = {
                     "state_topic": "{mqtt_base}/pump_guard/kurve_aktiv/state",
                     "command_topic": "{mqtt_base}/pump_guard/kurve_aktiv/set",
                 },
+                {
+                    "name": "pumpensteuerung_abgas_spreizung_aktiv",
+                    "icon": "mdi:arrow-expand-vertical",
+                    "state_topic": "{mqtt_base}/pump_guard/spreizung_aktiv/state",
+                    "command_topic": "{mqtt_base}/pump_guard/spreizung_aktiv/set",
+                },
             ],
         },
         {
@@ -531,6 +537,20 @@ poll_list = {
                         },
                     ],
                 },
+                {
+                    "min": 1,
+                    "max": 20,
+                    "step": 0.5,
+                    "unit_of_measurement": "K",
+                    "icon": "mdi:arrow-expand-vertical",
+                    "nopoll": [
+                        {
+                            "name": "pumpensteuerung_abgas_spreizung_soll",
+                            "state_topic": "{mqtt_base}/pump_guard/spreizung_soll/state",
+                            "command_topic": "{mqtt_base}/pump_guard/spreizung_soll/set",
+                        },
+                    ],
+                },
             ],
         },
         {
@@ -561,6 +581,11 @@ poll_list = {
                     "name": "pumpensteuerung_kessel_unter_soll",
                     "state_topic": "{mqtt_base}/pump_guard/status",
                     "value_template": "{{ value_json.unter_soll if value_json.unter_soll is not none else 'unknown' }}",
+                },
+                {
+                    "name": "pumpensteuerung_abgas_spreizung",
+                    "state_topic": "{mqtt_base}/pump_guard/status",
+                    "value_template": "{{ value_json.spreizung if value_json.spreizung is not none else 'unknown' }}",
                 },
                 {
                     "name": "pumpensteuerung_gelernte_startschwelle",

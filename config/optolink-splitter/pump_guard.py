@@ -48,6 +48,17 @@ Less flow while firing means the boiler reaches switch-off sooner, so this is
 meant for an A/B comparison and is off by default.
   kurve_aktiv/set ON|OFF, kurve_min/set 20..100 %, kurve_voll_k/set 0..15 K,
   kurve_start_s/set 0..300 s
+
+Flue-gas spread (Abgas-Spreizung, optional, 1.5.0): the WB2A has no return
+sensor. While firing, the flue-gas temperature (0x0816, same sensor as 0x0808)
+follows the return side of the condensing heat exchanger, so
+"boiler - flue gas" serves as a spread proxy (measured ~2 K at 100 % pump).
+With `spreizung_aktiv` the burner curve becomes a slow step controller after
+the start hold: spread below `spreizung_soll` - 0.5 K -> pump -5 %, above
++0.5 K -> +5 % (every SPREIZ_STEP_S, within kurve_min..100). The switch-off
+protection (100 % within kurve_voll_k of the learned switch-off temperature)
+stays active. Stale flue-gas value -> 100 %.
+  spreizung_aktiv/set ON|OFF, spreizung_soll/set 1..20 K
 """
 from __future__ import annotations
 
@@ -55,7 +66,7 @@ import json
 import threading
 import time
 
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 
 RAM_BLOCK, RAM_E7_OFFSET = 0x20A0, 5          # 0x20A5
 HIGH = 100
@@ -66,6 +77,8 @@ VORBOOST_HYST_K = 0.5          # release the pre-boost only 0.5 K below its trig
 START_MARGIN_DEFAULT_K = 4.0   # coding plug "Einschaltdifferenz" 4 K until learned
 START_MARGIN_ALPHA = 0.3       # EMA weight of each observed burner start
 KURVE_SPAN_K = 5.0             # linear ramp width below the full-speed point
+SPREIZ_STEP_S = 20.0           # flue gas reacts slowly: one 5-% step per 20 s at most
+SPREIZ_DEADBAND_K = 0.5
 KURVE_STEP = 5                 # pump value granularity (fewer distinct writes)
 AUS_ALPHA = 0.3                # EMA weight of each observed switch-off temperature
 START_LOOKBACK_S = (3.0, 20.0) # use temperatures 3..20 s before the start: the firmware
@@ -79,8 +92,9 @@ READ_E7 = (0x01, 0x27E7, 1)      # heating-pump minimum; NOTE: reads the active 
                                  # (0x20A5), so it is only meaningful while not lowering
 READ_KESSEL = (0x01, 0x0810, 2)  # boiler temperature, int16 LE / 10
 READ_SOLL = (0x01, 0x555A, 2)    # effective boiler setpoint, int16 LE / 10
+READ_ABGAS = (0x01, 0x0816, 2)   # flue-gas temperature (== 0x0808), int16 LE / 10
 READ_RAM = (0x03, RAM_BLOCK, 32)
-ALLOWED_READS = {READ_GFA, READ_WW, READ_VALVE, READ_FAULT, READ_E7, READ_KESSEL, READ_SOLL,
+ALLOWED_READS = {READ_GFA, READ_WW, READ_VALVE, READ_FAULT, READ_E7, READ_KESSEL, READ_SOLL, READ_ABGAS,
                  READ_RAM}
 
 STATE_PERIOD_S = 1.0       # every state key once per second (round robin)
@@ -131,6 +145,13 @@ class GuardLogic:
         self.aus_werte = []
         self.flame_since = None
         self.kurve_wert = None             # last computed curve value (diagnosis)
+        # flue-gas spread controller (Abgas-Spreizung)
+        self.spreizung_aktiv = False
+        self.spreizung_soll = 5.0
+        self.abgas = None
+        self._sp_val = HIGH
+        self._sp_last = None
+        self._kessel_flame = None
         self._prev_flame = None
         self._prev_burner = None
         self._temp_hist = []               # (t, kessel, soll) for the start lookback
@@ -144,6 +165,8 @@ class GuardLogic:
             burner = self.flame or self.sequence
             if self.flame and not self._prev_flame:
                 self.flame_since = now
+                self._sp_val, self._sp_last = HIGH, None
+                self._kessel_flame = None
             elif not self.flame and self._prev_flame:
                 self._learn_stop(now)
                 self.flame_since = None
@@ -153,11 +176,18 @@ class GuardLogic:
             self._prev_burner = burner
             if burner:
                 self.burner_last_active = now
-        elif key in ("kessel", "soll"):
+        elif key in ("kessel", "soll", "abgas"):
             v = int.from_bytes(bytes(value[:2]), "little", signed=True) / 10.0
             if not -20.0 <= v <= 110.0:
                 return          # implausible: ignore, goes stale -> no pre-boost
             setattr(self, key, v)
+            if key == "abgas":
+                self.ts[key] = now
+                return
+            if key == "kessel" and self.flame:
+                # peak boiler temperature of this burn = switch-off point
+                if self._kessel_flame is None or v >= self._kessel_flame[1]:
+                    self._kessel_flame = (now, v)
             if self.kessel is not None and self.soll is not None:
                 self._temp_hist = [h for h in self._temp_hist if now - h[0] <= START_LOOKBACK_S[1]]
                 self._temp_hist.append((now, self.kessel, self.soll))
@@ -192,25 +222,39 @@ class GuardLogic:
 
     def _learn_stop(self, now):
         """Heating burner stopped: remember the boiler temperature (switch-off point)."""
-        if self.ww or self.valve != 1 or self.kessel is None:
+        if self.ww or self.valve != 1 or self._kessel_flame is None:
             return
-        if "kessel" not in self.ts or now - self.ts["kessel"] > TEMP_STALE_S:
-            return
+        t_k, k_flame = self._kessel_flame
+        if now - t_k > 60.0:
+            return      # no recent boiler value from this burn
         if self.flame_since is None or now - self.flame_since < self.kurve_start_s:
             return      # very short burns are dominated by the start phase
-        k = round(self.kessel, 1)
+        k = round(k_flame, 1)
         self.aus_werte = (self.aus_werte + [k])[-10:]
         self.aus_temp = k if self.aus_temp is None else round(
             (1 - AUS_ALPHA) * self.aus_temp + AUS_ALPHA * k, 2)
 
+    def spreizung(self, now):
+        """Boiler - flue gas (K), or None when unknown/stale."""
+        if self.kessel is None or self.abgas is None:
+            return None
+        for k in ("kessel", "abgas"):
+            if k not in self.ts or now - self.ts[k] > TEMP_STALE_S:
+                return None
+        return round(self.kessel - self.abgas, 1)
+
     def kurve(self, now):
         """Pump value for the burner curve, or None (-> 100 %)."""
         self.kurve_wert = None
-        if not self.kurve_aktiv or not self.flame or self.flame_since is None:
+        if not (self.kurve_aktiv or self.spreizung_aktiv) or not self.flame or self.flame_since is None:
             return None
-        if now - self.flame_since < self.kurve_start_s or self.aus_temp is None:
+        if now - self.flame_since < self.kurve_start_s:
             return None
         if "kessel" not in self.ts or now - self.ts["kessel"] > TEMP_STALE_S or self.kessel is None:
+            return None
+        if self.spreizung_aktiv:
+            return self._spreiz_regler(now)
+        if self.aus_temp is None:
             return None
         headroom = self.aus_temp - self.kessel
         if headroom <= self.kurve_voll_k:
@@ -223,6 +267,26 @@ class GuardLogic:
             return None
         self.kurve_wert = v
         return v
+
+    def _spreiz_regler(self, now):
+        sp = self.spreizung(now)
+        if sp is None:
+            self._sp_val, self._sp_last = HIGH, None
+            return None
+        if self.aus_temp is not None and self.aus_temp - self.kessel <= self.kurve_voll_k:
+            self._sp_val, self._sp_last = HIGH, now      # switch-off protection
+            return None
+        if self._sp_last is None or now - self._sp_last >= SPREIZ_STEP_S:
+            if sp < self.spreizung_soll - SPREIZ_DEADBAND_K:
+                self._sp_val -= KURVE_STEP              # spread too small: less flow
+            elif sp > self.spreizung_soll + SPREIZ_DEADBAND_K:
+                self._sp_val += KURVE_STEP              # spread too large: more flow
+            self._sp_val = max(max(LOW_MIN, self.kurve_min), min(HIGH, self._sp_val))
+            self._sp_last = now
+        if self._sp_val >= HIGH:
+            return None
+        self.kurve_wert = self._sp_val
+        return self._sp_val
 
     def temps_fresh(self, now):
         return all(k in self.ts and now - self.ts[k] <= TEMP_STALE_S for k in ("kessel", "soll")) \
@@ -265,6 +329,8 @@ class GuardLogic:
         if self.flame:
             v = self.kurve(now)
             if v is not None:
+                if self.spreizung_aktiv:
+                    return KENNLINIE, f"Abgas-Spreizung {v} %"
                 return KENNLINIE, f"Brenner-Kennlinie {v} %"
             return BOOST, "Flamme"
         if self.sequence:
@@ -356,7 +422,8 @@ class PumpGuard:
 
     def _on_connect(self, client, userdata, flags, rc, properties=None):
         topics = ["enabled", "low", "nachlauf", "nachlauf_aktiv", "vorboost", "vorboost_aktiv",
-                  "kurve_aktiv", "kurve_min", "kurve_voll_k", "kurve_start_s"]
+                  "kurve_aktiv", "kurve_min", "kurve_voll_k", "kurve_start_s",
+                  "spreizung_aktiv", "spreizung_soll"]
         client.subscribe([(f"{self.base}/{t}/set", 0) for t in topics]
                          + [(f"{self.base}/{t}/state", 0) for t in topics])
         client.publish(f"{self.base}/protocol", "P300" if self.active else "VS1", retain=True)
@@ -404,7 +471,13 @@ class PumpGuard:
                         return
                     self.logic.kurve_start_s = float(v)
                     out = str(v)
-                elif name in ("nachlauf_aktiv", "vorboost_aktiv", "kurve_aktiv"):
+                elif name == "spreizung_soll":
+                    v = round(float(payload), 1)
+                    if not 1 <= v <= 20:
+                        return
+                    self.logic.spreizung_soll = v
+                    out = str(v)
+                elif name in ("nachlauf_aktiv", "vorboost_aktiv", "kurve_aktiv", "spreizung_aktiv"):
                     val = payload.upper() in ("ON", "1", "TRUE", "EIN")
                     setattr(self.logic, name, val)
                     out = "ON" if val else "OFF"
@@ -447,6 +520,8 @@ class PumpGuard:
                   "vorboost_k": lg.vorboost_k, "vorboost": lg.vorboost_active,
                   "vorboost_aktiv": lg.vorboost_aktiv, "nachlauf_aktiv": lg.nachlauf_aktiv,
                   "kurve_aktiv": lg.kurve_aktiv, "kurve_min": lg.kurve_min,
+                  "spreizung_aktiv": lg.spreizung_aktiv, "spreizung_soll": lg.spreizung_soll,
+                  "abgas": lg.abgas, "spreizung": lg.spreizung(now),
                   "kurve_voll_k": lg.kurve_voll_k, "kurve_start_s": lg.kurve_start_s,
                   "kurve_wert": lg.kurve_wert, "aus_temp": lg.aus_temp, "aus_werte": lg.aus_werte,
                   "kessel": lg.kessel, "soll": lg.soll,
@@ -539,8 +614,9 @@ class PumpGuard:
                 return self._read_update(spec, key, now)
             # 4) boiler temperature / setpoint (pre-boost + learning the start threshold)
             if now >= self.next_temp:
-                self.next_temp = now + TEMP_PERIOD_S / 2
-                spec, key = ((READ_KESSEL, "kessel"), (READ_SOLL, "soll"))[self.rr_temp % 2]
+                self.next_temp = now + TEMP_PERIOD_S / 3
+                spec, key = ((READ_KESSEL, "kessel"), (READ_SOLL, "soll"),
+                             (READ_ABGAS, "abgas"))[self.rr_temp % 3]
                 self.rr_temp += 1
                 return self._read_update(spec, key, now)
             # 5) fast state reads (round robin)

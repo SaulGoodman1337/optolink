@@ -32,6 +32,7 @@ class FakeBoiler:
         self.gfa = IDLE_GFA
         self.ww, self.valve, self.fault, self.e7 = 0, 1, 0, 100
         self.kessel, self.soll = 36.0, 36.5
+        self.abgas = 34.0
         self.rkr = bytearray(17)
         self.rkr[14] = 0x43               # Regelbetrieb / restart released (bit0 = 1)
         self.ram = bytearray(32)
@@ -58,6 +59,7 @@ class FakeBoiler:
             (0x01, 0x55D3): self.gfa, (0x01, 0x650A): bytes([self.ww]),
             (0x01, 0x0A10): bytes([self.valve]), (0x01, 0x5738): bytes([self.fault]),
             (0x01, 0x0810): int(round(self.kessel * 10)).to_bytes(2, "little", signed=True),
+            (0x01, 0x0816): int(round(self.abgas * 10)).to_bytes(2, "little", signed=True),
             (0x01, 0x555A): int(round(self.soll * 10)).to_bytes(2, "little", signed=True),
             (0x01, 0x55E0): bytes(self.rkr),
             # live finding: 0x27E7 reads the active RAM copy, not the coded value
@@ -264,6 +266,45 @@ class GuardTest(unittest.TestCase):
         lg.flame, lg.flame_since, lg.aus_temp, lg.kessel = True, 0.0, 45.0, 30.0
         lg.ts["kessel"] = 100.0
         self.assertIsNone(lg.kurve(100.0))
+
+    def test_abgas_spreizung_controller(self):
+        b = FakeBoiler()
+        g = make_guard(b)
+        g.logic.nachlauf_s = 0.0
+        g.logic.spreizung_aktiv = True
+        g.logic.kurve_start_s = 5.0
+        g.logic.kurve_min = 60
+        g.logic.spreizung_soll = 5.0
+        run(g, b, 8)
+        b.gfa = FLAME_GFA
+        b.kessel, b.abgas = 45.0, 43.0                # spread 2 K < 5 - 0.5 -> step down
+        run(g, b, 3)
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Flamme"))     # start hold
+        run(g, b, 4)
+        self.assertEqual(g.logic.decide(b.t), (pg.KENNLINIE, "Abgas-Spreizung 95 %"))
+        run(g, b, pg.SPREIZ_STEP_S * 3 + 1)
+        self.assertEqual(g.logic.kurve_wert, 80)
+        run(g, b, pg.SPREIZ_STEP_S * 10)
+        self.assertEqual(g.logic.kurve_wert, 60)     # bounded by kurve_min
+        samples = run(g, b, 4)
+        self.assertGreater(samples.count(60), len(samples) // 2)
+        b.abgas = 38.0                                # spread 7 K > 5.5 -> step up
+        run(g, b, pg.SPREIZ_STEP_S + 3)
+        self.assertEqual(g.logic.kurve_wert, 65)
+        b.abgas = 40.5                                # within deadband -> hold
+        run(g, b, pg.SPREIZ_STEP_S * 2 + 1)
+        self.assertEqual(g.logic.kurve_wert, 65)
+        g.logic.ts["abgas"] = b.t - 60                # stale flue gas -> 100 %
+        self.assertEqual(g.logic.decide(b.t), (pg.BOOST, "Flamme"))
+        self.assertIsNone(g.logic.error)
+
+    def test_abgas_spreizung_switch_off_protection(self):
+        lg = pg.GuardLogic()
+        lg.spreizung_aktiv, lg.kurve_start_s = True, 0.0
+        lg.flame, lg.flame_since, lg.aus_temp = True, 0.0, 45.0
+        lg.kessel, lg.abgas = 43.0, 41.0              # 2 K before switch-off <= 3 K
+        lg.ts.update(kessel=10.0, abgas=10.0)
+        self.assertIsNone(lg.kurve(10.0))
 
     def test_restart_starts_with_nachlauf_boost(self):
         b = FakeBoiler()

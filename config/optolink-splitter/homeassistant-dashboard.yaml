@@ -2244,6 +2244,32 @@ views:
                   entity: sensor.vitodens_200_wb2a_brenner_betriebsstunden
                   name: Stunden
 
+          # Anlagendruck über die BLE-Reifendruckkappe am MAG-Schraderventil
+          # (optolink-mag-tpms). Zeigt den Anlagendruck, solange er über dem
+          # MAG-Vordruck liegt, sonst den Vordruck.
+          - type: custom:button-card
+            template: diag_group3_cyan
+            name: Druck (MAG)
+            custom_fields:
+              v1:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.mag_druck
+                  name: Druck
+              v2:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.mag_temperatur
+                  name: MAG
+              v3:
+                card:
+                  type: custom:button-card
+                  template: diag_mini
+                  entity: sensor.mag_batterie
+                  name: Batterie
+
       # ================================================================
       # Left desktop column: controls.
       # ================================================================
@@ -4186,6 +4212,34 @@ views:
               columns: 6
               rows: 2
           - type: tile
+            entity: switch.vitodens_200_wb2a_pumpensteuerung_abgas_spreizung_aktiv
+            name: Abgas-Spreizung regeln
+            icon: mdi:arrow-expand-vertical
+            features:
+              - type: toggle
+            features_position: inline
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
+            entity: number.vitodens_200_wb2a_pumpensteuerung_abgas_spreizung_soll
+            name: Ziel-Spreizung Kessel − Abgas
+            icon: mdi:arrow-expand-vertical
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_pumpensteuerung_abgas_spreizung
+            name: Spreizung Kessel − Abgas
+            icon: mdi:arrow-expand-vertical
+            grid_options:
+              columns: 6
+              rows: 1
+          - type: tile
             entity: sensor.vitodens_200_wb2a_pumpensteuerung_gelernte_ausschalttemperatur
             name: Gelernte Ausschalttemperatur
             icon: mdi:thermometer-off
@@ -4230,7 +4284,13 @@ views:
               aus): nach der Start-Haltezeit läuft die Pumpe während der Flamme mit
               der Mindestdrehzahl, steigt linear an und erreicht 100 % so viele K vor
               der gelernten Ausschalttemperatur. Weniger Pumpe heißt kürzere
-              Brennzeit, daher nur zum Vergleich. Fällt Home Assistant, MQTT
+              Brennzeit, daher nur zum Vergleich. **Abgas-Spreizung**: das Gerät hat
+              keinen Rücklauffühler; während der Flamme dient Kessel − Abgas als
+              Ersatz-Spreizung (bei 100 % Pumpe ca. 2 K). Ist sie aktiv, regelt die
+              Pumpe nach der Start-Haltezeit in 5-%-Schritten (alle 20 s) auf die
+              Ziel-Spreizung, zwischen Kennlinie-Mindestdrehzahl und 100 %. Ein
+              echter Rücklauffühler ist geplant und ersetzt später diesen Ersatzwert.
+              Fällt Home Assistant, MQTT
               oder der Splitter aus, läuft die Pumpe nach spätestens ~3 s wieder
               mit 100 %. Nur im Dauer-P300-Betrieb aktiv.
             grid_options:
@@ -5625,6 +5685,8 @@ views:
             hours_to_show: 48
             entities:
               - entity: sensor.vitodens_200_wb2a_raumregelung_status
+              - entity: binary_sensor.vitodens_200_wb2a_raumregelung_nachtabschaltung_aktiv
+                name: Nachtabschaltung
             grid_options:
               columns: full
     cards: []
@@ -5707,6 +5769,28 @@ views:
                 icon: mdi:thermometer
                 content: >-
                   Kessel {{ states('sensor.vitodens_200_wb2a_kesseltemperatur') }} °C
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.vitodens_200_wb2a_abgastemperatur
+                icon: mdi:thermometer-high
+                content: >-
+                  Abgas {{ states('sensor.vitodens_200_wb2a_abgastemperatur') }} °C
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.vitodens_200_wb2a_abgastemperatur
+                icon: mdi:arrow-expand-vertical
+                content: >-
+                  {% set k = states('sensor.vitodens_200_wb2a_kesseltemperatur') %}
+                  {% set a = states('sensor.vitodens_200_wb2a_abgastemperatur') %}
+                  {% if is_state('binary_sensor.vitodens_200_wb2a_brenner_flamme', 'on') and is_number(k) and is_number(a) %}
+                  Kessel − Abgas {{ '%.1f' | format(k | float - a | float) }} K
+                  {% else %}
+                  Kessel − Abgas – (nur bei Flamme)
+                  {% endif %}
+                icon_color: >-
+                  {{ 'orange' if is_state('binary_sensor.vitodens_200_wb2a_brenner_flamme', 'on') else 'grey' }}
                 tap_action:
                   action: more-info
               - type: template
@@ -5990,6 +6074,11 @@ views:
                 icon: mdi:water-boiler
                 extra_value_entity: sensor.vitodens_200_wb2a_rkr_kesselsolltemperatur_normal
                 extra_value_name: Soll
+              - entity: sensor.vitodens_200_wb2a_abgastemperatur
+                name: Abgas
+                icon: mdi:thermometer-high
+                extra_value_entity: sensor.vitodens_200_wb2a_kesseltemperatur
+                extra_value_name: Kessel
               - entity: sensor.vitodens_200_wb2a_heizkreis_m1_vorlauftemperatur
                 name: Vorlauf
                 icon: mdi:thermometer-chevron-up
@@ -6010,6 +6099,109 @@ views:
                 icon: mdi:thermometer-lines
             grid_options:
               columns: full
+
+
+      # Ausdehnungsgefäß (MAG): BLE-TPMS-Kappe am Gas-Schraderventil,
+      # dekodiert von optolink-mag-tpms. Druck = max(Anlagendruck, Vordruck).
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Ausdehnungsgefäß (MAG)
+            heading_style: subtitle
+            icon: mdi:gauge
+            badges:
+              - type: entity
+                entity: sensor.mag_zuletzt
+                name: Empfang
+                show_state: true
+                show_icon: false
+          - type: conditional
+            conditions:
+              - condition: or
+                conditions:
+                  - condition: numeric_state
+                    entity: sensor.mag_druck
+                    below: 1.0
+                  - condition: state
+                    entity: sensor.mag_druck
+                    state: unavailable
+                  - condition: numeric_state
+                    entity: sensor.mag_batterie
+                    below: 20
+            card:
+              type: markdown
+              content: >-
+                <ha-alert alert-type="warning">
+                {% if is_state('sensor.mag_druck', 'unavailable') %}MAG-Sensor seit Stunden ohne Empfang.
+                {% elif states('sensor.mag_druck') | float(9) < 1.0 %}Druck {{ states('sensor.mag_druck') }} bar: Anlagendruck niedrig, Wasser nachfüllen und MAG-Vordruck prüfen.
+                {% else %}Batterie der MAG-Kappe schwach ({{ states('sensor.mag_batterie') }} %).{% endif %}
+                </ha-alert>
+          - type: history-graph
+            title: Druck – 7 Tage
+            hours_to_show: 168
+            entities:
+              - entity: sensor.mag_druck
+                name: Druck
+          - type: statistics-graph
+            title: Druck – Tagesminimum / -maximum (30 Tage)
+            chart_type: line
+            period: day
+            days_to_show: 30
+            stat_types:
+              - min
+              - max
+            entities:
+              - entity: sensor.mag_druck
+                name: Druck
+          - type: entities
+            title: Kalt/Warm-Check (24 h)
+            entities:
+              - entity: sensor.mag_druck_kalt
+                name: Druck kalt
+              - entity: sensor.mag_druck_warm
+                name: Druck warm
+              - entity: sensor.mag_druckhub
+                name: Druckhub
+              - entity: sensor.mag_hub_pro_10k
+                name: Hub pro 10 K
+              - entity: sensor.mag_temp_kalt
+                name: MAG-Temperatur kalt
+              - entity: sensor.mag_temp_warm
+                name: MAG-Temperatur warm
+          - type: markdown
+            content: >-
+              {% set h = states('sensor.mag_hub_pro_10k') | float(-1) %}
+              {% set hub = states('sensor.mag_druckhub') | float(-1) %}
+              {% if hub < 0 %}Noch zu wenig Daten (mindestens 1 Stunde).
+              {% elif h < 0 %}Druckhub {{ hub }} bar, die Temperatur hat sich in 24 h aber um weniger als 10 K
+              geändert. Aussagekräftig nach einem vollen Aufheizen.
+              {% elif h <= 0.15 %}✅ MAG arbeitet unauffällig ({{ h }} bar je 10 K).
+              {% elif h <= 0.3 %}⚠️ Druckhub erhöht ({{ h }} bar je 10 K). Vordruck bei Gelegenheit prüfen.
+              {% else %}❌ Druckhub hoch ({{ h }} bar je 10 K): MAG-Vordruck fehlt wahrscheinlich oder das MAG ist zu klein.
+              {% endif %}
+
+              <small>Richtwerte: Ein gesundes MAG hält den Druckanstieg beim Aufheizen klein.
+              Die Kappentemperatur ist die MAG-Temperatur, nicht die Vorlauftemperatur.</small>
+          - type: entities
+            entities:
+              - entity: sensor.mag_druck
+                name: Druck
+              - entity: sensor.mag_temperatur
+                name: Temperatur am MAG
+              - entity: sensor.mag_batterie
+                name: Batterie
+              - entity: sensor.mag_rssi
+                name: Signal
+              - entity: sensor.mag_empfaenger
+                name: Empfangender Proxy
+          - type: markdown
+            content: >-
+              Die Kappe misst die Gasseite des MAG. Liegt der Wasserdruck über
+              dem Vordruck, zeigt sie den **Anlagendruck**. Den **Vordruck**
+              sieht man nur bei geschlossenem Kappenventil und drucklos
+              gemachter MAG-Wasserseite. Fällt das Tagesminimum über Wochen,
+              verliert die Anlage Wasser oder das MAG Gas.
 
       - type: grid
         column_span: 1
@@ -8200,6 +8392,8 @@ views:
                 name: Vorlauf Ist
               - entity: sensor.vitodens_200_wb2a_kesseltemperatur
                 name: Kessel
+              - entity: sensor.vitodens_200_wb2a_abgastemperatur
+                name: Abgas
               - entity: sensor.vitodens_200_wb2a_warmwasser_temperatur
                 name: Warmwasser
             grid_options:
