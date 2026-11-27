@@ -446,6 +446,12 @@ poll_list = {
                     "state_topic": "{mqtt_base}/pump_guard/spreizung_aktiv/state",
                     "command_topic": "{mqtt_base}/pump_guard/spreizung_aktiv/set",
                 },
+                {
+                    "name": "pumpensteuerung_e6_mitsenken",
+                    "icon": "mdi:arrow-collapse-down",
+                    "state_topic": "{mqtt_base}/pump_guard/e6_aktiv/state",
+                    "command_topic": "{mqtt_base}/pump_guard/e6_aktiv/set",
+                },
             ],
         },
         {
@@ -625,6 +631,11 @@ poll_list = {
                     "name": "pumpensteuerung_ram_e7",
                     "state_topic": "{mqtt_base}/pump_guard/status",
                     "value_template": "{{ value_json.ram_e7 if value_json.ram_e7 is not none else 'unknown' }}",
+                },
+                {
+                    "name": "pumpensteuerung_ram_e6",
+                    "state_topic": "{mqtt_base}/pump_guard/status",
+                    "value_template": "{{ value_json.ram_e6 if value_json.ram_e6 is not none else 'unknown' }}",
                 },
             ],
         },

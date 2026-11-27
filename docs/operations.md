@@ -483,6 +483,22 @@ veraltetes Abgas → 100 %. Ein echter Rücklauffühler ist geplant (Nutzer rüs
 nach) und soll den Ersatzwert ablösen.
 MQTT: `spreizung_aktiv`, `spreizung_soll` (…/set, …/state).
 
+**E6 mitsenken (1.6.0, optional, Standard aus):** E7 ist nur die Untergrenze.
+Messung 27.11.2026: mit RAM-E7 = 20 % lief die Pumpe bei Brenner aus trotzdem
+mit 60–68 %, weil die Firmware die Drehzahl zwischen E7 und E6 (Maximum) wählt.
+Die RAM-Kopie von E6 liegt direkt vor E7 (0x20A4, Codierung 0x27E6 = 100) und
+wird von der Firmware zusammen mit E7 alle ~2,3 s neu geladen. Mit `e6_aktiv`
+schreibt der Wächter E6 und E7 in **einem** 2-Byte-Physical_WRITE ab 0x20A4 auf
+denselben Zielwert (Normaldrehzahl bzw. Kennlinien-/Spreizungswert); beim Boost
+gehen beide auf 100, bei jedem Ausfall stellt die Firmware beide auf die
+codierten 100 % zurück. E6 wird erst gesenkt, wenn die Codierung 100 nachgewiesen
+ist (Lesen 0x27E6 bzw. Firmware-Reload); weicht die codierte E6 ab, sperrt der
+Wächter („E6 codiert X statt 100“). Hintergrund: am 27.11.2026 08:55 hat die
+Firmware einmal den abgesenkten RAM-Wert von E7 (50) ohne Schreibbefehl in die
+Codierung übernommen. Externer Vortest (E6 40 % gehalten): Pumpe 50 % statt
+63 %. MQTT: `e6_aktiv` (…/set, …/state); Status-JSON `ram_e6`; HA: Schalter
+„E6 mitsenken“, Sensor „RAM-E6“.
+
 **Boost während Taktsperre** (1.2.x) wurde in 1.3.0 wieder entfernt; der
 Wächter liest 0x55E0 nicht mehr.
 

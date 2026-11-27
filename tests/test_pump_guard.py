@@ -37,6 +37,8 @@ class FakeBoiler:
         self.rkr[14] = 0x43               # Regelbetrieb / restart released (bit0 = 1)
         self.ram = bytearray(32)
         self.ram[5] = 100
+        self.ram[4] = 100                 # E6 RAM copy (coded 100), reloaded together with E7
+        self.e6 = 100
         self.next_reload = 2.3
         self.log = []
         self.alive = True
@@ -45,6 +47,7 @@ class FakeBoiler:
         self.t += dt
         while self.t >= self.next_reload:
             self.ram[5] = self.e7
+            self.ram[4] = self.e6
             self.next_reload += 2.3
 
     def request(self, fc, addr, n, data):
@@ -52,8 +55,8 @@ class FakeBoiler:
         if not self.alive:
             return 0xFF, addr, bytearray()
         if fc == 0x04:
-            assert addr == 0x20A5 and n == 1
-            self.ram[5] = data[0]
+            assert (addr, n) in ((0x20A5, 1), (0x20A4, 2))
+            self.ram[addr - 0x20A0:addr - 0x20A0 + n] = bytes(data)
             return 0x01, addr, bytearray()
         values = {
             (0x01, 0x55D3): self.gfa, (0x01, 0x650A): bytes([self.ww]),
@@ -63,7 +66,8 @@ class FakeBoiler:
             (0x01, 0x555A): int(round(self.soll * 10)).to_bytes(2, "little", signed=True),
             (0x01, 0x55E0): bytes(self.rkr),
             # live finding: 0x27E7 reads the active RAM copy, not the coded value
-            (0x01, 0x27E7): bytes([self.ram[5]]), (0x03, 0x20A0): bytes(self.ram),
+            (0x01, 0x27E7): bytes([self.ram[5]]), (0x03, 0x20A4): bytes(self.ram[4:6]),
+            (0x01, 0x27E6): bytes([self.ram[4]]),
         }
         return 0x01, addr, bytearray(values[(fc, addr)])
 
@@ -408,13 +412,125 @@ class GuardTest(unittest.TestCase):
         self.assertIsNone(g.tick(0.0))
         self.assertEqual(b.log, [])
 
+    def test_slow_firmware_reload_does_not_starve_state_reads(self):
+        b = FakeBoiler()
+        g = make_guard(b)
+        run(g, b, 5)
+        b.next_reload = b.t + 8.0          # firmware takes 8 s for the next reload
+        states = []
+        end = b.t + 7.5
+        while b.t < end:
+            g.tick(b.t)
+            b.advance(0.08)
+            states.append(g.logic.decide(b.t)[0])
+        self.assertNotIn(pg.GESPERRT, states)
+
+    def test_reload_is_repaired_fast(self):
+        b = FakeBoiler()
+        g = make_guard(b, low=20)
+        run(g, b, 5)
+        samples = run(g, b, 30, step=0.02)
+        # time per reload spent at 100 % (reload every 2.3 s, one telegram ~0.08 s)
+        high = samples.count(100) * 0.02 / (30 / 2.3)
+        self.assertLess(high, 0.2)
+
+    def test_e6_off_by_default_never_touches_e6(self):
+        b = FakeBoiler()
+        g = make_guard(b)
+        run(g, b, 30)
+        self.assertFalse(g.logic.e6_aktiv)
+        self.assertTrue(all(addr == 0x20A5 for fc, addr, n, d in b.log if fc == 0x04))
+        self.assertEqual(b.ram[4], 100)
+
+    def test_e6_lowered_together_with_e7(self):
+        b = FakeBoiler()
+        g = make_guard(b, low=20)
+        g.logic.e6_aktiv = True
+        run(g, b, 25)                      # coded E6 = 100 proven by the slow read first
+        self.assertEqual(g.logic.e6, 100)
+        e6 = []
+        end = b.t + 60
+        while b.t < end:
+            g.tick(b.t)
+            b.advance(0.06)
+            e6.append(b.ram[4])
+        self.assertGreater(e6.count(20) / len(e6), 0.8)
+        self.assertGreater(g.repairs, 20)
+        self.assertIsNone(g.logic.error)
+        for fc, addr, n, data in b.log:
+            if fc == 0x04:
+                self.assertIn((addr, n), ((0x20A5, 1), (0x20A4, 2)))
+                self.assertTrue(all(v in (20, 100) for v in data))
+        # boost: both back to 100 quickly, fail-safe: firmware reload restores both
+        b.gfa = SEQ_GFA
+        t0 = b.t
+        while (b.ram[4], b.ram[5]) != (100, 100) and b.t - t0 < 5:
+            g.tick(b.t)
+            b.advance(0.06)
+        self.assertLess(b.t - t0, 1.6)
+        b.gfa = IDLE_GFA
+        g.logic.nachlauf_aktiv = False
+        run(g, b, 10)
+        self.assertEqual((b.ram[4], b.ram[5]), (20, 20))
+        b.advance(3.0)
+        self.assertEqual((b.ram[4], b.ram[5]), (100, 100))
+
+    def test_e6_switched_off_while_lowered_is_restored(self):
+        b = FakeBoiler()
+        g = make_guard(b, low=20)
+        g.logic.e6_aktiv = True
+        run(g, b, 25)
+        self.assertEqual(b.ram[4], 20)
+        b.e6 = 77                          # pretend the coded E6 differs: the guard must
+        g.logic.e6_aktiv = False           # not need the reload to undo its own lowering
+        b.next_reload = b.t + 100
+        run(g, b, 2)
+        self.assertEqual(b.ram[4], 100)
+        self.assertEqual(b.ram[5], 20)
+
+    def test_e6_not_lowered_before_coded_value_is_proven(self):
+        b = FakeBoiler()
+        g = make_guard(b, low=20)
+        g.logic.e6_aktiv = True
+        run(g, b, 3)
+        self.assertIsNone(g.logic.e6)
+        self.assertEqual(b.ram[4], 100)
+
+    def test_coded_e6_drift_blocks(self):
+        b = FakeBoiler()
+        g = make_guard(b, low=20)
+        g.logic.e6_aktiv = True
+        run(g, b, 25)
+        self.assertEqual(b.ram[4], 20)
+        b.e6 = 20                          # firmware took over the lowered value
+        b.e7 = 100
+        run(g, b, 5)
+        # E6 is reloaded together with E7: at that moment ram6 is the coded value,
+        # so even a drift to exactly the target value is caught
+        state, reason = g.logic.decide(b.t)
+        self.assertEqual(state, pg.GESPERRT)
+        self.assertIn("E6 codiert 20", reason)
+        self.assertEqual(b.ram[5], 100)
+
+    def test_e6_mqtt_switch(self):
+        b = FakeBoiler()
+        g = make_guard(b)
+        msg = types.SimpleNamespace(topic="openv/pump_guard/e6_aktiv/set", payload=b"ON", retain=False)
+        pub = []
+        client = types.SimpleNamespace(publish=lambda *a, **k: pub.append(a))
+        g._on_message(client, None, msg)
+        self.assertTrue(g.logic.e6_aktiv)
+        self.assertIn(("openv/pump_guard/e6_aktiv/state", "ON"), pub)
+
     def test_blocked_write_value(self):
         b = FakeBoiler()
         g = make_guard(b)
         with self.assertRaises(RuntimeError):
             g._write_ram(55)
         with self.assertRaises(RuntimeError):
-            g._read((0x01, 0x27E6, 1))
+            g._write_ram(100, 55)
+        with self.assertRaises(RuntimeError):
+            g._read((0x01, 0x27E5, 1))
 
 
 class MqttTest(unittest.TestCase):
