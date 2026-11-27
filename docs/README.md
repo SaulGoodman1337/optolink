@@ -19,6 +19,7 @@ Hier liegt die deutsche Betriebs- und Entwicklerdokumentation des freigegebenen 
 | [wb2a-schedule-blocks.md](wb2a-schedule-blocks.md) | Zeitprogrammformat und verifizierte WB2A-Blöcke |
 | [service-programs.md](service-programs.md) | Befüllungs-/Entlüftungsprogramm, Codieradresse 2F / 0x572F |
 | [raumregelung.md](raumregelung.md) | Vorlauftemperatur nach Raumtemperatur, mehrere Sensoren, Komfortband |
+| [gasalarm.md](gasalarm.md) | Therme bei CO-/Gasalarm abschalten (HA-Blueprint, Sperre, Absperrventil) |
 | [manuals/README.md](manuals/README.md) | Servicehandbuch-Quelle und lokaler Download-Helfer |
 
 Zusätzliche technische Referenz:
