@@ -187,6 +187,10 @@ Besonderheiten:
    dann werden alle Temperatursensoren dieses Geräts (`device_class:
    temperature`) verwendet, die Luftfeuchte nicht. Sensoren hinzufügen oder
    entfernen heißt später nur: Label setzen oder entfernen.
+   Den Sensor direkt am Kamin **nicht** labeln. EG-Sensoren, die der Kamin
+   aufheizt, zusätzlich mit „Optolink Kamin EG“ labeln: Solange
+   `input_boolean.kaminangeheizt` an ist, werden sie nicht gesendet
+   ([kamin.md](kamin.md)).
 4. Home Assistant neu starten.
 5. Im Dashboard die Ansicht **Raumregelung** öffnen, Schwellen prüfen und
    die Regelung einschalten.

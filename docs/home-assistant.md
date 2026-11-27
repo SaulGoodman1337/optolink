@@ -253,6 +253,15 @@ Feld für ein späteres Gas-Absperrventil. Dashboard: Hinweis in der
 Kopfzeile, Abschnitt „Gas-/CO-Schutz“ in der Diagnose.
 Vollständige Beschreibung: [gasalarm.md](gasalarm.md).
 
+## 9a3. Kamin
+
+Blueprints `kamin_erkennung.yaml` (Kamin brennt?) und `kamin_raum_pause.yaml`
+(je Raum: Pause, solange warm genug, sonst heizen) in
+`config/optolink-splitter/homeassistant-blueprints/`. Die Raumregelung lässt
+EG-Sensoren mit Label „Optolink Kamin EG“ weg, solange der Kamin brennt.
+Dashboard: Abschnitt „Kamin“ in der Ansicht Raumregelung.
+Vollständige Beschreibung: [kamin.md](kamin.md).
+
 ## 9b. MAG-Druck per BLE-Reifendruckkappe
 
 Eine Bluetooth-TPMS-Ventilkappe (Spedal / Shenzhen Xlink, ITPMS-Format)

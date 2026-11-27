@@ -5749,6 +5749,115 @@ views:
                 name: Nachtabschaltung
             grid_options:
               columns: full
+      # Kamin: blueprints kamin_erkennung + kamin_raum_pause (docs/kamin.md).
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Kamin
+            heading_style: title
+            icon: mdi:fireplace
+            badges:
+              - type: entity
+                entity: sensor.kamin_temperature
+                name: Am Kamin
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_brenner_starts
+                name: Brennerstarts
+                show_state: true
+                show_icon: false
+
+          - type: tile
+            entity: input_boolean.kaminangeheizt
+            name: Kamin brennt
+            icon: mdi:fireplace
+            tap_action:
+              action: toggle
+            features:
+              - type: toggle
+            features_position: bottom
+            grid_options:
+              columns: full
+
+          - type: tile
+            entity: input_boolean.kamin_pause_wohnzimmer
+            name: Wohnzimmer pausiert
+            icon: mdi:radiator-off
+            grid_options:
+              columns: 6
+          - type: tile
+            entity: input_boolean.kamin_pause_flur
+            name: Flur pausiert
+            icon: mdi:radiator-off
+            grid_options:
+              columns: 6
+          - type: tile
+            entity: input_boolean.kamin_pause_gaste_wc
+            name: Gäste-WC pausiert
+            icon: mdi:radiator-off
+            grid_options:
+              columns: 6
+          - type: tile
+            entity: input_boolean.kamin_pause_buro
+            name: Büro pausiert
+            icon: mdi:radiator-off
+            grid_options:
+              columns: 6
+
+          - type: markdown
+            content: >-
+              {% set an = is_state('input_boolean.kaminangeheizt', 'on') %}
+              {% set raeume = [('Wohnzimmer', 'wohnzimmer'), ('Flur', 'flur'),
+                               ('Gäste-WC', 'gaste_wc'), ('Büro', 'buro')] %}
+              {% set p = namespace(n=[]) %}
+              {% for name, id in raeume %}
+                {% if is_state('input_boolean.kamin_pause_' ~ id, 'on') %}{% set p.n = p.n + [name] %}{% endif %}
+              {% endfor %}
+              {% if an %}**Der Kamin brennt** ({{ states('sensor.kamin_temperature') }} °C am Kamin).
+              {% if p.n %}Pausiert: **{{ p.n | join(', ') }}**. Ein Raum heizt von selbst wieder,
+              sobald er unter seinen Sollwert fällt.{% else %}Noch kein Raum ist warm genug für eine Pause.{% endif %}
+              Die Raumregelung rechnet in dieser Zeit nur mit den Sensoren ohne Label
+              „Optolink Kamin EG“, das Obergeschoss heizt normal weiter.<br>
+              Mit weniger offenen Heizkörpern nimmt die Anlage weniger Wärme ab, die Therme
+              kann öfter takten: Brennerstarts im Blick behalten.
+              {% else %}Kamin aus. Alle Räume heizen nach ihrem Heizplan.{% endif %}
+            grid_options:
+              columns: full
+
+          - type: history-graph
+            title: Kamin und Erdgeschoss
+            hours_to_show: 24
+            entities:
+              - entity: sensor.kamin_temperature
+                name: Am Kamin
+              - entity: sensor.temperatursensorwohnzimmer_temperatur
+                name: Wohnzimmer
+              - entity: sensor.temperaturflur_temperature
+                name: Flur
+              - entity: sensor.gaste_wc_temperatur
+                name: Gäste-WC
+              - entity: sensor.buro_temperatur
+                name: Büro
+            grid_options:
+              columns: full
+          - type: history-graph
+            title: Kamin-Status
+            hours_to_show: 24
+            entities:
+              - entity: input_boolean.kaminangeheizt
+                name: Kamin
+              - entity: input_boolean.kamin_pause_wohnzimmer
+                name: Wohnzimmer
+              - entity: input_boolean.kamin_pause_flur
+                name: Flur
+              - entity: input_boolean.kamin_pause_gaste_wc
+                name: Gäste-WC
+              - entity: input_boolean.kamin_pause_buro
+                name: Büro
+            grid_options:
+              columns: full
     cards: []
 
   # Diagnose: native Sections are the responsive layout units.
