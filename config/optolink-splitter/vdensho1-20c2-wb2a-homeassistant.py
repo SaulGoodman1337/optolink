@@ -1161,6 +1161,21 @@ poll_list = {
                     ],
                 },
                 {
+                    # pump run-on before the switch to "Nur WW" (0 = off)
+                    "min": 0,
+                    "max": 30,
+                    "step": 1,
+                    "unit_of_measurement": "min",
+                    "icon": "mdi:pump",
+                    "nopoll": [
+                        {
+                            "name": "raumregelung_nacht_nachlauf",
+                            "state_topic": "{mqtt_base}/room_control/nacht_nachlauf/state",
+                            "command_topic": "{mqtt_base}/room_control/nacht_nachlauf/set",
+                        },
+                    ],
+                },
+                {
                     "min": 1,
                     "max": 10,
                     "step": 1,
@@ -1248,7 +1263,7 @@ poll_list = {
                 {
                     "name": "raumregelung_status",
                     "state_topic": "{mqtt_base}/room_control/status",
-                    "value_template": "{% set m = {'aus':'Aus','aktiv':'Aktiv','neutral':'Im Komfortband','morgenboost':'Morgenboost','nachtabsenkung':'Nachtabsenkung','nachtabschaltung':'Nachtabschaltung (Nur WW)','abschaltbetrieb':'Abschaltbetrieb','party':'Party','keine_sensoren':'Keine Sensordaten','fremdbelegt':'Extern belegt','stoerung':'Störung – freigegeben','raumeinfluss_codiert':'Raumeinfluss codiert','fehler':'Fehler','start':'Start'} %}{{ m.get(value_json.state, value_json.state) }}",
+                    "value_template": "{% set m = {'aus':'Aus','aktiv':'Aktiv','neutral':'Im Komfortband','morgenboost':'Morgenboost','nachtabsenkung':'Nachtabsenkung','nachtabschaltung':'Nachtabschaltung (Nur WW)','nachlauf':'Pumpennachlauf vor Nachtabschaltung','abschaltbetrieb':'Abschaltbetrieb','party':'Party','keine_sensoren':'Keine Sensordaten','fremdbelegt':'Extern belegt','stoerung':'Störung – freigegeben','raumeinfluss_codiert':'Raumeinfluss codiert','fehler':'Fehler','start':'Start'} %}{{ m.get(value_json.state, value_json.state) }}",
                     "json_attributes_topic": "{mqtt_base}/room_control/status",
                 },
                 {
@@ -1256,6 +1271,12 @@ poll_list = {
                     "icon": "mdi:weather-night",
                     "state_topic": "{mqtt_base}/room_control/status",
                     "value_template": "{{ value_json.nacht_grund | default('–') }}",
+                },
+                {
+                    "name": "raumregelung_nachlauf",
+                    "icon": "mdi:pump",
+                    "state_topic": "{mqtt_base}/room_control/status",
+                    "value_template": "{% set p = value_json.nachlauf_phase | default(none) %}{% if value_json.state == 'nachlauf' and p == 'laeuft' %}Läuft, noch {{ value_json.nachlauf_rest_min }} min{% elif value_json.state == 'nachlauf' %}Wartet auf Brenner aus{% elif value_json.nacht_nachlauf | default(0) == 0 %}Aus{% else %}Bereit ({{ value_json.nacht_nachlauf }} min){% endif %}",
                 },
                 {
                     "name": "raumregelung_phase",

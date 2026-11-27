@@ -55,6 +55,21 @@ foreign mode change and on service stop (``--release`` in ExecStopPost).
 ``0x2323`` is a persistent setting, so the number of shutdowns per night is
 limited (``nacht_max_schaltungen``, two writes each). The boiler's own frost
 protection stays active in "Nur WW".
+
+Pump run-on before the shutdown (``nacht_nachlauf`` minutes, default 10,
+0 = switch at once): "Nur WW" stops the heating pump immediately, so the heat
+still stored in the boiler would stay there. Before writing ``0x2323 = 1``
+the service therefore waits until the flame (``0x55D3`` byte 5) is off and no
+DHW charge (``0x650A``) runs, then keeps "Heizen + WW" while the heating pump
+runs and asks the pump guard for 100 % (MQTT ``pump_guard/extern/set``,
+expiring request). It switches once the run-on time is over or the boiler
+(``0x0810``) has cooled to NACHLAUF_END_BELOW_SOLL_K below the effective boiler
+setpoint (``0x555A``), i.e. before the burner would restart (start
+differential 4 K). If the firmware has stopped the heating pump itself
+(``0x7663`` bit 0 off, e.g. the A9 pump idle time after the setpoint drop at
+the start of the reduced phase) no run-on is possible and it switches at once.
+A burner restart during the run-on starts the run-on again; after
+NACHLAUF_FLAME_WAIT_S + ``nacht_nachlauf`` in total it switches in any case.
 """
 from __future__ import annotations
 
@@ -87,6 +102,11 @@ ADDR_ROOM_INFLUENCE = (0x27A0, 0x27B0)
 ADDR_OPERATING_MODE = 0x2323    # 0 off, 1 DHW only, 2 heating + DHW, 3/4 permanent
 ADDR_OUTSIDE_TEMP = 0x0800      # 2 bytes signed, 0.1 °C
 ADDR_SCHEDULE_M1 = 0x2000       # 8 bytes per weekday, Monday first
+ADDR_BURNER_STATE = 0x55D3      # 9 bytes, byte 5 bit 0x20 = flame
+ADDR_DHW_CHARGING = 0x650A      # 1 = DHW charge active
+ADDR_PUMP_M1_OUTPUT = 0x7663    # 2 bytes, bit 0 = heating circuit pump output on
+ADDR_BOILER_TEMP = 0x0810       # 2 bytes signed, 0.1 °C
+ADDR_BOILER_SETPOINT = 0x555A   # effective boiler setpoint, 2 bytes signed, 0.1 °C
 MODE_DHW_ONLY = 1
 MODE_HEATING_DHW = 2
 
@@ -107,6 +127,11 @@ NIGHT_OUTSIDE_HYSTERESIS_K = 1.0
 NIGHT_MIN_WINDOW_MIN = 30   # do not shut down for less than this
 NIGHT_RELEASE_AFTER_ERRORS = 3
 REQUEST_TIMEOUT = 8.0
+NACHLAUF_CYCLE_S = 10.0          # control cycle while the run-on is pending
+NACHLAUF_FLAME_WAIT_S = 1200.0   # how long to wait for the burner on top of the run-on
+NACHLAUF_END_BELOW_SOLL_K = 2.5  # end before the burner restarts at setpoint - 4 K
+NACHLAUF_BOOST_TTL_S = 90        # pump guard boost request, renewed every cycle
+NACHLAUF_BOOST_REASON = "Nachlauf Nachtabschaltung"
 
 AGGREGATIONS = ("Mittelwert", "Minimum", "Maximum")
 
@@ -132,6 +157,7 @@ PARAMETERS = {
     "nacht_min_aussen": (float, -20.0, 15.0, -5.0),
     "nacht_vorlauf": (int, 0, 240, 30),
     "nacht_max_schaltungen": (int, 1, 10, 3),
+    "nacht_nachlauf": (int, 0, 30, 10),
 }
 NIGHT_MIN_GAP_K = 0.5  # nacht_aus must stay at least this far below nacht_ein
 
@@ -444,8 +470,11 @@ class RoomController:
     """One control cycle per ``tick``. ``io`` provides read_int/write_int."""
 
     def __init__(self, io, state, *, save=save_state, clock=time.monotonic,
-                 wallclock=None):
+                 wallclock=None, boost=None):
         self.io = io
+        # boost(seconds, reason): ask the pump guard for 100 % (0 ends it)
+        self.boost = boost or (lambda _seconds, _reason: None)
+        self.nachlauf = None         # pending pump run-on before "Nur WW"
         # (weekday 0=Monday, minute of day, datetime.date) in local time
         self.wallclock = wallclock or _local_wallclock
         self.state = state
@@ -577,7 +606,15 @@ class RoomController:
             active=self.owned_mode, room_c=room, reduced_c=reduced, outside_c=outside,
             in_day=in_day, minutes_to_day=minutes, config=cfg,
             switches_used=night["switches"])
+        if not want or self.owned_mode:
+            self.nachlauf_cancel(reason)
+        run_on = None
         if want and not self.owned_mode:
+            done, run_on = self.nachlauf_step(now)
+            if not done:
+                reason = run_on
+        if want and not self.owned_mode and done:
+            self.nachlauf_cancel(run_on or "switch")
             # Treat a begun write as possibly applied (release checks the value).
             self.set_owned_mode(True)
             night["switches"] += 1
@@ -588,7 +625,8 @@ class RoomController:
                 self.night_release("write failed")
                 raise
             log(f"night shutdown started: room {room:.2f} °C >= {reduced} + {cfg['nacht_ein']} K, "
-                f"outside {outside} °C, {minutes} min to day: 0x2323 2 -> 1")
+                f"outside {outside} °C, {minutes} min to day: 0x2323 2 -> 1"
+                + (f" (run-on: {run_on})" if run_on else ""))
         elif not want and self.owned_mode:
             self.night_release(reason)
         self.night_info = {
@@ -600,8 +638,68 @@ class RoomController:
             "aussen_c": outside,
             "nacht_ein_c": None if reduced is None else round(reduced + cfg["nacht_ein"], 2),
             "nacht_aus_c": None if reduced is None else round(reduced + cfg["nacht_aus"], 2),
+            "nacht_nachlauf": cfg["nacht_nachlauf"],
+            "nachlauf_aktiv": self.nachlauf is not None,
         }
+        if self.nachlauf is not None:
+            self.night_info.update(self.nachlauf_info(now))
         return self.night_info
+
+    # -- pump run-on before the night shutdown ---------------------------
+
+    def nachlauf_step(self, now):
+        """Advance the run-on; -> (switch_now, reason)."""
+        minutes = self.config["nacht_nachlauf"]
+        if minutes <= 0:
+            return True, None
+        nl = self.nachlauf
+        if nl is None:
+            nl = self.nachlauf = {"start": now, "run_since": None, "kessel": None, "soll": None}
+            log(f"night shutdown pending: pump run-on first ({minutes} min)")
+        if now - nl["start"] >= NACHLAUF_FLAME_WAIT_S + minutes * 60:
+            return True, "Nachlauf-Höchstdauer erreicht"
+        gfa = bytes.fromhex(self.io.read_bytes(ADDR_BURNER_STATE, 9).strip())
+        if len(gfa) < 6:
+            raise RoomControlError(f"0x55D3 too short ({len(gfa)} bytes)")
+        if gfa[5] & 0x20 or self.io.read_int(ADDR_DHW_CHARGING, 1) == 1:
+            if nl["run_since"] is not None:
+                log("run-on interrupted: burner/DHW active again")
+            nl["run_since"] = None
+            nl["phase"] = "warten"
+            return False, "Nachlauf: warte auf Brenner aus"
+        if not self.io.read_int(ADDR_PUMP_M1_OUTPUT, 2) & 1:
+            return True, "Heizkreispumpe aus, kein Nachlauf möglich"
+        if nl["run_since"] is None:
+            nl["run_since"] = now
+            log("run-on started: burner off, heating pump on, pump guard boost requested")
+        nl["phase"] = "laeuft"
+        self.boost(NACHLAUF_BOOST_TTL_S, NACHLAUF_BOOST_REASON)
+        kessel = self.io.read_scaled(ADDR_BOILER_TEMP, 2, 0.1, True)
+        soll = self.io.read_scaled(ADDR_BOILER_SETPOINT, 2, 0.1, True)
+        nl["kessel"] = kessel if 0 < kessel < 100 else None
+        nl["soll"] = soll if 15 <= soll <= 90 else None
+        if now - nl["run_since"] >= minutes * 60:
+            return True, f"Nachlauf {minutes} min beendet"
+        if nl["kessel"] is not None and nl["soll"] is not None \
+                and nl["kessel"] <= nl["soll"] - NACHLAUF_END_BELOW_SOLL_K:
+            return True, f"Nachlauf beendet, Kessel {nl['kessel']:.1f} °C abgekühlt"
+        return False, "Nachlauf läuft"
+
+    def nachlauf_info(self, now):
+        nl = self.nachlauf
+        rest = None
+        if nl.get("run_since") is not None:
+            rest = max(0, round(self.config["nacht_nachlauf"] - (now - nl["run_since"]) / 60, 1))
+        return {"nachlauf_phase": nl.get("phase"), "nachlauf_rest_min": rest,
+                "nachlauf_kessel_c": nl.get("kessel"), "nachlauf_soll_c": nl.get("soll")}
+
+    def nachlauf_cancel(self, reason):
+        if self.nachlauf is None:
+            return
+        if self.nachlauf.get("run_since") is not None:
+            self.boost(0, NACHLAUF_BOOST_REASON)
+        log(f"run-on finished ({reason})")
+        self.nachlauf = None
 
     def release(self, reason, also_owned=()):
         """Hand back to the regular room target if (and only if) we own 0x2321."""
@@ -625,6 +723,7 @@ class RoomController:
             "enabled": self.config["enabled"],
             "external_setpoint_c": self.owned or None,
             "nachtabschaltung_aktiv": self.owned_mode,
+            "nacht_nachlauf": self.config["nacht_nachlauf"],
             **extra,
         }
         # The boiler always works with some room target: the external one we
@@ -704,6 +803,7 @@ class RoomController:
                     log(f"WARNING: night shutdown release failed: {exc}")
             raise
         if not self.night_handled:
+            self.nachlauf_cancel(f"state {status.get('state')}")
             self.night_info = {}
             if self.owned_mode:
                 self.night_release(f"state {status.get('state')}")
@@ -767,7 +867,8 @@ class RoomController:
             night_phase = phase == "reduziert" or (phase == "abschalt" and self.owned_mode)
             if night_phase and room is not None:
                 night = self.night_step(now, room)
-                state = "nachtabschaltung" if self.owned_mode else "nachtabsenkung"
+                state = ("nachtabschaltung" if self.owned_mode else
+                         "nachlauf" if self.nachlauf is not None else "nachtabsenkung")
                 return self._status(state, **night, **info)
             if night_phase:
                 return self._status("keine_sensoren", **info)
@@ -978,10 +1079,14 @@ class Service:
             self.settings, f"optolink-room-control-{os.getpid()}", self.base
         )
         self.io = SplitterIO(self.client, self.settings.mqtt_listen)
-        self.controller = RoomController(self.io, load_state())
+        self.controller = RoomController(self.io, load_state(), boost=self.pump_boost)
         self.client.on_connect = self.on_connect
         self.client.on_disconnect = self.on_disconnect
         self.client.on_message = self.on_message
+
+    def pump_boost(self, seconds, reason):
+        """Expiring 100 % request to the pump guard (runs inside the splitter)."""
+        self.client.publish(f"{self.base}/pump_guard/extern/set", f"{int(seconds)};{reason}")
 
     # MQTT callbacks only enqueue; all controller work runs in the main loop.
     def on_connect(self, client, _userdata, _flags, reason_code, _props):
@@ -1047,7 +1152,7 @@ class Service:
         for key in ("toleranz_unten", "toleranz_oben", "verstaerkung", "max_korrektur",
                     "morgenboost", "morgenboost_ausloesung", "morgenboost_dauer",
                     "nacht_ein", "nacht_aus", "nacht_min_aussen", "nacht_vorlauf",
-                    "nacht_max_schaltungen", "aggregation"):
+                    "nacht_max_schaltungen", "nacht_nachlauf", "aggregation"):
             self.client.publish(f"{self.topic}/{key}/state", str(cfg[key]), retain=True)
         for key in ("enabled", "nachtabschaltung"):
             self.client.publish(f"{self.topic}/{key}/state", "1" if cfg[key] else "0", retain=True)
@@ -1093,7 +1198,8 @@ class Service:
                     next_tick = min(next_tick, time.monotonic() + 1)
                 if time.monotonic() < next_tick:
                     continue
-                next_tick = time.monotonic() + CYCLE_SECONDS
+                next_tick = time.monotonic() + (
+                    NACHLAUF_CYCLE_S if self.controller.nachlauf is not None else CYCLE_SECONDS)
                 if not self.connected.is_set():
                     continue
                 try:
@@ -1107,6 +1213,7 @@ class Service:
             try:
                 if self.connected.is_set():
                     self.controller.release("service stop")
+                    self.controller.nachlauf_cancel("service stop")
                     self.controller.night_release("service stop")
                     self.publish_status(self.controller._status("aus", stopped=True))
             except Exception as exc:

@@ -132,6 +132,18 @@ class LogicTest(unittest.TestCase):
         self.assertEqual(lg.decide(0.0)[0], pg.AUS)
 
 
+    def test_extern_boost_expires(self):
+        lg = self.fresh_logic()
+        lg.extern_until, lg.extern_reason = 3.0, "Nachlauf Nachtabschaltung"
+        self.assertEqual(lg.decide(1.0), (pg.BOOST, "Nachlauf Nachtabschaltung"))
+        self.assertEqual(lg.decide(3.0)[0], pg.ABGESENKT)
+        # blocking reasons still win (status stays honest, pump is 100 % anyway)
+        lg = self.fresh_logic()
+        lg.extern_until = 10.0
+        lg.update("fault", b"\x05", 0.0)
+        self.assertEqual(lg.decide(1.0), (pg.GESPERRT, "Stoerung"))
+
+
 class GuardTest(unittest.TestCase):
     def test_holds_low_and_repairs_reloads(self):
         b = FakeBoiler()
@@ -566,6 +578,19 @@ class MqttTest(unittest.TestCase):
         self.assertTrue(g.logic.vorboost_aktiv)
         g._on_message(client, None, msg("enabled/state", "OFF"))  # non-retained echo ignored
         self.assertTrue(g.logic.enabled)
+        n = len(published)
+        g._on_message(client, None, msg("extern/set", "90;Nachlauf Nachtabschaltung"))
+        self.assertIsNotNone(g.logic.extern_until)
+        self.assertEqual(g.logic.extern_reason, "Nachlauf Nachtabschaltung")
+        self.assertEqual(len(published), n)                      # no retained state topic
+        until = g.logic.extern_until
+        g._on_message(client, None, msg("extern/set", "5000"))    # out of range: ignored
+        self.assertEqual(g.logic.extern_until, until)
+        g._on_message(client, None, msg("extern/set", "60", True))  # retained: ignored
+        self.assertEqual(g.logic.extern_until, until)
+        g._on_message(client, None, msg("extern/set", "0"))
+        self.assertIsNone(g.logic.extern_until)
+        self.assertIn(("openv/pump_guard/extern/set", 0), client.topics)
 
 
 class PatchTest(unittest.TestCase):

@@ -68,6 +68,13 @@ guard also lowers the RAM copy of E6 (0x20A4, coded 100, reloaded together with 
 to the same target, so the pump really runs at the target. Boost/failure: both
 return to 100 exactly like E7.
   e6_aktiv/set ON|OFF
+
+External boost (1.7.0): other services on the host can ask for 100 % for a
+limited time, e.g. the room control's pump run-on before the night shutdown
+switches the heating circuit to "Nur WW". The request expires by itself, so a
+crashed requester never keeps the pump high for longer than its last request
+(and 100 % is the fail-safe direction anyway). Not retained, no state topic.
+  extern/set <seconds 0..1800>[;<Grund>]   (0 ends the request)
 """
 from __future__ import annotations
 
@@ -75,7 +82,7 @@ import json
 import threading
 import time
 
-VERSION = "1.6.0"
+VERSION = "1.7.0"
 
 RAM_E6_ADDR, RAM_E7_ADDR = 0x20A4, 0x20A5      # RAM copies of E6 (max) and E7 (min)
 # 1.6.0: read only these 2 bytes (was a 32-byte block from 0x20A0): the telegram is
@@ -84,6 +91,7 @@ RAM_E6_OFFSET, RAM_E7_OFFSET = 0, 1
 HIGH = 100
 LOW_MIN, LOW_MAX = 20, 100
 NACHLAUF_MAX_MIN = 30
+EXTERN_MAX_S = 1800            # longest external boost one request may ask for
 VORBOOST_MAX_K = 10.0
 VORBOOST_HYST_K = 0.5          # release the pre-boost only 0.5 K below its trigger
 START_MARGIN_DEFAULT_K = 4.0   # coding plug "Einschaltdifferenz" 4 K until learned
@@ -136,6 +144,8 @@ class GuardLogic:
         self.enabled = False
         self.low = 30
         self.nachlauf_aktiv = True
+        self.extern_until = None       # monotonic deadline of an external boost request
+        self.extern_reason = "Extern"
         self.nachlauf_s = 180.0
         self.flame = self.lockout = False
         self.sequence = False
@@ -349,6 +359,8 @@ class GuardLogic:
             return GESPERRT, f"E6 codiert {self.e6} statt 100"
         if self.fault or self.lockout:
             return GESPERRT, "Stoerung"
+        if self.extern_until is not None and now < self.extern_until:
+            return BOOST, self.extern_reason
         if self.ww:
             return BOOST, "Warmwasser"
         if self.valve != 1:
@@ -455,7 +467,8 @@ class PumpGuard:
                   "kurve_aktiv", "kurve_min", "kurve_voll_k", "kurve_start_s",
                   "spreizung_aktiv", "spreizung_soll", "e6_aktiv"]
         client.subscribe([(f"{self.base}/{t}/set", 0) for t in topics]
-                         + [(f"{self.base}/{t}/state", 0) for t in topics])
+                         + [(f"{self.base}/{t}/state", 0) for t in topics]
+                         + [(f"{self.base}/extern/set", 0)])
         client.publish(f"{self.base}/protocol", "P300" if self.active else "VS1", retain=True)
         self.last_state = None  # republish status after (re)connect
         if not self.active:
@@ -469,6 +482,10 @@ class PumpGuard:
             if kind == "state" and not msg.retain:
                 return  # our own echo; only retained state restores config
             if kind not in ("set", "state"):
+                return
+            if name == "extern":
+                if kind == "set" and not msg.retain:
+                    self.request_extern(payload)
                 return
             with self.lock:
                 if name == "enabled":
@@ -530,6 +547,22 @@ class PumpGuard:
         except Exception as exc:
             self.log.warning(f"pump_guard: bad message {msg.topic}: {exc}")
 
+    def request_extern(self, payload, now=None):
+        """External boost request ``<seconds>[;<reason>]``; 0 ends it."""
+        now = time.monotonic() if now is None else now
+        secs, _, reason = payload.partition(";")
+        v = float(secs)
+        if not 0 <= v <= EXTERN_MAX_S:
+            self.log.warning(f"pump_guard: extern {payload!r} out of range")
+            return
+        reason = reason.strip()[:60] or "Extern"
+        with self.lock:
+            if v == 0:
+                self.logic.extern_until = None
+            else:
+                self.logic.extern_until = now + v
+                self.logic.extern_reason = reason
+
     def _publish_status(self, state, reason, now=None, force=False):
         now = time.monotonic() if now is None else now
         changed = (state, reason) != self.last_state
@@ -560,6 +593,8 @@ class PumpGuard:
                                  if lg.kessel is not None and lg.soll is not None else None),
                   "start_schwelle": lg.start_margin, "start_werte": lg.start_margins,
                   "starts": lg.starts,
+                  "extern_s": (round(lg.extern_until - now) if lg.extern_until is not None
+                               and now < lg.extern_until else 0),
                   "protocol": "P300" if self.active else "VS1", "version": VERSION,
                   "timestamp": int(time.time())}
         try:
