@@ -452,6 +452,12 @@ poll_list = {
                     "state_topic": "{mqtt_base}/pump_guard/e6_aktiv/state",
                     "command_topic": "{mqtt_base}/pump_guard/e6_aktiv/set",
                 },
+                {
+                    "name": "pumpensteuerung_codier_heilung",
+                    "icon": "mdi:auto-fix",
+                    "state_topic": "{mqtt_base}/pump_guard/heilung_aktiv/state",
+                    "command_topic": "{mqtt_base}/pump_guard/heilung_aktiv/set",
+                },
             ],
         },
         {
@@ -650,6 +656,14 @@ poll_list = {
                     "name": "pumpensteuerung_korrekturen",
                     "state_topic": "{mqtt_base}/pump_guard/status",
                     "value_template": "{{ value_json.repairs | default(0) }}",
+                },
+                {
+                    "name": "pumpensteuerung_codier_heilungen",
+                    "icon": "mdi:auto-fix",
+                    "state_topic": "{mqtt_base}/pump_guard/status",
+                    "value_template": "{{ value_json.heilungen | default(0) }}",
+                    "json_attributes_topic": "{mqtt_base}/pump_guard/status",
+                    "json_attributes_template": "{{ {'letzte': value_json.heilung_letzte} | tojson }}",
                 },
             ],
         },

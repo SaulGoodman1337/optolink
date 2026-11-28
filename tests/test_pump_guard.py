@@ -610,6 +610,77 @@ class GuardTest(unittest.TestCase):
             g._read((0x01, 0x27E5, 1))
 
 
+class HealTest(unittest.TestCase):
+    def make(self, low=55):
+        sent = []
+
+        class Client:
+            on_connect = None
+
+            def subscribe(self, topics):
+                pass
+
+            def publish(self, topic, payload, retain=False):
+                if topic == "openv/cmnd":
+                    sent.append(payload)
+
+        settings = types.SimpleNamespace(vs1protocol=False, mqtt_topic="openv", mqtt_broker=None,
+                                         mqtt_listen="openv/cmnd")
+        b = FakeBoiler()
+        g = pg.PumpGuard(settings, logging.getLogger("pg-test"), b.request, lambda: Client(),
+                         boost_after_start=False)
+        g.logic.enabled = True
+        g.logic.low = low
+        return g, b, sent
+
+    def block(self, g, b):
+        """Firmware takes the held RAM value into the coding; burner state change follows."""
+        run(g, b, 8)                        # healthy, lowering at 55
+        b.e7 = 55
+        b.gfa = FLAME_GFA                   # guard leaves lowering, then reads the coded E7
+        run(g, b, 20)
+
+    def test_heals_persistent_takeover_once_and_clears(self):
+        g, b, sent = self.make()
+        self.block(g, b)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.GESPERRT)
+        self.assertEqual(sent, [], "must not heal before HEAL_AFTER_S")
+        run(g, b, 25)
+        self.assertEqual(sent, ["w;0x27E7;1;100"])
+        self.assertEqual(g.heal_count, 1)
+        b.e7 = 100                          # the splitter applied the write
+        b.gfa = IDLE_GFA
+        g.logic.nachlauf_aktiv = False
+        run(g, b, 30)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+        self.assertEqual(sent, ["w;0x27E7;1;100"])
+
+    def test_rate_limit_and_switch_and_disabled(self):
+        g, b, sent = self.make()
+        self.block(g, b)
+        run(g, b, 25)
+        self.assertEqual(len(sent), 1)
+        run(g, b, 40)
+        self.assertEqual(len(sent), 1)      # HEAL_MIN_GAP_S not over yet
+        run(g, b, 200)                      # still wrong (write ignored): hourly cap
+        self.assertEqual(len(sent), 3)
+        run(g, b, 300)
+        self.assertEqual(len(sent), 3)      # hourly cap reached
+        g, b, sent = self.make()
+        g.logic.heilung_aktiv = False
+        self.block(g, b)
+        run(g, b, 60)
+        self.assertEqual(sent, [])
+        g, b, sent = self.make()
+        self.block(g, b)
+        g.logic.enabled = False
+        run(g, b, 60)
+        self.assertEqual(sent, [])
+
+    def test_only_whitelisted_commands(self):
+        self.assertEqual(sorted(pg.HEAL_WRITES.values()), ["w;0x27E6;1;100", "w;0x27E7;1;100"])
+
+
 class MqttTest(unittest.TestCase):
     def test_set_and_retained_restore(self):
         published = []

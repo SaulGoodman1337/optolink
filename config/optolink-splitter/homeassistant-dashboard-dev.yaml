@@ -4202,6 +4202,23 @@ views:
               columns: 6
               rows: 2
           - type: tile
+            entity: switch.vitodens_200_wb2a_pumpensteuerung_codier_heilung
+            name: Codierung selbst zurücksetzen (E6/E7)
+            icon: mdi:auto-fix
+            features:
+              - type: toggle
+            features_position: inline
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_pumpensteuerung_codier_heilungen
+            name: Zurückgesetzt (seit Start)
+            icon: mdi:auto-fix
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
             entity: switch.vitodens_200_wb2a_pumpensteuerung_nachlauf_aktiv
             name: Nachlauf aktiv
             icon: mdi:timer-sand
@@ -4353,6 +4370,12 @@ views:
               E7 ist nur die Untergrenze (Firmware wählt sonst ca. 60 %); mit
               **E6 mitsenken** wird auch die RAM-Kopie von E6 (Maximum) im selben
               Schreibbefehl auf denselben Wert gesetzt.
+              **Codierung selbst zurücksetzen:** die Therme hat am 27.11.2026 zweimal
+              den gehaltenen RAM-Wert (50 bzw. 55 %) in die Codierung E7/E6
+              übernommen, ohne dass jemand geschrieben hat. Der Wächter sperrt
+              sich dann („E7 codiert … statt 100“). Bleibt das 20 s lang so, setzt
+              er E7 bzw. E6 selbst wieder auf 100 (höchstens 3-mal pro Stunde,
+              mindestens 60 s Abstand) und gibt sich danach wieder frei.
               Boost (100 %) nur im normalen Brennerzyklus: Warmwasser, Ventil
               nicht Heizen, Startsequenz (Vorspülen), Flamme. Optional:
               **Nachlauf** hält 100 % für die eingestellten Minuten nach
