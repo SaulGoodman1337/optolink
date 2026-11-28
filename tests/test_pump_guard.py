@@ -677,6 +677,29 @@ class HealTest(unittest.TestCase):
         run(g, b, 60)
         self.assertEqual(sent, [])
 
+    def test_heal_after_reload_stall_with_real_drift(self):
+        """1.8.0 stall watchdog + 1.9.0 heal: the full 27.11.2026 sequence."""
+        g, b, sent = self.make(low=20)
+        run(g, b, 8)
+        b.next_reload = b.t + 1000         # reloads stop, firmware took 20 into the coding
+        b.e7 = 20
+        t0 = b.t
+        while g.logic.stall_t is None and b.t - t0 < 10:
+            run(g, b, 0.1)
+        self.assertEqual(g.logic.decide(b.t), (pg.GESPERRT, "Reload ausgeblieben"))
+        self.assertEqual(sent, [])          # the stall alone never writes a coding
+        b.next_reload = b.t + 0.5
+        run(g, b, 8)
+        self.assertIn("E7 codiert 20", g.logic.decide(b.t)[1])
+        run(g, b, 25)
+        self.assertEqual(sent, ["w;0x27E7;1;100"])
+        b.e7 = 100                          # splitter applied it
+        run(g, b, 15)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+        self.assertIsNone(g.logic.stall_t)
+        run(g, b, 60)
+        self.assertEqual(sent, ["w;0x27E7;1;100"])
+
     def test_only_whitelisted_commands(self):
         self.assertEqual(sorted(pg.HEAL_WRITES.values()), ["w;0x27E6;1;100", "w;0x27E7;1;100"])
 

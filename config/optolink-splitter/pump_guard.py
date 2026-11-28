@@ -84,7 +84,7 @@ crashed requester never keeps the pump high for longer than its last request
 (and 100 % is the fail-safe direction anyway). Not retained, no state topic.
   extern/set <seconds 0..1800>[;<Grund>]   (0 ends the request)
 
-Coding self-heal (1.8.0, default ON): on 27.11.2026 the firmware twice took the
+Coding self-heal (1.9.0, default ON): on 27.11.2026 the firmware twice took the
 lowered RAM value over into the coded E7 (08:55 E7=50, 20:32 E6=E7=55) although
 no coding was written. The guard blocks itself then (GESPERRT "E7/E6 codiert X
 statt 100"), but the pump stays at X until somebody resets the coding. With
@@ -93,7 +93,9 @@ for HEAL_AFTER_S (a short false alarm clears itself, e.g. 10:39 E6) it asks the
 splitter (MQTT listen topic, the same path as the HA number entities) to write
 exactly `w;0x27E7;1;100` or `w;0x27E6;1;100`, at most HEAL_MAX_PER_HOUR times per
 hour and HEAL_MIN_GAP_S apart. The guard's own coded-value check then releases
-the block. Never writes anything else, never while the guard is off.
+the block. Never writes anything else, never while the guard is off. The 1.8.0
+reload watchdog ("Reload ausgeblieben") never triggers a coding write by itself;
+only a drift it proves ("E7/E6 codiert X") does.
   heilung_aktiv/set ON|OFF, status JSON `heilungen`, `heilung_letzte`
 """
 from __future__ import annotations
@@ -102,7 +104,7 @@ import json
 import threading
 import time
 
-VERSION = "1.8.0"
+VERSION = "1.9.0"
 
 RAM_E6_ADDR, RAM_E7_ADDR = 0x20A4, 0x20A5      # RAM copies of E6 (max) and E7 (min)
 # 1.6.0: read only these 2 bytes (was a 32-byte block from 0x20A0): the telegram is
@@ -610,9 +612,15 @@ class PumpGuard:
     def _heal(self, state, reason, now):
         """Restore a coded E7/E6 the firmware took over from the lowered RAM value."""
         which = reason[:2] if state == GESPERRT and reason.startswith(("E7 codiert", "E6 codiert")) else None
-        if which is None or not self.logic.enabled or not self.logic.heilung_aktiv:
+        # while the 1.8.0 stall check verifies, the reason alternates between the proven drift
+        # and "Reload ausgeblieben" (its 100 write makes 0x27E7 read 100 for a moment): that
+        # keeps the drift episode alive, every other state ends it
+        episode = which is not None or (state == GESPERRT and reason == "Reload ausgeblieben")
+        if not episode or not self.logic.enabled or not self.logic.heilung_aktiv:
             self.block_since = None
             return
+        if which is None:
+            return                      # no fresh proof right now: never write on a stall alone
         if self.block_since is None or self.block_since[0] != which:
             self.block_since = (which, now)
             return

@@ -512,7 +512,7 @@ Codierung übernommen. Externer Vortest (E6 40 % gehalten): Pumpe 50 % statt
 63 %. MQTT: `e6_aktiv` (…/set, …/state); Status-JSON `ram_e6`; HA: Schalter
 „E6 mitsenken“, Sensor „RAM-E6“.
 
-**Codierung selbst zurücksetzen (1.8.0, Standard an):** Am 27.11.2026 hat die
+**Codierung selbst zurücksetzen (1.9.0, Standard an):** Am 27.11.2026 hat die
 Firmware zweimal den vom Wächter gehaltenen RAM-Wert in die Codierung übernommen
 (08:55 E7 = 50, 20:32 E7 = E6 = 55), obwohl niemand eine Codierung geschrieben
 hat. Beide Male lag der Wert bei 50–55 %, 3 von 3 Brenner-aus mit 20–30 % blieben
