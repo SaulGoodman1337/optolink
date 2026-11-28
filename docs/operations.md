@@ -483,6 +483,19 @@ veraltetes Abgas → 100 %. Ein echter Rücklauffühler ist geplant (Nutzer rüs
 nach) und soll den Ersatzwert ablösen.
 MQTT: `spreizung_aktiv`, `spreizung_soll` (…/set, …/state).
 
+**Schutz vor Codier-Übernahme (1.8.0):** Am 27.11.2026 hat die Firmware zweimal den
+abgesenkten RAM-Wert als Codierung übernommen (E7 = 50 um 08:55, E6 und E7 = 55 um
+20:32). In beiden Fällen hatte der Wächter kurz vor der nächsten Firmware-Rückladung
+einen *geänderten* Wert geschrieben (Abgas-Spreizung-Schritt). Ab 1.8.0 werden geänderte
+Werte nur unmittelbar nach einer sichtbaren Rückladung (RAM == 100) geschrieben. Bleibt
+die Rückladung länger als 5 s aus, fällt der Wächter auf 100 % zurück, meldet
+„Reload ausgeblieben“ und läuft erst weiter, wenn die RAM-Kopien eine volle
+Rückladeperiode lang 100 bleiben; hat sich die Codierung wirklich verstellt, steht
+„E7/E6 codiert X statt 100“ (zurücksetzen per HA). Der Wächter schreibt nie selbst
+Codierungen. Die Ursache in der Firmware ist nicht bewiesen (Hypothese: Schreibzugriff
+im Rückladefenster); Schreibzugriffe beim *Eintritt* in die Absenkung haben beliebige
+Phase und sind unverändert.
+
 **E6 mitsenken (1.6.0, optional, Standard aus):** E7 ist nur die Untergrenze.
 Messung 27.11.2026: mit RAM-E7 = 20 % lief die Pumpe bei Brenner aus trotzdem
 mit 60–68 %, weil die Firmware die Drehzahl zwischen E7 und E6 (Maximum) wählt.

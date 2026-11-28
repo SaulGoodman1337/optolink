@@ -62,6 +62,14 @@ protection (100 % within kurve_voll_k of the learned switch-off temperature)
 stays active. Stale flue-gas value -> 100 %.
   spreizung_aktiv/set ON|OFF, spreizung_soll/set 1..20 K
 
+Coding takeover protection (1.8.0): on 27.11.2026 the firmware twice took the lowered RAM
+value over as coding (E7 50 at 08:55, E6+E7 55 at 20:32). Both times the guard had just
+written a *changed* lowered value shortly before the next firmware reload. Since 1.8.0 a
+changed value is only written right after a visible reload (RAM == 100); and if no reload
+is seen for RELOAD_TIMEOUT_S the guard falls back to 100 %, shows GESPERRT "Reload
+ausgeblieben" and resumes only when the RAM copies stay 100 for a full reload period (or
+reports "E7/E6 codiert X" when the coding really drifted; it never writes codings itself).
+
 E6 mitsenken (1.6.0, default OFF): E7 is only the lower bound; with burner off the
 firmware picks ~60-68 % between E7 and E6 (measured 2026-11-27). With e6_aktiv the
 guard also lowers the RAM copy of E6 (0x20A4, coded 100, reloaded together with E7)
@@ -82,7 +90,7 @@ import json
 import threading
 import time
 
-VERSION = "1.7.0"
+VERSION = "1.8.0"
 
 RAM_E6_ADDR, RAM_E7_ADDR = 0x20A4, 0x20A5      # RAM copies of E6 (max) and E7 (min)
 # 1.6.0: read only these 2 bytes (was a 32-byte block from 0x20A0): the telegram is
@@ -131,6 +139,11 @@ RAM_OVERDUE_S = 3.0        # (27.11.2026 the firmware once delayed its reload to
                            # inside the normal reload window poll every tick, so the 100 %
                            # restored by the firmware is replaced as fast as possible
 STALE_S = 5.0              # state older than this -> no lowering
+RELOAD_TIMEOUT_S = 5.0     # 1.8.0: no visible firmware reload for this long while lowering ->
+                           # suspect that the firmware took over the lowered value as coding
+RELOAD_PERIOD_MAX_S = 3.0  # firmware reload period 1.7-2.7 s (measured)
+TICK_GAP_S = 1.0           # a longer gap between ticks (fan window, link loss) restarts the
+                           # reload watchdog
 
 ABGESENKT, BOOST, AUS, GESPERRT, FEHLER = "ABGESENKT", "BOOST", "AUS", "GESPERRT", "FEHLER"
 KENNLINIE = "KENNLINIE"    # lowered to the burner curve value while firing
@@ -152,6 +165,7 @@ class GuardLogic:
         self.ww = None
         self.valve = None
         self.fault = None
+        self.stall_t = None                # 1.8.0: reload watchdog fired at this time
         self.e7 = None
         self.e6 = None                     # coded E6 (1.6.0): proven by read or firmware reload
         self.ts = {}
@@ -357,6 +371,11 @@ class GuardLogic:
             # 27.11.2026 the coded E7 once took over the lowered RAM value by itself;
             # the same must never go unnoticed for E6 (maximum)
             return GESPERRT, f"E6 codiert {self.e6} statt 100"
+        if self.stall_t is not None:
+            # the firmware stopped reloading while we held a lowered value: the coded value may
+            # have taken it over. Stay at 100 % until the RAM copies stay 100 for longer than
+            # one reload period (PumpGuard clears stall_t).
+            return GESPERRT, "Reload ausgeblieben"
         if self.fault or self.lockout:
             return GESPERRT, "Stoerung"
         if self.extern_until is not None and now < self.extern_until:
@@ -409,6 +428,10 @@ class PumpGuard:
         self.last_low_written = None
         self.last_e6_written = None
         self.last_repair_t = 0.0
+        self.reload_seen_t = None
+        self.last_tick_t = None
+        self.write100_t = None
+        self.next_stall_read = 0.0
         self.repairs = 0
         self.writes = 0
         self._target = None
@@ -645,17 +668,61 @@ class PumpGuard:
                 e6_aktiv = self.logic.e6_aktiv and self.logic.e6 == HIGH
             self._publish_status(state, reason, now)
             lowering = state in LOWERING
+            gap = self.last_tick_t is not None and now - self.last_tick_t > TICK_GAP_S
+            self.last_tick_t = now
+            if not lowering:
+                self.reload_seen_t = None
+            elif self.reload_seen_t is None or gap:
+                self.reload_seen_t = now        # (re)start the reload watchdog
+            elif now - self.reload_seen_t > RELOAD_TIMEOUT_S:
+                # reloads are visible while the RAM copy differs from the coded value. If none
+                # is seen any more, the coded value may have taken over our lowered value
+                # (27.11.2026, twice): fall back to 100 % and verify by RAM reads.
+                with self.lock:
+                    self.logic.stall_t = now
+                self.log.warning("pump_guard: keine Firmware-Reload-Rückladung sichtbar, "
+                                 "100 % und Prüfung der Codierung")
+                return None
             # 1) leaving ABGESENKT: write 100 once right away (faster boost)
             if not lowering and (self.ram not in (None, HIGH) or self.ram_e6 not in (None, HIGH)):
                 both = self.ram_e6 not in (None, HIGH)
                 rc = self._write_ram(HIGH, HIGH if both else None)
                 if rc == 0x01:
                     self.ram = HIGH
+                    self.write100_t = now
                     if both:
                         self.ram_e6 = HIGH
                 else:
                     self.ram = None     # unknown; the firmware reload restores 100 anyway
                     self.ram_e6 = None
+                return rc
+            # 1b) after a reload stall: verify with RAM reads that the coded values are 100 again
+            if not lowering and self.logic.stall_t is not None and now >= self.next_stall_read:
+                self.next_stall_read = now + 0.5
+                rc, data = self._read(READ_RAM)
+                if data is None:
+                    return rc
+                ram, ram6 = data[RAM_E7_OFFSET], data[RAM_E6_OFFSET]
+                self.ram, self.ram_e6 = ram, ram6
+                if ram == HIGH and ram6 == HIGH:
+                    if self.write100_t is None:
+                        self.write100_t = now       # RAM is 100: time one full reload period
+                    elif now - self.write100_t >= RELOAD_PERIOD_MAX_S:
+                        with self.lock:
+                            self.logic.update("e7", bytes([HIGH]), now)
+                            self.logic.update("e6", bytes([HIGH]), now)
+                            self.logic.stall_t = None
+                        self.write100_t = None
+                    return rc
+                if self.write100_t is None or now - self.write100_t < 1.0:
+                    rc = self._write_ram(HIGH, HIGH)      # our 100 did not land (yet)
+                    self.write100_t = now
+                    return rc
+                # a reload brought a different value although we wrote 100: coded value drifted
+                with self.lock:
+                    self.logic.update("e7", bytes([ram]), now)
+                    self.logic.update("e6", bytes([ram6]), now)
+                self.next_stall_read = now + 1.0
                 return rc
             # 2) RAM supervision while lowering: read, and repair in the same tick
             #    (read + write back-to-back, exactly like the Phase-0 probe)
@@ -676,8 +743,15 @@ class PumpGuard:
                 # E6 is only touched with the option on, or to undo a leftover lowered E6
                 ok7 = ram in (HIGH, low, self.last_low_written)
                 ok6 = ram6 in (HIGH, low, self.last_e6_written)
+                if ok7 and ok6 and ram != HIGH:
+                    # 1.8.0: the RAM still holds a lowered value from before (target changed,
+                    # E6 option toggled). Do NOT write now: 27.11.2026 both coding takeovers
+                    # followed a value-change write that landed just before a firmware reload.
+                    # Wait for the next visible reload and write right after it.
+                    return rc
                 if ok7 and ok6:
                     if ram == HIGH:
+                        self.reload_seen_t = now
                         # the firmware reload restored 100: proof that E7 is coded 100;
                         # E6 is reloaded in the same moment, so ram6 is the coded E6
                         with self.lock:

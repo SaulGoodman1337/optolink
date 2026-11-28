@@ -40,6 +40,9 @@ class FakeBoiler:
         self.ram[4] = 100                 # E6 RAM copy (coded 100), reloaded together with E7
         self.e6 = 100
         self.next_reload = 2.3
+        self.race_window = 0.0            # >0: a lowered-value write landing this close
+                                          # before a reload is committed into the coding
+        self.committed = []
         self.log = []
         self.alive = True
 
@@ -56,6 +59,12 @@ class FakeBoiler:
             return 0xFF, addr, bytearray()
         if fc == 0x04:
             assert (addr, n) in ((0x20A5, 1), (0x20A4, 2))
+            if (self.race_window and data[-1] != 100 and self.ram[5] != 100
+                    and 0 <= self.next_reload - self.t <= self.race_window):
+                self.e7 = data[-1]        # firmware takes the RAM value over as coding
+                if n == 2:
+                    self.e6 = data[0]
+                self.committed.append(self.t)
             self.ram[addr - 0x20A0:addr - 0x20A0 + n] = bytes(data)
             return 0x01, addr, bytearray()
         values = {
@@ -428,14 +437,72 @@ class GuardTest(unittest.TestCase):
         b = FakeBoiler()
         g = make_guard(b)
         run(g, b, 5)
-        b.next_reload = b.t + 8.0          # firmware takes 8 s for the next reload
+        b.next_reload = b.t + 4.0          # firmware takes 4 s for the next reload
         states = []
-        end = b.t + 7.5
+        end = b.t + 3.8
         while b.t < end:
             g.tick(b.t)
             b.advance(0.08)
             states.append(g.logic.decide(b.t)[0])
         self.assertNotIn(pg.GESPERRT, states)
+
+    def test_missing_reloads_fall_back_to_100_and_recover(self):
+        b = FakeBoiler()
+        g = make_guard(b, low=20)
+        run(g, b, 8)
+        self.assertEqual(b.ram[5], 20)
+        b.next_reload = b.t + 1000         # reloads stop (coded value == RAM value)
+        b.e7 = 20
+        t0 = b.t
+        while g.logic.stall_t is None and b.t - t0 < 10:
+            run(g, b, 0.1)
+        self.assertIsNotNone(g.logic.stall_t)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.GESPERRT)
+        # the firmware now reloads 20 although we wrote 100: coding drifted -> stays blocked
+        b.next_reload = b.t + 0.5
+        run(g, b, 8)
+        state, reason = g.logic.decide(b.t)
+        self.assertEqual(state, pg.GESPERRT)
+        self.assertIn("E7 codiert 20", reason)
+        # user restores the coding: guard resumes by itself
+        b.e7 = 100
+        run(g, b, 12)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+        run(g, b, 6)
+        self.assertEqual(b.ram[5], 20)
+
+    def test_missing_reloads_without_drift_resume_after_check(self):
+        b = FakeBoiler()
+        g = make_guard(b, low=20)
+        run(g, b, 8)
+        b.next_reload = b.t + 6.5          # one very late reload, coding is fine
+        run(g, b, 10)
+        self.assertIsNone(g.logic.stall_t)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+
+    def test_value_change_writes_follow_a_reload(self):
+        """27.11.2026: a write that changes the lowered value just before a firmware reload
+        was taken over as coding (twice). Changes must wait for the next reload."""
+        b = FakeBoiler()
+        b.race_window = 0.35
+        g = make_guard(b, low=60)
+        run(g, b, 8)
+        for i, val in enumerate(range(55, 20, -1)):      # steps at every possible phase
+            g.logic.low = val
+            run(g, b, 0.37 + 0.011 * i)
+        run(g, b, 10)
+        self.assertEqual(b.committed, [])
+        self.assertEqual(b.e7, 100)
+        self.assertNotEqual(g.logic.decide(b.t)[0], pg.GESPERRT)
+
+    def test_race_model_is_hit_by_unsynchronised_writes(self):
+        b = FakeBoiler()
+        b.race_window = 0.35
+        b.ram[5] = 60
+        b.next_reload = b.t + 0.2
+        b.request(0x04, 0x20A5, 1, bytes([55]))
+        self.assertEqual(b.committed, [b.t])
+        self.assertEqual(b.e7, 55)
 
     def test_reload_is_repaired_fast(self):
         b = FakeBoiler()
@@ -493,10 +560,8 @@ class GuardTest(unittest.TestCase):
         g.logic.e6_aktiv = True
         run(g, b, 25)
         self.assertEqual(b.ram[4], 20)
-        b.e6 = 77                          # pretend the coded E6 differs: the guard must
-        g.logic.e6_aktiv = False           # not need the reload to undo its own lowering
-        b.next_reload = b.t + 100
-        run(g, b, 2)
+        g.logic.e6_aktiv = False           # E6 goes back to 100 with the next firmware reload,
+        run(g, b, 3)                       # E7 stays lowered; no write while off-phase
         self.assertEqual(b.ram[4], 100)
         self.assertEqual(b.ram[5], 20)
 
