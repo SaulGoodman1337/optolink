@@ -1,0 +1,204 @@
+blueprint:
+  name: Kamin-Erkennung (Optolink)
+  description: >-
+    Erkennt am Temperatursensor direkt am Kamin, ob der Kamin brennt, und
+    schaltet einen Schalter (input_boolean, z. B. input_boolean.kaminangeheizt).
+
+    Kamin AN, sobald der Sensor die Einschalt-Temperatur erreicht oder
+    gegenüber seinem Ruhewert um den eingestellten Anstieg wärmer wird.
+    Den Ruhewert führt die Automation alle 15 Minuten in einem input_number
+    nach, solange der Kamin aus ist: Abkühlen sofort, Erwärmen höchstens
+    0.5 K je 15 Minuten. So fällt schnelles Anheizen auf, langsames
+    Aufwärmen am Tag nicht (optional, ohne input_number zählt nur die
+    Einschalt-Temperatur).
+
+    Kamin AUS erst, wenn der Sensor eine Zeit lang unter der
+    Ausschalt-Temperatur liegt UND der Kamin mindestens die Mindestdauer an
+    war. Ist der Sensor länger als eine Stunde nicht erreichbar, geht der
+    Schalter aus (dann wird wieder normal geheizt).
+
+    Der Schalter kann jederzeit auch von Hand eingeschaltet werden (z. B.
+    beim Anzünden). Die Räume steuert der Blueprint "Kamin: Raum-Pause".
+  domain: automation
+  source_url: https://github.com/SaulGoodman1337/optolink/blob/main/config/optolink-splitter/homeassistant-blueprints/kamin_erkennung.yaml
+  input:
+    kamin_sensor:
+      name: Temperatursensor am Kamin
+      selector:
+        entity:
+          filter:
+            - domain: sensor
+              device_class: temperature
+    kamin_schalter:
+      name: Schalter "Kamin brennt" (input_boolean)
+      default: input_boolean.kaminangeheizt
+      selector:
+        entity:
+          filter:
+            - domain: input_boolean
+    ruhewert:
+      name: Speicher Ruhewert (input_number, optional)
+      description: >-
+        input_number von 0 bis 60 °C, Schritt 0.1. Leer lassen = nur die
+        Einschalt-Temperatur zählt. Ein Ruhewert unter 15 °C oder mehr als
+        10 K unter dem Sensor gilt als ungültig und wird beim nächsten
+        Takt neu gesetzt (z. B. direkt nach dem Anlegen).
+      default: []
+      selector:
+        entity:
+          filter:
+            - domain: input_number
+    ein_temperatur:
+      name: Einschalt-Temperatur
+      default: 30
+      selector:
+        number:
+          min: 24
+          max: 60
+          step: 0.5
+          unit_of_measurement: °C
+    ein_anstieg:
+      name: Einschalten bei Anstieg über Ruhewert
+      description: Nur mit Ruhewert-Speicher.
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 15
+          step: 0.5
+          unit_of_measurement: K
+    aus_temperatur:
+      name: Ausschalt-Temperatur
+      default: 27
+      selector:
+        number:
+          min: 20
+          max: 50
+          step: 0.5
+          unit_of_measurement: °C
+    aus_dauer:
+      name: So lange unter der Ausschalt-Temperatur
+      default: 30
+      selector:
+        number:
+          min: 5
+          max: 240
+          unit_of_measurement: min
+    mindestdauer:
+      name: Mindestens so lange an
+      default: 120
+      selector:
+        number:
+          min: 0
+          max: 720
+          unit_of_measurement: min
+
+trigger_variables:
+  aus_temperatur: !input aus_temperatur
+  kamin_sensor: !input kamin_sensor
+
+mode: queued
+max: 5
+max_exceeded: silent
+
+variables:
+  kamin_sensor: !input kamin_sensor
+  kamin_schalter: !input kamin_schalter
+  ruhewert: !input ruhewert
+  ein_temperatur: !input ein_temperatur
+  ein_anstieg: !input ein_anstieg
+  aus_temperatur: !input aus_temperatur
+  aus_dauer: !input aus_dauer
+  mindestdauer: !input mindestdauer
+
+triggers:
+  - trigger: state
+    entity_id: !input kamin_sensor
+    id: wert
+  - trigger: time_pattern
+    minutes: "/15"
+    id: takt
+  - trigger: homeassistant
+    event: start
+    id: start
+  - trigger: template
+    value_template: "{{ states(kamin_sensor) | float(99) < aus_temperatur }}"
+    for:
+      minutes: !input aus_dauer
+    id: kalt
+  - trigger: state
+    entity_id: !input kamin_schalter
+    to: "on"
+    for:
+      minutes: !input mindestdauer
+    id: lange_an
+  - trigger: state
+    entity_id: !input kamin_sensor
+    to:
+      - unavailable
+      - unknown
+    for:
+      minutes: 60
+    id: sensor_weg
+
+actions:
+  - variables:
+      t: "{{ states(kamin_sensor) | float(none) }}"
+      an: "{{ is_state(kamin_schalter, 'on') }}"
+      basis_entity: "{{ ruhewert if ruhewert is string and ruhewert != '' else (ruhewert | first if ruhewert else '') }}"
+      basis: "{{ states(basis_entity) | float(none) if basis_entity else none }}"
+      an_minuten: >-
+        {{ ((now() - states[kamin_schalter].last_changed).total_seconds() / 60) | round(0)
+           if states[kamin_schalter] is not none else 0 }}
+  - choose:
+      # Sensor seit einer Stunde weg: lieber heizen.
+      - conditions:
+          - condition: trigger
+            id: sensor_weg
+          - "{{ an }}"
+        sequence:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: "{{ kamin_schalter }}"
+      # Einschalten
+      - conditions:
+          - "{{ not an and t is not none }}"
+          - >-
+            {{ t >= ein_temperatur
+               or (basis is not none and basis >= 15
+                   and ein_anstieg <= t - basis < 10) }}
+        sequence:
+          - action: input_boolean.turn_on
+            target:
+              entity_id: "{{ kamin_schalter }}"
+      # Ausschalten: unter der Ausschalt-Temperatur (seit aus_dauer bzw. beim
+      # Erreichen der Mindestdauer / nach HA-Start deutlich darunter) und
+      # mindestens die Mindestdauer an.
+      - conditions:
+          - "{{ an and t is not none and an_minuten >= mindestdauer }}"
+          - >-
+            {{ (trigger.id == 'kalt' and t < aus_temperatur)
+               or (trigger.id == 'lange_an' and t < aus_temperatur)
+               or (trigger.id in ['start', 'takt'] and t < aus_temperatur - 2) }}
+        sequence:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: "{{ kamin_schalter }}"
+  # Ruhewert pflegen, solange der Kamin aus ist (nur im 15-min-Takt).
+  - if:
+      - condition: trigger
+        id:
+          - takt
+          - start
+      - "{{ basis_entity != '' and t is not none }}"
+      - "{{ not is_state(kamin_schalter, 'on') }}"
+    then:
+      - action: input_number.set_value
+        target:
+          entity_id: "{{ basis_entity }}"
+        data:
+          # Abkühlen sofort übernehmen, Erwärmen nur langsam (0.5 K je
+          # 15 min), damit ein schnelles Anheizen als Anstieg erkannt wird.
+          value: >-
+            {{ (t if basis is none or basis < 15 or t < basis or t - basis >= 10
+                else [t, basis + 0.5] | min) | round(1) }}

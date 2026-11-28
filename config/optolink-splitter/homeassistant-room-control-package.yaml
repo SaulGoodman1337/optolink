@@ -14,6 +14,10 @@
 #      sensors of that device are used.
 #   5. Restart Home Assistant (or reload automations).
 #
+#   6. Optional (Kamin, docs/kamin.md): create the label "Optolink Kamin EG"
+#      (label id: optolink_kamin_eg) and assign it to the ground-floor
+#      sensors; they are skipped while input_boolean.kaminangeheizt is on.
+#
 # Adding or removing a sensor later only means assigning or removing the
 # label; no YAML change is needed. The splitter host combines the values
 # (mean/minimum/maximum, selectable in the dashboard) and ignores values
@@ -36,6 +40,13 @@ automation:
         event: start
     variables:
       label_id: optolink_raumregelung
+      # Kamin: while kamin_schalter is on, sensors (or devices) that also
+      # carry the label "Optolink Kamin EG" are left out, so a fireplace
+      # heating the ground floor does not lower the flow temperature for
+      # the upper floor (docs/kamin.md). Never label the sensor directly
+      # at the fireplace with "Optolink Raumregelung".
+      kamin_schalter: input_boolean.kaminangeheizt
+      kamin_label: optolink_kamin_eg
       # Entities with the label, plus every temperature entity of a device
       # that carries the label (e.g. a Shelly H&T labelled as a device).
       kandidaten: >-
@@ -47,7 +58,12 @@ automation:
             {% endif %}
           {% endfor %}
         {% endfor %}
-        {{ ns.e | unique | list }}
+        {% set ns2 = namespace(x=label_entities(kamin_label) | list) %}
+        {% for d in label_devices(kamin_label) %}
+          {% set ns2.x = ns2.x + device_entities(d) | list %}
+        {% endfor %}
+        {% set kamin_an = is_state(kamin_schalter, 'on') %}
+        {{ ns.e | unique | reject('in', ns2.x if kamin_an else []) | list }}
       payload: >-
         {% set ns = namespace(d={}) %}
         {% for e in kandidaten %}

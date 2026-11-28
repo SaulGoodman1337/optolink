@@ -1,0 +1,255 @@
+blueprint:
+  name: "Kamin: Raum-Pause (Optolink)"
+  description: >-
+    Pausiert die Heizkörper eines Raums, solange der Kamin brennt UND der
+    Raum warm genug ist, und heizt von selbst wieder, sobald der Raum unter
+    seinen Sollwert fällt oder der Kamin aus ist. Eine Automation je Raum.
+
+    Pause AN: Kamin-Schalter an und Raum >= Soll + "Pause ab".
+    Pause AUS: Raum < Soll - "Wieder heizen ab", Kamin aus, Raumsensor
+    nicht verfügbar oder die Automation wird ausgeschaltet/HA startet
+    ohne Kamin. Mindestpausenzeit gegen Flattern (gilt nicht, wenn der
+    Raum zu kalt wird oder der Kamin aus ist).
+
+    Der Pause-Schalter (input_boolean, je Raum einer) kann als "Winter-Modus"
+    (invertiert) in einer Advanced-Heating-Control-Automation stecken; die
+    schaltet dann die Thermostate selbst. Für Räume ohne Heizplan-Automation
+    Thermostate eintragen: Der Blueprint stellt sie dann auf die
+    Pause-Temperatur (nie "off", Frostschutz bleibt) und danach auf den
+    vorherigen Sollwert zurück (bzw. auf "Sollwert nach der Pause", wenn
+    HA zwischendurch neu gestartet wurde).
+  domain: automation
+  source_url: https://github.com/SaulGoodman1337/optolink/blob/main/config/optolink-splitter/homeassistant-blueprints/kamin_raum_pause.yaml
+  input:
+    kamin_schalter:
+      name: Schalter "Kamin brennt"
+      default: input_boolean.kaminangeheizt
+      selector:
+        entity:
+          filter:
+            - domain: input_boolean
+    raum_sensor:
+      name: Raumtemperatur
+      description: >-
+        Temperatursensor des Raums. Ein Thermostat (climate) geht auch, dann
+        zählt seine gemessene Temperatur. Mehrere = Mittelwert der
+        verfügbaren.
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: sensor
+              device_class: temperature
+            - domain: climate
+    ersatz_sensor:
+      name: Ersatz-Raumtemperatur (optional)
+      description: >-
+        Wird nur benutzt, wenn keiner der Raumsensoren einen Wert hat, z. B.
+        die Thermostate des Raums. Thermostat-Werte liegen bei offenem
+        Ventil oft 1-3 K über der echten Raumtemperatur.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: sensor
+              device_class: temperature
+            - domain: climate
+    pause_schalter:
+      name: Pause-Schalter dieses Raums (input_boolean)
+      selector:
+        entity:
+          filter:
+            - domain: input_boolean
+    soll:
+      name: Raum-Sollwert während des Kamins
+      default: 21
+      selector:
+        number:
+          min: 15
+          max: 26
+          step: 0.5
+          unit_of_measurement: °C
+    pause_ab:
+      name: Pause ab Soll +
+      default: 0.5
+      selector:
+        number:
+          min: 0
+          max: 3
+          step: 0.1
+          unit_of_measurement: K
+    wieder_an:
+      name: Wieder heizen ab Soll −
+      default: 0.5
+      selector:
+        number:
+          min: 0
+          max: 3
+          step: 0.1
+          unit_of_measurement: K
+    mindestpause:
+      name: Mindestpausenzeit
+      default: 15
+      selector:
+        number:
+          min: 0
+          max: 120
+          unit_of_measurement: min
+    thermostate:
+      name: Thermostate selbst schalten (optional)
+      description: >-
+        Nur für Räume OHNE Heizplan-Automation, die den Pause-Schalter
+        auswertet. Sonst leer lassen, sonst arbeiten zwei Automationen
+        gegeneinander.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: climate
+    pause_temperatur:
+      name: Pause-Temperatur (Frostschutz)
+      default: 12
+      selector:
+        number:
+          min: 5
+          max: 18
+          step: 0.5
+          unit_of_measurement: °C
+    sollwert_danach:
+      name: Sollwert nach der Pause, falls der alte unbekannt ist
+      description: Nur mit "Thermostate selbst schalten" (z. B. nach HA-Neustart).
+      default: 21
+      selector:
+        number:
+          min: 5
+          max: 30.5
+          step: 0.5
+          unit_of_measurement: °C
+
+mode: queued
+max: 5
+max_exceeded: silent
+
+triggers:
+  - trigger: state
+    entity_id: !input kamin_schalter
+    id: kamin
+  - trigger: state
+    entity_id: !input raum_sensor
+    id: raum
+  - trigger: state
+    entity_id: !input raum_sensor
+    attribute: current_temperature
+    id: raum
+  - trigger: time_pattern
+    minutes: "/5"
+    id: takt
+  - trigger: homeassistant
+    event: start
+    id: start
+
+variables:
+  kamin_schalter: !input kamin_schalter
+  raum_sensor: !input raum_sensor
+  ersatz_sensor: !input ersatz_sensor
+  pause_schalter: !input pause_schalter
+  soll: !input soll
+  pause_ab: !input pause_ab
+  wieder_an: !input wieder_an
+  mindestpause: !input mindestpause
+  thermostate: !input thermostate
+  pause_temperatur: !input pause_temperatur
+  sollwert_danach: !input sollwert_danach
+  szene: "scene.kamin_vorher_{{ pause_schalter.split('.')[1] }}"
+  werte: >-
+    {% set ns = namespace(v=[]) %}
+    {% set haupt = raum_sensor if raum_sensor is list else [raum_sensor] %}
+    {% set ersatz = ersatz_sensor if ersatz_sensor is list else [ersatz_sensor] %}
+    {% for gruppe in [haupt, ersatz] %}
+      {% if ns.v | count == 0 %}
+        {% for e in gruppe if e %}
+          {% set v = state_attr(e, 'current_temperature') if e.startswith('climate.') else states(e) %}
+          {% if v is not none and is_number(v) and 5 <= (v | float) <= 35 %}
+            {% set ns.v = ns.v + [v | float] %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.v }}
+  raum: "{{ (werte | sum / werte | count) | round(2) if werte | count > 0 else none }}"
+  kamin_an: "{{ is_state(kamin_schalter, 'on') }}"
+  pausiert: "{{ is_state(pause_schalter, 'on') }}"
+  pause_minuten: >-
+    {{ ((now() - states[pause_schalter].last_changed).total_seconds() / 60)
+       if states[pause_schalter] is not none else 9999 }}
+  # Weiter pausieren, solange der Raum nicht unter Soll - wieder_an fällt;
+  # in der Mindestpausenzeit erst 1 K tiefer aufgeben.
+  pause_soll: >-
+    {{ kamin_an and raum is not none and
+       ((raum >= soll - wieder_an
+         or (pause_minuten < mindestpause and raum >= soll - wieder_an - 1))
+        if pausiert else raum >= soll + pause_ab) }}
+
+actions:
+  - choose:
+      # Pause beginnen
+      - conditions:
+          - "{{ pause_soll and not pausiert }}"
+        sequence:
+          - if:
+              - "{{ thermostate | count > 0 }}"
+            then:
+              - action: scene.create
+                data:
+                  scene_id: "{{ szene.split('.')[1] }}"
+                  snapshot_entities: "{{ thermostate }}"
+              - action: climate.set_temperature
+                target:
+                  entity_id: "{{ thermostate }}"
+                data:
+                  temperature: "{{ pause_temperatur }}"
+                continue_on_error: true
+          - action: input_boolean.turn_on
+            target:
+              entity_id: "{{ pause_schalter }}"
+          - action: logbook.log
+            data:
+              name: Kamin-Pause
+              message: >-
+                {{ state_attr(pause_schalter, 'friendly_name') or pause_schalter }}: Pause,
+                Raum {{ raum }} °C ≥ {{ soll + pause_ab }} °C
+              entity_id: "{{ pause_schalter }}"
+      # Pause beenden
+      - conditions:
+          - "{{ not pause_soll and pausiert }}"
+        sequence:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: "{{ pause_schalter }}"
+          - if:
+              - "{{ thermostate | count > 0 }}"
+            then:
+              - if:
+                  - "{{ states(szene) not in ['unknown', 'unavailable'] and states[szene] is not none }}"
+                then:
+                  - action: scene.turn_on
+                    target:
+                      entity_id: "{{ szene }}"
+                    continue_on_error: true
+                else:
+                  - action: climate.set_temperature
+                    target:
+                      entity_id: "{{ thermostate }}"
+                    data:
+                      temperature: "{{ sollwert_danach }}"
+                    continue_on_error: true
+          - action: logbook.log
+            data:
+              name: Kamin-Pause
+              message: >-
+                {{ state_attr(pause_schalter, 'friendly_name') or pause_schalter }}: heizt wieder,
+                {{ 'Kamin aus' if not kamin_an else ('kein Raumwert' if raum is none
+                   else 'Raum ' ~ raum ~ ' °C < ' ~ (soll - wieder_an) ~ ' °C') }}
+              entity_id: "{{ pause_schalter }}"
