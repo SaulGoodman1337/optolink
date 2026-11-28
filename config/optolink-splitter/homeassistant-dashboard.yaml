@@ -4195,6 +4195,23 @@ views:
               columns: 6
               rows: 2
           - type: tile
+            entity: switch.vitodens_200_wb2a_pumpensteuerung_codier_heilung
+            name: Codierung selbst zurücksetzen (E6/E7)
+            icon: mdi:auto-fix
+            features:
+              - type: toggle
+            features_position: inline
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_pumpensteuerung_codier_heilungen
+            name: Zurückgesetzt (seit Start)
+            icon: mdi:auto-fix
+            grid_options:
+              columns: 6
+              rows: 2
+          - type: tile
             entity: switch.vitodens_200_wb2a_pumpensteuerung_nachlauf_aktiv
             name: Nachlauf aktiv
             icon: mdi:timer-sand
@@ -4346,6 +4363,12 @@ views:
               E7 ist nur die Untergrenze (Firmware wählt sonst ca. 60 %); mit
               **E6 mitsenken** wird auch die RAM-Kopie von E6 (Maximum) im selben
               Schreibbefehl auf denselben Wert gesetzt.
+              **Codierung selbst zurücksetzen:** die Therme hat am 27.11.2026 zweimal
+              den gehaltenen RAM-Wert (50 bzw. 55 %) in die Codierung E7/E6
+              übernommen, ohne dass jemand geschrieben hat. Der Wächter sperrt
+              sich dann („E7 codiert … statt 100“). Bleibt das 20 s lang so, setzt
+              er E7 bzw. E6 selbst wieder auf 100 (höchstens 3-mal pro Stunde,
+              mindestens 60 s Abstand) und gibt sich danach wieder frei.
               Boost (100 %) nur im normalen Brennerzyklus: Warmwasser, Ventil
               nicht Heizen, Startsequenz (Vorspülen), Flamme. Optional:
               **Nachlauf** hält 100 % für die eingestellten Minuten nach
@@ -4624,6 +4647,8 @@ views:
                       **Bereich:** 0–15
 
                       **Aktuell:** {{ states('number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_a9_einstellung') }}
+
+                      **Gemessen an dieser Anlage:** Mit `A9:5` waren Heizkreispumpe und Wärmebedarf beim Wechsel in den reduzierten Betrieb am 25.11.2026 von 20:00:42 bis 20:25:17 aus, der Brenner wurde dabei mitten im Lauf abgebrochen. Für den Pumpennachlauf der Nachtabschaltung steht A9 seit 27.11.2026 auf `0` (Details: Raumregelung → Nachtabschaltung).
 
                       **Besonderheit:** `A9:0` deaktiviert die Pumpenstillstandzeit. Die Serviceanleitung beschreibt A9 als Codierwert 0–15; sie weist diesen Werten an dieser Stelle keine Einheit in Minuten zu. Das Dashboard behandelt den Registerwert deshalb nicht mehr als gesicherte Minutenangabe.
 
@@ -5686,6 +5711,73 @@ views:
             grid_options:
               columns: full
 
+          - type: heading
+            heading: Pumpennachlauf vor der Abschaltung
+            heading_style: subtitle
+            icon: mdi:pump
+            badges:
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_pumpensteuerung_grund
+                name: Pumpe
+                show_state: true
+                show_icon: false
+              - type: entity
+                entity: sensor.vitodens_200_wb2a_kesseltemperatur
+                name: Kessel
+                show_state: true
+                show_icon: false
+
+          - type: tile
+            entity: sensor.vitodens_200_wb2a_raumregelung_nachlauf
+            name: Nachlauf
+            icon: mdi:pump
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_raumregelung_nacht_nachlauf
+            name: Nachlaufzeit (0 = aus)
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: 6
+
+          - type: tile
+            entity: number.vitodens_200_wb2a_heizkreis_m1_pumpe_reduziert_a9_einstellung
+            name: A9 Pumpenstillstand nach Absenkung (0 = aus)
+            icon: mdi:pump-off
+            features:
+              - type: numeric-input
+                style: buttons
+            features_position: bottom
+            grid_options:
+              columns: full
+
+          - type: markdown
+            content: >-
+              **Nachlauf:** „Nur WW“ stoppt die Heizkreispumpe sofort. Damit die Wärme
+              im Kessel nicht dort stehen bleibt, wartet die Nachtabschaltung zuerst,
+              bis die Flamme aus ist und keine Warmwasserladung läuft. Dann bleibt
+              „Heizen + WW“ noch stehen, die Pumpe läuft mit 100 % (Pumpenwächter-Grund
+              „Nachlauf Nachtabschaltung“) und gibt die Restwärme an die Heizkörper ab.
+              Umgeschaltet wird nach der Nachlaufzeit oder früher, sobald der Kessel
+              2,5 K unter seinem Sollwert liegt, also bevor der Brenner bei Soll − 4 K
+              wieder starten würde. Startet er trotzdem, beginnt der Nachlauf nach dem
+              Brennerstopp neu; nach 20 min + Nachlaufzeit wird in jedem Fall
+              umgeschaltet. Hat die Therme die Pumpe selbst abgestellt, wird sofort
+              umgeschaltet.
+
+              **A9 (Pumpenstillstand nach Sollwertabsenkung):** Mit A9 > 0 schaltet die
+              Therme beim Wechsel in den reduzierten Betrieb (20:00) die Heizkreispumpe
+              und den Wärmebedarf für eine Weile ab, auch mitten im Brennerlauf. Bei
+              A9:5 waren das am 25.11. rund 25 min (20:00 bis 20:25), der Kessel heizte
+              sich danach durch die Restwärme ohne Durchfluss auf fast 60 °C auf. Ein
+              Nachlauf ist so nicht möglich. Seit 27.11.2026 steht A9 deshalb auf 0.
+            grid_options:
+              columns: full
+
           - type: markdown
             content: >-
               In der **Nachtabsenkung** schaltet der Dienst den Heizkreis auf
@@ -5713,6 +5805,7 @@ views:
               | Im Komfortband | Raum passt, Zeitprogramm-Sollwert gilt |
               | Nachtabsenkung | reduzierte Phase, keine Korrektur möglich |
               | Nachtabschaltung (Nur WW) | Raum warm genug, Heizkreis nachts aus |
+              | Pumpennachlauf vor Nachtabschaltung | Abschaltung steht an, Pumpe gibt erst die Restwärme ab |
               | Abschaltbetrieb / Party | Therme läuft im Sondermodus, keine Korrektur |
               | Keine Sensordaten | länger als 10 min kein Wert aus HA, freigegeben |
               | Extern belegt | 0x2321 von anderer Stelle gesetzt, wird nicht angefasst |

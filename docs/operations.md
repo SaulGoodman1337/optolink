@@ -483,6 +483,19 @@ veraltetes Abgas → 100 %. Ein echter Rücklauffühler ist geplant (Nutzer rüs
 nach) und soll den Ersatzwert ablösen.
 MQTT: `spreizung_aktiv`, `spreizung_soll` (…/set, …/state).
 
+**Schutz vor Codier-Übernahme (1.8.0):** Am 27.11.2026 hat die Firmware zweimal den
+abgesenkten RAM-Wert als Codierung übernommen (E7 = 50 um 08:55, E6 und E7 = 55 um
+20:32). In beiden Fällen hatte der Wächter kurz vor der nächsten Firmware-Rückladung
+einen *geänderten* Wert geschrieben (Abgas-Spreizung-Schritt). Ab 1.8.0 werden geänderte
+Werte nur unmittelbar nach einer sichtbaren Rückladung (RAM == 100) geschrieben. Bleibt
+die Rückladung länger als 5 s aus, fällt der Wächter auf 100 % zurück, meldet
+„Reload ausgeblieben“ und läuft erst weiter, wenn die RAM-Kopien eine volle
+Rückladeperiode lang 100 bleiben; hat sich die Codierung wirklich verstellt, steht
+„E7/E6 codiert X statt 100“ (zurücksetzen per HA). Der Wächter schreibt nie selbst
+Codierungen. Die Ursache in der Firmware ist nicht bewiesen (Hypothese: Schreibzugriff
+im Rückladefenster); Schreibzugriffe beim *Eintritt* in die Absenkung haben beliebige
+Phase und sind unverändert.
+
 **E6 mitsenken (1.6.0, optional, Standard aus):** E7 ist nur die Untergrenze.
 Messung 27.11.2026: mit RAM-E7 = 20 % lief die Pumpe bei Brenner aus trotzdem
 mit 60–68 %, weil die Firmware die Drehzahl zwischen E7 und E6 (Maximum) wählt.
@@ -498,6 +511,30 @@ Firmware einmal den abgesenkten RAM-Wert von E7 (50) ohne Schreibbefehl in die
 Codierung übernommen. Externer Vortest (E6 40 % gehalten): Pumpe 50 % statt
 63 %. MQTT: `e6_aktiv` (…/set, …/state); Status-JSON `ram_e6`; HA: Schalter
 „E6 mitsenken“, Sensor „RAM-E6“.
+
+**Codierung selbst zurücksetzen (1.9.0, Standard an):** Am 27.11.2026 hat die
+Firmware zweimal den vom Wächter gehaltenen RAM-Wert in die Codierung übernommen
+(08:55 E7 = 50, 20:32 E7 = E6 = 55), obwohl niemand eine Codierung geschrieben
+hat. Beide Male lag der Wert bei 50–55 %, 3 von 3 Brenner-aus mit 20–30 % blieben
+ohne Folgen; ein Auslöser ist nicht belegt (keine Betriebsartumschaltung dabei).
+Der Wächter sperrt sich in diesem Fall („E7/E6 codiert X statt 100“). Bleibt das
+`HEAL_AFTER_S` = 20 s so (ein kurzer Fehlalarm, z. B. E6 am 27.11. 10:39, löst
+sich von selbst), schreibt er über den normalen MQTT-Befehlsweg des Splitters
+(`mqtt_listen`, wie die HA-Number-Entitäten) genau `w;0x27E7;1;100` bzw.
+`w;0x27E6;1;100`, höchstens 3-mal pro Stunde und mit 60 s Abstand. Die
+Wächter-Prüfung des Codierwerts hebt die Sperre danach selbst auf. Nie bei
+ausgeschaltetem Wächter. MQTT `heilung_aktiv/set` ON|OFF, Status-JSON `heilungen`,
+`heilung_letzte`; HA: Schalter „Codierung selbst zurücksetzen“, Zähler.
+
+**Extern-Boost (1.7.0):** andere Dienste auf dem Host können für eine
+begrenzte Zeit 100 % anfordern: `openv/pump_guard/extern/set` mit
+`<Sekunden 0..1800>[;<Grund>]`, nicht retained, `0` beendet. Die Anforderung
+läuft von selbst ab, ein abgestürzter Auftraggeber hält die Pumpe also höchstens
+bis zum Ablauf hoch (100 % ist ohnehin die sichere Richtung). Sperrgründe
+(Störung, Zustand unbekannt, E6/E7 nicht 100) haben Vorrang. Nutzer: der
+Pumpennachlauf der Nachtabschaltung (siehe `docs/raumregelung.md`, Grund
+„Nachlauf Nachtabschaltung“, 90 s, alle 10 s erneuert). Status-JSON `extern_s`
+= Restsekunden.
 
 **Boost während Taktsperre** (1.2.x) wurde in 1.3.0 wieder entfernt; der
 Wächter liest 0x55E0 nicht mehr.

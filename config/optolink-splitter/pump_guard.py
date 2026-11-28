@@ -62,12 +62,41 @@ protection (100 % within kurve_voll_k of the learned switch-off temperature)
 stays active. Stale flue-gas value -> 100 %.
   spreizung_aktiv/set ON|OFF, spreizung_soll/set 1..20 K
 
+Coding takeover protection (1.8.0): on 27.11.2026 the firmware twice took the lowered RAM
+value over as coding (E7 50 at 08:55, E6+E7 55 at 20:32). Both times the guard had just
+written a *changed* lowered value shortly before the next firmware reload. Since 1.8.0 a
+changed value is only written right after a visible reload (RAM == 100); and if no reload
+is seen for RELOAD_TIMEOUT_S the guard falls back to 100 %, shows GESPERRT "Reload
+ausgeblieben" and resumes only when the RAM copies stay 100 for a full reload period (or
+reports "E7/E6 codiert X" when the coding really drifted; it never writes codings itself).
+
 E6 mitsenken (1.6.0, default OFF): E7 is only the lower bound; with burner off the
 firmware picks ~60-68 % between E7 and E6 (measured 2026-11-27). With e6_aktiv the
 guard also lowers the RAM copy of E6 (0x20A4, coded 100, reloaded together with E7)
 to the same target, so the pump really runs at the target. Boost/failure: both
 return to 100 exactly like E7.
   e6_aktiv/set ON|OFF
+
+External boost (1.7.0): other services on the host can ask for 100 % for a
+limited time, e.g. the room control's pump run-on before the night shutdown
+switches the heating circuit to "Nur WW". The request expires by itself, so a
+crashed requester never keeps the pump high for longer than its last request
+(and 100 % is the fail-safe direction anyway). Not retained, no state topic.
+  extern/set <seconds 0..1800>[;<Grund>]   (0 ends the request)
+
+Coding self-heal (1.9.0, default ON): on 27.11.2026 the firmware twice took the
+lowered RAM value over into the coded E7 (08:55 E7=50, 20:32 E6=E7=55) although
+no coding was written. The guard blocks itself then (GESPERRT "E7/E6 codiert X
+statt 100"), but the pump stays at X until somebody resets the coding. With
+`heilung_aktiv` the guard restores the baseline itself: if that block persists
+for HEAL_AFTER_S (a short false alarm clears itself, e.g. 10:39 E6) it asks the
+splitter (MQTT listen topic, the same path as the HA number entities) to write
+exactly `w;0x27E7;1;100` or `w;0x27E6;1;100`, at most HEAL_MAX_PER_HOUR times per
+hour and HEAL_MIN_GAP_S apart. The guard's own coded-value check then releases
+the block. Never writes anything else, never while the guard is off. The 1.8.0
+reload watchdog ("Reload ausgeblieben") never triggers a coding write by itself;
+only a drift it proves ("E7/E6 codiert X") does.
+  heilung_aktiv/set ON|OFF, status JSON `heilungen`, `heilung_letzte`
 """
 from __future__ import annotations
 
@@ -75,7 +104,7 @@ import json
 import threading
 import time
 
-VERSION = "1.6.0"
+VERSION = "1.9.0"
 
 RAM_E6_ADDR, RAM_E7_ADDR = 0x20A4, 0x20A5      # RAM copies of E6 (max) and E7 (min)
 # 1.6.0: read only these 2 bytes (was a 32-byte block from 0x20A0): the telegram is
@@ -84,6 +113,11 @@ RAM_E6_OFFSET, RAM_E7_OFFSET = 0, 1
 HIGH = 100
 LOW_MIN, LOW_MAX = 20, 100
 NACHLAUF_MAX_MIN = 30
+EXTERN_MAX_S = 1800            # longest external boost one request may ask for
+HEAL_AFTER_S = 20.0            # coded value must stay wrong this long before it is rewritten
+HEAL_MIN_GAP_S = 60.0          # between two heal writes (the guard re-verifies in between)
+HEAL_MAX_PER_HOUR = 3
+HEAL_WRITES = {"E7": "w;0x27E7;1;100", "E6": "w;0x27E6;1;100"}   # the only commands ever sent
 VORBOOST_MAX_K = 10.0
 VORBOOST_HYST_K = 0.5          # release the pre-boost only 0.5 K below its trigger
 START_MARGIN_DEFAULT_K = 4.0   # coding plug "Einschaltdifferenz" 4 K until learned
@@ -123,6 +157,11 @@ RAM_OVERDUE_S = 3.0        # (27.11.2026 the firmware once delayed its reload to
                            # inside the normal reload window poll every tick, so the 100 %
                            # restored by the firmware is replaced as fast as possible
 STALE_S = 5.0              # state older than this -> no lowering
+RELOAD_TIMEOUT_S = 5.0     # 1.8.0: no visible firmware reload for this long while lowering ->
+                           # suspect that the firmware took over the lowered value as coding
+RELOAD_PERIOD_MAX_S = 3.0  # firmware reload period 1.7-2.7 s (measured)
+TICK_GAP_S = 1.0           # a longer gap between ticks (fan window, link loss) restarts the
+                           # reload watchdog
 
 ABGESENKT, BOOST, AUS, GESPERRT, FEHLER = "ABGESENKT", "BOOST", "AUS", "GESPERRT", "FEHLER"
 KENNLINIE = "KENNLINIE"    # lowered to the burner curve value while firing
@@ -136,12 +175,16 @@ class GuardLogic:
         self.enabled = False
         self.low = 30
         self.nachlauf_aktiv = True
+        self.heilung_aktiv = True
+        self.extern_until = None       # monotonic deadline of an external boost request
+        self.extern_reason = "Extern"
         self.nachlauf_s = 180.0
         self.flame = self.lockout = False
         self.sequence = False
         self.ww = None
         self.valve = None
         self.fault = None
+        self.stall_t = None                # 1.8.0: reload watchdog fired at this time
         self.e7 = None
         self.e6 = None                     # coded E6 (1.6.0): proven by read or firmware reload
         self.ts = {}
@@ -347,8 +390,15 @@ class GuardLogic:
             # 27.11.2026 the coded E7 once took over the lowered RAM value by itself;
             # the same must never go unnoticed for E6 (maximum)
             return GESPERRT, f"E6 codiert {self.e6} statt 100"
+        if self.stall_t is not None:
+            # the firmware stopped reloading while we held a lowered value: the coded value may
+            # have taken it over. Stay at 100 % until the RAM copies stay 100 for longer than
+            # one reload period (PumpGuard clears stall_t).
+            return GESPERRT, "Reload ausgeblieben"
         if self.fault or self.lockout:
             return GESPERRT, "Stoerung"
+        if self.extern_until is not None and now < self.extern_until:
+            return BOOST, self.extern_reason
         if self.ww:
             return BOOST, "Warmwasser"
         if self.valve != 1:
@@ -397,8 +447,16 @@ class PumpGuard:
         self.last_low_written = None
         self.last_e6_written = None
         self.last_repair_t = 0.0
+        self.reload_seen_t = None
+        self.last_tick_t = None
+        self.write100_t = None
+        self.next_stall_read = 0.0
         self.repairs = 0
         self.writes = 0
+        self.block_since = None        # (which, since) while "E7/E6 codiert X statt 100" blocks
+        self.heal_times = []           # monotonic times of heal writes (last hour)
+        self.heal_count = 0
+        self.heal_last = None          # wall-clock time of the last heal
         self._target = None
         self.last_pub = 0.0
         self.last_state = None
@@ -453,9 +511,10 @@ class PumpGuard:
     def _on_connect(self, client, userdata, flags, rc, properties=None):
         topics = ["enabled", "low", "nachlauf", "nachlauf_aktiv", "vorboost", "vorboost_aktiv",
                   "kurve_aktiv", "kurve_min", "kurve_voll_k", "kurve_start_s",
-                  "spreizung_aktiv", "spreizung_soll", "e6_aktiv"]
+                  "spreizung_aktiv", "spreizung_soll", "e6_aktiv", "heilung_aktiv"]
         client.subscribe([(f"{self.base}/{t}/set", 0) for t in topics]
-                         + [(f"{self.base}/{t}/state", 0) for t in topics])
+                         + [(f"{self.base}/{t}/state", 0) for t in topics]
+                         + [(f"{self.base}/extern/set", 0)])
         client.publish(f"{self.base}/protocol", "P300" if self.active else "VS1", retain=True)
         self.last_state = None  # republish status after (re)connect
         if not self.active:
@@ -469,6 +528,10 @@ class PumpGuard:
             if kind == "state" and not msg.retain:
                 return  # our own echo; only retained state restores config
             if kind not in ("set", "state"):
+                return
+            if name == "extern":
+                if kind == "set" and not msg.retain:
+                    self.request_extern(payload)
                 return
             with self.lock:
                 if name == "enabled":
@@ -507,7 +570,7 @@ class PumpGuard:
                         return
                     self.logic.spreizung_soll = v
                     out = str(v)
-                elif name in ("nachlauf_aktiv", "vorboost_aktiv", "kurve_aktiv", "spreizung_aktiv", "e6_aktiv"):
+                elif name in ("nachlauf_aktiv", "vorboost_aktiv", "kurve_aktiv", "spreizung_aktiv", "e6_aktiv", "heilung_aktiv"):
                     val = payload.upper() in ("ON", "1", "TRUE", "EIN")
                     setattr(self.logic, name, val)
                     out = "ON" if val else "OFF"
@@ -529,6 +592,54 @@ class PumpGuard:
                 client.publish(f"{self.base}/{name}/state", out, retain=True)
         except Exception as exc:
             self.log.warning(f"pump_guard: bad message {msg.topic}: {exc}")
+
+    def request_extern(self, payload, now=None):
+        """External boost request ``<seconds>[;<reason>]``; 0 ends it."""
+        now = time.monotonic() if now is None else now
+        secs, _, reason = payload.partition(";")
+        v = float(secs)
+        if not 0 <= v <= EXTERN_MAX_S:
+            self.log.warning(f"pump_guard: extern {payload!r} out of range")
+            return
+        reason = reason.strip()[:60] or "Extern"
+        with self.lock:
+            if v == 0:
+                self.logic.extern_until = None
+            else:
+                self.logic.extern_until = now + v
+                self.logic.extern_reason = reason
+
+    def _heal(self, state, reason, now):
+        """Restore a coded E7/E6 the firmware took over from the lowered RAM value."""
+        which = reason[:2] if state == GESPERRT and reason.startswith(("E7 codiert", "E6 codiert")) else None
+        # while the 1.8.0 stall check verifies, the reason alternates between the proven drift
+        # and "Reload ausgeblieben" (its 100 write makes 0x27E7 read 100 for a moment): that
+        # keeps the drift episode alive, every other state ends it
+        episode = which is not None or (state == GESPERRT and reason == "Reload ausgeblieben")
+        if not episode or not self.logic.enabled or not self.logic.heilung_aktiv:
+            self.block_since = None
+            return
+        if which is None:
+            return                      # no fresh proof right now: never write on a stall alone
+        if self.block_since is None or self.block_since[0] != which:
+            self.block_since = (which, now)
+            return
+        if now - self.block_since[1] < HEAL_AFTER_S:
+            return
+        self.heal_times = [t for t in self.heal_times if now - t < 3600.0]
+        if len(self.heal_times) >= HEAL_MAX_PER_HOUR or (
+                self.heal_times and now - self.heal_times[-1] < HEAL_MIN_GAP_S):
+            return
+        topic = getattr(self.settings, "mqtt_listen", None)
+        if self.client is None or not topic:
+            return
+        cmd = HEAL_WRITES[which]
+        self.client.publish(topic, cmd)
+        self.heal_times.append(now)
+        self.heal_count += 1
+        self.heal_last = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        self.log.warning(f"pump_guard: {reason} seit {now - self.block_since[1]:.0f} s -> "
+                         f"Codierung zurückgesetzt ({cmd})")
 
     def _publish_status(self, state, reason, now=None, force=False):
         now = time.monotonic() if now is None else now
@@ -560,6 +671,10 @@ class PumpGuard:
                                  if lg.kessel is not None and lg.soll is not None else None),
                   "start_schwelle": lg.start_margin, "start_werte": lg.start_margins,
                   "starts": lg.starts,
+                  "heilung_aktiv": lg.heilung_aktiv, "heilungen": self.heal_count,
+                  "heilung_letzte": self.heal_last,
+                  "extern_s": (round(lg.extern_until - now) if lg.extern_until is not None
+                               and now < lg.extern_until else 0),
                   "protocol": "P300" if self.active else "VS1", "version": VERSION,
                   "timestamp": int(time.time())}
         try:
@@ -608,19 +723,64 @@ class PumpGuard:
                 self._target = low
                 # E6 is only lowered once its coded 100 is proven
                 e6_aktiv = self.logic.e6_aktiv and self.logic.e6 == HIGH
+            self._heal(state, reason, now)
             self._publish_status(state, reason, now)
             lowering = state in LOWERING
+            gap = self.last_tick_t is not None and now - self.last_tick_t > TICK_GAP_S
+            self.last_tick_t = now
+            if not lowering:
+                self.reload_seen_t = None
+            elif self.reload_seen_t is None or gap:
+                self.reload_seen_t = now        # (re)start the reload watchdog
+            elif now - self.reload_seen_t > RELOAD_TIMEOUT_S:
+                # reloads are visible while the RAM copy differs from the coded value. If none
+                # is seen any more, the coded value may have taken over our lowered value
+                # (27.11.2026, twice): fall back to 100 % and verify by RAM reads.
+                with self.lock:
+                    self.logic.stall_t = now
+                self.log.warning("pump_guard: keine Firmware-Reload-Rückladung sichtbar, "
+                                 "100 % und Prüfung der Codierung")
+                return None
             # 1) leaving ABGESENKT: write 100 once right away (faster boost)
             if not lowering and (self.ram not in (None, HIGH) or self.ram_e6 not in (None, HIGH)):
                 both = self.ram_e6 not in (None, HIGH)
                 rc = self._write_ram(HIGH, HIGH if both else None)
                 if rc == 0x01:
                     self.ram = HIGH
+                    self.write100_t = now
                     if both:
                         self.ram_e6 = HIGH
                 else:
                     self.ram = None     # unknown; the firmware reload restores 100 anyway
                     self.ram_e6 = None
+                return rc
+            # 1b) after a reload stall: verify with RAM reads that the coded values are 100 again
+            if not lowering and self.logic.stall_t is not None and now >= self.next_stall_read:
+                self.next_stall_read = now + 0.5
+                rc, data = self._read(READ_RAM)
+                if data is None:
+                    return rc
+                ram, ram6 = data[RAM_E7_OFFSET], data[RAM_E6_OFFSET]
+                self.ram, self.ram_e6 = ram, ram6
+                if ram == HIGH and ram6 == HIGH:
+                    if self.write100_t is None:
+                        self.write100_t = now       # RAM is 100: time one full reload period
+                    elif now - self.write100_t >= RELOAD_PERIOD_MAX_S:
+                        with self.lock:
+                            self.logic.update("e7", bytes([HIGH]), now)
+                            self.logic.update("e6", bytes([HIGH]), now)
+                            self.logic.stall_t = None
+                        self.write100_t = None
+                    return rc
+                if self.write100_t is None or now - self.write100_t < 1.0:
+                    rc = self._write_ram(HIGH, HIGH)      # our 100 did not land (yet)
+                    self.write100_t = now
+                    return rc
+                # a reload brought a different value although we wrote 100: coded value drifted
+                with self.lock:
+                    self.logic.update("e7", bytes([ram]), now)
+                    self.logic.update("e6", bytes([ram6]), now)
+                self.next_stall_read = now + 1.0
                 return rc
             # 2) RAM supervision while lowering: read, and repair in the same tick
             #    (read + write back-to-back, exactly like the Phase-0 probe)
@@ -641,8 +801,15 @@ class PumpGuard:
                 # E6 is only touched with the option on, or to undo a leftover lowered E6
                 ok7 = ram in (HIGH, low, self.last_low_written)
                 ok6 = ram6 in (HIGH, low, self.last_e6_written)
+                if ok7 and ok6 and ram != HIGH:
+                    # 1.8.0: the RAM still holds a lowered value from before (target changed,
+                    # E6 option toggled). Do NOT write now: 27.11.2026 both coding takeovers
+                    # followed a value-change write that landed just before a firmware reload.
+                    # Wait for the next visible reload and write right after it.
+                    return rc
                 if ok7 and ok6:
                     if ram == HIGH:
+                        self.reload_seen_t = now
                         # the firmware reload restored 100: proof that E7 is coded 100;
                         # E6 is reloaded in the same moment, so ram6 is the coded E6
                         with self.lock:

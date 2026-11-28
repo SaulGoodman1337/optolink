@@ -33,6 +33,12 @@ class FakeIO:
         self.ignore_write = False
         self.unreachable = False
         self.phase = 2  # normal (schedule day window)
+        # burner / pump state for the run-on before the night shutdown
+        self.flame = False
+        self.mem[rc.ADDR_DHW_CHARGING] = 0
+        self.mem[rc.ADDR_PUMP_M1_OUTPUT] = 1
+        self.kessel = 45.0
+        self.soll = 40.0
 
     def read_bytes(self, addr, length):
         if self.unreachable:
@@ -40,6 +46,9 @@ class FakeIO:
         if rc.ADDR_SCHEDULE_M1 <= addr < rc.ADDR_SCHEDULE_M1 + 56:
             assert length == 8 and (addr - rc.ADDR_SCHEDULE_M1) % 8 == 0
             return self.schedule[(addr - rc.ADDR_SCHEDULE_M1) // 8]
+        if addr == rc.ADDR_BURNER_STATE:
+            assert length == 9
+            return bytes([0, 0, 0, 0, 0, 0x20 if self.flame else 0, 0, 0, 0]).hex()
         assert addr == rc.ADDR_OPERATING_STATE and length == rc.OPERATING_STATE_LEN
         data = bytearray(length)
         data[1] = self.dhw_only_phase if self.mem[rc.ADDR_OPERATING_MODE] == 1 else self.phase
@@ -57,9 +66,13 @@ class FakeIO:
         return self.mem[addr]
 
     def read_scaled(self, addr, _length, _scale, _signed):
-        assert addr == rc.ADDR_OUTSIDE_TEMP
         if self.unreachable:
             raise TimeoutError("boiler unreachable")
+        if addr == rc.ADDR_BOILER_TEMP:
+            return self.kessel
+        if addr == rc.ADDR_BOILER_SETPOINT:
+            return self.soll
+        assert addr == rc.ADDR_OUTSIDE_TEMP
         return self.outside
 
     def write_int(self, addr, _length, value):
@@ -100,8 +113,9 @@ def make(enabled=True, **cfg):
     state = {"version": 1, "owned_command": 0,
              "config": rc.validate_config({"enabled": enabled, **cfg})}
     saved = []
+    io.boosts = []
     ctl = rc.RoomController(io, state, save=lambda s: saved.append(dict(s)), clock=clock,
-                            wallclock=Wall())
+                            wallclock=Wall(), boost=lambda sec, why: io.boosts.append(sec))
     return ctl, io, clock
 
 
@@ -442,6 +456,7 @@ class NightShutdownLogicTests(unittest.TestCase):
 
 class NightShutdownControllerTests(unittest.TestCase):
     def night(self, room=20.0, **cfg):
+        cfg.setdefault("nacht_nachlauf", 0)   # run-on has its own tests below
         ctl, io, clock = make(nachtabschaltung=True, **cfg)
         io.phase = 1
         feed(ctl, clock, a=room)
@@ -584,6 +599,116 @@ class NightShutdownControllerTests(unittest.TestCase):
                 sio.write_int(rc.ADDR_OPERATING_MODE, 1, value)
         with self.assertRaises(rc.RoomControlError):
             sio.write_int(rc.ADDR_REDUCED_SETPOINT, 1, 16)
+
+
+class NightRunOnTests(unittest.TestCase):
+    def night(self, room=20.0, **cfg):
+        ctl, io, clock = make(nachtabschaltung=True, **cfg)
+        io.phase = 1
+        feed(ctl, clock, a=room)
+        return ctl, io, clock
+
+    def step(self, ctl, clock, room=20.0, seconds=10):
+        clock.t += seconds
+        ctl.wallclock.dt += datetime.timedelta(seconds=seconds)
+        feed(ctl, clock, a=room)
+        return ctl.tick()
+
+    def test_default_ten_minutes(self):
+        self.assertEqual(rc.validate_config({})["nacht_nachlauf"], 10)
+
+    def test_waits_for_flame_then_runs_on_then_switches(self):
+        ctl, io, clock = self.night()
+        io.flame = True
+        status = ctl.tick()
+        self.assertEqual(io.mode_writes, [])
+        self.assertEqual(status["state"], "nachlauf")
+        self.assertEqual(status["nacht_grund"], "Nachlauf: warte auf Brenner aus")
+        self.assertEqual(io.boosts, [])           # firing: pump guard decides itself
+        io.flame = False
+        status = self.step(ctl, clock, seconds=120)
+        self.assertEqual(status["state"], "nachlauf")
+        self.assertEqual(status["nachlauf_phase"], "laeuft")
+        self.assertEqual(io.boosts, [rc.NACHLAUF_BOOST_TTL_S])
+        self.assertEqual(status["nachlauf_rest_min"], 10)
+        for _ in range(59):
+            self.step(ctl, clock)
+        self.assertEqual(io.mode_writes, [])
+        status = self.step(ctl, clock)            # 600 s after the flame went off
+        self.assertEqual(io.mode_writes, [1])
+        self.assertEqual(status["state"], "nachtabschaltung")
+        self.assertEqual(io.boosts[-1], 0)
+        self.assertIsNone(ctl.nachlauf)
+        self.assertEqual(ctl.state["night"]["switches"], 1)
+
+    def test_fast_cycle_starts_with_the_run_on(self):
+        ctl, io, clock = self.night()
+        self.assertEqual(ctl.next_delay(), rc.CYCLE_SECONDS)
+        ctl.tick()                                # run-on begins in this very tick
+        self.assertEqual(ctl.next_delay(), rc.NACHLAUF_CYCLE_S)
+        io.kessel = 30.0
+        self.step(ctl, clock)
+        self.assertEqual(ctl.next_delay(), rc.CYCLE_SECONDS)
+
+    def test_ends_early_before_burner_restart(self):
+        ctl, io, clock = self.night()
+        ctl.tick()
+        self.assertEqual(io.mode_writes, [])
+        io.kessel = 37.6                          # soll 40 - 2.5 = 37.5
+        self.step(ctl, clock)
+        self.assertEqual(io.mode_writes, [])
+        io.kessel = 37.5
+        self.step(ctl, clock)
+        self.assertEqual(io.mode_writes, [1])
+
+    def test_pump_stopped_by_firmware_switches_at_once(self):
+        ctl, io, clock = self.night()
+        io.mem[rc.ADDR_PUMP_M1_OUTPUT] = 0         # e.g. A9 pump idle time
+        ctl.tick()
+        self.assertEqual(io.mode_writes, [1])
+        self.assertEqual(io.boosts, [])
+
+    def test_dhw_charge_waits(self):
+        ctl, io, clock = self.night()
+        io.mem[rc.ADDR_DHW_CHARGING] = 1
+        ctl.tick()
+        self.assertEqual(io.mode_writes, [])
+        self.assertEqual(ctl.nachlauf["phase"], "warten")
+
+    def test_burner_restart_restarts_run_on_and_total_limit(self):
+        ctl, io, clock = self.night(nacht_nachlauf=5)
+        ctl.tick()
+        self.step(ctl, clock, seconds=200)
+        io.flame = True
+        self.step(ctl, clock)
+        self.assertIsNone(ctl.nachlauf["run_since"])
+        io.flame = False
+        self.step(ctl, clock, seconds=200)
+        self.assertEqual(io.mode_writes, [])       # new run-on, 5 min from now
+        io.flame = True                            # burner never stops
+        self.step(ctl, clock, seconds=int(rc.NACHLAUF_FLAME_WAIT_S))
+        self.assertEqual(io.mode_writes, [1])
+
+    def test_cancel_when_room_cools_or_day(self):
+        ctl, io, clock = self.night()
+        ctl.tick()
+        self.assertIsNotNone(ctl.nachlauf)
+        self.step(ctl, clock, room=18.4)
+        self.assertIsNone(ctl.nachlauf)
+        self.assertEqual(io.boosts[-1], 0)
+        self.assertEqual(io.mode_writes, [])
+        ctl, io, clock = self.night()
+        ctl.tick()
+        io.phase = 2
+        self.step(ctl, clock)
+        self.assertIsNone(ctl.nachlauf)
+        self.assertEqual(io.mode_writes, [])
+
+    def test_off_means_immediate(self):
+        ctl, io, clock = self.night(nacht_nachlauf=0)
+        io.flame = True
+        ctl.tick()
+        self.assertEqual(io.mode_writes, [1])
 
 
 class HomeAssistantPackageTests(unittest.TestCase):

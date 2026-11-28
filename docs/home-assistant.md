@@ -515,7 +515,10 @@ trennen:
 
 - **A9 / `0x27A9`**: dimensionsloser Codierwert 0–15 für die
   Pumpenstillstandzeit nach einer Sollwertänderung. Der Wert ist **keine direkte
-  Minutenangabe**.
+  Minutenangabe**. Gemessen: A9:5 hielt die Pumpe beim Wechsel in den
+  reduzierten Betrieb ~25 min an (25.11.2026 20:00–20:25). Für den
+  Pumpennachlauf der Nachtabschaltung steht A9 seit 27.11.2026 auf 0
+  (`docs/raumregelung.md`).
 - **62 / `0x6762`**: Nachlauf der Speicherladepumpe nach
   Warmwasser-Speicherbeheizung; `0` = kein Nachlauf, `1…15` = Minuten.
 

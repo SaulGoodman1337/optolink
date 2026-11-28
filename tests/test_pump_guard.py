@@ -40,6 +40,9 @@ class FakeBoiler:
         self.ram[4] = 100                 # E6 RAM copy (coded 100), reloaded together with E7
         self.e6 = 100
         self.next_reload = 2.3
+        self.race_window = 0.0            # >0: a lowered-value write landing this close
+                                          # before a reload is committed into the coding
+        self.committed = []
         self.log = []
         self.alive = True
 
@@ -56,6 +59,12 @@ class FakeBoiler:
             return 0xFF, addr, bytearray()
         if fc == 0x04:
             assert (addr, n) in ((0x20A5, 1), (0x20A4, 2))
+            if (self.race_window and data[-1] != 100 and self.ram[5] != 100
+                    and 0 <= self.next_reload - self.t <= self.race_window):
+                self.e7 = data[-1]        # firmware takes the RAM value over as coding
+                if n == 2:
+                    self.e6 = data[0]
+                self.committed.append(self.t)
             self.ram[addr - 0x20A0:addr - 0x20A0 + n] = bytes(data)
             return 0x01, addr, bytearray()
         values = {
@@ -130,6 +139,18 @@ class LogicTest(unittest.TestCase):
         lg = self.fresh_logic()
         lg.enabled = False
         self.assertEqual(lg.decide(0.0)[0], pg.AUS)
+
+
+    def test_extern_boost_expires(self):
+        lg = self.fresh_logic()
+        lg.extern_until, lg.extern_reason = 3.0, "Nachlauf Nachtabschaltung"
+        self.assertEqual(lg.decide(1.0), (pg.BOOST, "Nachlauf Nachtabschaltung"))
+        self.assertEqual(lg.decide(3.0)[0], pg.ABGESENKT)
+        # blocking reasons still win (status stays honest, pump is 100 % anyway)
+        lg = self.fresh_logic()
+        lg.extern_until = 10.0
+        lg.update("fault", b"\x05", 0.0)
+        self.assertEqual(lg.decide(1.0), (pg.GESPERRT, "Stoerung"))
 
 
 class GuardTest(unittest.TestCase):
@@ -416,14 +437,72 @@ class GuardTest(unittest.TestCase):
         b = FakeBoiler()
         g = make_guard(b)
         run(g, b, 5)
-        b.next_reload = b.t + 8.0          # firmware takes 8 s for the next reload
+        b.next_reload = b.t + 4.0          # firmware takes 4 s for the next reload
         states = []
-        end = b.t + 7.5
+        end = b.t + 3.8
         while b.t < end:
             g.tick(b.t)
             b.advance(0.08)
             states.append(g.logic.decide(b.t)[0])
         self.assertNotIn(pg.GESPERRT, states)
+
+    def test_missing_reloads_fall_back_to_100_and_recover(self):
+        b = FakeBoiler()
+        g = make_guard(b, low=20)
+        run(g, b, 8)
+        self.assertEqual(b.ram[5], 20)
+        b.next_reload = b.t + 1000         # reloads stop (coded value == RAM value)
+        b.e7 = 20
+        t0 = b.t
+        while g.logic.stall_t is None and b.t - t0 < 10:
+            run(g, b, 0.1)
+        self.assertIsNotNone(g.logic.stall_t)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.GESPERRT)
+        # the firmware now reloads 20 although we wrote 100: coding drifted -> stays blocked
+        b.next_reload = b.t + 0.5
+        run(g, b, 8)
+        state, reason = g.logic.decide(b.t)
+        self.assertEqual(state, pg.GESPERRT)
+        self.assertIn("E7 codiert 20", reason)
+        # user restores the coding: guard resumes by itself
+        b.e7 = 100
+        run(g, b, 12)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+        run(g, b, 6)
+        self.assertEqual(b.ram[5], 20)
+
+    def test_missing_reloads_without_drift_resume_after_check(self):
+        b = FakeBoiler()
+        g = make_guard(b, low=20)
+        run(g, b, 8)
+        b.next_reload = b.t + 6.5          # one very late reload, coding is fine
+        run(g, b, 10)
+        self.assertIsNone(g.logic.stall_t)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+
+    def test_value_change_writes_follow_a_reload(self):
+        """27.11.2026: a write that changes the lowered value just before a firmware reload
+        was taken over as coding (twice). Changes must wait for the next reload."""
+        b = FakeBoiler()
+        b.race_window = 0.35
+        g = make_guard(b, low=60)
+        run(g, b, 8)
+        for i, val in enumerate(range(55, 20, -1)):      # steps at every possible phase
+            g.logic.low = val
+            run(g, b, 0.37 + 0.011 * i)
+        run(g, b, 10)
+        self.assertEqual(b.committed, [])
+        self.assertEqual(b.e7, 100)
+        self.assertNotEqual(g.logic.decide(b.t)[0], pg.GESPERRT)
+
+    def test_race_model_is_hit_by_unsynchronised_writes(self):
+        b = FakeBoiler()
+        b.race_window = 0.35
+        b.ram[5] = 60
+        b.next_reload = b.t + 0.2
+        b.request(0x04, 0x20A5, 1, bytes([55]))
+        self.assertEqual(b.committed, [b.t])
+        self.assertEqual(b.e7, 55)
 
     def test_reload_is_repaired_fast(self):
         b = FakeBoiler()
@@ -481,10 +560,8 @@ class GuardTest(unittest.TestCase):
         g.logic.e6_aktiv = True
         run(g, b, 25)
         self.assertEqual(b.ram[4], 20)
-        b.e6 = 77                          # pretend the coded E6 differs: the guard must
-        g.logic.e6_aktiv = False           # not need the reload to undo its own lowering
-        b.next_reload = b.t + 100
-        run(g, b, 2)
+        g.logic.e6_aktiv = False           # E6 goes back to 100 with the next firmware reload,
+        run(g, b, 3)                       # E7 stays lowered; no write while off-phase
         self.assertEqual(b.ram[4], 100)
         self.assertEqual(b.ram[5], 20)
 
@@ -533,6 +610,100 @@ class GuardTest(unittest.TestCase):
             g._read((0x01, 0x27E5, 1))
 
 
+class HealTest(unittest.TestCase):
+    def make(self, low=55):
+        sent = []
+
+        class Client:
+            on_connect = None
+
+            def subscribe(self, topics):
+                pass
+
+            def publish(self, topic, payload, retain=False):
+                if topic == "openv/cmnd":
+                    sent.append(payload)
+
+        settings = types.SimpleNamespace(vs1protocol=False, mqtt_topic="openv", mqtt_broker=None,
+                                         mqtt_listen="openv/cmnd")
+        b = FakeBoiler()
+        g = pg.PumpGuard(settings, logging.getLogger("pg-test"), b.request, lambda: Client(),
+                         boost_after_start=False)
+        g.logic.enabled = True
+        g.logic.low = low
+        return g, b, sent
+
+    def block(self, g, b):
+        """Firmware takes the held RAM value into the coding; burner state change follows."""
+        run(g, b, 8)                        # healthy, lowering at 55
+        b.e7 = 55
+        b.gfa = FLAME_GFA                   # guard leaves lowering, then reads the coded E7
+        run(g, b, 20)
+
+    def test_heals_persistent_takeover_once_and_clears(self):
+        g, b, sent = self.make()
+        self.block(g, b)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.GESPERRT)
+        self.assertEqual(sent, [], "must not heal before HEAL_AFTER_S")
+        run(g, b, 25)
+        self.assertEqual(sent, ["w;0x27E7;1;100"])
+        self.assertEqual(g.heal_count, 1)
+        b.e7 = 100                          # the splitter applied the write
+        b.gfa = IDLE_GFA
+        g.logic.nachlauf_aktiv = False
+        run(g, b, 30)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+        self.assertEqual(sent, ["w;0x27E7;1;100"])
+
+    def test_rate_limit_and_switch_and_disabled(self):
+        g, b, sent = self.make()
+        self.block(g, b)
+        run(g, b, 25)
+        self.assertEqual(len(sent), 1)
+        run(g, b, 40)
+        self.assertEqual(len(sent), 1)      # HEAL_MIN_GAP_S not over yet
+        run(g, b, 200)                      # still wrong (write ignored): hourly cap
+        self.assertEqual(len(sent), 3)
+        run(g, b, 300)
+        self.assertEqual(len(sent), 3)      # hourly cap reached
+        g, b, sent = self.make()
+        g.logic.heilung_aktiv = False
+        self.block(g, b)
+        run(g, b, 60)
+        self.assertEqual(sent, [])
+        g, b, sent = self.make()
+        self.block(g, b)
+        g.logic.enabled = False
+        run(g, b, 60)
+        self.assertEqual(sent, [])
+
+    def test_heal_after_reload_stall_with_real_drift(self):
+        """1.8.0 stall watchdog + 1.9.0 heal: the full 27.11.2026 sequence."""
+        g, b, sent = self.make(low=20)
+        run(g, b, 8)
+        b.next_reload = b.t + 1000         # reloads stop, firmware took 20 into the coding
+        b.e7 = 20
+        t0 = b.t
+        while g.logic.stall_t is None and b.t - t0 < 10:
+            run(g, b, 0.1)
+        self.assertEqual(g.logic.decide(b.t), (pg.GESPERRT, "Reload ausgeblieben"))
+        self.assertEqual(sent, [])          # the stall alone never writes a coding
+        b.next_reload = b.t + 0.5
+        run(g, b, 8)
+        self.assertIn("E7 codiert 20", g.logic.decide(b.t)[1])
+        run(g, b, 25)
+        self.assertEqual(sent, ["w;0x27E7;1;100"])
+        b.e7 = 100                          # splitter applied it
+        run(g, b, 15)
+        self.assertEqual(g.logic.decide(b.t)[0], pg.ABGESENKT)
+        self.assertIsNone(g.logic.stall_t)
+        run(g, b, 60)
+        self.assertEqual(sent, ["w;0x27E7;1;100"])
+
+    def test_only_whitelisted_commands(self):
+        self.assertEqual(sorted(pg.HEAL_WRITES.values()), ["w;0x27E6;1;100", "w;0x27E7;1;100"])
+
+
 class MqttTest(unittest.TestCase):
     def test_set_and_retained_restore(self):
         published = []
@@ -566,6 +737,19 @@ class MqttTest(unittest.TestCase):
         self.assertTrue(g.logic.vorboost_aktiv)
         g._on_message(client, None, msg("enabled/state", "OFF"))  # non-retained echo ignored
         self.assertTrue(g.logic.enabled)
+        n = len(published)
+        g._on_message(client, None, msg("extern/set", "90;Nachlauf Nachtabschaltung"))
+        self.assertIsNotNone(g.logic.extern_until)
+        self.assertEqual(g.logic.extern_reason, "Nachlauf Nachtabschaltung")
+        self.assertEqual(len(published), n)                      # no retained state topic
+        until = g.logic.extern_until
+        g._on_message(client, None, msg("extern/set", "5000"))    # out of range: ignored
+        self.assertEqual(g.logic.extern_until, until)
+        g._on_message(client, None, msg("extern/set", "60", True))  # retained: ignored
+        self.assertEqual(g.logic.extern_until, until)
+        g._on_message(client, None, msg("extern/set", "0"))
+        self.assertIsNone(g.logic.extern_until)
+        self.assertIn(("openv/pump_guard/extern/set", 0), client.topics)
 
 
 class PatchTest(unittest.TestCase):
