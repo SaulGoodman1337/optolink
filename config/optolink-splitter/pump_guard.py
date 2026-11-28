@@ -75,18 +75,6 @@ switches the heating circuit to "Nur WW". The request expires by itself, so a
 crashed requester never keeps the pump high for longer than its last request
 (and 100 % is the fail-safe direction anyway). Not retained, no state topic.
   extern/set <seconds 0..1800>[;<Grund>]   (0 ends the request)
-
-Coding self-heal (1.8.0, default ON): on 27.11.2026 the firmware twice took the
-lowered RAM value over into the coded E7 (08:55 E7=50, 20:32 E6=E7=55) although
-no coding was written. The guard blocks itself then (GESPERRT "E7/E6 codiert X
-statt 100"), but the pump stays at X until somebody resets the coding. With
-`heilung_aktiv` the guard restores the baseline itself: if that block persists
-for HEAL_AFTER_S (a short false alarm clears itself, e.g. 10:39 E6) it asks the
-splitter (MQTT listen topic, the same path as the HA number entities) to write
-exactly `w;0x27E7;1;100` or `w;0x27E6;1;100`, at most HEAL_MAX_PER_HOUR times per
-hour and HEAL_MIN_GAP_S apart. The guard's own coded-value check then releases
-the block. Never writes anything else, never while the guard is off.
-  heilung_aktiv/set ON|OFF, status JSON `heilungen`, `heilung_letzte`
 """
 from __future__ import annotations
 
@@ -94,7 +82,7 @@ import json
 import threading
 import time
 
-VERSION = "1.8.0"
+VERSION = "1.7.0"
 
 RAM_E6_ADDR, RAM_E7_ADDR = 0x20A4, 0x20A5      # RAM copies of E6 (max) and E7 (min)
 # 1.6.0: read only these 2 bytes (was a 32-byte block from 0x20A0): the telegram is
@@ -104,10 +92,6 @@ HIGH = 100
 LOW_MIN, LOW_MAX = 20, 100
 NACHLAUF_MAX_MIN = 30
 EXTERN_MAX_S = 1800            # longest external boost one request may ask for
-HEAL_AFTER_S = 20.0            # coded value must stay wrong this long before it is rewritten
-HEAL_MIN_GAP_S = 60.0          # between two heal writes (the guard re-verifies in between)
-HEAL_MAX_PER_HOUR = 3
-HEAL_WRITES = {"E7": "w;0x27E7;1;100", "E6": "w;0x27E6;1;100"}   # the only commands ever sent
 VORBOOST_MAX_K = 10.0
 VORBOOST_HYST_K = 0.5          # release the pre-boost only 0.5 K below its trigger
 START_MARGIN_DEFAULT_K = 4.0   # coding plug "Einschaltdifferenz" 4 K until learned
@@ -160,7 +144,6 @@ class GuardLogic:
         self.enabled = False
         self.low = 30
         self.nachlauf_aktiv = True
-        self.heilung_aktiv = True
         self.extern_until = None       # monotonic deadline of an external boost request
         self.extern_reason = "Extern"
         self.nachlauf_s = 180.0
@@ -428,10 +411,6 @@ class PumpGuard:
         self.last_repair_t = 0.0
         self.repairs = 0
         self.writes = 0
-        self.block_since = None        # (which, since) while "E7/E6 codiert X statt 100" blocks
-        self.heal_times = []           # monotonic times of heal writes (last hour)
-        self.heal_count = 0
-        self.heal_last = None          # wall-clock time of the last heal
         self._target = None
         self.last_pub = 0.0
         self.last_state = None
@@ -486,7 +465,7 @@ class PumpGuard:
     def _on_connect(self, client, userdata, flags, rc, properties=None):
         topics = ["enabled", "low", "nachlauf", "nachlauf_aktiv", "vorboost", "vorboost_aktiv",
                   "kurve_aktiv", "kurve_min", "kurve_voll_k", "kurve_start_s",
-                  "spreizung_aktiv", "spreizung_soll", "e6_aktiv", "heilung_aktiv"]
+                  "spreizung_aktiv", "spreizung_soll", "e6_aktiv"]
         client.subscribe([(f"{self.base}/{t}/set", 0) for t in topics]
                          + [(f"{self.base}/{t}/state", 0) for t in topics]
                          + [(f"{self.base}/extern/set", 0)])
@@ -545,7 +524,7 @@ class PumpGuard:
                         return
                     self.logic.spreizung_soll = v
                     out = str(v)
-                elif name in ("nachlauf_aktiv", "vorboost_aktiv", "kurve_aktiv", "spreizung_aktiv", "e6_aktiv", "heilung_aktiv"):
+                elif name in ("nachlauf_aktiv", "vorboost_aktiv", "kurve_aktiv", "spreizung_aktiv", "e6_aktiv"):
                     val = payload.upper() in ("ON", "1", "TRUE", "EIN")
                     setattr(self.logic, name, val)
                     out = "ON" if val else "OFF"
@@ -584,32 +563,6 @@ class PumpGuard:
                 self.logic.extern_until = now + v
                 self.logic.extern_reason = reason
 
-    def _heal(self, state, reason, now):
-        """Restore a coded E7/E6 the firmware took over from the lowered RAM value."""
-        which = reason[:2] if state == GESPERRT and reason.startswith(("E7 codiert", "E6 codiert")) else None
-        if which is None or not self.logic.enabled or not self.logic.heilung_aktiv:
-            self.block_since = None
-            return
-        if self.block_since is None or self.block_since[0] != which:
-            self.block_since = (which, now)
-            return
-        if now - self.block_since[1] < HEAL_AFTER_S:
-            return
-        self.heal_times = [t for t in self.heal_times if now - t < 3600.0]
-        if len(self.heal_times) >= HEAL_MAX_PER_HOUR or (
-                self.heal_times and now - self.heal_times[-1] < HEAL_MIN_GAP_S):
-            return
-        topic = getattr(self.settings, "mqtt_listen", None)
-        if self.client is None or not topic:
-            return
-        cmd = HEAL_WRITES[which]
-        self.client.publish(topic, cmd)
-        self.heal_times.append(now)
-        self.heal_count += 1
-        self.heal_last = time.strftime("%Y-%m-%dT%H:%M:%S%z")
-        self.log.warning(f"pump_guard: {reason} seit {now - self.block_since[1]:.0f} s -> "
-                         f"Codierung zurückgesetzt ({cmd})")
-
     def _publish_status(self, state, reason, now=None, force=False):
         now = time.monotonic() if now is None else now
         changed = (state, reason) != self.last_state
@@ -640,8 +593,6 @@ class PumpGuard:
                                  if lg.kessel is not None and lg.soll is not None else None),
                   "start_schwelle": lg.start_margin, "start_werte": lg.start_margins,
                   "starts": lg.starts,
-                  "heilung_aktiv": lg.heilung_aktiv, "heilungen": self.heal_count,
-                  "heilung_letzte": self.heal_last,
                   "extern_s": (round(lg.extern_until - now) if lg.extern_until is not None
                                and now < lg.extern_until else 0),
                   "protocol": "P300" if self.active else "VS1", "version": VERSION,
@@ -692,7 +643,6 @@ class PumpGuard:
                 self._target = low
                 # E6 is only lowered once its coded 100 is proven
                 e6_aktiv = self.logic.e6_aktiv and self.logic.e6 == HIGH
-            self._heal(state, reason, now)
             self._publish_status(state, reason, now)
             lowering = state in LOWERING
             # 1) leaving ABGESENKT: write 100 once right away (faster boost)
